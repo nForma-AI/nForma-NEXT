@@ -177,6 +177,34 @@ else
   note "scripts/fleet-worktree.sh not executable — worktree coverage UNMEASURED, not clean"
 fi
 
+section 'Work left on merged branches'
+# ★ #89: an instrument with no caller is an argument. This one answers a
+# LAUNCH-TIME question — did anything get left behind since the last launch — and
+# it would have caught all three of this role's own pushes to a ref whose PR had
+# already merged. Giving it a caller is the fix for both.
+#
+# ⚠ It calls `gh`, so it is the only network-dependent check here. Failure is
+# reported as UNMEASURED rather than clean, and never blocks: this pane reports.
+if [ -r tools/stranded-branches.py ]; then
+  if out=$(python3 tools/stranded-branches.py 2>&1); then
+    ok "no merged branch carries unmatched commits"
+  else
+    rc=$?
+    if [ "$rc" -ge 2 ]; then
+      note "stranded-branches ESTABLISHED NOTHING (exit $rc) — not clean; likely gh auth or network"
+    else
+      printf '%s\n' "$out" | grep '^NO-UPSTREAM-MATCH' | while read -r _ ref rest; do
+        note "$ref has commits with no upstream patch-match — ⚠ NOT proof of loss; recovery-by-recommit reads this way"
+      done
+      printf '%s\n' "$out" | grep -c '^EQUIVALENT-UPSTREAM' | while read -r n; do
+        [ "$n" -gt 0 ] && ok "$n ref(s) unreachable by sha but EQUIVALENT upstream — landed"
+      done
+    fi
+  fi
+else
+  note "tools/stranded-branches.py not readable — that check is UNMEASURED, not clean"
+fi
+
 section 'Known substrate limits'
 cat <<'LIMITS'
   · Recipes have no `titleMode` field, so a recipe-set title starts unpinned and
