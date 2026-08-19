@@ -42,8 +42,21 @@ request**, which is visible whether or not anyone remembers the rule.
    ```
    MEASURED-HERE     value · date · how it was measured
    INHERITED         value · origin repository · ⚠ not re-measured here — do NOT act on it
-   NOT-YET-MEASURED  the slot exists, nothing has measured it here, ASK before assuming
+   NOT-YET-MEASURED  the slot applies here; nothing has measured it; ASK before assuming
+   DROPPED           the slot does NOT exist here · why · recorded, not deleted
    ```
+
+   ⚠ `NOT-YET-MEASURED` and `DROPPED` are different and collapsing them loses the audit. The
+   first says *someone should measure this*; the second says *there is nothing here to measure*.
+   A dropped calibration is **recorded rather than deleted**, because the removal is the part a
+   reader must be able to check. (`DROPPED` is DEV5's, from the first file re-scoped under this
+   scheme; the four-state version above collapsed it into deletion.)
+
+   ⛔ **Anchor every number with an as-of time, and state it in the past tense.** A dated
+   measurement written in the present tense decays into a false claim: *"rungs 1 and 3 are
+   currently empty"* was true when measured and false within the hour. Write *measured empty at
+   `<date time>`; re-measure before relying on it.* The rolling-window warning below is the same
+   defect; this is its form for prose.
 
    ⛔ The third is load-bearing. Re-scoping a vendored goal by **inventing** the numbers the
    template asks for produces a slot that has yielded no verdict, rendered as though it had —

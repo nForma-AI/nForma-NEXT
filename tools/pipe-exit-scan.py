@@ -46,6 +46,23 @@ a quoted string is treated as a comment start, so a pipeline written after a `#`
 is missed. It under-reports there and says so, because over-reporting on prose is the failure
 this tool exists to avoid.
 
+⛔ WHAT THIS TOOL DOES NOT DO, AND THE NUMBER THAT PROVES IT.
+
+    git grep '\$?'          -> 0 hits in committed files
+    git grep 'PIPESTATUS'   -> 2 hits, BOTH PROSE
+
+⇒ It would have caught **0 of the 5 real instances**. Every one was an ephemeral
+command typed into a tool call and never committed. This is a guard against the
+idiom ENTERING a committed script — a real job, and `fleet-worktree.sh` is exactly
+the file where it would land — and it is NOT a remedy for the failure mode that
+produced it.
+
+⚠ So read a clean run correctly: "0 findings" here is a statement that THE
+POPULATION IS EMPTY, not a statement of coverage. Absence of findings in a
+population the defect does not live in is not evidence of anything. The measured
+failure mode lives at the point of execution, which is a PreToolUse hook and not
+this file.
+
 Exit: 0 clean · 1 findings · 2 established nothing (no files scanned).
 """
 import os, re, subprocess, sys
