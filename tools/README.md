@@ -3,8 +3,8 @@
 Each built because a reading was believed and turned out to be wrong. ⚠ **No count in this
 sentence on purpose:** a hand-maintained integer describing a directory drifts on the next
 addition with no error, and three PRs were racing on it at once. **The table below carries the
-count.** ⚠ `fleet-state.py` is on disk and **undocumented** (#27) — that gap is stated rather
-than rounded away, because a table that does not match `ls` is the defect #27 exists for. Every
+count**, and `scripts/check-tools-index.py` asserts it matches `ls` on every run — the gap that
+statement used to describe is now checked rather than described (#27). Every
 one carries the incident that produced it in its own docstring — the measurement is the
 justification, not the description.
 
@@ -31,7 +31,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
-| `pipe-exit-scan.py` | is any exit code here read through a pipe? | 0 clean · 1 findings · **2 established nothing** |
+| `pipe-exit-scan.py` | is any exit code here read through a pipe? | 0 clean · 1 findings · **2 established nothing** || `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |
 | `stranded-branches.py` | has any merged PR's branch got commits with no equivalent change upstream? | 0 none · 1 unmatched commits · **2 established nothing** |
@@ -145,7 +145,14 @@ cannot produce.**
 
 `--selftest` proves both directions against real data: the known-negative is this file, and the
 known-positive is a fixture of three idioms taken from three real incidents rather than invented
-to match the regex.
+to match the regex.**`fleet-state.py`** — reads the `STATE:` line every role prompt requires on every turn. ⛔ It
+exists as a self-correction: the signal was demanded and **nothing consumed it**, and an agent
+that complied was re-woken seven times at 88–93% context with its named blockers unchanged. *A
+wake that cannot hear its own answer is a drain, not a nudge.* ★ Parsed **positionally** — the
+final non-empty line of the last assistant turn — never by searching for the token anywhere in
+the text, because a keyword scan is tripped by any turn *discussing* blockage and this fleet
+produced five such instances in one session. A quoted example is never the last line.
+
 **`bootstrap-audit.py`** — audits the interval a `ROLE-READY` line closes, rather than the
 three facts it asserts. ⛔ Measured on the live nine-pane fleet: **every token was true in all
 three facts it carries, and every bootstrap had a step with no execution record** — so a
