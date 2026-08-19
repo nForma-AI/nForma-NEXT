@@ -60,6 +60,48 @@ words: *maximum autonomy is not maximum activity.*
 > **Write the rungs so that "none applies" is reachable this week.** A loop that cannot
 > report empty is not autonomy, it is a busy-wait.
 
+## ⛔ The rungs must be ORDERED, and the order is not obvious
+
+Measured on one repository in one day:
+
+```
+issues opened   36        PRs merged        6
+issues closed    0        open PRs         26, of which 22 BLOCKED
+                          open issues     169
+```
+
+⇒ An unordered loop optimises for **the rung with the most available next items**, not the
+most valuable one. *"Find a new defect"* always has a next item; *"clear a blocker"* is
+harder and loses every time. Every agent can follow the loop correctly and the board still
+does not move — a design property, not agent behaviour.
+
+**The ordering, highest first:**
+
+1. **Clear a blocker on the BOARD** — not on *your* PR. ⚠ Scope it explicitly: an agent with
+   no blocked PR of its own falls straight through to the bottom rung while 22 sit blocked.
+   Verified before writing this: 5 of 6 sampled blocked PRs had **3-4 genuinely failing
+   checks**, so this rung is executable, not decorative.
+2. **Close what is already fixed.** ⛔ This rung is missing from the obvious version and it
+   is the one the numbers demand: **36 opened, 0 closed.** Adding priority to *finding* does
+   not create *closing*. An issue whose fix has landed and whose closure bar is met is pure
+   backlog reduction at near-zero cost.
+3. **Finish something you started** that has not landed.
+4. **Verify a peer's claim that CONFLICTS with something you measured.** ⚠ Not one you can
+   falsify *cheaply* — cost inverts the selection, because cheap-to-check correlates with
+   already-checked, and across N agents it is O(N²) duplicated verification of the least
+   likely errors. **Conflict, not cost.**
+5. **Find a new defect** — only when 1-4 are empty.
+
+⚠ **"Filing is not progress" is too strong, and overcorrecting here is its own defect.** A
+finding not filed is lost, and the friction-report discipline in these goals rests entirely
+on that. The cost is filing *instead of* clearing — not filing itself. The measured problem
+is not 36 opened; it is **0 closed**.
+
+★ And this class has no failure signal. **A backlog growing faster than it drains reds
+nothing.** Every issue is individually well-founded and correct to file; the cost exists only
+in aggregate, and only as a ratio. It is invisible to any instrument that watches for
+failures and visible only to one that watches a rate.
+
 ## ⛔ A self-dispatch loop needs an ENGINE, and the engine must not carry authorization
 
 A goal document cannot make an agent self-invoke. An agent executes when prompted and then
