@@ -20,6 +20,32 @@ reports STATES, not loss:
 re-do work that already exists, and the second copy is a fresh conflict — worse than
 silence, for a tool whose entire subject is duplicated effort.
 
+⛔ THE TWO STATES ARE NOT SYMMETRIC, AND THE ASYMMETRY IS THE WHOLE READING RULE:
+
+    EQUIVALENT-UPSTREAM  PROVES the work landed.
+    NO-UPSTREAM-MATCH    PROVES NOTHING EITHER WAY.
+
+★ THE STANDING EXAMPLE IS THIS FILE. `devops/stranded-branches@8a9251a` reads
+NO-UPSTREAM-MATCH and will do so indefinitely, for a change that is demonstrably on
+main — it is the commit that added `git cherry` to this very tool.
+
+Why, measured rather than assumed:
+
+    8a9251a  patch-id 409ec00b3297   cut before main gained an unrelated PR
+    1e13e59  patch-id 7b73ec65dc31   the same work, cherry-picked onto the moved base
+             tools/README.md 2 +-  vs  3 +-   — the adapted diff is ONE LINE different
+
+⇒ A CHERRY-PICK ONTO A MOVED BASE DOES NOT PRESERVE THE PATCH ID. "Cherry-pick, not
+a rewrite" is true of the OPERATION and false of the RESULT once the base has moved.
+The predicate answered its question correctly: there is no equivalent patch upstream,
+because the patch was adapted.
+
+⇒ So a reader who sees this tool's own name in a NO-UPSTREAM-MATCH row must NOT
+conclude the fix never landed. That is exactly the misreading the bucket rename was
+for, one level in — and it was predicted the other way round: the author expected the
+row to flip on merge and said that a non-flip would mean the `git cherry` path was
+broken. The path was sound and the prediction was wrong.
+
 
 ⛔ THE INCIDENT. A sweep across every merged PR with a surviving ref found 2 of 15
 stranded, in two roles, with no contact between them. One ref had been REPOINTED
@@ -210,6 +236,11 @@ def main():
           f"{len(deleted)} ref(s) deleted on merge (nothing to examine); "
           f"{checked + len(deleted)} of {len(by_ref_count(rows))} merged-PR refs accounted for.",
           file=sys.stderr)
+    print("⛔ THE STATES ARE ASYMMETRIC: EQUIVALENT-UPSTREAM proves the work landed; "
+          "NO-UPSTREAM-MATCH proves NOTHING either way. This tool's own row "
+          "(devops/stranded-branches) is the standing example — it reads NO-UPSTREAM-MATCH "
+          "for a change that is on main, because a cherry-pick onto a moved base does not "
+          "preserve the patch id.", file=sys.stderr)
     print("⛔ NO-UPSTREAM-MATCH IS NOT 'LOST'. It means the sha is unreachable from "
           f"{BASE} AND no commit upstream has an equivalent patch id. Work recovered by "
           "recommit-with-edits legitimately reads this way, because after a rewrite the "
