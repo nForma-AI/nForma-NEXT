@@ -54,7 +54,16 @@ request**, which is visible whether or not anyone remembers the rule.
 
    ⛔ **Anchor every number with an as-of time, and state it in the past tense.** A dated
    measurement written in the present tense decays into a false claim: *"rungs 1 and 3 are
-   currently empty"* was true when measured and false within the hour. Write *measured empty at
+   currently empty"* was true when measured and false within the hour — **94 minutes**, with
+   nothing marking the transition.
+
+   > ⛔ **"is empty" is never a fact about this repository, only about a timestamp.**
+
+   ⚠ And when a stale reading is corrected, **keep both readings as a pair rather than swapping the
+   stale one out**: the pair carries the *decay rate* and neither reading does. A corrected single
+   number satisfies this rule and destroys the evidence for it.
+
+   Write *measured empty at
    `<date time>`; re-measure before relying on it.* The rolling-window warning below is the same
    defect; this is its form for prose.
 
@@ -117,7 +126,24 @@ does not move — a design property, not agent behaviour.
 
 **The ordering, highest first:**
 
-1. **Clear a blocker on the BOARD** — not on *your* PR. ⚠ Scope it explicitly: an agent with
+1. **Clear a blocker on the BOARD** — not on *your* PR.
+
+   ⛔ **A rung item held by another agent is NOT yours to clear. Notify the owner and descend —
+   notifying *is* the clearing action available to you.** ⚠ And the notification **is the work**:
+   descending without it leaves the blocker exactly as blocked and turns rung 1 into a no-op that
+   reports as followed.
+
+   > *Occupied but not mine to clear* is a **third state**, and the ladder read only *empty* /
+   > *not empty*. An agent following it literally either stalls at rung 1 forever or reaches into
+   > a peer's in-flight branch.
+
+   Measured: two blocked PRs were held by roles with **live worktrees**, and rebasing an active
+   peer's branch desyncs its working tree — the shared-tree hazard arriving through the rung meant
+   to be the most valuable. Found by an agent working the ladder **from the top** rather than
+   jumping to what it had already noticed; an agent that skips to its preferred rung never
+   discovers that rung 1 has an unrepresentable state.
+
+   ⚠ Scope it explicitly: an agent with
    no blocked PR of its own falls straight through to the bottom rung while 22 sit blocked.
    Verified before writing this: 5 of 6 sampled blocked PRs had **3-4 genuinely failing
    checks**, so this rung is executable, not decorative.
