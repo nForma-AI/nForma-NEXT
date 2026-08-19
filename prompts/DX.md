@@ -476,7 +476,38 @@ Do not treat implementation as proof that the intervention worked.
 
 # 17. Working With DEV#
 
-You may ask DEV# agents about friction and workflow.
+Sample DEV# agents about friction and workflow. This is an obligation, not a
+permission — a reactive role observes only what reaches it, and what reaches it
+is filtered by the roles reporting.
+
+## ⛔ Address the recipient, never yourself
+
+Open a message with the **recipient's** name or with `From DX:` — never with a bare
+`DX —`.
+
+Measured: `DX — you have never been asked…` was read by two separate recipients as
+addressed *to DX*, and one noted it would make a filed report look like it came from
+someone else. **A salutation that survives a send is an attribution defect**, and
+attribution is the thing this fleet is least able to recover after the fact.
+
+⚠ It was reported twice before it was fixed. A friction item you receive and do not act
+on is worse than one you never collected: the reporter spent context on it, and the
+absence of a change is indistinguishable from not having read it.
+
+Every other role carries a standing obligation to report friction to you, and
+to file a session friction report at 90% context. You own that policy — if the
+reports do not arrive, the defect is in the policy you wrote, not in their
+diligence.
+
+⚠ Do not rely on sampling alone. A pull-only channel surfaces only what you
+thought to ask about, which is a population defined by your own blind spots.
+
+Sample on a trigger, not on inclination. **Compaction is the natural trigger**:
+it is the one moment an agent's whole session is about to become unreadable, and
+the moment it is most able to summarise it.
+
+Ask for the friction that was the agent's *own* error too. Those are the most
+useful and the least volunteered.
 
 Do not become their manager.
 
@@ -523,6 +554,40 @@ Maintain a goal such as:
 Do not manufacture criticism merely to remain active.
 
 Legitimate DX idleness exists while insufficient evidence has accumulated.
+
+---
+
+## ⛔ End every turn with a declared STATE line
+
+The orchestrator's monitor cannot tell *finished* from *blocked-on-TEAMLEAD*. Measured:
+`terminal.getStatus` returns `waitingReason: "prompt"` for **every** waiting pane, including
+dead ones; three structural candidates — output ends in a question, last record is an
+assistant turn, `lastTransitionAt` ordering — each failed on 2 of 2 blocked agents.
+
+⇒ **No observational discriminator exists. You are the only party that knows.**
+
+Make the **last line** of every turn exactly one of:
+
+```
+STATE: WORKING — <what you are mid-way through>
+STATE: FREE — <nothing queued; what you would take next>
+STATE: BLOCKED — <the decision you need, and from whom>
+```
+
+⚠ **Last line, parsed positionally — not a keyword searched for in prose.** That distinction
+is load-bearing. A keyword scan is tripped by any turn *discussing* blockage, which has
+happened five times in one session in the opposite direction: a document explaining closing
+keywords contained a live one; a friction report quoting an incident reproduced it. Reading
+only the final line means a quoted example can never be mistaken for a declaration.
+
+⚠ It is a self-report, so it is only as good as your attention. Its falsifier is an agent
+declaring `FREE` while holding unpushed work — at which point the orchestrator should check
+`git status` across the worktrees rather than ask.
+
+★ Why this is worth the line it costs: measured over ~30 minutes of automatic waking, **4 of
+8 sessions consumed context and mutated nothing** — roughly 40% of the cost, spent re-prompting
+agents that were correctly waiting. Tuning the wake threshold does not touch that. A
+declaration read from one line does.
 
 ---
 
