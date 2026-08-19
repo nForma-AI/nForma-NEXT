@@ -109,6 +109,43 @@ def anchors(cmd):
     return out
 
 
+QUOTED = re.compile('\'[^\']*\'|"[^"]*"', re.S)
+SEPARATORS = re.compile(r"&&|\|\||;|\||\n")
+ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
+
+def command_positions(shell):
+    """The words this shell string actually invokes, as opposed to mentions.
+
+    ⛔ MEASURED, not anticipated. Text presence was the matching rule and it read
+    all three of these as EXECUTED:
+
+        echo "git rev-parse --show-toplevel && git branch --show-current"
+        grep -n "git rev-parse --show-toplevel && git branch --show-current" f
+        git rev-parse --show-toplevel && git branch --show-current
+
+    Only the third runs anything. ⇒ The fix is not a blocklist of echo/grep/cat —
+    that enumerates the mentions you thought of. It is POSITION: quoted spans are
+    removed, the remainder is split on shell separators, and the first bare word
+    of each segment is what got invoked. A command named inside a quoted argument
+    occupies no command position, whatever tool quoted it.
+
+    ★ Same remedy as DX.md §19's "parse the last line POSITIONALLY, never search
+    for the keyword", and as matching `goals/` rather than the word `goal`. #36
+    names the class: MATCH ON SOMETHING A MENTION CANNOT PRODUCE. A quotation can
+    reproduce any text; it cannot occupy a command position.
+    """
+    bare = QUOTED.sub(" ", shell)
+    out = set()
+    for seg in SEPARATORS.split(bare):
+        for word in seg.split():
+            if ASSIGN.match(word):
+                continue                  # leading FOO=bar env assignments
+            out.add(word.lstrip("("))
+            break
+    return out
+
+
 def registry():
     """sessionId -> row, and name -> row. Written by the owning process."""
     by_name = {}
@@ -239,6 +276,14 @@ def match_step(cmd, calls):
     if best_hits < len(want):
         missing = [a for a in want if a not in best[1].lower()]
         return "UNDECIDED", f"partial match; absent from the best candidate: {missing}"
+    # ⛔ The anchors are all present — but presence is what `echo "<the command>"`
+    # also produces. Require the step's own leading word to occupy a COMMAND
+    # POSITION in the matched shell string before calling this execution.
+    lead = (cmd.split() or [""])[0].lower()
+    if lead and lead not in {w.lower() for w in command_positions(best[1])}:
+        return "MENTIONED-ONLY", (f"the matched command contains the step text but never invokes "
+                                  f"{lead!r} — it appears only inside a quoted argument, so this "
+                                  f"is a MENTION of the step, not a record of running it")
     if best[2] is True:
         return "ERRORED", "the matching command returned is_error"
     if best[2] is None:
@@ -293,8 +338,8 @@ def audit(role, row):
         v["steps"].append((s[:72], state, why))
         if state in ("UNEXECUTED", "ERRORED", "UNEXECUTABLE"):
             v["negatives"].append(f"step {state}: {s[:60]!r} — {why}")
-        elif state == "UNDECIDED":
-            v["unknowns"].append(f"step UNDECIDED: {s[:60]!r} — {why}")
+        elif state in ("UNDECIDED", "MENTIONED-ONLY"):
+            v["unknowns"].append(f"step {state}: {s[:60]!r} — {why}")
 
     if token is None:
         # ⚠ Not automatically a negative. A pane may legitimately still be in its
@@ -382,6 +427,62 @@ def _synth(path, boot, include_calls):
             fh.write(json.dumps(r) + "\n")
 
 
+# ⛔ THE KNOWN-NEGATIVE. Inputs the audit must REJECT.
+#
+# #26, clause added from this tool's own failure: a known-positive proves a
+# control CAN fire and says nothing about whether it fires WRONGLY — and a false
+# positive reads as health. ARCHITECT hit the same wall within the hour, with a
+# signature fallback that resolved nine sessions to one file at an identical
+# score while its known-positive passed throughout. Two tools, two roles, one
+# hour. That is a rate, not an anecdote.
+#
+# ⚠ REAL DATA, not a fixture. `MENTION_REAL` is the actual `SendMessage` input
+# that made this tool report `/rename DEVOPS` as EXECUTED — DEVOPS telling
+# TEAMLEAD that /rename had NOT taken on any pane. A fixture contains only the
+# failure you already imagined; this one was in the fleet's transcripts the whole
+# time and was found by reading the rows instead of the summary.
+#
+# ★ ARCHITECT's sharper half, recorded because it applies here too: that instance
+# was caught because the answer was TOO CLEAN (nine identical scores), which is
+# aesthetic judgement rather than a control. The rejection path must be
+# EXERCISED, not described — so these run on every invocation, before any verdict.
+MENTION_REAL = json.dumps({
+    "to": "nforma-next-3d [c9020a]",
+    "summary": "DEVOPS: fleet /rename did not take on any pane",
+    "message": "DEVOPS -> TEAMLEAD. Blocking operational finding. /rename took on ZERO of the "
+               "9 fleet panes. All 9 have nameSource=derived.",
+})
+
+STEP_REAL = "git rev-parse --show-toplevel && git branch --show-current"
+
+
+def known_negative():
+    """Every case here must NOT read EXECUTED. The last one must still read EXECUTED —
+    a rejection rule that also kills true positives is a worse control, not a safer one."""
+    cases = [
+        ("real SendMessage prose (the input that caused the original false pass)",
+         [("SendMessage", MENTION_REAL, False)], "/rename DEVOPS", False),
+        ("the step echoed inside a quoted argument",
+         [("Bash", f'echo "{STEP_REAL}"', False)], STEP_REAL, False),
+        ("the step grepped for in a file",
+         [("Bash", f'grep -n "{STEP_REAL}" notes.md', False)], STEP_REAL, False),
+        ("the step genuinely run, after an unrelated leading command",
+         [("Bash", f"cd /tmp && {STEP_REAL}", False)], STEP_REAL, True),
+    ]
+    ok = True
+    for label, calls, step, want_executed in cases:
+        state, _ = match_step(step, calls)
+        got = (state == "EXECUTED")
+        flag = "✅" if got == want_executed else "⛔"
+        if got != want_executed:
+            ok = False
+        print(f"  known-negative  {flag} {state:<15} {label}")
+    if not ok:
+        print("  ⛔ the audit either accepted a MENTION as execution, or rejected a genuine "
+              "one. Either way its EXECUTED verdicts are not evidence.", file=sys.stderr)
+    return ok
+
+
 def self_test():
     """Returns True if the audit DISCRIMINATES the two constructed states."""
     tmp = tempfile.mkdtemp(prefix="bootstrap-audit-kp-")
@@ -420,10 +521,12 @@ def self_test():
     if not ok_claim:
         print("  ⛔ the claim comparison does not discriminate agreement from disagreement, "
               "or silently passes an unmeasured value", file=sys.stderr)
-    if ok_clean and ok_dirty and ok_claim:
+    ok_neg = known_negative()
+    if ok_clean and ok_dirty and ok_claim and ok_neg:
         print("  ✅ both controls discriminated: an unexecutable step from an executed one "
               "(identical ROLE-READY on both), and a claim that matches substrate from one "
-              "that does not")
+              "that does not — and it rejected every MENTION of a step while still "
+              "accepting the step genuinely run")
         return True
     return False
 
@@ -457,7 +560,7 @@ def main():
         if v.get("token"):
             print(f"    token   {v['token']}")
         for s, state, why in v["steps"]:
-            colour = {"EXECUTED": "32", "UNEXECUTED": "31", "ERRORED": "31", "UNEXECUTABLE": "31"}.get(state, "33")
+            colour = {"EXECUTED": "32", "UNEXECUTED": "31", "ERRORED": "31", "UNEXECUTABLE": "31", "MENTIONED-ONLY": "33"}.get(state, "33")
             print(f"    \033[{colour}m{state:<10}\033[0m Run: {s}")
         for n in v["negatives"]:
             print(f"    \033[31mNEGATIVE\033[0m   {n}")

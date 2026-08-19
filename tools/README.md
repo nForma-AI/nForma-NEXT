@@ -142,5 +142,16 @@ that window. See #20.
   both sides first. ⚠ Measured twice the same day, at two altitudes: once against a rendered PR
   body, once against a wrapped Markdown bullet where a `grep` reported *"not there"* for
   *"not looked at"*.
+- ⛔ **Restricting to the `command` field was NOT enough, and the gap was measured rather than
+  imagined.** `echo "git rev-parse --show-toplevel"` and `grep -n "git rev-parse …" f` both read
+  **EXECUTED**: they are command fields, and they contain every anchor. ⇒ **Match on POSITION,
+  not on presence.** Strip quoted spans, split on shell separators, take the first bare word of
+  each segment — that is what was *invoked*. A command named inside a quoted argument occupies
+  no command position, whatever quoted it. ★ Not a blocklist of `echo`/`grep`/`cat`: a blocklist
+  enumerates the mentions you thought of. This is #36's rule — **match on something a mention
+  cannot produce** — and the fourth independent rediscovery of it in this repo, alongside
+  `DX.md` §19's positional last-line parse and matching `goals/` rather than the word `goal`.
+- **A mention is a third state, not a negative.** `MENTIONED-ONLY` means *no execution evidence*,
+  which is not *evidence of no execution*. It counts as unknown and never as a pass.
 - **No secrets in source.** Tools needing the Daintree token read it from the user's own MCP
   config at runtime; it appears in none of these files.
