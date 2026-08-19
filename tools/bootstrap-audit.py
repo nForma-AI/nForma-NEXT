@@ -227,6 +227,28 @@ GRAMMAR = POSIX_RESERVED | SHELL_ADDED
 # instead of incidental. That is the whole property.
 GRAMMAR_DIGEST = "4bcd31e101db06d0"
 
+# ★ WHY THE REGRESS STOPS HERE, and the rule is ARCHITECT's rather than mine.
+#
+# The digest guards the list and nothing guards the digest. My first justification
+# was "accident is the only failure mode that matters here" — a THREAT-MODEL claim,
+# and a wrong one: this repository has a documented adversarial threat model
+# (prompts/TEAMLEAD.md, twelve forged authorizations reaching agents' input boxes
+# in one session). A stopping rule resting on a threat model also fails to
+# generalise, since the next person facing a regress must re-litigate their own.
+#
+# The structural rule instead:
+#
+#   > The regress terminates when the next layer would be the same KIND of control.
+#
+# A digest-of-the-digest is another executable assertion in this same file,
+# defeated the same way — one more turn of the crank. But "the change must appear
+# in the diff as a digest edit" hands off to REVIEW: peer attention and CODEOWNERS,
+# a different control type with a different failure mode. That is a handoff, not a
+# turn, and it has already happened at this layer.
+#
+# ⇒ Test anyone can apply without arguing about threats: does one more layer hand
+# off to a different KIND of control? If no, stop.
+
 SHELL_KEYWORDS = {"if", "then", "else", "elif", "fi", "while", "until", "do", "done",
                   "for", "case", "esac", "select", "function", "time", "!", "{", "}"}
 
