@@ -49,6 +49,7 @@ Exit: 0 every reading current · 1 at least one agent is stale · 2 established 
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -91,7 +92,34 @@ def collisions(vers):
 
 
 def reads_in(transcript, catalogue):
-    """Prompt reads recovered from one transcript, in the order they occurred."""
+    """Every recoverable read of a prompt in one transcript, in order.
+
+    Two kinds, and conflating them is what this function now exists to stop.
+
+    RESOLVED  a full read whose output contains a historical blob verbatim -> exact version.
+    RANGED    a command that reads PART of a prompt -- `sed -n 'A,Bp'`, `head`, `tail`, a
+              Read tool `file_path` -- recovered from the CALL, not from its output. The
+              version is not knowable from it; that the agent looked is.
+
+    ⛔ MEASURED, and it is why RANGED exists. Reporting only RESOLVED reads answered
+    "how many times did this session run a full-file `cat` whose output matched a blob"
+    while being read as "is this agent running current doctrine". Those are different
+    propositions and the second is the one every consumer wanted. At least 7 of 9 panes
+    had re-read -- `sed -n '383,652p' prompts/DEV.md`, `git show origin/main:prompts/DEV.md`
+    -- and every one scored reads=1, identical to a pane that never looked again.
+
+    ★ The delta read is the BEHAVIOUR WE WANT: an agent re-reading exactly what changed.
+    It was the case this tool was blindest to. Found by TEAMLEAD, who checked whether the
+    number it was about to quote was true before quoting it a second time.
+
+    ⛔ A RANGED read NEVER promotes a session to current. It proves the agent saw a span,
+    not that it holds the whole current file. Adding a state you can defend beats promoting
+    to one you cannot.
+    """
+    ranged_re = re.compile(
+        r"(?:sed\s+-n\s*['\"]?\s*(\d+)\s*,\s*(\d+)p|head\s+-\d+|tail\s+-\S+)"
+        r"[^\n]*?(prompts/[A-Za-z0-9_.-]+\.md)")
+    full_re = re.compile(r"(?:cat|git\s+show\s+\S*:)\s*(prompts/[A-Za-z0-9_.-]+\.md)")
     seen = []
     try:
         fh = open(transcript, errors="replace")
@@ -99,12 +127,23 @@ def reads_in(transcript, catalogue):
         return None
     with fh:
         for line in fh:
-            if '"stdout"' not in line:
+            if "prompts/" not in line and '"stdout"' not in line:
                 continue
             try:
                 rec = json.loads(line)
             except ValueError:
                 continue
+
+            for cmd in _strings(rec, ("command", "file_path")):
+                for m in ranged_re.finditer(cmd):
+                    seen.append({"kind": "RANGED", "path": m.group(3),
+                                 "span": (m.group(1), m.group(2))})
+                for m in full_re.finditer(cmd):
+                    seen.append({"kind": "CALL-FULL", "path": m.group(1), "span": None})
+                if cmd.endswith(".md") and "/prompts/" in cmd:
+                    seen.append({"kind": "RANGED",
+                                 "path": "prompts/" + cmd.split("prompts/")[-1], "span": None})
+
             res = rec.get("toolUseResult")
             out = res.get("stdout") if isinstance(res, dict) else None
             if not out:
@@ -112,8 +151,21 @@ def reads_in(transcript, catalogue):
             for path, vers in catalogue.items():
                 hits = [b for b, v in vers.items() if v["body"] and v["body"] in out]
                 if hits:
-                    seen.append({"path": path, "blobs": hits})
+                    seen.append({"kind": "RESOLVED", "path": path, "blobs": hits})
     return seen
+
+
+def _strings(rec, keys):
+    """Every value under `keys`, at any depth."""
+    if isinstance(rec, dict):
+        for k, v in rec.items():
+            if k in keys and isinstance(v, str):
+                yield v
+            else:
+                yield from _strings(v, keys)
+    elif isinstance(rec, list):
+        for v in rec:
+            yield from _strings(v, keys)
 
 
 def main():
@@ -208,19 +260,38 @@ def main():
             seen = reads_in(t, catalogue)
             if not seen:
                 continue
+            resolved = [r for r in seen if r["kind"] == "RESOLVED"]
+            if not resolved:
+                continue
             readings += 1
-            last = seen[-1]
+            last = resolved[-1]
             p, hits = last["path"], last["blobs"]
+
+            # Any read of the SAME prompt occurring after the last resolved one.
+            idx = len(seen) - 1 - seen[::-1].index(last)
+            later = [r for r in seen[idx + 1:] if r["path"] == p]
+
             if len(hits) > 1 and set(hits) & undiscriminable:
                 verdict, detail = "AMBIG", f"{len(hits)} indistinguishable versions"
             else:
                 blob = hits[-1]
                 v = catalogue[p][blob]
                 stale = blob != current[p]
-                verdict = "STALE" if stale else "ok"
                 detail = (f"{v['lines']} lines, first seen {v['commits'][-1]}"
                           + (f", HEAD has {catalogue[p][current[p]]['lines']}"
                              if stale and current[p] in catalogue[p] else ""))
+                if not stale:
+                    verdict = "ok"
+                elif later:
+                    # ⛔ Does NOT become "ok". A ranged read proves the agent saw a span,
+                    # not that it holds the current file.
+                    verdict = "SAW-LATER"
+                    spans = [f"L{r['span'][0]}-{r['span'][1]}" for r in later
+                             if r.get("span") and r["span"][0]]
+                    where = ", ".join(dict.fromkeys(spans)) if spans else "span not recoverable"
+                    detail += f"; {len(later)} later read(s) of it [{where}]"
+                else:
+                    verdict = "LAUNCH-ONLY"
             rows.append((t.stem[:8], p.split("/")[-1], verdict, detail, len(seen)))
 
     if not readings:
@@ -230,20 +301,25 @@ def main():
               file=sys.stderr)
         return 2
 
-    print(f"\n{'session':10} {'prompt':16} {'state':6} {'reads':>5}  detail")
-    for sid, prompt, verdict, detail, n in sorted(rows, key=lambda r: (r[2] != "STALE", r[0])):
-        print(f"{sid:10} {prompt:16} {verdict:6} {n:>5}  {detail}")
+    order = {"LAUNCH-ONLY": 0, "SAW-LATER": 1, "AMBIG": 2, "ok": 3}
+    print(f"\n{'session':10} {'prompt':16} {'state':12} {'reads':>5}  detail")
+    for sid, prompt, verdict, detail, n in sorted(rows, key=lambda r: (order.get(r[2], 9), r[0])):
+        print(f"{sid:10} {prompt:16} {verdict:12} {n:>5}  {detail}")
 
-    stale = [r for r in rows if r[2] == "STALE"]
-    ambig = [r for r in rows if r[2] == "AMBIG"]
-    print(f"\n{swept} transcripts swept · {len(rows)} resolved · {len(stale)} stale "
-          f"· {len(ambig)} ambiguous · {swept - len(rows)} UNKNOWN")
-    print("⚠ Reports the version a session READ INTO CONTEXT, not the version it is obeying:")
-    print("  an agent may have re-read since (`reads` > 1), or lost the text to compaction.")
-    print("⚠ A session absent from this table read no prompt this tool could recover. That is")
-    print("  UNKNOWN, never 'current'.")
+    by = {k: sum(1 for r in rows if r[2] == k) for k in order}
+    print(f"\nPopulation: {len(rows)} of {swept} transcripts carry a resolvable full read.")
+    print(f"  LAUNCH-ONLY  {by['LAUNCH-ONLY']:3}  no later read of that prompt recovered")
+    print(f"  SAW-LATER    {by['SAW-LATER']:3}  a later read exists — ⛔ proves the agent LOOKED,")
+    print( "                    not that it holds the current file")
+    print(f"  ok           {by['ok']:3}  most recent resolvable full read IS the current blob")
+    print(f"  AMBIG        {by['AMBIG']:3}  versions this instrument cannot tell apart")
+    print(f"  UNKNOWN      {swept - len(rows):3}  no resolvable full read at all")
+    print("\n⛔ NOT A RATE. The denominator is transcripts this tool can resolve, not agents,")
+    print("   and LAUNCH-ONLY is not 'never re-read' — it is 'no later read RECOVERED'.")
+    print("⚠ Reports what a session READ, never what it is obeying. A read is not a load,")
+    print("   and compaction can drop text that was read.")
 
-    return 1 if stale else 0
+    return 1 if (by['LAUNCH-ONLY'] or by['SAW-LATER']) else 0
 
 
 if __name__ == "__main__":
