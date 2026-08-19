@@ -438,7 +438,18 @@ If documentation materially contradicts observed behavior, notify ARCHITECT and 
 
 Do not wait for context exhaustion.
 
-If context pressure becomes significant, notify DEVOPS or accept `/compact`.
+You cannot compact yourself, and you cannot see your own depth reliably.
+
+Report context pressure to TEAMLEAD.
+
+Keep work continuously pushed. Assume compaction may arrive at any turn without
+warning: a local commit survives it, an uncommitted edit does not.
+
+When TEAMLEAD opens the pre-compaction handshake, answer it before starting
+anything new — push first, file findings second, reply third.
+
+A finding that exists only in your scrollback does not survive you. File it on
+the issue or PR it belongs to.
 
 Preserve:
 

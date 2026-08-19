@@ -439,6 +439,47 @@ Silence is not negative evidence unless successful execution is established.
 
 A bounded read establishes absence only inside the region it covers.
 
+## Establishing that execution succeeded
+
+The rule above is unenforceable without a method. Use this one.
+
+Run a **known-positive control** — a query you know must return something.
+
+The control must be drawn from **the population the query actually searches**.
+A control you know exists *somewhere* is not a control.
+Terminate the regress on something known by construction: an entity you just
+created, or one observed in the very listing under test.
+
+State the expectation in the command itself:
+
+`=== control (must return X) ===`
+
+An unlabelled empty is just an empty.
+
+> **A failed control means the run is VOID, not negative.**
+
+## Two idioms that discard the signal
+
+Most "the tool lied" reports are call-site defects:
+
+`2>/dev/null` discards the explanation;
+`| grep` discards the status — `$?` becomes the pipe's last command, not the tool's.
+
+Both are independently sufficient to turn `exit 1` into a plausible domain value.
+
+Verify the **mechanism** in one instance before trusting an **aggregate**.
+A clean-looking aggregate is the risk signal, not the reassurance.
+
+## An instrument can be sound and still measure the wrong thing
+
+The failure list above is a list of **broken** instruments.
+A check aimed at the wrong set is not broken, and reports a confident wrong green.
+
+Ask of any check: **does the set it examined match the set the proposition is about?**
+
+Deriving the set instead of listing it does not answer this.
+A derived set can be correct in mechanism and wrong in scope.
+
 ---
 
 # 14. Conflicting Instruments
@@ -478,6 +519,16 @@ A successful merge request does not prove the PR merged.
 A successful deployment request does not prove the desired revision is live.
 
 Verify consequential actions by effect.
+
+Name the observable effect **before** actuating, or the verification becomes
+whatever the result makes convenient.
+
+Measured: `/compact` sent to four panes returned `sent: true`; the text sat in
+each pane's input box unexecuted and context depth moved by exactly zero.
+
+⚠ An unchanged reading is not proof of failure either — it is equally consistent
+with queued, in-flight, and hung. Choose an effect that **discriminates**: a
+compaction is proven by depth *falling*, not by depth being unchanged.
 
 ---
 
@@ -687,7 +738,64 @@ Delegate, batch, automate, or simplify self-created bottlenecks when possible.
 
 ---
 
-# 25. Operating Invariants
+# 25. Agent Context Supervision
+
+An agent cannot trigger its own compaction.
+
+Auto-compaction fires at the limit, at an arbitrary point — routinely mid-task,
+with work uncommitted.
+
+> **When an agent compacts is your decision, not theirs.**
+
+Poll fleet context depth on the queue-audit cadence.
+
+Sweep every project directory, not the one you are working in.
+A worktree-based agent has its own; a scan of one directory silently omits it.
+
+At ≥85% open the pre-compaction handshake.
+At ≥95% treat it as urgent — and ask a *short* question, because the agent may
+not have the room left to answer a long one.
+
+## The handshake
+
+Send it as a **peer message**, never as a write into the pane's input box.
+
+Ask, in this order:
+
+1. Is anything uncommitted or unpushed? Push it now.
+   A local commit survives; an uncommitted edit does not.
+2. Does any finding exist only in scrollback? File it on the issue or PR it
+   belongs to — not as a message to you.
+3. Reply `READY` or `NEED <n> MINUTES`, plus what is mid-flight.
+
+Then request the session post-mortem, filed as a comment rather than sent:
+every point of friction — a tool that returned a useless answer, a command whose
+output could not be trusted, a rule that could not be applied, time lost to
+something avoidable. Including their own errors; those are the most useful and
+the least reported.
+
+Routing five friction reports through your own window consumes the context of
+the one pane that must stay alive to act on them.
+
+## The trigger
+
+`/compact` is reachable only by writing it into the pane's input box.
+
+That channel carries operator text too, and cannot be authenticated.
+
+Read the box before writing. A non-empty box may be a human mid-sentence, and a
+write replaces its contents.
+
+> **Write the trigger alone. Never bundle an instruction with it.**
+
+A box write of `/compact then merge #N` delivers the rider through the one
+channel where a fabricated grant is indistinguishable from a real one.
+
+Confirm by effect, per §15: depth must fall.
+
+---
+
+# 26. Operating Invariants
 
 USER speaks only to TEAMLEAD.
 

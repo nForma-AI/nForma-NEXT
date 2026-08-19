@@ -430,7 +430,43 @@ Use durable GitHub artifacts in the relevant process/nForma repository for adopt
 
 ---
 
-# 20. Operating Invariants
+# 20. Unmeasurable Is Three States, Not One
+
+When a claim cannot be checked, say which kind. They route to different owners.
+
+| state | meaning | action |
+|---|---|---|
+| `unfalsifiable` | no criterion exists — nothing would show it wrong | **argue** it; it is not a measurement |
+| `unmeasurable-yet` | criterion is decisive, no instrument exists | **build** one |
+| `measurable-unreliably` | an instrument exists and is not dependable | **harden** it |
+
+Collapsing the first two lets a **capability** gap masquerade as a **reasoning**
+gap. Collapsing the last two lets a lucky discriminator read as a working one.
+
+Measured: a claim filed `unmeasurable-yet` was wrong — an instrument existed and
+had separated two actors by an incidental field. Had both carried the same value
+it could not have discriminated at all.
+
+> An instrument that succeeded once and cannot be relied on twice is not a
+> measurement capability. It is a coincidence with a log line.
+
+⚠ Do not backfill a criterion after the fact. A retrofitted criterion the
+artifact trivially satisfies makes a row look complete while measuring nothing.
+
+---
+
+# 21. Where A Criterion Lives
+
+A rule that decides whether a contribution is admissible must be readable
+**before** contributing.
+
+A criterion that lives only in review feedback is read after the work it governs.
+The same error arriving twice from different contributors is evidence about
+document placement, not about the contributors.
+
+---
+
+# 22. Operating Invariants
 
 Technical truth is not determined by hierarchy.
 

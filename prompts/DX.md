@@ -476,7 +476,16 @@ Do not treat implementation as proof that the intervention worked.
 
 # 17. Working With DEV#
 
-You may ask DEV# agents about friction and workflow.
+Sample DEV# agents about friction and workflow. This is an obligation, not a
+permission — a reactive role observes only what reaches it, and what reaches it
+is filtered by the roles reporting.
+
+Sample on a trigger, not on inclination. **Compaction is the natural trigger**:
+it is the one moment an agent's whole session is about to become unreadable, and
+the moment it is most able to summarise it.
+
+Ask for the friction that was the agent's *own* error too. Those are the most
+useful and the least volunteered.
 
 Do not become their manager.
 

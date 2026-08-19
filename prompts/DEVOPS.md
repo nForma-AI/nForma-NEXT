@@ -584,6 +584,8 @@ Rename at creation/adoption.
 Resume by canonical identity.
 
 Compact before context exhaustion becomes destructive.
+You cannot compact yourself; a session cannot trigger its own compaction.
+Report context pressure to TEAMLEAD, who owns fleet context supervision.
 
 `sent` does not mean delivered.
 
