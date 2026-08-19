@@ -198,7 +198,9 @@ def main():
     sh("git", "fetch", "-q", "--prune", "origin")
     rows, err = merged_refs()
     if rows is None:
-        print(f"⛔ could not enumerate merged PRs ({err}) — ESTABLISHED NOTHING, not clean.",
+        print(f"⛔ could not enumerate merged PRs ({err}) — ESTABLISHED NOTHING, not clean.\n"
+              "   ADDABLE — FIXABLE HERE: `gh auth status`, then re-run. A gh failure and\n"
+              "   a tidy repository are indistinguishable in this output without it.",
               file=sys.stderr)
         return 2
     if not rows:

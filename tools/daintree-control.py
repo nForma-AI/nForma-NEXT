@@ -31,11 +31,11 @@ def endpoint():
     try:
         cfg = json.load(open(CFG))
     except Exception as exc:
-        print(f"⛔ VOID: cannot read {CFG}: {exc}", file=sys.stderr)
+        print(f"⛔ VOID: cannot read {CFG}: {exc}\n   ADDABLE — FIXABLE HERE: the file is the user\u2019s own MCP config; check the path\n   and permissions before concluding anything about the fleet.", file=sys.stderr)
         sys.exit(2)
     srv = (cfg.get("mcpServers") or {}).get("daintree")
     if not srv:
-        print("⛔ VOID: no daintree MCP server configured", file=sys.stderr)
+        print("⛔ VOID: no daintree MCP server configured.\n   ADDABLE — NEEDS THE OPERATOR: ask them to add a `daintree` entry to\n   mcpServers in ~/.claude.json. ⚠ This is not a limit of this fleet: the\n   config was supplied in ninety seconds once anyone asked. This message was\n   read, quoted and BUILT AROUND for four hours because it named the absence\n   and not the remedy.", file=sys.stderr)
         sys.exit(2)
     return srv["url"], (srv.get("headers") or {}).get("Authorization", "")
 

@@ -169,7 +169,10 @@ def main():
 
     rows, unreadable, roots = scan(args.active_hours * 3600, args.limit)
     if rows is None:
-        print("SCAN FAILED: no project directories found — this is not 'all clear'",
+        print("SCAN FAILED: no project directories found — this is not 'all clear'.\n"
+              "   ADDABLE — FIXABLE HERE: ~/.claude/projects is created by the CLI on first\n"
+              "   session. Zero directories means the path is wrong or no session has ever\n"
+              "   run as this user — check the path before concluding anything about depth.",
               file=sys.stderr)
         return 2
 
