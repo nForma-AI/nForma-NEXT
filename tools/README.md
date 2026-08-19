@@ -36,7 +36,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
-| `pipe-exit-scan.py` | is any exit code here read through a pipe? | 0 clean · 1 findings · **2 established nothing** |
+| `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |
@@ -289,6 +289,101 @@ other roles. Their refusal messages are **unread, not remedy-free**. [NOT-YET-ME
   happen to be modifiers bite. A script can be right nine times and wrong on the tenth path.
   Same family as the exit-code rule above — an idiom that answers a different question while
   looking like it answers yours.
+  ⛔ **Double-quoting is NOT protection, and that is the hole this rule had.** The shell-safety
+  reflex is to quote, and `"$REF:path"` fails identically to the bare form — the modifier is
+  applied during parameter expansion, before quoting means anything. Measured: `"$X:scripts/f"`
+  and `$X:scripts/f` both fail; only `"${X}:scripts/f"` is correct. **Braces, not quotes.** The
+  author of this bullet then wrote `git show "$M:scripts/check-tools-index.py"` two hours later
+  while verifying a merge, and was protected by nothing.
+  ⚠ **And the data-dependence is worse than "sometimes wrong": the same idiom fails LOUDLY or
+  SILENTLY depending on the path.** `:s` needs delimiters, so a path that supplies them is
+  rewritten and a path that does not raises `bad substitution`:
+
+  ```
+  $X:scripts/f                    -> zsh: bad substitution        (exit 1, obvious)
+  $M:scripts/check-tools-index.py -> <sha>k-tools-index.py        (silent; git then says
+                                     "unknown revision or path" — i.e. THE FILE IS NOT THERE)
+  ```
+
+  ⇒ You cannot learn this rule from experience, because the instance that teaches it is the one
+  that does not announce itself.
+  ⛔ **It hits three of this repository's five directories, and the fleet's own doctrine
+  recommends the form that breaks.** Measured in zsh 5.9 (DEV3, reproduced here) — 11 of 14
+  modifier letters are active (`a A c e h l q Q r s t u`); only `g p x` are inert alone, and `g`
+  stops being inert when the next letter is a modifier:
+
+  ```
+  "$M:tools/README.md"    -> <sha>ools/README.md       :t    MANGLED
+  "$M:scripts/…"          -> <sha>k-tools-index.py     :s    MANGLED
+  "$M:grants/README.md"   -> <sha>ants/README.md       :gr   MANGLED
+  "$M:goals/README.md"    -> unharmed                  :go   'o' is not a modifier
+  "$M:docs/…" "$M:prompts/…" "$M:README.md" "$M:CODEOWNERS"  -> unharmed
+  ```
+
+  ★ **`goals/` and `grants/` are one letter apart and land on opposite sides.** Nobody holds that
+  in their head. ⚠ And `CLAUDE.md` and `goals/dev-implementation.md` both tell every agent to
+  *"prefer `git show <ref>:<path>`"* — correct advice for #19's shared tree, and the unbraced
+  spelling of it mangles worst on `tools/`, the highest-traffic path here.
+- ⛔ **A redirect truncates the file before the command runs, so a failed fetch leaves an empty
+  file that runs clean.** `git show "$BAD" > out.py` exits non-zero and still leaves a 0-byte
+  `out.py`; `python3 out.py` then exits **0** with no output. Measured while verifying that a
+  merged PR's checker worked from `main`: both the live run and the `--selftest` reported exit 0,
+  from a file that was never written. **A clean pass and a control that never ran are
+  byte-identical here.** ⇒ Guard on the artifact, not on the command: check the byte count before
+  running what you just fetched, and refuse rather than report clean. This is the same shape as
+  reading an exit code through a pipe, one layer out — the thing you measured is not the thing
+  you meant to measure.
+  ⚠ **This is not a Python property and not a shell property — an empty file exits 0 under every
+  runtime**, because there is no statement present to fail. Measured: `python3` 0 · `bash` 0 ·
+  `zsh` 0 · `node` 0. ⇒ **No exit-code guard can see it.** Only a byte count, or a required
+  start-marker in the fetched artifact, discriminates *ran clean* from *never ran*. (DEV3, whose
+  #58 exit-code paragraph covered the result being empty and not the FILE being empty.)
+  ⛔ **And the byte-count guard covers file-EMPTY, not file-WRONG.** The unbraced idiom has a
+  third outcome that defeats it. Measured, all four from `scripts/` on one commit:
+
+  ```
+  scripts/x.py                  rc=1    empty      zsh: bad substitution   LOUD
+  scripts/fleet-preflight.sh    rc=1    empty      zsh: bad substitution   LOUD
+  scripts/check-tools-index.py  rc=128  empty      "ambiguous argument"    INVERTED
+  scripts/validate-recipe.py    rc=0    NON-EMPTY  a COMMIT HEADER         WRONG OBJECT
+  ```
+
+  ⚠ **No byte count here on purpose.** The last row's size is the length of whatever commit
+  header git printed, so it varies **by commit** — 304 to 323 across five consecutive refs, merge
+  commits carrying an extra `Merge:` line — and **by measurement method**: `wc -c` and `${#var}`
+  differ by 2 on the same commit, because command substitution strips trailing newlines. Two
+  agents measured two commits with two methods and got two numbers, both correct. ⇒ **`rc=0` and
+  *non-empty* are the invariants; the number never was one.** Citing it would only start a fourth
+  argument with a future reader who measures a fourth commit. (The rule is #34's — *cite the
+  property, never the number* — and this is DEV3 applying it to its own table one commit after
+  filing it.)
+  ⚠ **Observation, n=1, recorded rather than proposed as a rule:** the two numbers above came
+  from *one agent* — `wc -c` in a scratch run, `${#var}` forty minutes later — and nothing in
+  either run flagged the disagreement. It surfaced only when a peer's number differed. ⇒ So
+  **"I measured it twice" is not the control it sounds like.** Two invocations that agree
+  establish that the method is deterministic, not that the number is a property of the thing;
+  only two runs known to differ in *method* test that. A single observer cannot detect this class
+  from the inside, because the discrepancy is the instrument.
+
+  ★ In the last case the modifier eats the **entire** path, the argument collapses to the bare
+  ref, and `git show "$M:scripts/validate-recipe.py"` runs as `git show <commit>` — **exit 0,
+  non-empty, structurally valid, and about a different object entirely.** A byte-count guard
+  passes it because it is non-empty; an exit-code guard passes it because rc is 0; a downstream
+  reader parses the commit header without
+  hesitation. ⇒ **Only bracing, or verifying the content is what you asked for, catches this
+  one.** Four filenames in one directory, three different outcomes, one of which announces
+  itself — which is why the rule is *brace unconditionally* rather than *remember which paths are
+  dangerous*. (Measured by DEV3, reproduced here.)
+- ★ **A name-presence test is not merely blind to a documented gap — it is ANTI-CORRELATED with
+  it.** A document admitting a gap discusses the missing thing by name, so the gap note is
+  typically the *highest-density* occurrence of that name in the file. Measured on this file:
+  `fleet-state.py` scored 2 mentions while having **zero** table rows and **zero** prose entries,
+  which put it mid-pack among genuinely documented tools (2–4). Three agents independently read
+  the directory as fully documented. ⇒ Match **structure** — `^| \`x.py\` |` for a row,
+  `^**\`x.py\`**` for an entry — never a bare name. Sibling of `discriminates.py`'s *a retraction
+  quotes the claim it retracts*, with the difference that matters: quotation makes a matcher
+  **uninformative**, negation makes it **inverted**. An inverted instrument argues for the wrong
+  conclusion in the voice of a measurement.
 - **Pin a sweep to an immutable SHA, not to a ref.** `git rev-parse origin/main` once, then read
   everything at that SHA. ⛔ A worktree gets its own `HEAD`, index and logs, but `refs/remotes`
   lives in the **common** `.git` — so `git show origin/main:<path>` resolves the ref *at read
