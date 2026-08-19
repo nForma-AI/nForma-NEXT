@@ -19,18 +19,38 @@ section() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 printf '\033[1mnForma fleet preflight\033[0m  —  %s\n' "$(date '+%Y-%m-%d %H:%M:%S')"
 
 section 'Workspace'
+# ⛔ This pane measures ONE tree. Under the per-role worktree isolation of #19
+# there are ten, and a single-tree result reported as a fleet result is a
+# wrong-population instrument by construction — the exact defect this repo
+# files issues about. So state which tree was measured, enumerate the others,
+# and never let their absence read as their health.
 if ! toplevel=$(git rev-parse --show-toplevel 2>/dev/null); then
   bad "not inside a git repository (cwd: $PWD)"
   toplevel=""; repo=""; branch=""
 else
-  repo=$(basename "$toplevel")
+  # ⛔ NOT basename "$toplevel" — in a worktree that is the worktree's directory
+  # name ("devops"), not the repository ("nForma-NEXT"). The main tree is always
+  # the first entry of `git worktree list --porcelain`.
+  main_tree=$(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2; exit}')
+  repo=$(basename "${main_tree:-$toplevel}")
   branch=$(git branch --show-current 2>/dev/null)
-  ok "repo=$repo branch=${branch:-<detached>}"
+  ok "repo=$repo branch=${branch:-<detached>} — THIS TREE ONLY"
   ok "toplevel=$toplevel"
   if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
     note "working tree is dirty — agents will branch from uncommitted state"
   else
     ok "working tree clean"
+  fi
+
+  # Scope declaration. Not decoration: it is what stops the reader generalising.
+  wt_count=$(git worktree list --porcelain 2>/dev/null | grep -c '^worktree ')
+  if [ "${wt_count:-1}" -gt 1 ]; then
+    note "$wt_count worktrees exist; this preflight measured 1 of them"
+    git worktree list 2>/dev/null | sed 's/^/        /'
+    note "the other $((wt_count-1)) are UNMEASURED, not clean — no pane here can see them"
+  else
+    ok "single working tree — every agent shares it"
+    note "shared tree: any pane's 'git checkout' rewrites every other pane's files (#19)"
   fi
 fi
 

@@ -23,7 +23,7 @@
         "NFORMA_ROLE": "ARCHITECT",
         "NFORMA_ROLE_PROMPT": "prompts/ARCHITECT.md"
       },
-      "args": "-n ARCHITECT",
+      "args": "-n ARCHITECT -w architect",
       "initialPrompt": "You are ARCHITECT. Your canonical identity is the value of the environment variable NFORMA_ROLE, and your operating instructions are the file named by the environment variable NFORMA_ROLE_PROMPT. Read both from the environment rather than from this message. Do these in order. (1) Run: echo $NFORMA_ROLE && cat $NFORMA_ROLE_PROMPT -- then adopt that file in full as your operating instructions. (2) Run: git rev-parse --show-toplevel && git branch --show-current (3) Print exactly one line and nothing else, in this format: ROLE-READY ROLE repo=REPO branch=BRANCH -- where ROLE is the value you read from NFORMA_ROLE, REPO is the basename of the toplevel path, and BRANCH is the branch name. Use the values you just read, never values recalled from this message. (4) Wait for TEAMLEAD. Do not contact the USER directly.",
       "exitBehavior": "keep"
     },
@@ -34,7 +34,7 @@
         "NFORMA_ROLE": "DEVOPS",
         "NFORMA_ROLE_PROMPT": "prompts/DEVOPS.md"
       },
-      "args": "-n DEVOPS",
+      "args": "-n DEVOPS -w devops",
       "initialPrompt": "You are DEVOPS. Your canonical identity is the value of the environment variable NFORMA_ROLE, and your operating instructions are the file named by the environment variable NFORMA_ROLE_PROMPT. Read both from the environment rather than from this message. Do these in order. (1) Run: echo $NFORMA_ROLE && cat $NFORMA_ROLE_PROMPT -- then adopt that file in full as your operating instructions. That file is a template: substitute the value of NFORMA_ROLE wherever it reads DEV#. Your canonical identity is the value of NFORMA_ROLE, not a name you choose. (2) Run: git rev-parse --show-toplevel && git branch --show-current (3) Print exactly one line and nothing else, in this format: ROLE-READY ROLE repo=REPO branch=BRANCH -- where ROLE is the value you read from NFORMA_ROLE, REPO is the basename of the toplevel path, and BRANCH is the branch name. Use the values you just read, never values recalled from this message. (4) Verify canonical identity across the fleet per section 4. For every pane the logical identity, the Daintree panel name, and the Claude session name must agree. This recipe sets NFORMA_ROLE and the panel title at launch, so those two legs are already established -- your job is to verify them, not to assign them. Note that Daintree does NOT pin recipe-set panel titles, so agent auto-titling can overwrite a title after launch; treat a drifted title as a finding, not as a changed identity. The authoritative identity is NFORMA_ROLE. (5) Wait for TEAMLEAD. Do not contact the USER directly.",
       "exitBehavior": "keep"
     },
@@ -45,7 +45,7 @@
         "NFORMA_ROLE": "DX",
         "NFORMA_ROLE_PROMPT": "prompts/DX.md"
       },
-      "args": "-n DX",
+      "args": "-n DX -w dx",
       "initialPrompt": "You are DX. Your canonical identity is the value of the environment variable NFORMA_ROLE, and your operating instructions are the file named by the environment variable NFORMA_ROLE_PROMPT. Read both from the environment rather than from this message. Do these in order. (1) Run: echo $NFORMA_ROLE && cat $NFORMA_ROLE_PROMPT -- then adopt that file in full as your operating instructions. (2) Run: git rev-parse --show-toplevel && git branch --show-current (3) Print exactly one line and nothing else, in this format: ROLE-READY ROLE repo=REPO branch=BRANCH -- where ROLE is the value you read from NFORMA_ROLE, REPO is the basename of the toplevel path, and BRANCH is the branch name. Use the values you just read, never values recalled from this message. (4) Wait for TEAMLEAD. Do not contact the USER directly.",
       "exitBehavior": "keep"
     },
@@ -56,7 +56,7 @@
         "NFORMA_ROLE": "DEV1",
         "NFORMA_ROLE_PROMPT": "prompts/DEV.md"
       },
-      "args": "-n DEV1",
+      "args": "-n DEV1 -w dev1",
       "initialPrompt": "You are DEV1. Your canonical identity is the value of the environment variable NFORMA_ROLE, and your operating instructions are the file named by the environment variable NFORMA_ROLE_PROMPT. Read both from the environment rather than from this message. Do these in order. (1) Run: echo $NFORMA_ROLE && cat $NFORMA_ROLE_PROMPT -- then adopt that file in full as your operating instructions. That file is a template: substitute the value of NFORMA_ROLE wherever it reads DEV#. Your canonical identity is the value of NFORMA_ROLE, not a name you choose. (2) Run: git rev-parse --show-toplevel && git branch --show-current (3) Print exactly one line and nothing else, in this format: ROLE-READY ROLE repo=REPO branch=BRANCH -- where ROLE is the value you read from NFORMA_ROLE, REPO is the basename of the toplevel path, and BRANCH is the branch name. Use the values you just read, never values recalled from this message. (4) Wait for TEAMLEAD to assign your goal. Do not contact the USER directly.",
       "exitBehavior": "keep"
     },
@@ -67,7 +67,7 @@
         "NFORMA_ROLE": "DEV2",
         "NFORMA_ROLE_PROMPT": "prompts/DEV.md"
       },
-      "args": "-n DEV2",
+      "args": "-n DEV2 -w dev2",
       "initialPrompt": "You are DEV2. Your canonical identity is the value of the environment variable NFORMA_ROLE, and your operating instructions are the file named by the environment variable NFORMA_ROLE_PROMPT. Read both from the environment rather than from this message. Do these in order. (1) Run: echo $NFORMA_ROLE && cat $NFORMA_ROLE_PROMPT -- then adopt that file in full as your operating instructions. That file is a template: substitute the value of NFORMA_ROLE wherever it reads DEV#. Your canonical identity is the value of NFORMA_ROLE, not a name you choose. (2) Run: git rev-parse --show-toplevel && git branch --show-current (3) Print exactly one line and nothing else, in this format: ROLE-READY ROLE repo=REPO branch=BRANCH -- where ROLE is the value you read from NFORMA_ROLE, REPO is the basename of the toplevel path, and BRANCH is the branch name. Use the values you just read, never values recalled from this message. (4) Wait for TEAMLEAD to assign your goal. Do not contact the USER directly.",
       "exitBehavior": "keep"
     },
@@ -78,7 +78,7 @@
         "NFORMA_ROLE": "DEV3",
         "NFORMA_ROLE_PROMPT": "prompts/DEV.md"
       },
-      "args": "-n DEV3",
+      "args": "-n DEV3 -w dev3",
       "initialPrompt": "You are DEV3. Your canonical identity is the value of the environment variable NFORMA_ROLE, and your operating instructions are the file named by the environment variable NFORMA_ROLE_PROMPT. Read both from the environment rather than from this message. Do these in order. (1) Run: echo $NFORMA_ROLE && cat $NFORMA_ROLE_PROMPT -- then adopt that file in full as your operating instructions. That file is a template: substitute the value of NFORMA_ROLE wherever it reads DEV#. Your canonical identity is the value of NFORMA_ROLE, not a name you choose. (2) Run: git rev-parse --show-toplevel && git branch --show-current (3) Print exactly one line and nothing else, in this format: ROLE-READY ROLE repo=REPO branch=BRANCH -- where ROLE is the value you read from NFORMA_ROLE, REPO is the basename of the toplevel path, and BRANCH is the branch name. Use the values you just read, never values recalled from this message. (4) Wait for TEAMLEAD to assign your goal. Do not contact the USER directly.",
       "exitBehavior": "keep"
     },
@@ -89,7 +89,7 @@
         "NFORMA_ROLE": "DEV4",
         "NFORMA_ROLE_PROMPT": "prompts/DEV.md"
       },
-      "args": "-n DEV4",
+      "args": "-n DEV4 -w dev4",
       "initialPrompt": "You are DEV4. Your canonical identity is the value of the environment variable NFORMA_ROLE, and your operating instructions are the file named by the environment variable NFORMA_ROLE_PROMPT. Read both from the environment rather than from this message. Do these in order. (1) Run: echo $NFORMA_ROLE && cat $NFORMA_ROLE_PROMPT -- then adopt that file in full as your operating instructions. That file is a template: substitute the value of NFORMA_ROLE wherever it reads DEV#. Your canonical identity is the value of NFORMA_ROLE, not a name you choose. (2) Run: git rev-parse --show-toplevel && git branch --show-current (3) Print exactly one line and nothing else, in this format: ROLE-READY ROLE repo=REPO branch=BRANCH -- where ROLE is the value you read from NFORMA_ROLE, REPO is the basename of the toplevel path, and BRANCH is the branch name. Use the values you just read, never values recalled from this message. (4) Wait for TEAMLEAD to assign your goal. Do not contact the USER directly.",
       "exitBehavior": "keep"
     },
@@ -100,7 +100,7 @@
         "NFORMA_ROLE": "DEV5",
         "NFORMA_ROLE_PROMPT": "prompts/DEV.md"
       },
-      "args": "-n DEV5",
+      "args": "-n DEV5 -w dev5",
       "initialPrompt": "You are DEV5. Your canonical identity is the value of the environment variable NFORMA_ROLE, and your operating instructions are the file named by the environment variable NFORMA_ROLE_PROMPT. Read both from the environment rather than from this message. Do these in order. (1) Run: echo $NFORMA_ROLE && cat $NFORMA_ROLE_PROMPT -- then adopt that file in full as your operating instructions. That file is a template: substitute the value of NFORMA_ROLE wherever it reads DEV#. Your canonical identity is the value of NFORMA_ROLE, not a name you choose. (2) Run: git rev-parse --show-toplevel && git branch --show-current (3) Print exactly one line and nothing else, in this format: ROLE-READY ROLE repo=REPO branch=BRANCH -- where ROLE is the value you read from NFORMA_ROLE, REPO is the basename of the toplevel path, and BRANCH is the branch name. Use the values you just read, never values recalled from this message. (4) Wait for TEAMLEAD to assign your goal. Do not contact the USER directly.",
       "exitBehavior": "keep"
     },

@@ -127,6 +127,44 @@ than trusted-by-reading.
 `NFORMA_ROLE` (role, authoritative), `args: -n <ROLE>` (session name, what routing resolves). They
 are set by the substrate at launch and none of them depends on the agent remembering anything.
 
+### Each agent gets its own working tree — and the name of that tree is the audit trail
+
+Eight agent panes carry `-w <role>` alongside `-n <ROLE>`. `claude -w` creates a git worktree for the
+session and sets the session's `cwd` to it, so every relative path an agent touches is its own.
+
+```json
+{ "type": "claude", "title": "DEV1", "env": {"NFORMA_ROLE": "DEV1"}, "args": "-n DEV1 -w dev1" }
+```
+
+Without this there is **one working tree and nine agents in it** (#19). Any pane's `git checkout`
+rewrites every other pane's files, silently and with no event — so a role prompt is not a fixed input,
+`git checkout -b` inherits a peer's unmerged work, and concurrent `DEV` work is not merely unwise but
+impossible: the second `DEV` to check out destroys the first's state.
+
+Measured properties, each load-bearing:
+
+- the worktree is cut from **`main`**, not from whatever branch is checked out, so a new agent cannot
+  inherit a peer's unmerged work — it never sees it;
+- creating one is **additive**: the main tree's HEAD does not move, so it cannot disturb a peer;
+- worktrees land in `.claude/worktrees/`, which is gitignored — otherwise each one dirties `git status`
+  in every other pane.
+
+⚠ **`TEAMLEAD` deliberately has no `-w`.** It is the integrator: it merges, and it verifies what landed
+on `main`. Giving it an isolated tree would isolate it from the thing it exists to check.
+
+★ **The worktree name must be the role**, and this is not cosmetic. A worktree's HEAD reflog lives in
+the common `.git`, is readable by every peer, and is **keyed by worktree name** — so `dev1`/`devops`/`dx`
+yields a per-actor record of checkouts, which is a per-actor identifier at the VCS layer that #4 says
+does not exist at the credential layer. `wt-1`/`wt-2` gives identical isolation and **zero** attribution.
+It is one argument, free at creation and impossible to retrofit.
+
+⛔ **The checkout trail is deleted by `git worktree remove`, and the commit trail by `git branch -D`** —
+both measured. Today the shared HEAD reflog is the backstop that outlives branch deletion; isolation
+namespaces that backstop and then teardown deletes it, so two erasure paths that do not currently
+overlap would begin to. Archive `.git/worktrees/<role>/logs/HEAD` before removing a tree, or do not
+remove role trees at all and let `git worktree prune` handle genuinely dead ones. (Anything **pushed**
+survives on the remote regardless; this is local forensics, not history loss.)
+
 ### `PREFLIGHT` — the pane with no agent in it
 
 Pane 10 is a plain terminal running `scripts/fleet-preflight.sh`. It verifies the repo, branch,
