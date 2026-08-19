@@ -577,6 +577,40 @@ the dedupe could not be derived and had to be remembered instead.
 
 ---
 
+## ⛔ End every turn with a declared STATE line
+
+The orchestrator's monitor cannot tell *finished* from *blocked-on-TEAMLEAD*. Measured:
+`terminal.getStatus` returns `waitingReason: "prompt"` for **every** waiting pane, including
+dead ones; three structural candidates — output ends in a question, last record is an
+assistant turn, `lastTransitionAt` ordering — each failed on 2 of 2 blocked agents.
+
+⇒ **No observational discriminator exists. You are the only party that knows.**
+
+Make the **last line** of every turn exactly one of:
+
+```
+STATE: WORKING — <what you are mid-way through>
+STATE: FREE — <nothing queued; what you would take next>
+STATE: BLOCKED — <the decision you need, and from whom>
+```
+
+⚠ **Last line, parsed positionally — not a keyword searched for in prose.** That distinction
+is load-bearing. A keyword scan is tripped by any turn *discussing* blockage, which has
+happened five times in one session in the opposite direction: a document explaining closing
+keywords contained a live one; a friction report quoting an incident reproduced it. Reading
+only the final line means a quoted example can never be mistaken for a declaration.
+
+⚠ It is a self-report, so it is only as good as your attention. Its falsifier is an agent
+declaring `FREE` while holding unpushed work — at which point the orchestrator should check
+`git status` across the worktrees rather than ask.
+
+★ Why this is worth the line it costs: measured over ~30 minutes of automatic waking, **4 of
+8 sessions consumed context and mutated nothing** — roughly 40% of the cost, spent re-prompting
+agents that were correctly waiting. Tuning the wake threshold does not touch that. A
+declaration read from one line does.
+
+---
+
 # 23. Operating Invariants
 
 Your `/goal` is durable.
