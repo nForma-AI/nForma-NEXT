@@ -82,6 +82,12 @@ registry row and no `agentSessionId`; the two panes that have one are child sess
 write no registry row. ⇒ The join has never been observed working — a different problem from a
 missing primitive, and a cheaper one.
 
+★ **The launcher fix is unblocked, measured:** `--session-id` is **create-only**. Fresh uuid → new
+session, transcript at exactly that filename. Reused uuid → **exit 1**, *"Session ID … is already in
+use"*, nothing written, existing transcript byte-identical; no process held it, so *in use* means
+**exists on disk**. Resuming is a different flag. ⛔ So per-role uuids committed to the recipe would
+launch **once** and then fail every pane on relaunch — **generate per launch.**
+
 ⚠ It reports; it never infers. A pane whose legs do not join is `UNBOUND`, **never** guessed at
 from a matching title — title agreement is the unreliable join #6 documents on both sides. Its
 self-test builds a synthetic population, because the live one contains no `BOUND` fleet pane

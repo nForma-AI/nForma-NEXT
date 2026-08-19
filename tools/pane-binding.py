@@ -37,6 +37,23 @@ the flag, so it is null for all of them.
 ⇒ The join has never been observed working because no pane has yet held both at
 once. That is a different problem from a missing primitive, and a much cheaper one.
 
+★ MEASURED 2026-08-19, so the launcher fix is unblocked: `--session-id` is
+CREATE-ONLY. Against a fresh uuid it starts a new session and writes the
+transcript at exactly that filename. Against a uuid that has been used before it
+exits 1 --
+
+    Error: Session ID 365e3156-... is already in use.
+
+-- writes nothing, and leaves the existing transcript byte-identical. No process
+held the id at the time, so "in use" means EXISTS ON DISK, not RUNNING. Resuming
+is a different flag (`--resume`), which is why this one never does it.
+
+⛔ Consequence for the recipe, and it is the opposite of what I expected: the
+hazard is not silent context accumulation. It is that per-role uuids committed to
+`.daintree/recipes/` would work EXACTLY ONCE and then fail all nine panes on
+every relaunch. Loud rather than silent, which is better -- and still a launcher
+that cannot restart. ⇒ Generate per launch. The recipe cannot carry them.
+
 ★ WHY THIS TOOL EXISTS RATHER THAN A REGISTER
 
 A pane->session register built today would have ZERO exact joins fleet-wide: its
@@ -157,8 +174,9 @@ def report(root_d, root_s, role=None):
     if unbound_named:
         print(f"\n⚠ {len(unbound_named)} explicitly-titled pane(s) are UNBOUND — leg A is missing.")
         print("  Fix is at LAUNCH, not here: pass --session-id <fresh-uuid> per pane so Daintree")
-        print("  records agentSessionId. ⛔ Generate per launch; a uuid committed to the recipe")
-        print("  may resume the previous session (UNTESTED, and the load-bearing unknown).")
+        print("  records agentSessionId. ⛔ GENERATE PER LAUNCH — measured: --session-id is")
+        print("  create-only and exits 1 on a reused uuid, so committed per-role uuids would")
+        print("  launch once and then fail every pane on relaunch.")
 
     # Leg B in aggregate: registry rows nothing claims. Reported, not diagnosed --
     # a session with no pane is normal (any terminal outside Daintree).
