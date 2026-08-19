@@ -46,7 +46,13 @@ ROW = re.compile(r"^\|\s*`([A-Za-z0-9_.-]+\.py)`\s*\|", re.M)
 # `**`name.py`** — …` — a prose entry opening the "what each one is for" paragraph.
 PROSE = re.compile(r"^\*\*`([A-Za-z0-9_.-]+\.py)`\*\*", re.M)
 # The hand-maintained count in the opening sentence: "Six tools, each built because …"
-COUNT = re.compile(r"^([A-Za-z]+|\d+)\s+tools\b", re.M | re.I)
+# ⛔ The alternation is built from WORDS, never from `[A-Za-z]+`. A permissive word match makes
+# this leg conditional on deleting the NOUN rather than the COUNT: "The tools, …" would match,
+# parse to None, and be reported as a malformed count — so #27's other remedy, taken the obvious
+# way, would trip the checker built to offer it. A stated-but-false property is worse than an
+# unstated one. Anything that is not a number simply does not match, and falls through to
+# NOT CHECKED. (Found by ARCHITECT on PR #51, by exercising the three natural phrasings.)
+COUNT = re.compile(r"^(?:(" + "|".join(WORDS) + r")|(\d+))\s+tools\b", re.M | re.I)
 
 
 def parse_count(tok):
@@ -98,11 +104,8 @@ def check(root):
         out.append("  ----  no hand-maintained numeral found — that leg NOT CHECKED"
                    " (dropping it is #27's other valid remedy, not a defect)")
     else:
-        stated = parse_count(m.group(1))
-        if stated is None:
-            failed = True
-            out.append(f"  FAIL  header count {m.group(1)!r} is not a number this check can read")
-        elif stated != len(actual):
+        stated = parse_count(m.group(1) or m.group(2))
+        if stated != len(actual):
             failed = True
             out.append(f"  FAIL  header says {m.group(1)} ({stated}); the directory holds {len(actual)}")
         else:
