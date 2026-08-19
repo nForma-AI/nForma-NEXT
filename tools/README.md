@@ -257,6 +257,43 @@ stops being a control the moment the defect is fixed.
   happen to be modifiers bite. A script can be right nine times and wrong on the tenth path.
   Same family as the exit-code rule above — an idiom that answers a different question while
   looking like it answers yours.
+  ⛔ **Double-quoting is NOT protection, and that is the hole this rule had.** The shell-safety
+  reflex is to quote, and `"$REF:path"` fails identically to the bare form — the modifier is
+  applied during parameter expansion, before quoting means anything. Measured: `"$X:scripts/f"`
+  and `$X:scripts/f` both fail; only `"${X}:scripts/f"` is correct. **Braces, not quotes.** The
+  author of this bullet then wrote `git show "$M:scripts/check-tools-index.py"` two hours later
+  while verifying a merge, and was protected by nothing.
+  ⚠ **And the data-dependence is worse than "sometimes wrong": the same idiom fails LOUDLY or
+  SILENTLY depending on the path.** `:s` needs delimiters, so a path that supplies them is
+  rewritten and a path that does not raises `bad substitution`:
+
+  ```
+  $X:scripts/f                    -> zsh: bad substitution        (exit 1, obvious)
+  $M:scripts/check-tools-index.py -> <sha>k-tools-index.py        (silent; git then says
+                                     "unknown revision or path" — i.e. THE FILE IS NOT THERE)
+  ```
+
+  ⇒ You cannot learn this rule from experience, because the instance that teaches it is the one
+  that does not announce itself.
+- ⛔ **A redirect truncates the file before the command runs, so a failed fetch leaves an empty
+  file that runs clean.** `git show "$BAD" > out.py` exits non-zero and still leaves a 0-byte
+  `out.py`; `python3 out.py` then exits **0** with no output. Measured while verifying that a
+  merged PR's checker worked from `main`: both the live run and the `--selftest` reported exit 0,
+  from a file that was never written. **A clean pass and a control that never ran are
+  byte-identical here.** ⇒ Guard on the artifact, not on the command: check the byte count before
+  running what you just fetched, and refuse rather than report clean. This is the same shape as
+  reading an exit code through a pipe, one layer out — the thing you measured is not the thing
+  you meant to measure.
+- ★ **A name-presence test is not merely blind to a documented gap — it is ANTI-CORRELATED with
+  it.** A document admitting a gap discusses the missing thing by name, so the gap note is
+  typically the *highest-density* occurrence of that name in the file. Measured on this file:
+  `fleet-state.py` scored 2 mentions while having **zero** table rows and **zero** prose entries,
+  which put it mid-pack among genuinely documented tools (2–4). Three agents independently read
+  the directory as fully documented. ⇒ Match **structure** — `^| \`x.py\` |` for a row,
+  `^**\`x.py\`**` for an entry — never a bare name. Sibling of `discriminates.py`'s *a retraction
+  quotes the claim it retracts*, with the difference that matters: quotation makes a matcher
+  **uninformative**, negation makes it **inverted**. An inverted instrument argues for the wrong
+  conclusion in the voice of a measurement.
 - **Pin a sweep to an immutable SHA, not to a ref.** `git rev-parse origin/main` once, then read
   everything at that SHA. ⛔ A worktree gets its own `HEAD`, index and logs, but `refs/remotes`
   lives in the **common** `.git` — so `git show origin/main:<path>` resolves the ref *at read
