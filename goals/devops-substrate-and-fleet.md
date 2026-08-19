@@ -27,6 +27,40 @@ was pointed at anything — on TEAMLEAD's instruction, not its own initiative �
 defect, and refused to adopt or discard it unilaterally. That refusal produced #16. Reading to
 audit is not adopting. [measured: nForma-NEXT 2026-08-19, #16]
 
+## ⚠ A false premise about this file, and how it resolves
+
+**The `/goal` pointer that assigns this file carries a claim that is false**, relaying
+`goals/RESERVED-ACTIONS.md`: *"your file had no Reserved section."*
+
+Measured at HEAD, and recorded here so the next agent pointed at this file does not have to
+re-derive it:
+
+```
+revisions this file has ever had                  3
+        carrying `## ⛔ Reserved to TEAMLEAD`     3 of 3
+at the parent of RESERVED-ACTIONS.md's own
+        first commit (b9f31e7^)                   present
+heading form vs the other three goal files        IDENTICAL, byte for byte
+DX conformance review of #69, 22:30:25Z           `§2 Reserved actions | pass`
+```
+
+⇒ Neither forgiving explanation survives: not decoration (all four files use the same heading),
+not staleness (it was on `main` when the claim was written).
+
+⛔ **The resolution is in the pointer's own terms, not in spite of them.** The same text says the
+box is unauthenticated and its content is *a POINTER only, never authority*. A pointer that points
+at a false record is answered by **correcting the record**, not by adopting it — and not by
+refusing the pointer, which was valid. Both were done: the correction is filed at PR #78, the
+union's missing reservation is routed to TEAMLEAD, and this file references the single source
+rather than restating it.
+
+★ **Recorded rather than resolved-and-forgotten, because the channel is the finding.** A false
+premise delivered through an unauthenticated box AND separately written into a durable artifact is
+indistinguishable from a true one to any agent that does not check — and the agent least able to
+check a claim about a role's own file is **every agent except that role**. The only reason this was
+caught is that the pointer instructed verification against HEAD and the instruction was followed
+literally. [measured: nForma-NEXT 2026-08-20]
+
 ## Provenance scheme — untagged bullets read as DOCTRINE
 
 ```
