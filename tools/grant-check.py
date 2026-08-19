@@ -122,7 +122,32 @@ def origin_repo():
     return m.group(1)
 
 
+EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"  # git's canonical empty tree
+
+
 def list_records(ref, include_fixtures):
+    """⛔ The store's ABSENCE must not read as an EMPTY store.
+
+    Measured on this tool, before it shipped: run against a ref predating grants/,
+    a query printed
+
+        NO LIVE GRANT  DEV3 · merge · nForma-AI/nForma-NEXT   exit 1
+
+    which claims the answer was ESTABLISHED. It was not. `git ls-tree -r <ref> grants/`
+    exits 0 with empty output when the path does not exist at that ref, so "no such
+    directory" and "directory with no records" arrive as one value -- thesis §3, absence
+    read as a legitimate domain value, in the instrument written to enforce §3.
+
+    ⚠ Fail-closed made it operationally safe and epistemically false, which is the more
+    dangerous pair: a role would have recorded "not authorized (established)" as a
+    measurement it never took.
+
+    So the store is proven present via a sentinel before any record is read."""
+    rc, _, _ = run(["git", "cat-file", "-e", f"{ref}:grants/README.md"])
+    if rc != 0:
+        raise Void(f"grants/ does not exist at {ref} (no grants/README.md) — the store is "
+                   f"ABSENT, which is not the same as empty; no negative can be established")
+
     rc, out, err = run(["git", "ls-tree", "-r", "--name-only", ref, "grants/"])
     if rc != 0:
         raise Void(f"cannot list grants/ at {ref}: {err.strip() or 'no stderr'}")
@@ -290,6 +315,18 @@ def cmd_self_test(args):
             check("bad ref -> VOID", "no exception", "Void raised")
         except Void:
             check("bad ref -> VOID", "Void raised", "Void raised")
+
+        # (f) an ABSENT store must VOID, never report "no live grant".
+        # ★ The known-positive is git's canonical empty tree: a ref that is guaranteed to
+        # contain no grants/ in every repository, forever. A commit from this project's
+        # history would work today and stop working the moment someone rewrote it -- and a
+        # ref chosen because grants/ "has not landed yet" would go silent at merge, which
+        # is #26's sharp subtype in the control written to satisfy #26.
+        try:
+            list_records(EMPTY_TREE, True)
+            check("absent store -> VOID", "no exception", "Void raised")
+        except Void:
+            check("absent store -> VOID", "Void raised", "Void raised")
 
     except Void as e:
         print(f"SELF-TEST VOID: {e}", file=sys.stderr)
