@@ -1,6 +1,9 @@
 # Fleet instruments
 
-Five tools, each built because a reading was believed and turned out to be wrong. Every one
+**Eight** executables in this directory; **seven** described below. ⚠ `fleet-state.py` is on
+disk and undocumented (#27) — the gap is stated rather than rounded away, because a count that
+does not match `ls` is the defect #27 exists for. Each tool here was built because a reading
+was believed and turned out to be wrong. Every one
 carries the incident that produced it in its own docstring — the measurement is the
 justification, not the description.
 
@@ -15,6 +18,7 @@ established nothing*. A run that establishes nothing exits **2** and must never 
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
+| `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
 
 ## What each one is for
@@ -82,6 +86,13 @@ because the agent running the check is one.
 uninterpretable: an agent woken into useful work and one woken into churn consume context
 identically.
 
+**`bootstrap-audit.py`** — audits the interval a `ROLE-READY` line closes, rather than the
+three facts it asserts. ⛔ Measured on the live nine-pane fleet: **every token was true in all
+three facts it carries, and every bootstrap had a step with no execution record** — so a
+consumer that verified the assertions would have passed all nine. The token is treated as
+punctuation delimiting the bootstrap window, never as a claim; the audit is of what ran inside
+that window. See #20.
+
 ## Conventions worth copying
 
 - **Exit 2 for "established nothing."** Absence of a finding and absence of a measurement are
@@ -105,5 +116,20 @@ identically.
   reading `tail`'s status and nearly filing a working validator as an entrypoint that cannot fail, one
   reading an empty `PIPESTATUS` and printing `exit=` having measured nothing. That it caught two
   careful readers in the act of being careful is why it is a convention and not a note.
+- ⛔ **A known-positive proves a control CAN fire. It does not prove the control fires
+  CORRECTLY.** Measured, inside the tool built for #26: `bootstrap-audit.py`'s known-positive
+  passed — it genuinely discriminated a defective bootstrap from a clean one — and the same run
+  reported two **false passes** against live data, because a step was matched against any tool
+  input containing its text, and two panes had *messaged each other that the step did not
+  execute*. A report of non-execution quotes the thing that did not execute. ⇒ #26's test
+  (*name the input that makes this emit a negative*) is **necessary and not sufficient**; it
+  says nothing about the false-positive direction, and a control that passes it can still be
+  wrong in the direction that reads as healthy. Pair every known-positive with a known-negative
+  drawn from **real** data, not from a fixture.
+- **Match execution against what was RUN, never against what was SAID about it.** The false
+  passes above came from searching a tool call's whole input. Prose that discusses a command
+  contains the command; only the `command` field is evidence that it ran. This is
+  `discriminates.py`'s retraction case — *a retraction quotes the claim it retracts* — one
+  layer up, in a different instrument, found the same day.
 - **No secrets in source.** Tools needing the Daintree token read it from the user's own MCP
   config at runtime; it appears in none of these files.

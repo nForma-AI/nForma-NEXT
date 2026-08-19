@@ -31,7 +31,6 @@ disagree, the README wins and this file is the defect.
 | `prompts/` | five role prompts (`TEAMLEAD` `ARCHITECT` `DEVOPS` `DX` `DEV`) | `prompts/README.md` |
 | `goals/` | per-role standing goals + the standard they must meet | `goals/README.md` |
 | `tools/` | fleet instruments (Python, run directly) | `tools/README.md` |
-| `grants/` | ad-hoc, expiring authorizations — **records, not rules** | `grants/README.md` |
 | `scripts/` | `scripts/validate-recipe.py`, `scripts/fleet-preflight.sh` | `prompts/README.md` |
 | `.daintree/recipes/nforma-fleet.json` | the ten-pane launcher | `prompts/README.md` |
 
