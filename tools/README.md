@@ -1,11 +1,11 @@
 # Fleet instruments
 
-Each built because a reading was believed and turned out to be wrong. ⚠ No count in this sentence on purpose: a hand-maintained integer describing a directory drifts on the next addition with no error, and three PRs were racing on it at once. The table below carries the count. Every one
-**Nine** executables in this directory; **eight** described below. ⚠ `fleet-state.py` is on
-disk and undocumented (#27) — the gap is stated rather than rounded away, because a count that
-does not match `ls` is the defect #27 exists for. Each tool here was built because a reading
-was believed and turned out to be wrong. Every one
-carries the incident that produced it in its own docstring — the measurement is the
+Each built because a reading was believed and turned out to be wrong. ⚠ **No count in this
+sentence on purpose:** a hand-maintained integer describing a directory drifts on the next
+addition with no error, and three PRs were racing on it at once. **The table below carries the
+count.** ⚠ `fleet-state.py` is on disk and **undocumented** (#27) — that gap is stated rather
+than rounded away, because a table that does not match `ls` is the defect #27 exists for. Every
+one carries the incident that produced it in its own docstring — the measurement is the
 justification, not the description.
 
 ⚠ **Exit codes are load-bearing.** Every tool distinguishes *the answer is no* from *I
@@ -35,6 +35,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |
 | `stranded-branches.py` | did any merged PR leave work behind on its branch? | 0 clean · 1 stranded · **2 established nothing** |
+| `pane-binding.py` | which pane is this session running in — and which leg is missing? | 0 all BOUND · 1 **at least one is not (established)** · **2 established nothing** · 3 self-test failed |
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
 
 ## What each one is for
@@ -101,6 +102,28 @@ because the agent running the check is one.
 **`wake-yield.py`** — pairs an interruption's cost with its yield. Cost alone is
 uninterpretable: an agent woken into useful work and one woken into churn consume context
 identically.
+
+**`pane-binding.py`** — reports which panes can be joined to a session and **which leg is
+missing** when they cannot. Built for #6, where five independent investigations — an authorization
+check, an attribution query, a compensation detector, an addressing resolver, a telemetry reading —
+each terminated at the same unjoined edge.
+
+★ That edge is one layer above the remedy. Daintree's own state file carries
+`terminals[].agentSessionId`, in the same namespace as `CLAUDE_CODE_SESSION_ID`, populated for
+exactly those panes launched with `--session-id` — 2 of 2 in both directions. ⛔ The join needs two
+legs and **nothing currently holds both**: the nine fleet panes have a registry row and no
+`agentSessionId`; the two that have one are child sessions, which write no registry row. ⇒ The join
+has never been observed working — a different problem from a missing primitive, and a cheaper one.
+
+⚠ It reports; it never infers. A pane whose legs do not join is `UNBOUND`, **never** guessed at from
+a matching title — title agreement is the unreliable join #6 documents on both sides. Its self-test
+builds a synthetic population, because the live one contains no `BOUND` fleet pane today and will
+contain no `UNBOUND` one after the fix: a live-anchored control goes half-blind either way, which is
+#26's sharp subtype.
+
+⛔ Read the source before changing the launcher: Daintree **generates** the uuid itself
+(`crypto.randomUUID()` behind `assignSessionIdArgs`) and has code that **strips** a caller-supplied
+`--session-id`. Putting the flag in the recipe's `args` is therefore likely inert — see #6.
 
 **`pipe-exit-scan.py`** — finds `cmd | cmd; echo $?` and `${PIPESTATUS[n]}`, the shapes that
 print something which looks like a measurement and is not. Replaces a written convention that
