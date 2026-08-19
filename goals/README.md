@@ -143,6 +143,25 @@ does not move — a design property, not agent behaviour.
    jumping to what it had already noticed; an agent that skips to its preferred rung never
    discovers that rung 1 has an unrepresentable state.
 
+   ⛔ **And the ladder says which RUNG, never which AGENT.** Ordered and shared across N agents,
+   it converges them on the top non-empty rung by construction — measured: two roles independently
+   named the same rung as their next action, within minutes, neither aware of the other. Both were
+   correct to want it. ⇒ **That makes the orchestrator the allocator of every rung, which is the
+   bottleneck the goal standard exists to remove**, reintroduced by the ordering that removed it.
+
+   > **Claim the item on the board before working it. `gh issue edit <n> --add-assignee @me`.**
+
+   ⚠ The claim surface already exists and was never used: **0 of 26 open issues and 0 of 6 open PRs
+   carried an assignee.** ⇒ The convergence was not a missing primitive. It was an unused field —
+   durable, atomic, fleet-visible, and already on every item.
+
+   ★ It also supplies the missing **detector** for the third state above. *Occupied but not mine to
+   clear* previously required contacting the owner to discover; an assignee who is not you makes it
+   readable before any work starts, which is the difference between a rule and an instrument.
+
+   ⚠ Not established: whether claiming is honoured under contention, or whether two agents can claim
+   within the same window. Assignment is not a lock. [NOT-YET-MEASURED]
+
    ⚠ Scope it explicitly: an agent with
    no blocked PR of its own falls straight through to the bottom rung while 22 sit blocked.
    Verified before writing this: 5 of 6 sampled blocked PRs had **3-4 genuinely failing
