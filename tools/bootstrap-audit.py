@@ -71,7 +71,7 @@ Exit: 0 audited, no negative · 1 at least one NEGATIVE · 2 at least one role
       UNAUDITABLE (unknown is not a pass) · 3 the built-in known-positive failed,
       so the harness is broken and every verdict it printed is void.
 """
-import argparse, glob, json, os, re, subprocess, sys, tempfile
+import argparse, glob, hashlib, json, os, re, subprocess, sys, tempfile
 
 SESSIONS = os.path.expanduser("~/.claude/sessions")
 PROJECTS = os.path.expanduser("~/.claude/projects")
@@ -209,6 +209,24 @@ POSIX_RESERVED = {"!", "{", "}", "case", "do", "done", "elif", "else", "esac", "
 SHELL_ADDED = {"select", "function", "time"}   # bash/zsh keywords, not POSIX
 GRAMMAR = POSIX_RESERVED | SHELL_ADDED
 
+# ⛔ GRAMMAR IS A TRANSCRIPTION OF A SPECIFICATION, NOT A LIST TO MAINTAIN.
+#
+# ARCHITECT's caution on #55, and it is the hole a guard leaves: the assertion
+# below is only as good as the enumeration it compares against. A future editor
+# who finds `sudo git push` reading INDETERMINATE can satisfy the guard by
+# widening GRAMMAR instead of SHELL_KEYWORDS — the control passes, the property is
+# gone, and nothing says so.
+#
+# ⇒ Saying "this is a spec, do not edit it" in a comment would ask a reader to
+# remember, which is the form ARCHITECT and I both argued against one level down.
+# So the digest is frozen. Widening GRAMMAR fails the run.
+#
+# ⚠ This does NOT forbid correcting the set — POSIX could be transcribed wrong, and
+# then this list SHOULD change. It forbids changing it SILENTLY: the digest must be
+# updated in the same edit, which makes the change deliberate and reviewable
+# instead of incidental. That is the whole property.
+GRAMMAR_DIGEST = "4bcd31e101db06d0"
+
 SHELL_KEYWORDS = {"if", "then", "else", "elif", "fi", "while", "until", "do", "done",
                   "for", "case", "esac", "select", "function", "time", "!", "{", "}"}
 
@@ -224,6 +242,16 @@ def keyword_control():
     The tool would then report a guess as a reading, in the direction of the
     finding its operator expects — the asymmetry from #26.
     """
+    frozen = hashlib.sha256(" ".join(sorted(GRAMMAR)).encode()).hexdigest()[:16]
+    drifted = frozen != GRAMMAR_DIGEST
+    print(f"  known-positive  grammar set      : "
+          f"{'matches the frozen spec digest' if not drifted else f'DRIFTED {frozen}'}")
+    if drifted:
+        print(f"  ⛔ GRAMMAR no longer matches its frozen digest ({frozen} != {GRAMMAR_DIGEST}). "
+              f"It is a transcription of the shell specification, not a list to maintain — "
+              f"widening it satisfies the keyword guard while removing the property the guard "
+              f"exists for. If the change is deliberate, update GRAMMAR_DIGEST in the same edit.",
+              file=sys.stderr)
     intruders = SHELL_KEYWORDS - GRAMMAR
     print(f"  known-positive  keyword set      : "
           f"{'grammar only' if not intruders else f'INTRUDERS {sorted(intruders)}'}")
@@ -238,7 +266,7 @@ def keyword_control():
     if not would_reject:
         print("  ⛔ the guard cannot reject a binary — it is inert and would permit the edit "
               "it exists to prevent", file=sys.stderr)
-    return not intruders and would_reject
+    return not intruders and would_reject and not drifted
 SUBSTITUTION = re.compile(r"\$\(|`")
 
 
