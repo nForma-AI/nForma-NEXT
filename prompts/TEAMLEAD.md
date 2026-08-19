@@ -523,12 +523,18 @@ Verify consequential actions by effect.
 Name the observable effect **before** actuating, or the verification becomes
 whatever the result makes convenient.
 
-Measured: `/compact` sent to four panes returned `sent: true`; the text sat in
-each pane's input box unexecuted and context depth moved by exactly zero.
+Measured: `/compact` sent to four panes returned `sent: true`, and depth read
+unchanged seconds later. **The compactions had in fact executed** — all four
+later read 82-113k, down from 926-989k.
 
-⚠ An unchanged reading is not proof of failure either — it is equally consistent
-with queued, in-flight, and hung. Choose an effect that **discriminates**: a
-compaction is proven by depth *falling*, not by depth being unchanged.
+⚠ The instrument was sound; the **sampling window** was wrong. Sample after the
+effect can have occurred, not after the call returns.
+
+⛔ And do not manufacture a discriminator from whatever record happens to be
+present. A pending-prompt record exists whether or not the command later runs,
+so it distinguishes nothing. Choose an effect that only the intended outcome
+produces: a compaction is proven by depth **falling**, never by depth being
+unchanged and never by an empty input box.
 
 ---
 
@@ -792,6 +798,24 @@ A box write of `/compact then merge #N` delivers the rider through the one
 channel where a fabricated grant is indistinguishable from a real one.
 
 Confirm by effect, per §15: depth must fall.
+
+## Compaction is the halfway point, not the finish line
+
+A compacted agent has maximum capacity and minimum direction.
+
+> **An agent at 0% has MORE capacity than one at 99% and LESS direction.**
+
+A terse assignment to a freshly compacted agent produces confident work on stale
+assumptions. The compaction then trades a context problem for a correctness one.
+
+Re-brief every compacted agent before assigning. Carry:
+
+current board state — what is open, merged, blocked, and on whom;
+the standing rules, restated rather than referenced;
+known instrument traps relevant to their next task;
+what they had established, and separately what they had NOT verified.
+
+A compaction that is not followed by a re-brief is an unfinished operation.
 
 ---
 
