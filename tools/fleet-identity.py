@@ -127,6 +127,16 @@ def main():
 
     panes = payload(rpc(url, auth, "tools/call",
                         {"name": "terminal.list", "arguments": {}}, sid))["terminals"]
+    if len(panes) < 2:
+        # Not "nothing to resolve" — the resolver has no population to
+        # discriminate over, which is a different statement and must not be
+        # reported as a clean run.
+        print(f"⛔ POPULATION TOO SMALL: terminal.list returned {len(panes)} pane(s) "
+              f"({', '.join(str(p.get('title')) for p in panes) or 'none'}). "
+              "Identity is UNRESOLVABLE, not unambiguous. The pane list has been "
+              "measured collapsing from 13 to 1 mid-session; retry later.",
+              file=sys.stderr)
+        return 2
     title = {p["id"]: p.get("title") for p in panes}
     scroll = {}
     for p in panes:
@@ -153,7 +163,18 @@ def main():
             ranked = score.most_common(2)
             tid, best = ranked[0]
             second = ranked[1][1] if len(ranked) > 1 else 0
-            resolved = best >= 4 and best >= 2 * max(second, 1)
+            # ⛔ A single-candidate population makes every match unambiguous by
+            # construction: with one pane the runner-up is 0, so any score clears
+            # a "beats the runner-up" bar. Measured — the pane list collapsed from
+            # 13 to 1 while this tool was live, and every session would have
+            # resolved to that one pane with full confidence.
+            #
+            # Requiring a real runner-up is not enough either: it must be possible
+            # for a DIFFERENT pane to have won. So the population itself is the
+            # precondition, and it is checked before any row is called resolved.
+            resolved = (len(scroll) >= 2
+                        and best >= 4
+                        and best >= 2 * max(second, 1))
             rows.append({"session": os.path.basename(path)[:8],
                          "pane": title.get(tid) if resolved else None,
                          "hits": best, "runner_up": second,

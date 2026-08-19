@@ -483,8 +483,21 @@ Include your own errors. Those are the most useful and the least reported.
 Report as you hit it, not only at the end. A friction recalled at 95% context is
 already half-lost.
 
-⚠ At **90%** context, file a session friction report — before the compaction
-handshake, not during it. At 95% there is no budget left to write one.
+⚠ At **80%** context, file a session friction report — well before the
+compaction handshake, not during it.
+
+★ **80%, not 90%, and the reason is not the one you would guess.** Measured on
+two agents: writing a report costs ~2-2.5% of a 1M window. That is trivially
+affordable at 90%. **The expensive part is not writing — it is verifying.**
+Roughly two thirds of the cost was re-deriving specifics against live commands
+rather than composing prose.
+
+⇒ At 95% there is room to write and none to check, which produces exactly the
+artifact this fleet keeps filing: a confident report nobody verified. And the
+pressure at that point is to **compress** — which keeps the generalisations and
+drops the reproductions, inverting the value. *"`gh api .../logs` returned 0
+bytes with a stderr-only refusal"* is actionable; *"instruments failed silently"*
+is not.
 
 File it where it survives you. Do not send it as a message; a report routed
 through another pane consumes the context of whoever must act on it.

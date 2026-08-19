@@ -105,8 +105,11 @@ def scan(active_within_s, limit):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--threshold", type=float, default=90.0,
-                    help="percent at which a session is reported as due (default 90)")
+    ap.add_argument("--threshold", type=float, default=80.0,
+                    help="percent at which a session is reported as due (default 80). "
+                         "80 rather than 90 because the binding cost of a friction report "
+                         "is VERIFICATION, not composition — measured at ~2-2.5%% to write "
+                         "and roughly two thirds of that re-deriving specifics.")
     ap.add_argument("--active-hours", type=float, default=6.0)
     ap.add_argument("--limit", type=int, default=LIMIT_DEFAULT)
     ap.add_argument("--json", action="store_true")
