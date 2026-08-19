@@ -1,6 +1,6 @@
 # Fleet instruments
 
-**Nine** executables in this directory; **eight** described below. ⚠ `fleet-state.py` is on
+**Ten** executables in this directory; **nine** described below. ⚠ `fleet-state.py` is on
 disk and undocumented (#27) — the gap is stated rather than rounded away, because a count that
 does not match `ls` is the defect #27 exists for. Each tool here was built because a reading
 was believed and turned out to be wrong. Every one
