@@ -3,15 +3,13 @@
 Each built because a reading was believed and turned out to be wrong. ⚠ **No count in this
 sentence on purpose:** a hand-maintained integer describing a directory drifts on the next
 addition with no error, and three PRs were racing on it at once. **The table below carries the
-count**, and `scripts/check-tools-index.py` can assert it matches `ls`.
-
-⛔ **"on every run" was false and is removed.** There is no every-run: no `.github/`, no
-`.claude/hooks`, and `fleet-preflight.sh` says of itself that its *"exit code is always 0: this
-pane reports, it does not gate."* **Nothing in this repository arms a control** — every one is
-armed by an agent choosing to run it. A doc asserting a control is armed where nothing arms it
-reads as coverage, and is #2's never-concluded verdict moved up into prose.
-[measured: nForma-NEXT 2026-08-19, DEV5 via #65] Every
-one carries the incident that produced it in its own docstring — the measurement is thejustification, not the description.
+count**, and `scripts/check-tools-index.py` derives it from `ls` — ⚠ **when someone runs it.**
+Nothing invokes it: there is no `.github/`, no hook, and `fleet-preflight.sh` does not call it.
+So #27's defect is **mitigated, not prevented** — add a thirteenth tool with no row and nothing
+fires until a human asks. Stated rather than implied, because *"asserts it matches `ls` on every
+run"* — the wording that stood here — reads as coverage to a future maintainer and there is no
+*every run*. Every one carries the incident that produced it in its own docstring — the
+measurement is the justification, not the description.
 
 ⚠ **Exit codes are load-bearing.** Every tool distinguishes *the answer is no* from *I
 established nothing*. A run that establishes nothing exits **2** and must never be read as
