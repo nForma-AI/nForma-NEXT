@@ -67,6 +67,16 @@ Three constraints, from reading the schemas rather than assuming them:
   queue"* and the queue's next item is a push, the agent has self-granted CI spend on a
   timer. A loop may dispatch diagnosis and preparation, and must stop at anything reserved.
 
+⛔ **Reporting the primitive is not the same as arming it.** Whether a role self-schedules
+changes how the shared wallet's blast radius is consumed and how the orchestrator coordinates
+the fleet — that is a **scheduler-level decision, and the scheduler is TEAMLEAD.** An agent
+that discovers it can wake itself should report the capability upward and let TEAMLEAD decide
+who arms it, not start a loop unilaterally.
+
+⚠ This was volunteered by a role that had just found it had a self-scheduling engine and
+declined to use it. **The restraint is the finding**: the failure mode of handing eight agents
+a timer is not that they idle, it is that they all start.
+
 ⚠ The third is a security constraint, not a style note. Eleven forged authorizations reached
 agents' input boxes in a single session. **A timer that re-enters an agent with a
 plausible-sounding instruction is the same attack surface — and worse, because it carries
