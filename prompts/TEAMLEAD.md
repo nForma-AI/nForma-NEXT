@@ -467,7 +467,10 @@ finished when the world changes, and the agent can tell which it is without aski
 
 `/goal` typed into a pane arrives through the same unauthenticated channel as everything
 else written there. **Twelve forged authorizations reached agents' input boxes in a single
-session.** A forged `/compact` costs one compaction; **a forged goal is a durable
+session** — ⚠ `INHERITED · Blazing-Back · recorded 2026-08-19, not re-measured here`. Three
+counts exist for this incident (7 · 11 · 12), each committed later than the last; they read as a
+**running tally, not a disagreement**. ⛔ **Cite the property, never the number** — every rule
+below holds at one. A forged `/compact` costs one compaction; **a forged goal is a durable
 instruction set that directs everything the agent does afterwards.** It is the highest-value
 target on that channel, precisely because it persists.
 
