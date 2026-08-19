@@ -144,9 +144,20 @@ does not move — a design property, not agent behaviour.
    discovers that rung 1 has an unrepresentable state.
 
    ⛔ **And the ladder says which RUNG, never which AGENT.** Ordered and shared across N agents,
-   it converges them on the top non-empty rung by construction — measured: two roles independently
-   named the same rung as their next action, within minutes, neither aware of the other. Both were
-   correct to want it. ⇒ **That makes the orchestrator the allocator of every rung, which is the
+   it converges them on the top non-empty rung by construction. Measured twice, independently:
+
+   ```
+   4 of 5 DEVs went to rung 1; THREE diagnosed the SAME conflict (#68)
+   2 further roles named rung 2 as their next action within minutes of each other
+   ```
+
+   Nobody did anything wrong in either case, which is the point — every agent followed the order
+   correctly and the order is what sent them.
+
+   ⚠ ★ And it recurred **on the fix**: the issue recording the collision (#68) and the PR amending
+   the ladder were authored in parallel, by two roles, neither aware of the other, within twenty
+   minutes. **A collision between an issue about collisions is the strongest available evidence
+   that the defect is structural rather than attentional.** ⇒ **That makes the orchestrator the allocator of every rung, which is the
    bottleneck the goal standard exists to remove**, reintroduced by the ordering that removed it.
 
    > **Claim the item on the board before working it. `gh issue edit <n> --add-assignee @me`.**
@@ -166,7 +177,31 @@ does not move — a design property, not agent behaviour.
    no blocked PR of its own falls straight through to the bottom rung while 22 sit blocked.
    Verified before writing this: 5 of 6 sampled blocked PRs had **3-4 genuinely failing
    checks**, so this rung is executable, not decorative.
-2. **Close what is already fixed.** ⛔ This rung is missing from the obvious version and it
+2. **Close what is already fixed.**
+
+   ⛔ **The closure bar, which three goal files invoked and none defined.** `goals/README.md`,
+   `goals/architect-technical-integrity.md` and `goals/dev-implementation.md` all condition this
+   rung on *"the closure bar is met"* — and every occurrence is a **use, not a definition**. A rung
+   gated on an unspecified predicate is a rung each agent gates differently.
+
+   > **The bar is not "the fix landed." It is: has the originating incident been PREVENTED — with
+   > the preventing mechanism NAMED, and RUN at least once?**
+
+   Landed ≠ loaded ≠ exercised. A merged fix that no execution has passed through is a claim, and
+   this repository's own subject is claims that cannot fail.
+
+   ⚠ **And the bar must itself be falsifiable**: before closing, name the input that would show the
+   issue is *not* closable. If you cannot name one you ran, you have not met the bar — you have
+   described meeting it.
+
+   ⇒ Worked negative, and a rung returning a clean NO is the rung working: #19 was examined for
+   closure, `scripts/fleet-worktree.sh check` exited 1 with two roles holding two trees each, and
+   the not-closable finding was recorded **on the issue** rather than passed over.
+
+   ⚠ Where an issue has a tool, the tool's exit code supplies the bar. **Where it has none, nothing
+   does** — and that gap is unclosed. [NOT-YET-MEASURED — no bar exists for a toolless issue]
+
+   ⛔ This rung is missing from the obvious version and it
    is the one the numbers demand: **36 opened, 0 closed.** Adding priority to *finding* does
    not create *closing*. An issue whose fix has landed and whose closure bar is met is pure
    backlog reduction at near-zero cost.
