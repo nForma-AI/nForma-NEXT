@@ -16,6 +16,7 @@ established nothing*. A run that establishes nothing exits **2** and must never 
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
+| `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |
 
 ## What each one is for
 
