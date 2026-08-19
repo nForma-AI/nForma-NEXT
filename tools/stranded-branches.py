@@ -1,5 +1,25 @@
 #!/usr/bin/env python3
-"""Work left on a branch after its PR merged — commits that are on the ref and not on main.
+"""Commits on a merged PR's branch with no equivalent change upstream.
+
+⛔ THE WORD "STRANDED" IS A VERDICT AND THIS TOOL DOES NOT EARN IT. An earlier
+version reported three refs as stranded. All three were false alarms: the work had
+landed, and an orchestrator was one step from telling the operator that a commit was
+outstanding before a relaunch. SHA-reachability is the right predicate for the
+founding case — a branch quietly advancing past its merged PR — and the WRONG one
+after a recovery-by-recommit, where the original sha stays unreachable forever.
+
+⇒ After a rewrite the commits are the same WORK and not the same OBJECTS. So this
+reports STATES, not loss:
+
+    EQUIVALENT-UPSTREAM  `git cherry` found an equivalent patch id on main. Landed.
+    NO-UPSTREAM-MATCH    unreachable AND no patch-equivalent found. ⛔ NOT "lost" —
+                         work recovered by recommit-WITH-EDITS reads this way too.
+    UNREADABLE           the comparison could not be made. Not a pass.
+
+⚠ The error direction matters more here than usual. A false "lost" makes a reader
+re-do work that already exists, and the second copy is a fresh conflict — worse than
+silence, for a tool whose entire subject is duplicated effort.
+
 
 ⛔ THE INCIDENT. A sweep across every merged PR with a surviving ref found 2 of 15
 stranded, in two roles, with no contact between them. One ref had been REPOINTED
@@ -86,12 +106,20 @@ def stranded(rows):
             (unfetched if ls.strip() else deleted).append(ref)
             continue
         checked += 1
-        rc, cnt, _ = sh("git", "rev-list", "--count", f"{BASE}..{remote}")
+        # ⛔ SHA-reachability alone is the WRONG predicate after a
+        # recovery-by-recommit: the original sha stays unreachable forever, so the
+        # tool emits a permanent false positive on precisely the work someone
+        # already rescued. `git cherry` compares PATCH IDS against the merge base
+        # and marks "-" when an equivalent change is already upstream.
+        rc, out, _ = sh("git", "cherry", BASE, remote)
         if rc != 0:
-            found.append((ref, sha, None, prs))   # unreadable is not zero
+            found.append((ref, sha, None, None, prs))   # unreadable is not zero
             continue
-        if int(cnt) > 0:
-            found.append((ref, sha, int(cnt), prs))
+        marks = [ln[:1] for ln in out.splitlines() if ln[:1] in "+-"]
+        if not marks:
+            continue                                    # nothing ahead: the good case
+        unmatched = marks.count("+")
+        found.append((ref, sha, len(marks), unmatched, prs))
     return found, checked, deleted, unfetched
 
 
@@ -117,6 +145,10 @@ def verdict(count_by_ref):
 # moved. It does not decay, and because the predicate takes counts rather than
 # objects it does not depend on any SHA surviving `git gc`.
 CAPTURED = {"dev4/instruction-precedence": 1}   # observed at f5e71bb, merged PR #32
+# ⚠ And the world later supplied its ANSWER: that row was a FALSE POSITIVE. `git
+# cherry` marks it "-", an equivalent patch is on main, and the work had landed via
+# #46. A captured-real fixture whose correct verdict is known is stronger than one
+# that only records what was seen — it controls the predicate, not just the parser.
 
 
 def self_test():
@@ -160,21 +192,36 @@ def main():
               "ESTABLISHED NOTHING. Expected at least one surviving ref; a fetch or prune "
               "failure looks exactly like a tidy repository.", file=sys.stderr)
         return 2
-    for ref, sha, cnt, prs in found:
-        n = "UNREADABLE" if cnt is None else f"{cnt} commit(s)"
-        print(f"{ref}@{sha}  {n} not on {BASE}   (merged PR{'s' if len(prs) > 1 else ''} "
-              f"{', '.join('#%d' % p for p in prs)})")
+    for ref, sha, cnt, unmatched, prs in found:
+        if cnt is None:
+            state, n = "UNREADABLE", "-"
+        elif unmatched == 0:
+            # Every commit has a patch-equivalent upstream. The sha is unreachable
+            # and the WORK landed. Reported, never called stranded.
+            state, n = "EQUIVALENT-UPSTREAM", f"{cnt} commit(s)"
+        else:
+            state, n = "NO-UPSTREAM-MATCH", f"{unmatched} of {cnt} commit(s)"
+        print(f"{state:<20} {ref}@{sha}  {n}   (merged PR"
+              f"{'s' if len(prs) > 1 else ''} {', '.join('#%d' % p for p in prs)})")
     # ⚠ Every ref accounted for, in named buckets. A denominator that silently
     # excludes part of its population is how "0 stranded" gets believed.
-    print(f"\n{len(found)} stranded of {checked} examined; "
+    unmatched_refs = [f for f in found if f[3] not in (0,) ]
+    print(f"\n{len(unmatched_refs)} ref(s) with no upstream patch-match, of {checked} examined; "
           f"{len(deleted)} ref(s) deleted on merge (nothing to examine); "
           f"{checked + len(deleted)} of {len(by_ref_count(rows))} merged-PR refs accounted for.",
           file=sys.stderr)
+    print("⛔ NO-UPSTREAM-MATCH IS NOT 'LOST'. It means the sha is unreachable from "
+          f"{BASE} AND no commit upstream has an equivalent patch id. Work recovered by "
+          "recommit-with-edits legitimately reads this way, because after a rewrite the "
+          "commits are the same WORK and not the same OBJECTS. ⚠ The error direction "
+          "matters here more than usual: a false 'lost' makes a reader re-do work that "
+          "already exists, and the second copy is a fresh conflict — worse than silence "
+          "for a tool whose subject is duplicated effort.", file=sys.stderr)
     print("⚠ Each row is stamped with the ref's object id AT MEASUREMENT TIME. Refs move — "
           "three observers of one ref disagreed within an hour, none of them wrong. A count "
           "without its sha is not comparable to the same count from another run.",
           file=sys.stderr)
-    return 1 if found else 0
+    return 1 if unmatched_refs else 0
 
 
 if __name__ == "__main__":
