@@ -93,6 +93,41 @@ request**, which is visible whether or not anyone remembers the rule.
    DROPPED           the slot does NOT exist here · why · recorded, not deleted
    ```
 
+   ## ⛔ And a removal must not be what makes a claim true
+
+   `DROPPED` is the **legitimate** removal: the slot does not exist here, recorded with its reason.
+   This is the test that separates it from the illegitimate one.
+
+   > **Making a claim true by damaging the thing it describes is not a correction.**
+
+   Measured: a `/goal` pointer asserted a goal file *"had no Reserved section."* The heading was
+   present in **all six revisions the file had ever had**. The available way to satisfy the premise
+   was to **delete the section** — removing four reservations that actually bind. A second pointer
+   asserted a file was *"re-scoped to this repository"* and *"always scoped here"*; **neither was
+   true**, and that one happened to have no edit that could satisfy it. (#93)
+
+   ⇒ The pressure is not toward believing a false premise. It is toward **making the artifact match
+   it**, because that is the cheaper of the two ways to resolve a contradiction between a document
+   and an instruction about the document.
+
+   ⛔ **And the dangerous form is not deletion — it is NARROWING.** Deleting a whole section is
+   conspicuous and has an obvious victim. These do not:
+
+   ```
+   a calibration           "that number was never measured here"  -> delete it, premise satisfied
+   a caveat                "that limit does not apply"            -> remove it, premise satisfied
+   a checker's population  "that file is not in scope"            -> exclude it, premise satisfied
+   ```
+
+   ⚠ **Every one is a normal, defensible edit in isolation**, and the role that supplied this
+   narrowing had made three of them the same evening for good reasons. **The boundary is not
+   obvious from the inside**, which is why it needs to be a question rather than a judgement.
+
+   > **Before removing a caveat, a calibration, an exclusion or a scope line, ask whether the
+   > removal makes some claim true. If it does, that is the CLAIM's problem, not the artifact's.**
+
+   ⇒ A removal that survives that question is a `DROPPED`. One that does not is the premise winning.
+
    ⚠ `NOT-YET-MEASURED` and `DROPPED` are different and collapsing them loses the audit. The
    first says *someone should measure this*; the second says *there is nothing here to measure*.
    A dropped calibration is **recorded rather than deleted**, because the removal is the part a
