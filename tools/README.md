@@ -109,5 +109,37 @@ that window. See #20.
   contains the command; only the `command` field is evidence that it ran. This is
   `discriminates.py`'s retraction case — *a retraction quotes the claim it retracts* — one
   layer up, in a different instrument, found the same day.
+- **Always brace a ref variable — `${REF}:path`, never `$REF:path`.** zsh applies its history
+  modifiers to an unbraced `$VAR:`, so `$P:tools/README.md` expands to `c29aa60ools/README.md`
+  (`:t` = tail) and `$B:scripts/…` expands with `:s` consumed. ⛔ **The failure mimics a domain
+  answer:** git replies `unknown revision or path not in the working tree`, which reads as *the
+  file is not there*. Measured twice in one session — one produced two empty fixtures and four
+  exit codes nearly filed as a broken checker; the other was one step from reporting
+  `tools/README.md` missing from `main` and inverting a closure verdict about that very file.
+  ★ **It is data-dependent, which is the part that makes it dangerous:** in the same script
+  `$P:goals/`, `$P:scripts/` and `$P:.daintree/` were all correct, because only the letters that
+  happen to be modifiers bite. A script can be right nine times and wrong on the tenth path.
+  Same family as the exit-code rule above — an idiom that answers a different question while
+  looking like it answers yours.
+- **Pin a sweep to an immutable SHA, not to a ref.** `git rev-parse origin/main` once, then read
+  everything at that SHA. ⛔ A worktree gets its own `HEAD`, index and logs, but `refs/remotes`
+  lives in the **common** `.git` — so `git show origin/main:<path>` resolves the ref *at read
+  time* and follows every peer's fetch. Measured: `origin/main` advanced mid-audit under a
+  pinned-*looking* read; two `git ls-tree origin/main scripts/` calls twenty minutes apart
+  returned 2 files and then 3. **Only an immutable SHA pins**, and worktree isolation does not
+  change this — it isolates the working tree, not the refs.
+  ⚠ **Pinning protects the READ, not the WRITE.** The two are different propositions and the
+  rule covers only the first. A branch cut from a pinned SHA still has to land on a moving
+  target, so a peer editing the same file mid-flight produces a merge conflict that no amount of
+  pinning prevents — measured, on the very PR that added this rule. Re-pin and rebase before
+  pushing; expect the conflict rather than being surprised by it.
+- **Whitespace-normalise before matching a rendered body.** `#23`'s rule is *verify by content,
+  never by position* — this is the failure mode one step inside it. A content predicate is still
+  positional if its unit is the LINE: `"no reachable passing state"` returned **False** against a
+  PR body that contains exactly that phrase, wrapped. ⇒ The artifact was correct and the check was
+  not, which is indistinguishable from the artifact being wrong. Collapse runs of whitespace on
+  both sides first. ⚠ Measured twice the same day, at two altitudes: once against a rendered PR
+  body, once against a wrapped Markdown bullet where a `grep` reported *"not there"* for
+  *"not looked at"*.
 - **No secrets in source.** Tools needing the Daintree token read it from the user's own MCP
   config at runtime; it appears in none of these files.
