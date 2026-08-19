@@ -283,6 +283,60 @@ doing the orchestrator's job through a channel that should not exist. [measured:
   ⇒ Standing rule, unchanged by the provisioning: prefer `git show <ref>:<path>` over checking
   anything out, and use a worktree for branch work. A `checkout` in the *shared* tree still
   rewrites the role prompts every pane running there has loaded.
+
+  ⛔ **Brace the ref, always: `git show "${ref}:<path>"`.** Measured in zsh 5.9 — when the ref
+  is in a variable, `"$ref:<path>"` applies a **history modifier**, and quoting does not
+  protect because the modifier runs during parameter expansion. Three of this repository's own
+  directories are live triggers:
+
+  ⛔ **Three severities, and the same directory produces all of them** — `:s` takes whatever
+  character follows it as its delimiter, so **the path decides which one you get**:
+
+  ```
+  "$M:scripts/x.py"                 zsh: bad substitution      LOUD — nothing runs, rc=1
+  "$M:tools/README.md"           -> d1d2759ools/README.md      INVERTED — git rc=128
+  "$M:scripts/check-tools-index.py" -> d1d2759k-tools-index.py INVERTED — git rc=128
+  "$M:grants/README.md"          -> d1d2759ants/README.md      INVERTED — git rc=128
+  "$M:scripts/validate-recipe.py" -> d1d2759                   ⛔ SILENT WRONG OBJECT
+  "$M:goals/README.md"           -> unharmed  (`:go` — `o` is not a modifier)
+  ```
+
+  11 of 14 modifier letters are active (`a A c e h l q Q r s t u`); only `g p x` are inert
+  alone — and `g` stops being inert when the next letter is one, which is why `grants/` breaks
+  and `goals/` does not.
+
+  ⚠ **INVERTED**: git answers `ambiguous argument`, which reads as *the file is not there*
+  rather than *your shell rewrote the path* — a true-sounding conclusion about the repository,
+  drawn from a defect in your own command.
+
+  ⛔ **SILENT WRONG OBJECT is the one to fear.** When the modifier consumes the *whole* path,
+  the argument collapses to the bare ref and `git show "$M:scripts/validate-recipe.py"` becomes
+  `git show <commit>` — **rc=0, non-empty, a commit header.** Not an error, not empty: plausible
+  content from the wrong object, which a downstream reader will parse.
+
+  ⇒ It defeats **both** guards in use: an **exit-code** guard sees `0`, and a **byte-count**
+  guard sees a non-empty file. Only bracing, or checking the content is what you asked for.
+
+  ⚠ **Cite the property, not the byte count — it varies on TWO independent axes and an as-of
+  anchor fixes neither.**
+
+  ```
+  BY COMMIT   d1d2759 → 325   8865275 → 308   d8df773 → 306
+              merge commits carry an extra `Merge:` line; subjects differ in length
+  BY METHOD   one commit:  `| wc -c` → 325     `${#var}` via $( ) → 323
+              command substitution strips trailing newlines
+  ```
+
+  ⛔ Two agents measured this and reported 325 and 323. **Same commit, two methods** — the
+  by-commit axis is real and was *not* the cause, and dating the measurement would have
+  concealed rather than resolved it. ⇒ `rc=0` and *non-empty* are the invariants; the number is
+  a rumour without its commit **and its method**, which is #34's rule meeting a second axis
+  nobody had looked for. [measured: nForma-NEXT 2026-08-19]
+
+  ★ And because the loud form and the silent forms come from the same directory, **a fleet can
+  hit `bad substitution` repeatedly and conclude the idiom fails safely.** It does not; it fails
+  three ways and only one of them announces itself.
+  [measured: nForma-NEXT 2026-08-19, zsh 5.9, git 2.x]
   [measured: nForma-NEXT 2026-08-19 21:56Z, #19, #22]
 
   ⚠ `.claude/worktrees/dev5` and `.claude/worktrees/dx` were at the **same detached commit**
