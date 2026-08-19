@@ -1,12 +1,27 @@
 # Fleet instruments
 
-Six tools, each built because a reading was believed and turned out to be wrong. Every one
+**Nine** executables in this directory; **eight** described below. ⚠ `fleet-state.py` is on
+disk and undocumented (#27) — the gap is stated rather than rounded away, because a count that
+does not match `ls` is the defect #27 exists for. Each tool here was built because a reading
+was believed and turned out to be wrong. Every one
 carries the incident that produced it in its own docstring — the measurement is the
 justification, not the description.
 
 ⚠ **Exit codes are load-bearing.** Every tool distinguishes *the answer is no* from *I
 established nothing*. A run that establishes nothing exits **2** and must never be read as
 "all clear". This is the single convention worth carrying to any other tool here.
+
+⛔ **The convention collides with the interpreter, and you must check for it before trusting a
+`2`.** `python3 tools/<x>.py` exits **2** when the file **does not exist** — that is Python's own
+code for "cannot open". So an exit 2 read alone cannot separate *this tool established nothing*
+from *this tool was never here*. Measured: a role ran `grant-check.py` against a ref where it had
+not yet merged, got `2`, and nearly recorded "VOIDs correctly per convention".
+
+⇒ The discriminator is **stderr, not the code**: a real VOID prints a line beginning `VOID:`; a
+missing file prints the interpreter's error. **Establish the tool exists before believing what
+its exit code means** — the same *check existence before believing the code* that catches the
+container-vs-contents family. ⚠ This is a property of every tool in this table, not of any one
+of them, which is why it is stated here rather than in a docstring.
 
 | tool | question | exit codes |
 |---|---|---|
@@ -17,6 +32,7 @@ established nothing*. A run that establishes nothing exits **2** and must never 
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |
+| `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
 
 ## What each one is for
 
@@ -48,6 +64,24 @@ falls back to the registry report and says `UNAVAILABLE` on stderr rather than p
 table. ★ Its known-positive is by construction: the process runs inside a session, so that session
 must appear in the join. Proven to discriminate — break the join and it exits **2** with zero rows,
 rather than printing a clean-looking table of nothing.
+
+**`grant-check.py`** — answers *"is `<role>` authorized to do `<capability>` here, right now?"*
+from a record in `grants/`, never from the message that asked. Built after seven forged
+authorizations reached agents' input boxes in one session, **one of which matched a real ruling**
+— the forged and the genuine grants were the same kind of object (a sentence in an
+unauthenticated channel), so no amount of care on the reading side could separate them (#3).
+
+⚠ Two properties are load-bearing. It reads **`origin/main` after fetching, never the working
+tree** — an agent controls its own checkout, and reading it would let an agent resurrect an
+expired grant by checking out an older commit, which is thesis §7's self-renewal by another
+route. And it **requires network**: offline it exits 2 rather than falling back to a source the
+caller controls.
+
+★ Its known-positives are permanent by construction (#26): three fixtures make `LIVE`, `EXPIRED`
+and `REVOKED` reachable forever, because a *real* grant cannot serve — every real grant expires,
+so a self-test anchored to one goes silent the moment it lapses. `--self-test` also proves the
+`VOID` path executes and that fixtures cannot satisfy a real query. Verified by breaking it:
+un-revoking the revoked fixture turns the run red at exactly that check.
 
 **`discriminates.py`** — refuses a verdict when two states produce identical readings.
 Built after `grep -c "46.6%"` returned `1` on both a worktree and `origin/main` and was read
