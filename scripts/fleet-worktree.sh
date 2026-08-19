@@ -16,59 +16,126 @@
 # and was actively being careful. A control that fails against an author who is
 # watching for it is not a control — which is the argument for this script
 # existing rather than for documenting the discipline.
+#
+# ⚠ bash 3.2 compatible: macOS ships /bin/bash 3.2, which has no associative
+# arrays. An earlier revision used `declare -A`, printed usage errors, and STILL
+# EXITED 0 — an entrypoint that could not fail, in the script written against
+# checks that cannot fail. Keep it POSIX-ish.
 set -u
 
-ROLES=(architect devops dx dev1 dev2 dev3 dev4 dev5)
+ROLES="architect devops dx dev1 dev2 dev3 dev4 dev5"
 
 main_tree=$(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2; exit}')
 [ -n "$main_tree" ] || { echo "not inside a git repository" >&2; exit 2; }
+WT_DIR="$main_tree/.claude/worktrees"
 
-have() { git worktree list --porcelain | awk -v n="$1" '/^worktree /{split($2,a,"/"); if (a[length(a)]==n) f=1} END{exit !f}'; }
+# ⛔ THREE STATES, because there are three remediations.
+#
+# An earlier version tested BASENAME while its header claimed LOCATION: a tree at
+# /tmp/dev1 satisfied coverage for dev1 under a heading asserting the tree lived
+# in .claude/worktrees. The displayed proposition and the tested one were
+# different, and the location half had NO REACHABLE FAILING STATE, because
+# nothing in the script read a location.
+#
+# Measured instance: DEV5 was isolated AND attributable — its `.git/worktrees/`
+# key `wt-dev5` preserves the per-actor trail — and INVISIBLE to a coverage check
+# keyed on the conventional directory, because its tree sat in a scratchpad.
+#
+# ⚠ Name and location are load-bearing for DIFFERENT CONSUMERS: the name serves
+# the audit trail, the location serves the coverage check. A role can satisfy one
+# and fail the other. Collapsing OUTSIDE into MISSING applies the wrong remedy —
+# `create` would give that role a SECOND tree, with commits landing in whichever
+# it happened to be in and no signal either way.
+#
+#   ok       conventional tree at $WT_DIR/<role>
+#   OUTSIDE  a tree that looks like this role's, elsewhere   -> move it
+#   MISSING  no tree at all                                  -> create it
+where() {
+  git worktree list --porcelain | awk -v want="$WT_DIR/$1" -v role="$1" '
+    /^worktree /{ p = $2
+      if (p == want) { found = 1; next }
+      # HEURISTIC, and it is one: a path whose last element contains the role
+      # token is PROBABLY that tree. Nothing binds a worktree to a role, so this
+      # can only ever be a hint - reported as OUTSIDE for a human to judge, and
+      # never auto-remediated.
+      n = split(p, a, "/"); if (index(a[n], role)) { out = p }
+    }
+    END {
+      if (found && out != "") { print "DUP\t" want " + " out }
+      else if (found)         { print "ok\t" want }
+      else if (out != "")     { print "OUTSIDE\t" out }
+      else                    { print "MISSING\t-" }
+    }'
+}
 
-missing=()
-for r in "${ROLES[@]}"; do have "$r" || missing+=("$r"); done
+n_missing=0; n_outside=0; n_dup=0; missing_list=""; outside_list=""; dup_list=""
+report=""
+for r in $ROLES; do
+  line=$(where "$r")
+  st=${line%%	*}; pa=${line#*	}
+  report="$report$(printf '  %-8s %-10s %s' "$st" "$r" "$pa")
+"
+  case "$st" in
+    MISSING) n_missing=$((n_missing+1)); missing_list="$missing_list $r" ;;
+    OUTSIDE) n_outside=$((n_outside+1)); outside_list="$outside_list $r" ;;
+    DUP)     n_dup=$((n_dup+1));     dup_list="$dup_list $r" ;;
+  esac
+done
 
 case "${1:-check}" in
 check)
-  printf 'role worktrees under %s\n' "$main_tree/.claude/worktrees"
-  for r in "${ROLES[@]}"; do
-    if have "$r"; then printf '  ok      %s\n' "$r"
-    else                printf '  MISSING %s\n' "$r"; fi
-  done
-  if [ ${#missing[@]} -gt 0 ]; then
-    printf '\n⚠ %d of %d roles have no isolated tree.\n' "${#missing[@]}" "${#ROLES[@]}"
-    # ★ Partial isolation does not reduce the hazard proportionally — it
-    # CONCENTRATES it. The shared tree gets quieter, which makes the remaining
-    # collisions less EXPECTED rather than less likely, and the uncovered roles
-    # become the only remaining source of exactly the failure the mechanism was
-    # built to remove — in a tree nobody is watching any more.
-    printf '  Those roles work in the SHARED tree, where a collision is now less expected\n'
-    printf '  rather than less likely. Run: %s create\n' "$0"
-    exit 1
+  # Emit the RESOLVED PATH per role, not a verdict. A predicate that prints
+  # true/false where it could print the evidence gives its reader nothing to be
+  # suspicious of — which is exactly how the basename/location mismatch above
+  # survived authoring.
+  printf 'conventional location: %s\n' "$WT_DIR"
+  printf '%s' "$report"
+  if [ "$n_outside" -gt 0 ]; then
+    printf '\n⚠ %d role(s) isolated OUTSIDE the conventional location:%s\n' "$n_outside" "$outside_list"
+    printf '  Attributable but invisible to any check keyed on that directory.\n'
+    printf '  MOVE it — do NOT run `create`, which would give the role a second tree.\n'
   fi
-  printf '\nall %d roles isolated\n' "${#ROLES[@]}"
+  if [ "$n_dup" -gt 0 ]; then
+    printf '\n⚠ %d role(s) have TWO trees:%s\n' "$n_dup" "$dup_list"
+    printf '  Commits land in whichever the pane happens to be in, with no signal either way.\n'
+    printf '  Needs a deliberate decision, not tidying by whoever notices.\n'
+  fi
+  if [ "$n_missing" -gt 0 ]; then
+    printf '\n⚠ %d role(s) have NO isolated tree:%s\n' "$n_missing" "$missing_list"
+    # ★ Partial isolation CONCENTRATES the hazard rather than reducing it
+    # proportionally: the shared tree gets quieter, so a collision there becomes
+    # less EXPECTED rather than less likely, and the uncovered roles become the
+    # only remaining source of exactly the failure isolation was built to remove
+    # — in a tree nobody is watching any more.
+    printf '  They work in the SHARED tree, where a collision is now less expected\n'
+    printf '  rather than less likely. Run: %s create\n' "$0"
+  fi
+  [ "$n_missing" -gt 0 ] || [ "$n_outside" -gt 0 ] || [ "$n_dup" -gt 0 ] && exit 1
+  printf '\nall roles isolated in the conventional location\n'
   ;;
 create)
-  # Detached at origin/main on purpose: it claims no branch name, so it cannot
-  # collide with a role's own branch, and `git checkout -b` from it inherits
-  # main rather than a peer's unmerged work.
-  git fetch -q origin || { echo "fetch failed — refusing to create trees from a stale base" >&2; exit 2; }
-  created=0
-  if [ ${#missing[@]} -eq 0 ]; then
-    printf '  nothing to create — all %d roles already isolated\n' "${#ROLES[@]}"
+  if [ "$n_missing" -eq 0 ]; then
+    printf 'nothing to create — no role is without a tree\n'
+    [ "$n_outside" -gt 0 ] && printf '⚠ but%s sit outside %s; MOVE those, creating would duplicate them\n' \
+      "$outside_list" "$WT_DIR"
     exit 0
   fi
-  for r in "${missing[@]}"; do
-    p="$main_tree/.claude/worktrees/$r"
+  # Detached at origin/main on purpose: it claims no branch name, so it cannot
+  # collide with a role's own branch, and `git checkout -b` from it inherits main
+  # rather than a peer's unmerged work — the failure this whole line started from.
+  git fetch -q origin || { echo "fetch failed — refusing to create trees from a stale base" >&2; exit 2; }
+  rc=0
+  for r in $missing_list; do
+    p="$WT_DIR/$r"
     if git worktree add --detach "$p" origin/main >/dev/null 2>&1; then
       printf '  created %-10s detached at %s\n' "$r" "$(git -C "$p" rev-parse --short HEAD)"
-      created=$((created+1))
     else
-      printf '  FAILED  %-10s (path in use, or origin/main unreachable)\n' "$r"
+      printf '  FAILED  %-10s (path in use, or origin/main unreachable)\n' "$r"; rc=1
     fi
   done
-  printf '\nnext, INSIDE your tree: cd %s/.claude/worktrees/<role> || exit 1\n' "$main_tree"
+  printf '\nnext, INSIDE your tree: cd %s/<role> || exit 1\n' "$WT_DIR"
   printf '                        git checkout -b <role>/<topic>\n'
+  exit $rc
   ;;
 *)
   echo "usage: $0 [check|create]" >&2; exit 2 ;;
