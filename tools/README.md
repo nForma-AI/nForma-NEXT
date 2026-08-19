@@ -1,6 +1,6 @@
 # Fleet instruments
 
-Five tools, each built because a reading was believed and turned out to be wrong. Every one
+Each built because a reading was believed and turned out to be wrong. ⚠ No count in this sentence on purpose: a hand-maintained integer describing a directory drifts on the next addition with no error, and three PRs were racing on it at once. The table below carries the count. Every one
 carries the incident that produced it in its own docstring — the measurement is the
 justification, not the description.
 
@@ -15,6 +15,7 @@ established nothing*. A run that establishes nothing exits **2** and must never 
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
+| `pipe-exit-scan.py` | is any exit code here read through a pipe? | 0 clean · 1 findings · **2 established nothing** |
 
 ## What each one is for
 
@@ -63,6 +64,29 @@ because the agent running the check is one.
 uninterpretable: an agent woken into useful work and one woken into churn consume context
 identically.
 
+**`pipe-exit-scan.py`** — finds `cmd | cmd; echo $?` and `${PIPESTATUS[n]}`, the shapes that
+print something which looks like a measurement and is not. Replaces a written convention that
+three roles missed.
+
+⛔ It is its own hardest case, and the reason it is worth reading. A scanner for this is a
+content matcher, and the document warning about the trap *contains the string*. Measured: the
+only two occurrences of `PIPESTATUS` in this repository are in the paragraph below warning about
+it, so a naive identifier scan reports **two findings here and both are false** — a 100%
+false-positive rate on the live repo, in the direction that reads as work-to-do.
+
+⇒ So it matches on what a **mention cannot produce**: prose lives in `.md` and a markdown file is
+never executed (markdown is scanned only inside ```` ```bash ```` fences, never inline backticks);
+a `#` comment inside a shell script is a mention where code is a use; and the finding is a
+*pipeline whose status is read*, not the identifier alone. ★ The fleet has now solved this same
+problem five times without naming it once — a nonce (citation cannot precede creation), line
+position (a quotation cannot occupy a position), a path form (prose has no path separator), an
+execution record (a description is not an effect), and here. **Match on something a mention
+cannot produce.**
+
+`--selftest` proves both directions against real data: the known-negative is this file, and the
+known-positive is a fixture of three idioms taken from three real incidents rather than invented
+to match the regex.
+
 ## Conventions worth copying
 
 - **Exit 2 for "established nothing."** Absence of a finding and absence of a measurement are
@@ -79,12 +103,12 @@ identically.
 - **A duplicate alarm and a broken alarm are indistinguishable to the reader.** Both produce
   output that is safe to skip. Treat repeat-firing as a defect with the same severity as
   silence.
-- **Never read an exit code through a pipe.** `cmd | head; echo $?` reports *head's* status, and
-  `${PIPESTATUS[0]}` expands to empty in zsh — both print something that looks like a measurement and
-  is not one. Redirect to a file and check `$?` on the bare command. ⚠ Two independent instances in one
-  session, ten minutes apart, in two different roles, *both while verifying instrument integrity*: one
-  reading `tail`'s status and nearly filing a working validator as an entrypoint that cannot fail, one
-  reading an empty `PIPESTATUS` and printing `exit=` having measured nothing. That it caught two
-  careful readers in the act of being careful is why it is a convention and not a note.
+- **Never read an exit code through a pipe.** ⇒ RETIRED AS PROSE, enforced by
+  `tools/pipe-exit-scan.py`. It is kept as a one-line pointer rather than a rule because the
+  prose form was measured not to work: three instances, in three roles, in four hours — and the
+  third happened in a role that had been warned about it *in the same message that assigned the
+  task*, against this very paragraph. ⛔ A rule that exists and does not fire is worse than no
+  rule, because its presence is mistaken for coverage.
+
 - **No secrets in source.** Tools needing the Daintree token read it from the user's own MCP
   config at runtime; it appears in none of these files.
