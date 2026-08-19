@@ -25,7 +25,25 @@ request**, which is visible whether or not anyone remembers the rule.
 
 1. **Desired state** — the condition that would make the role's work finished, written so
    that a reader can tell whether it currently holds.
-2. **Reserved actions** — what the role must never self-grant. State them; do not imply them.
+2. **Reserved actions** — what the role must never self-grant. State them; do not imply them —
+   **and state them WHERE EVERY AGENT THEY BIND WILL READ THEM.**
+
+   ```
+   a GRANT       is complete when ONE agent hears it    -> a message is the right channel
+   a RESERVATION is complete when EVERY agent hears it  -> a message reaches one pane
+   ```
+
+   ⛔ A reservation delivered by message is satisfied for its recipient and **silently absent for
+   everyone else** — and it reads as enforced from the orchestrator's side, because the only pane
+   observable is the one that was told. Measured: issue closure was reserved in **0** of four goal
+   files, `goals/README.md`, `TEAMLEAD.md` and `DEV.md`, and existed only in one message to one role.
+
+   ★ **The asymmetry selects against the compliant agent.** The role that heard it declined to close
+   and reported zero; the role that never heard it closed one and was right to. Under an unwritten
+   reservation, **obedience is indistinguishable from underperformance** — and the zero reads as
+   thoroughness, so nothing prompts anyone to look for the cause.
+
+   ⇒ **A reservation lives in every goal file it binds. Never in a message.**
    ⛔ Every such list defers *upward* — `reserved to TEAMLEAD`, and TEAMLEAD's to the operator.
    **The topmost role's list must name what is reserved to the OPERATOR**, or the chain has no
    base case and the authority at the top is unbounded by construction rather than by decision.
@@ -58,6 +76,26 @@ request**, which is visible whether or not anyone remembers the rule.
    nothing marking the transition.
 
    > ⛔ **"is empty" is never a fact about this repository, only about a timestamp.**
+
+   ⛔ **And this rule is structurally blind to a number that was false on arrival.** It was written
+   to catch a reading that **decays**; it does nothing to one that was never true of the moment it
+   names:
+
+   ```
+   decay          true when written, false later     -> the past tense FIXES it
+   wrong anchor   never true of the moment named     -> the past tense PRESERVES it perfectly
+   ```
+
+   ⇒ **Stamping a wrong anchor in the past tense converts a confidently-undated false claim into a
+   confidently-dated one. The stamp makes it MORE citable, not less.** Measured: a board reading was
+   anchored to `20:22Z`, the moment a PR **merged** — the event that prompted writing it down — while
+   the instrument had run some 35 minutes earlier. Nine PRs were open at the cited moment. The
+   number was reconstructed only because a peer checked the line rather than the conclusion.
+
+   > **Stamp a measurement with the time the INSTRUMENT RAN, never with the time of the event that
+   > prompted you to record it. Where the run time is not known to a point, state the window.**
+
+   ⚠ The rule and its violation shipped in the same document, by the author of the rule.
 
    ⚠ And when a stale reading is corrected, **keep both readings as a pair rather than swapping the
    stale one out**: the pair carries the *decay rate* and neither reading does. A corrected single
@@ -186,6 +224,23 @@ does not move — a design property, not agent behaviour.
 
    > **The bar is not "the fix landed." It is: has the originating incident been PREVENTED — with
    > the preventing mechanism NAMED, and RUN at least once?**
+
+   Operationally, four criteria, all four required:
+
+   ```
+   1. the fix LANDED ON MAIN            — not merged-on-a-branch, landed
+   2. the MECHANISM is retired          — not the instance
+   3. an instrument reports the defect absent — BY EXECUTION, never by reading
+   4. that instrument has been shown to FAIL on real data
+      ⛔ otherwise its "clean" establishes nothing
+   ```
+
+   ⚠ **Criterion 4 is the load-bearing one**, and the first closure to meet it did so **by accident**:
+   the same checker had been run against `main` forty minutes earlier on unrelated work and returned
+   exit 1 with four named gaps. Same instrument, same repository, two states, two verdicts — a
+   known-negative from real data, obtained as a byproduct rather than arranged. ⇒ That is the
+   condition #26 asks for, met without anyone trying to meet it, which is the cheapest way it is
+   ever met and not a way to plan on.
 
    Landed ≠ loaded ≠ exercised. A merged fix that no execution has passed through is a claim, and
    this repository's own subject is claims that cannot fail.
