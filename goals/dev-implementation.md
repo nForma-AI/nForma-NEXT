@@ -283,6 +283,24 @@ doing the orchestrator's job through a channel that should not exist. [measured:
   ⇒ Standing rule, unchanged by the provisioning: prefer `git show <ref>:<path>` over checking
   anything out, and use a worktree for branch work. A `checkout` in the *shared* tree still
   rewrites the role prompts every pane running there has loaded.
+
+  ⛔ **Brace the ref, always: `git show "${ref}:<path>"`.** Measured in zsh 5.9 — when the ref
+  is in a variable, `"$ref:<path>"` applies a **history modifier**, and quoting does not
+  protect because the modifier runs during parameter expansion. Three of this repository's own
+  directories are live triggers:
+
+  ```
+  "$M:tools/README.md"    -> acd5565ools/README.md     (:t  tail)
+  "$M:scripts/x.py"       -> acd5565k-tools-index.py    (:s  substitute — eats a delimiter)
+  "$M:grants/README.md"   -> acd5565ants/README.md      (:gr global + remove-extension)
+  "$M:goals/README.md"    -> unharmed  (:go — `o` is not a modifier, so nothing parses)
+  ```
+
+  11 of 14 modifier letters are active (`a A c e h l q Q r s t u`); only `g p x` are inert
+  alone. ⚠ **It fails INVERTED**: git answers `unknown revision or path`, which reads as *the
+  file is not there* rather than *your shell rewrote the path*. ⇒ So the idiom this rule
+  recommends is the one that mangles silently, and it does so on `tools/` — the fleet's
+  highest-traffic path. [measured: nForma-NEXT 2026-08-19, zsh 5.9]
   [measured: nForma-NEXT 2026-08-19 21:56Z, #19, #22]
 
   ⚠ `.claude/worktrees/dev5` and `.claude/worktrees/dx` were at the **same detached commit**
