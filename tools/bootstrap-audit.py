@@ -71,7 +71,7 @@ Exit: 0 audited, no negative · 1 at least one NEGATIVE · 2 at least one role
       UNAUDITABLE (unknown is not a pass) · 3 the built-in known-positive failed,
       so the harness is broken and every verdict it printed is void.
 """
-import argparse, glob, json, os, re, subprocess, sys, tempfile
+import argparse, glob, hashlib, json, os, re, subprocess, sys, tempfile
 
 SESSIONS = os.path.expanduser("~/.claude/sessions")
 PROJECTS = os.path.expanduser("~/.claude/projects")
@@ -177,13 +177,118 @@ SEPARATORS = re.compile(r"&&|\|\||;|\||\n")
 ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
 
-# The shell's own grammar words. ⚠ This is a CLOSED set defined by POSIX shell,
-# not an open-ended list of program names — that distinction is what keeps this
-# from being the blocklist the position rule exists to avoid. `if git push` runs
-# git; `sudo git push` might, and the difference is that one of these words is
-# grammar and the other is somebody's binary.
+# ⛔ THE ONLY WORDS THAT MAY EVER BE SKIPPED IN COMMAND POSITION.
+#
+# These are shell GRAMMAR — reserved words of POSIX sh, plus the three keywords
+# bash and zsh add. Skipping them is not the blocklist the position rule exists to
+# avoid, because the set is fixed by a language specification and cannot grow with
+# anyone's habits.
+#
+# ⚠ THE TEMPTATION IS TO WIDEN THIS, and it will arrive later, to someone who was
+# not part of the conversation that created it. `env`, `nohup`, `timeout`, `nice`,
+# `sudo`, `xargs`, `stdbuf`, `command`, `exec` all LOOK like grammar and are
+# binaries or builtins that take a command as an argument. Adding any of them
+# would make `sudo git push` resolve to EXECUTED — which is a guess, not a reading,
+# because `sudo` may equally have failed to authenticate.
+#
+#   > The moment this list stops being derivable from the shell specification,
+#   > it becomes the blocklist the position rule refused.
+#
+# Wrapped invocations are INDETERMINATE by design. That is the honest verdict and
+# it is not an accuracy problem to be tuned away.
+#
+# ★ NOT HYPOTHETICAL. ARCHITECT reached for `timeout` by reflex while auditing every
+# instrument in this repo for #26 — macOS does not ship it, so ALL NINE TOOLS
+# returned 127 and produced a uniform, confident, meaningless table that would have
+# read as a clean result for every row. The first wrapper on that list was chosen
+# by a careful author, in this repo, the same afternoon. That is why this is a
+# CONTROL (see keyword_control) and not a comment: a prose caveat is a check with
+# no execution record, and this one has to survive its own author.
+POSIX_RESERVED = {"!", "{", "}", "case", "do", "done", "elif", "else", "esac", "fi",
+                  "for", "if", "in", "then", "until", "while"}
+SHELL_ADDED = {"select", "function", "time"}   # bash/zsh keywords, not POSIX
+GRAMMAR = POSIX_RESERVED | SHELL_ADDED
+
+# ⛔ GRAMMAR IS A TRANSCRIPTION OF A SPECIFICATION, NOT A LIST TO MAINTAIN.
+#
+# ARCHITECT's caution on #55, and it is the hole a guard leaves: the assertion
+# below is only as good as the enumeration it compares against. A future editor
+# who finds `sudo git push` reading INDETERMINATE can satisfy the guard by
+# widening GRAMMAR instead of SHELL_KEYWORDS — the control passes, the property is
+# gone, and nothing says so.
+#
+# ⇒ Saying "this is a spec, do not edit it" in a comment would ask a reader to
+# remember, which is the form ARCHITECT and I both argued against one level down.
+# So the digest is frozen. Widening GRAMMAR fails the run.
+#
+# ⚠ This does NOT forbid correcting the set — POSIX could be transcribed wrong, and
+# then this list SHOULD change. It forbids changing it SILENTLY: the digest must be
+# updated in the same edit, which makes the change deliberate and reviewable
+# instead of incidental. That is the whole property.
+GRAMMAR_DIGEST = "4bcd31e101db06d0"
+
+# ★ WHY THE REGRESS STOPS HERE, and the rule is ARCHITECT's rather than mine.
+#
+# The digest guards the list and nothing guards the digest. My first justification
+# was "accident is the only failure mode that matters here" — a THREAT-MODEL claim,
+# and a wrong one: this repository has a documented adversarial threat model
+# (prompts/TEAMLEAD.md, twelve forged authorizations reaching agents' input boxes
+# in one session). A stopping rule resting on a threat model also fails to
+# generalise, since the next person facing a regress must re-litigate their own.
+#
+# The structural rule instead:
+#
+#   > The regress terminates when the next layer would be the same KIND of control.
+#
+# A digest-of-the-digest is another executable assertion in this same file,
+# defeated the same way — one more turn of the crank. But "the change must appear
+# in the diff as a digest edit" hands off to REVIEW: peer attention and CODEOWNERS,
+# a different control type with a different failure mode. That is a handoff, not a
+# turn, and it has already happened at this layer.
+#
+# ⇒ Test anyone can apply without arguing about threats: does one more layer hand
+# off to a different KIND of control? If no, stop.
+
 SHELL_KEYWORDS = {"if", "then", "else", "elif", "fi", "while", "until", "do", "done",
                   "for", "case", "esac", "select", "function", "time", "!", "{", "}"}
+
+
+def keyword_control():
+    """Refuse the run if SHELL_KEYWORDS has grown a word that is not shell grammar.
+
+    ⛔ The failure this exists for is an EDIT, not an input — which is why no
+    ordinary known-negative would catch it. Someone hits `sudo git push` reading
+    INDETERMINATE, decides that is a false negative, and adds `sudo`. Every other
+    control in this file still passes: the fixtures do not use sudo, the live
+    fleet does not use sudo, and the change reads as a small accuracy improvement.
+    The tool would then report a guess as a reading, in the direction of the
+    finding its operator expects — the asymmetry from #26.
+    """
+    frozen = hashlib.sha256(" ".join(sorted(GRAMMAR)).encode()).hexdigest()[:16]
+    drifted = frozen != GRAMMAR_DIGEST
+    print(f"  known-positive  grammar set      : "
+          f"{'matches the frozen spec digest' if not drifted else f'DRIFTED {frozen}'}")
+    if drifted:
+        print(f"  ⛔ GRAMMAR no longer matches its frozen digest ({frozen} != {GRAMMAR_DIGEST}). "
+              f"It is a transcription of the shell specification, not a list to maintain — "
+              f"widening it satisfies the keyword guard while removing the property the guard "
+              f"exists for. If the change is deliberate, update GRAMMAR_DIGEST in the same edit.",
+              file=sys.stderr)
+    intruders = SHELL_KEYWORDS - GRAMMAR
+    print(f"  known-positive  keyword set      : "
+          f"{'grammar only' if not intruders else f'INTRUDERS {sorted(intruders)}'}")
+    # The known-negative: the guard must actually reject a binary if one is added.
+    would_reject = bool(({"sudo", "timeout", "env"} | SHELL_KEYWORDS) - GRAMMAR)
+    print(f"  known-negative  a binary added   : "
+          f"{'would be rejected' if would_reject else 'ACCEPTED — the guard is inert'}")
+    if intruders:
+        print(f"  ⛔ SHELL_KEYWORDS contains {sorted(intruders)}, which are not shell grammar. "
+              f"A wrapper skipped in command position turns a GUESS into an EXECUTED verdict. "
+              f"Wrapped invocations must stay INDETERMINATE.", file=sys.stderr)
+    if not would_reject:
+        print("  ⛔ the guard cannot reject a binary — it is inert and would permit the edit "
+              "it exists to prevent", file=sys.stderr)
+    return not intruders and would_reject and not drifted
 SUBSTITUTION = re.compile(r"\$\(|`")
 
 
@@ -799,7 +904,13 @@ def self_test():
     if not ok_doc:
         print("  ⛔ the doctrine check does not discriminate a stale prompt from a current "
               "one, or resolves a MISSING field to a pass", file=sys.stderr)
-    if ok_clean and ok_dirty and ok_claim and ok_neg and ok_env and ok_doc:
+    ok_kw = keyword_control()
+    # ⛔ EVERY control joins this conjunction. The rebase that produced this line had
+    # `ok_doc` on one side and `ok_kw` on the other, and taking either side whole
+    # would have DROPPED a control silently — it would still run, still print, and
+    # its result would be discarded. That is #26 inside a merge resolution, and it is
+    # why a conflict on a conjunction is never a positional conflict.
+    if ok_clean and ok_dirty and ok_claim and ok_neg and ok_env and ok_doc and ok_kw:
         # ⚠ "every", not a numeral. This line read "both controls" while printing
         # five, then ten, then thirteen — a hand-counted number describing a list
         # drifts on the next addition and emits no error while doing it. DEVOPS
