@@ -154,6 +154,26 @@ else
 fi
 note "this pane cannot read another pane's environment: the nine ROLE-READY lines are self-reports, not measurements"
 
+section 'Worktree coverage'
+# ★ Partial isolation CONCENTRATES the hazard rather than reducing it
+# proportionally: the shared tree gets quieter, so a collision there becomes
+# less EXPECTED rather than less likely, and the uncovered roles become the only
+# remaining source of exactly the failure isolation was built to remove — in a
+# tree nobody is watching any more. Measured: a role with no tree hit the
+# shared-tree hazard forty minutes after filing the issue about it.
+if [ -x scripts/fleet-worktree.sh ]; then
+  if scripts/fleet-worktree.sh check >/dev/null 2>&1; then
+    ok "every declared role has an isolated worktree"
+  else
+    scripts/fleet-worktree.sh check 2>&1 | grep '^  MISSING' | while read -r _ r; do
+      bad "role '$r' has NO isolated tree — it works in the shared tree"
+    done
+    note "run scripts/fleet-worktree.sh create"
+  fi
+else
+  note "scripts/fleet-worktree.sh not executable — worktree coverage UNMEASURED, not clean"
+fi
+
 section 'Known substrate limits'
 cat <<'LIMITS'
   · Recipes have no `titleMode` field, so a recipe-set title starts unpinned and
