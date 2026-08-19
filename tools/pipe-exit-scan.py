@@ -316,7 +316,7 @@ def main():
           "file. So `0 findings` means NO COMMITTED FILE CONTAINS IT. It is not evidence "
           "about the population the defect actually lives in, which this tool structurally "
           "cannot see. ⇒ ADDABLE — NEEDS A DIFFERENT INSTRUMENT: a PreToolUse hook is the "
-          "only surface where those commands exist; matcher measured at 2.5% fire / 80% "
+          "only surface where those commands exist; matcher committed at tools/pretooluse-guard.py, measured 1.5% fire fleet-wide (25 of 1720) and hand-classified 80% "
           "precision, mechanism untested, not installed.", file=sys.stderr)
     print("⚠ Matched on SHAPE after stripping comments and skipping non-fenced prose. "
           "Occurrences inside comments, and inline `PIPESTATUS` in prose, are MENTIONS and "
