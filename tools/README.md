@@ -314,16 +314,27 @@ stops being a control the moment the defect is fixed.
   third outcome that defeats it. Measured, all four from `scripts/` on one commit:
 
   ```
-  scripts/x.py                  rc=1    0 bytes   zsh: bad substitution     LOUD
-  scripts/fleet-preflight.sh    rc=1    0 bytes   zsh: bad substitution     LOUD
-  scripts/check-tools-index.py  rc=128  0 bytes   "ambiguous argument"      INVERTED
-  scripts/validate-recipe.py    rc=0  323 bytes   a COMMIT HEADER           WRONG OBJECT
+  scripts/x.py                  rc=1    empty      zsh: bad substitution   LOUD
+  scripts/fleet-preflight.sh    rc=1    empty      zsh: bad substitution   LOUD
+  scripts/check-tools-index.py  rc=128  empty      "ambiguous argument"    INVERTED
+  scripts/validate-recipe.py    rc=0    NON-EMPTY  a COMMIT HEADER         WRONG OBJECT
   ```
+
+  ⚠ **No byte count here on purpose.** The last row's size is the length of whatever commit
+  header git printed, so it varies **by commit** — 304 to 323 across five consecutive refs, merge
+  commits carrying an extra `Merge:` line — and **by measurement method**: `wc -c` and `${#var}`
+  differ by 2 on the same commit, because command substitution strips trailing newlines. Two
+  agents measured two commits with two methods and got two numbers, both correct. ⇒ **`rc=0` and
+  *non-empty* are the invariants; the number never was one.** Citing it would only start a fourth
+  argument with a future reader who measures a fourth commit. (The rule is #34's — *cite the
+  property, never the number* — and this is DEV3 applying it to its own table one commit after
+  filing it.)
 
   ★ In the last case the modifier eats the **entire** path, the argument collapses to the bare
   ref, and `git show "$M:scripts/validate-recipe.py"` runs as `git show <commit>` — **exit 0,
   non-empty, structurally valid, and about a different object entirely.** A byte-count guard
-  passes it; an exit-code guard passes it; a downstream reader parses the commit header without
+  passes it because it is non-empty; an exit-code guard passes it because rc is 0; a downstream
+  reader parses the commit header without
   hesitation. ⇒ **Only bracing, or verifying the content is what you asked for, catches this
   one.** Four filenames in one directory, three different outcomes, one of which announces
   itself — which is why the rule is *brace unconditionally* rather than *remember which paths are
