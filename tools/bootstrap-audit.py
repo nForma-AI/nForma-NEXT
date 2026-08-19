@@ -182,6 +182,97 @@ def main_tree(cwd):
     return None
 
 
+def env_of(pid):
+    """One pane's environment, read from OUTSIDE it. Returns (vars, readable).
+
+    ⛔ THIS FUNCTION EXISTS BECAUSE THE LIMIT IT REPLACES WAS FALSE. Earlier
+    versions printed, on every pane of every run:
+
+        "$NFORMA_ROLE is per-process and not cross-pane readable — the env leg of
+         the identity triple is UNMEASURED, not agreeing"
+
+    That was DESCRIBED, never run. `ps eww` reads any same-user process's
+    environment: 37 variables recovered from each of the nine live panes. ⇒ The
+    tool was emitting a false UNKNOWN nine times per run and calling it honesty.
+
+    ★ The distinction that makes this worth a function: a limit you have MEASURED
+    is a limit; a limit you have only DESCRIBED is a defect you have not looked
+    at, and it has no input that could contradict it — a control with no reachable
+    failing state, sitting in the section whose whole purpose is honesty. DX filed
+    that on #26 with two of its own; this is mine.
+
+    ⚠ `readable` is returned separately and is not inferable from an empty dict.
+    A dead process and a process with no such variable are DIFFERENT STATES, and
+    collapsing them is how "the check found nothing" becomes "the check passed".
+    """
+    out = subprocess.run(["ps", "eww", "-o", "command=", "-p", str(pid)],
+                         capture_output=True, text=True)
+    toks = out.stdout.split()
+    env = {}
+    for t in toks:
+        if "=" in t:
+            k, _, val = t.partition("=")
+            if k and k.isupper() and k.replace("_", "").isalnum():
+                env[k] = val
+    # The control: a process whose environment we can read has SOME standard
+    # variables. Zero of them means ps did not answer, whatever its exit code.
+    readable = bool(env)
+    return env, readable
+
+
+def env_control(reg):
+    """Known-positive and known-negative for env_of(), on the process class that matters.
+
+    ⛔ THE FIRST TWO VERSIONS OF THIS CONTROL WERE BOTH WRONG, and the control
+    caught both — the third and fourth times it has refused this tool's verdicts.
+
+      v1  mutated `os.environ` and read this process back. `ps` reports the
+          environment captured at EXEC, so an in-process mutation never appears.
+      v2  spawned `/bin/sleep` with a nonce. macOS returns NO environment at all
+          for SIP-protected system binaries: 8 bytes, just the command line.
+
+    ⚠ v2's failure is the important one, because it is a WRONG-POPULATION defect
+    (#1) and it would have been invisible in the other direction. Had the probe
+    happened to succeed on a system binary, the control would have certified an
+    instrument on a process class that is not the one it is used against. The
+    panes run a user binary from ~/.local/bin, whose environment IS readable — so
+    the control must run against a PANE, not against a convenient stand-in.
+
+    Positive: a live pane's environment contains HOME. Negative: the same read
+    does not contain a nonce that exists nowhere. Together these show the reader
+    discriminates present from absent on the real population, which is the only
+    claim env_of() makes. Third case: a pid that cannot exist must be UNREADABLE,
+    never "absent" — dead and unset are different states.
+
+    ⚠ Stated limit, and this one is RUN rather than described: `ps eww` yields no
+    environment for SIP-protected binaries, so env_of() answers for agent panes
+    and would silently report "absent" for a system process. Every caller here
+    passes a pane pid.
+    """
+    live = next((r for r in reg.values() if r.get("pid")), None)
+    if not live:
+        print("  ⛔ no live pane in the registry to control against", file=sys.stderr)
+        return False
+    env, readable = env_of(live["pid"])
+    pos = readable and "HOME" in env
+    neg = "NFORMA_AUDIT_PROBE_7f3a" not in env
+    _, ghost = env_of(2 ** 22)
+    dead_ok = not ghost
+    print(f"  known-positive  env of a live pane: "
+          f"{f'{len(env)} vars incl. HOME' if pos else 'HOME NOT FOUND — reader is blind'}")
+    print(f"  known-negative  a nonce variable  : "
+          f"{'correctly absent' if neg else 'REPORTED PRESENT — reader invents values'}")
+    print(f"  known-negative  env of dead pid   : "
+          f"{'UNREADABLE (correct)' if dead_ok else 'readable — dead would read as unset'}")
+    if not pos:
+        print("  ⛔ cannot read a live pane's environment — every env verdict below would be "
+              "a false ABSENCE, which reads exactly like a real finding", file=sys.stderr)
+    if not dead_ok:
+        print("  ⛔ a nonexistent process reads as readable — a dead pane would report its "
+              "identity carrier as ABSENT rather than UNKNOWN", file=sys.stderr)
+    return pos and neg and dead_ok
+
+
 def blocks(rec):
     c = (rec.get("message") or {}).get("content")
     return c if isinstance(c, list) else []
@@ -369,8 +460,20 @@ def audit(role, row):
         {"role": claimed_role, "repo": claimed_repo, "branch": claimed_branch}, observed)
     v["negatives"] += neg
     v["unknowns"] += unk
-    v["unknowns"].append("$NFORMA_ROLE is per-process and not cross-pane readable — "
-                         "the env leg of the identity triple is UNMEASURED, not agreeing")
+    # ★ Leg 3 of the identity triple, MEASURED. See env_of() for why this is not
+    # the "unmeasurable" it was previously reported as.
+    env, readable = env_of(row.get("pid"))
+    if not readable:
+        v["unknowns"].append(f"could not read pid {row.get('pid')}'s environment — the env "
+                             f"leg is UNKNOWN (process gone?), not absent")
+    elif "NFORMA_ROLE" not in env:
+        v["negatives"].append(
+            "NFORMA_ROLE is ABSENT from this pane's environment, established by reading "
+            f"{len(env)} of its variables from outside it. prompts/README.md calls this the "
+            "authoritative identity carrier; on this pane it does not exist")
+    elif env["NFORMA_ROLE"] != role:
+        v["negatives"].append(f"NFORMA_ROLE={env['NFORMA_ROLE']!r} but the registry name is "
+                              f"{role!r} — the identity triple disagrees with itself")
     return v
 
 
@@ -522,7 +625,8 @@ def self_test():
         print("  ⛔ the claim comparison does not discriminate agreement from disagreement, "
               "or silently passes an unmeasured value", file=sys.stderr)
     ok_neg = known_negative()
-    if ok_clean and ok_dirty and ok_claim and ok_neg:
+    ok_env = env_control(registry())
+    if ok_clean and ok_dirty and ok_claim and ok_neg and ok_env:
         print("  ✅ both controls discriminated: an unexecutable step from an executed one "
               "(identical ROLE-READY on both), and a claim that matches substrate from one "
               "that does not — and it rejected every MENTION of a step while still "

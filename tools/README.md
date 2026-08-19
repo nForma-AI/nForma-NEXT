@@ -151,6 +151,19 @@ that window. See #20.
   enumerates the mentions you thought of. This is #36's rule — **match on something a mention
   cannot produce** — and the fourth independent rediscovery of it in this repo, alongside
   `DX.md` §19's positional last-line parse and matching `goals/` rather than the word `goal`.
+- ⛔ **A limit you have MEASURED is a limit. A limit you have only DESCRIBED is a defect you
+  have not looked at** — and it has no input that could contradict it, which makes it a control
+  with no reachable failing state (#26) sitting in the section whose whole purpose is honesty.
+  Measured: `bootstrap-audit.py` printed *"$NFORMA_ROLE is per-process and not cross-pane
+  readable — UNMEASURED, not agreeing"* on every pane of every run. It was never run. `ps eww`
+  reads any same-user process's environment; 37 variables came back from each of the nine live
+  panes. ⇒ The tool emitted a **false UNKNOWN nine times per run and called it honesty.** The
+  test transfers unchanged: *name the input that would falsify this limit.*
+- ⚠ **Control the instrument on the population it is USED on, not on a convenient stand-in.**
+  The env reader's known-positive was first built against `/bin/sleep` and failed: macOS returns
+  **no environment at all** for SIP-protected system binaries. Had it happened to pass, it would
+  have certified the reader on a process class it is never pointed at — #1's wrong-population
+  defect, inside a control. It now runs against a live agent pane.
 - **A mention is a third state, not a negative.** `MENTIONED-ONLY` means *no execution evidence*,
   which is not *evidence of no execution*. It counts as unknown and never as a pass.
 - **No secrets in source.** Tools needing the Daintree token read it from the user's own MCP
