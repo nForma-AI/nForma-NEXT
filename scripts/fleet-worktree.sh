@@ -90,6 +90,34 @@ check)
   # survived authoring.
   printf 'conventional location: %s\n' "$WT_DIR"
   printf '%s' "$report"
+  # ⛔ TWO PREDICATES, TWO PROPOSITIONS, AND THEY CURRENTLY DISAGREE.
+  #
+  # An earlier revision of this block said occupancy was NOT MEASURABLE from
+  # outside. That is falsified. It measured SESSION cwd, found every pane under the
+  # main tree, and attached a cwd reading to an occupancy claim.
+  #
+  #   session cwd    would a `git checkout` HERE move files under other panes?
+  #                  -> YES, fleet-wide. All 8 agent panes launched in the main tree.
+  #   worktree HEAD  are agents doing their work in ISOLATION?
+  #                  -> YES. 9 of 10 role worktrees sit on a role-named branch.
+  #
+  # ⚠ NEITHER PREDICATE IS BROKEN. Agents `cd` per commit, so cwd answers "where was
+  # this session STARTED", never "where is this agent WORKING" — and a worktree on a
+  # role-named branch is positive evidence that work happened there. The defect was
+  # attaching one measurement to the other proposition.
+  #
+  # ⇒ This script already reads HEAD. It had the right instrument before anyone had
+  # the right question, which is why the fix is a sentence and not a rewrite.
+  #
+  # ⛔ What remains true, and is the part worth printing: a role worktree existing
+  # does not stop any pane from working in the shared tree, and the #19 hazard lives
+  # there. Provisioning is necessary and not sufficient.
+  printf '\n⚠ These states are PROVISIONING. Occupancy is a different question and is\n'
+  printf '  answerable — by worktree HEAD, not by session cwd: a role tree sitting on a\n'
+  printf '  role-named branch is evidence that work happened in it.\n'
+  printf '  ⇒ But provisioning does not PREVENT a pane working in the shared tree, and\n'
+  printf '    a `git checkout` there still rewrites every other pane files. The #19\n'
+  printf '    hazard lives in that gap, not in whether a tree exists.\n'
   if [ "$n_outside" -gt 0 ]; then
     printf '\n⚠ %d role(s) isolated OUTSIDE the conventional location:%s\n' "$n_outside" "$outside_list"
     printf '  Attributable but invisible to any check keyed on that directory.\n'
@@ -111,7 +139,8 @@ check)
     printf '  rather than less likely. Run: %s create\n' "$0"
   fi
   [ "$n_missing" -gt 0 ] || [ "$n_outside" -gt 0 ] || [ "$n_dup" -gt 0 ] && exit 1
-  printf '\nall roles isolated in the conventional location\n'
+  printf '\nall roles provisioned in the conventional location\n'
+
   ;;
 create)
   if [ "$n_missing" -eq 0 ]; then
