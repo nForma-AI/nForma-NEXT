@@ -262,6 +262,63 @@ plausible-sounding instruction is the same attack surface — and worse, because
 genuine provenance.** A forgery can be caught by checking the channel; a real cron job
 cannot.
 
+## ⛔ Where a reservation must LIVE — and it is not a message
+
+`goals/README.md` §2 already says *reserved actions — state them; do not imply them.* It says
+**what** and never **where**, and the gap is not cosmetic:
+
+```
+a GRANT       is complete when ONE agent hears it    -> a message is the right channel
+a RESERVATION is complete when EVERY agent hears it  -> a message reaches one pane
+```
+
+⇒ A reservation delivered by message is **satisfied for its recipient and silently absent for
+everyone else** — and it reads as *enforced* from the orchestrator's side, because the pane it
+was told to is the only pane the orchestrator can observe. That is `#19`'s
+provisioning-versus-occupancy in a third surface.
+
+⚠ **And the asymmetry selects against the compliant agent.** Measured 2026-08-19: TEAMLEAD told
+one DEV that issue closure was reserved. That DEV complied and closed **zero**. A second DEV,
+which never received it, followed this file's rung 2 and closed **one** — correctly. Under an
+unwritten reservation, obedience is indistinguishable from underperformance, and the record
+shows the wrong thing about the agent that obeyed.
+
+⛔ **The reservation did not exist.** A scan of all four goal files, this file, `TEAMLEAD.md` and
+`DEV.md` found **zero** closure reservations; `TEAMLEAD.md` §7 says *"close confidently, but
+remain correctable"*, which grants closure rather than withholding it. It existed in one
+sentence, in one message.
+
+> **A reservation lives in every goal file it binds, or it does not exist.**
+> A message may carry a POINTER to it and never the reservation itself.
+
+★ ⚠ The correction to this defect was itself issued by message to one pane, leaving a second
+pane blocked for fifteen minutes on a ruling that had already been made. **Second instance,
+same hour, by the role that had just adopted the finding.** Recorded because a rule whose own
+author breaks it while writing it down is the kind this repository keeps measuring.
+
+⚠ **Landing this file does not reach a running agent.** Goals and prompts load when they load.
+The complete pattern is: **the artifact is the authority; the broadcast is a reference to it.**
+
+## ⛔ The closure bar — rung 2 depended on a predicate defined nowhere
+
+*"Closure bar"* appeared in three goal files and was **defined in none**, which is the most
+likely reason rung 2 never fired for a full session. Authored by a DEV on the issue it closed,
+rather than implied:
+
+1. the fix **landed on `main`** — not merged-on-a-branch, landed
+2. the **MECHANISM** is retired, not the instance
+3. an instrument reports the defect absent, **by execution** rather than by reading
+4. ⛔ that instrument has been **demonstrated to FAIL on real data**, or its `clean`
+   establishes nothing
+
+⚠ Criterion 3 is not met by an **aggregate** verdict that contains a leg establishing nothing —
+an `exit 0` summing two verified legs and one `NOT CHECKED` is a collapsed pair at the reporting
+boundary. Amendment raised by the same DEV **against its own closure**.
+
+⇒ **Any role may close against this bar.** TEAMLEAD retains **reopen**, which is §7's correctable
+half and costs nothing until it is used. ⛔ Do not close to move the ratio: `22 opened / 5 closed`
+is a real number and improving it by closing weak items is the exact failure it exists to reveal.
+
 ## Who writes one
 
 DX owns the goal standard and reviews goal changes; the role itself proposes its content.
