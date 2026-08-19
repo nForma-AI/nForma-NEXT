@@ -177,6 +177,24 @@ else
   note "scripts/fleet-worktree.sh not executable — worktree coverage UNMEASURED, not clean"
 fi
 
+section 'Repository self-checks'
+# ★ #89 measured 13 instruments and ONE call-shaped reference from outside any of
+# them — and that one was a fixture whose header says "Not run; scanned." A set of
+# instruments none of which is ever called is a citation network, not a toolchain.
+# These two are cheap, deterministic, and answer questions no reviewer reliably
+# answers by eye. ⚠ This pane still does not gate: exit code is always 0.
+for chk in scripts/check-tools-index.py scripts/check-goal-conformance.py; do
+  if [ ! -x "$chk" ] && [ ! -r "$chk" ]; then
+    note "$chk not present — that check is UNMEASURED, not passing"
+    continue
+  fi
+  if out=$(python3 "$chk" 2>&1); then
+    ok "$(basename "$chk") clean"
+  else
+    bad "$(basename "$chk") FAILED:"
+    printf '%s\n' "$out" | grep -E '^\s*(FAIL|⛔)' | head -4 | sed 's/^/        /'
+  fi
+done
 section 'Work left on merged branches'
 # ★ #89: an instrument with no caller is an argument. This one answers a
 # LAUNCH-TIME question — did anything get left behind since the last launch — and

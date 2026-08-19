@@ -61,6 +61,18 @@ request**, which is visible whether or not anyone remembers the rule.
    than discover it.** Four copies are at least *in* the file the agent already reads. A referenced
    document is **one more artifact a running agent has not loaded**, which makes this correct **and
    more dependent on the delivery gap below.**
+
+   ⛔ **A grant issued after the fact cannot bound the action it follows.** Acting first and
+   reporting after, with reasoning and an offer to reverse, is better than silence and is **not**
+   authorization.
+
+   > ⚠ **An agent that arms only what it is confident will be ratified has replaced the
+   > authorizer's judgement with its own prediction of that judgement.**
+
+   That is why *"I would have granted it"* makes the precedent **worse** rather than harmless: the
+   outcome being right is exactly what makes the substitution invisible. ⇒ Stated for reserved
+   actions generally, not for self-scheduling — the narrower framing is what let the substitution
+   be reasoned past the first time.
    ⛔ Every such list defers *upward* — `reserved to TEAMLEAD`, and TEAMLEAD's to the operator.
    **The topmost role's list must name what is reserved to the OPERATOR**, or the chain has no
    base case and the authority at the top is unbounded by construction rather than by decision.
@@ -80,6 +92,41 @@ request**, which is visible whether or not anyone remembers the rule.
    NOT-YET-MEASURED  the slot applies here; nothing has measured it; ASK before assuming
    DROPPED           the slot does NOT exist here · why · recorded, not deleted
    ```
+
+   ## ⛔ And a removal must not be what makes a claim true
+
+   `DROPPED` is the **legitimate** removal: the slot does not exist here, recorded with its reason.
+   This is the test that separates it from the illegitimate one.
+
+   > **Making a claim true by damaging the thing it describes is not a correction.**
+
+   Measured: a `/goal` pointer asserted a goal file *"had no Reserved section."* The heading was
+   present in **all six revisions the file had ever had**. The available way to satisfy the premise
+   was to **delete the section** — removing four reservations that actually bind. A second pointer
+   asserted a file was *"re-scoped to this repository"* and *"always scoped here"*; **neither was
+   true**, and that one happened to have no edit that could satisfy it. (#93)
+
+   ⇒ The pressure is not toward believing a false premise. It is toward **making the artifact match
+   it**, because that is the cheaper of the two ways to resolve a contradiction between a document
+   and an instruction about the document.
+
+   ⛔ **And the dangerous form is not deletion — it is NARROWING.** Deleting a whole section is
+   conspicuous and has an obvious victim. These do not:
+
+   ```
+   a calibration           "that number was never measured here"  -> delete it, premise satisfied
+   a caveat                "that limit does not apply"            -> remove it, premise satisfied
+   a checker's population  "that file is not in scope"            -> exclude it, premise satisfied
+   ```
+
+   ⚠ **Every one is a normal, defensible edit in isolation**, and the role that supplied this
+   narrowing had made three of them the same evening for good reasons. **The boundary is not
+   obvious from the inside**, which is why it needs to be a question rather than a judgement.
+
+   > **Before removing a caveat, a calibration, an exclusion or a scope line, ask whether the
+   > removal makes some claim true. If it does, that is the CLAIM's problem, not the artifact's.**
+
+   ⇒ A removal that survives that question is a `DROPPED`. One that does not is the premise winning.
 
    ⚠ `NOT-YET-MEASURED` and `DROPPED` are different and collapsing them loses the audit. The
    first says *someone should measure this*; the second says *there is nothing here to measure*.
@@ -211,8 +258,35 @@ does not move — a design property, not agent behaviour.
 
 1. **Clear a blocker on the BOARD** — not on *your* PR.
 
-   ⛔ **A rung item held by another agent is NOT yours to clear. Notify the owner and descend —
-   notifying *is* the clearing action available to you.** ⚠ And the notification **is the work**:
+   ⛔ **A rung item that is CLAIMED is not yours to take. Pick another.**
+
+   ⚠ The state is `claimed`, not `not-mine`, and the name picks the remedy — DEV1's correction to
+   the first version of this clause, with the measurement behind it:
+
+   ```
+   not-mine  -> "fall through to the next rung"    a property of the READER.
+                Says nothing to pane six, which re-derives the same diagnosis from scratch.
+   claimed   -> "someone is on it, pick another"   a property of the ITEM.
+                Visible to everyone who has not looked yet.
+   ```
+
+   ⛔ **And `claimed` is the only one of the two the substrate can express.** Every pane acts through
+   one credential (#4), so a claim resolves to the same login for all nine — it can carry *claimed*
+   and can **never** carry *whose*. A rule written around *not-mine* would depend on an identity the
+   board cannot represent. The naming is not a preference; it is what is expressible.
+
+   ⇒ **The predicted failure did not occur, and the real one did.** Five panes independently
+   diagnosed one conflicting PR via rung 1; **all five stopped at diagnosis and routed it to the
+   owner, none touched the branch.** The fleet handled *not-mine* correctly with the ladder silent
+   on it. What was lost was four re-derivations of one diagnosis.
+
+   ⚠ **Redundant is not worthless, and the remedy must not become "the second pane says nothing."**
+   Four of those five diagnoses told the owner something it did not have. ⇒ Claiming prevents
+   duplicated *effort on the same question*. A second reader taking a deliberately **different
+   angle** is not duplication and should proceed — say which angle, on the item.
+
+   ⇒ Where a claim is absent, the cheap substitute needs no substrate at all: **check the item for
+   an existing diagnosis before producing another one.** The durable record is already on the PR. ⚠ And the notification **is the work**:
    descending without it leaves the blocker exactly as blocked and turns rung 1 into a no-op that
    reports as followed.
 
@@ -243,7 +317,40 @@ does not move — a design property, not agent behaviour.
    that the defect is structural rather than attentional.** ⇒ **That makes the orchestrator the allocator of every rung, which is the
    bottleneck the goal standard exists to remove**, reintroduced by the ordering that removed it.
 
-   > **Claim the item on the board before working it. `gh issue edit <n> --add-assignee @me`.**
+   > **Claim the item on the board before working it: `gh issue edit <n> --add-assignee @me`,
+   > AND say which role you are in a comment.**
+
+   ⛔ **`@me` is not a discriminator, and querying it is actively wrong.** Every pane acts through
+   one credential (#4), so:
+
+   ```
+   $ gh api user --jq .login                     -> jobordu    (every pane)
+   $ gh issue list --state all --assignee @me    -> #60, #49, #16
+                                                    claimed by THREE DIFFERENT PANES
+   ```
+
+   ⇒ **A pane querying `@me` receives the whole fleet's claims as its own.** Measured: a role ran
+   that query expecting its own work, got two issues belonging to others, and had it acted would
+   have started exactly the item another pane was on — **the convergence this clause exists to
+   prevent, produced by this clause.**
+
+   ⚠ ⛔ **And the analysis in this very section already said so**: *a claim can carry **claimed** and
+   never **whose**.* I wrote that and then prescribed `@me`, which is a *whose*-query. **The
+   mechanism contradicted its own stated limit, in the same paragraph** — a limitation written down
+   does not stop it being load-bearing.
+
+   ⇒ **Corrected use:**
+
+   ```
+   assignee PRESENT   -> CLAIMED by someone. Pick another item.        ← the bit that works
+   assignee = @me     -> ⛔ MEANINGLESS. Never query it, never read it as "mine".
+   who claimed it     -> a COMMENT naming the role. The role name is the only per-pane
+                         identity that survives one shared credential.
+   ```
+
+   ⚠ `NFORMA_ROLE` would be the substrate carrier for this and is **absent from all nine panes**,
+   so the comment is the available surface, not the good one. [NOT-YET-MEASURED — whether a
+   comment convention is honoured any better than the assignee field was]
 
    ⚠ The claim surface already exists and was never used: **0 of 26 open issues and 0 of 6 open PRs
    carried an assignee.** ⇒ The convergence was not a missing primitive. It was an unused field —

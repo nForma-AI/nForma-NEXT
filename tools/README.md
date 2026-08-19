@@ -21,10 +21,29 @@ code for "cannot open". So an exit 2 read alone cannot separate *this tool estab
 from *this tool was never here*. Measured: a role ran `grant-check.py` against a ref where it had
 not yet merged, got `2`, and nearly recorded "VOIDs correctly per convention".
 
-⇒ The discriminator is **stderr, not the code**: a real VOID prints a line beginning `VOID:`; a
-missing file prints the interpreter's error. **Establish the tool exists before believing what
-its exit code means** — the same *check existence before believing the code* that catches the
-container-vs-contents family. ⚠ This is a property of every tool in this table, not of any one
+⇒ **Stopgap, and it is bounded — measured 6/6, nonzero exits only.** The *first line of stderr*
+separates runtime from convention:
+
+```
+2  python3: can't open file '…'      runtime — never ran
+2  usage: <tool> [-h] …              runtime — rejected its arguments
+2  VOID: …                           the convention
+1  Traceback (most recent call last) runtime — started and DIED PART-WAY
+1  (stderr empty)                    the convention — a real finding
+```
+
+⛔ **Note the `1` row, which is the dangerous one:** the crash path is loud and the legitimate
+path is **silent**, so a caller reading only the code logs a crash as a finding.
+`doctrine-version.py` did exactly this on a missing `import re`.
+
+⚠ **This is a stopgap, not the remedy, and three things bound it.** It relies on every tool
+honouring a stderr convention on every path, with nothing enforcing it; it requires reading a
+stream the caller demonstrably does not read (the incident above had the stderr right there);
+and no stream distinguishes *started and died part-way* from *never started*. ⇒ **#58 carries
+the ruling** — the discriminator must be positive evidence of execution, not an exit code — and
+a start line plus a terminal `RESULT:` line is the accepted form. **Establish the tool exists
+before believing what its exit code means.** ⚠ This is a property of every tool in this table,
+not of any one
 of them, which is why it is stated here rather than in a docstring.
 
 | tool | question | exit codes |
