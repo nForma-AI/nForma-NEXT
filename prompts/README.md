@@ -148,8 +148,16 @@ them at launch so they are never quietly forgotten:
   tab label is therefore a hint. `$NFORMA_ROLE` is the identity.
 - **A recipe cannot sequence.** All ten panes spawn concurrently through `Promise.allSettled`.
   There is no ordering, no inter-pane dependency, and no way to make one pane wait for another.
-  Post-launch sequencing requires Daintree actions/MCP at `action` tier, which the recipe cannot
-  grant itself.
+
+  Nor can a recipe launch its way around this. `daintree-assistant` — the built-in agent that
+  "creates worktrees, launches runs across your projects, watches their state" — *is* a legal pane
+  `type` (`Fi = new Set(["terminal","dev-preview",...Ae])`, where `Ae` is the full 18-entry agent
+  list). But its Daintree tools are gated on a `DAINTREE_MCP_TOKEN` minted per session by
+  `HelpSessionService`, and a recipe spawn does not go through that service — so an Assistant pane
+  launched from a recipe comes up with **no orchestration surface at all**. Supplying a token
+  through `env` makes it worse rather than better: an invalid or displaced token causes the pane to
+  *refuse to spawn* rather than degrade. Post-launch sequencing therefore requires Daintree
+  actions/MCP at `action` tier, which a recipe cannot grant itself.
 - **An agent cannot invoke a slash command.** `initialPrompt` is shell-quoted and passed as *argv*
   to the agent CLI, with newlines collapsed to spaces. Slash commands are expanded by the CLI's
   input layer; a model emitting `/rename X` produces text, not an effect. An earlier version of
@@ -186,6 +194,9 @@ Constraints worth knowing before hand-editing:
 - `agentModelId` and `agentLaunchFlags` pass schema validation and are then **discarded**.
 - `args` is split on whitespace, so it carries flag tokens only — no quoted multi-word values and
   no `$(...)` substitution.
+- `env` **survives** normalization for every pane type, agent and terminal alike. It is the
+  only pane field kept unconditionally — which is exactly why identity rides on it rather
+  than on `title` (overwritable) or `initialPrompt` (advisory).
 - One malformed `env` value drops the **entire pane**, not just that variable.
 - `exitBehavior` accepts `keep` / `trash` / `remove`. `restart` appears in the schema but the
   normalizer rejects it.

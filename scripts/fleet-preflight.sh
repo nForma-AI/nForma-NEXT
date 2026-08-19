@@ -81,6 +81,9 @@ cat <<'LIMITS'
     authoritative identity is $NFORMA_ROLE inside each pane, not the tab label.
   · A recipe cannot sequence: all 10 panes spawn concurrently via
     Promise.allSettled. There is no ordering and no inter-pane dependency.
+    A daintree-assistant pane does not solve this — it is a legal pane type,
+    but launched from a recipe it has no MCP token and so no orchestration
+    tools at all.
   · initialPrompt newlines are collapsed to spaces before the prompt is passed
     as argv, and slash commands cannot be invoked by an agent at all.
 LIMITS
