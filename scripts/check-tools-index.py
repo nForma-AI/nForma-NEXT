@@ -54,6 +54,17 @@ PROSE = re.compile(r"^\*\*`([A-Za-z0-9_.-]+\.py)`\*\*", re.M)
 # NOT CHECKED. (Found by ARCHITECT on PR #51, by exercising the three natural phrasings.)
 COUNT = re.compile(r"^(?:(" + "|".join(WORDS) + r")|(\d+))\s+tools\b", re.M | re.I)
 
+# ⛔ A LOOSE second pass, because "no numeral matched" is a COLLAPSED PAIR otherwise:
+#     (a) there is no count      -> the no-count policy is being followed
+#     (b) there is a count in a shape COUNT does not anchor -> the policy is violated AND the
+#         count is unguarded, which is the state a reader most needs to know about
+# Reported identically before this, so a WRONG count could sit in the header and the run would
+# print NOT CHECKED and exit 0. Measured: "There are nine tools here" against twelve on disk
+# passed clean, as did "**Twelve** tools" — and this file bolds nearly every emphasis, so the
+# bolded form is the LIKELIEST reintroduction here. (Found by DEV2, closing #27.)
+LOOSE = re.compile(r"\b(?:(" + "|".join(list(WORDS)[1:]) + r")|(\d+))\b[^.\n]{0,24}?\b(?:tools|instruments)\b",
+                   re.I)
+
 
 def parse_count(tok):
     if tok.isdigit():
@@ -101,8 +112,15 @@ def check(root):
 
     m = COUNT.search(text)
     if not m:
-        out.append("  ----  no hand-maintained numeral found — that leg NOT CHECKED"
-                   " (dropping it is #27's other valid remedy, not a defect)")
+        head = text.split("\n\n")[0] + "\n\n" + (text.split("\n\n") + [""])[1]
+        loose = LOOSE.search(head)
+        if loose:
+            failed = True
+            out.append(f"  FAIL  no anchored numeral, but {loose.group(0)!r} looks like a count this"
+                       " check cannot verify — an UNGUARDED count is not the same as no count")
+        else:
+            out.append("  ----  no hand-maintained numeral found — that leg NOT CHECKED"
+                       " (dropping it is #27's other valid remedy, not a defect)")
     else:
         stated = parse_count(m.group(1) or m.group(2))
         if stated != len(actual):
@@ -151,6 +169,23 @@ def selftest():
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  known-negative: a new tool with no row exits 1 and "
               f"names it (got {rc})")
+
+        # ⛔ an UNGUARDED count must not read as NO count — the third state
+        (t / "gamma.py").unlink()
+        (t / "README.md").write_text(good.replace(
+            "Two tools, each built", "**Two** tools, each built"))
+        rc, lines = check(root)
+        hit = rc == 1 and any("looks like a count" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  third state: a count this check cannot anchor exits 1 "
+              f"rather than reporting NOT CHECKED (got {rc})")
+
+        # ...and a genuinely absent count still reports NOT CHECKED and passes
+        (t / "README.md").write_text(good.replace("Two tools, each built", "Each built"))
+        rc, lines = check(root)
+        hit = rc == 0 and any("NOT CHECKED" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  no count at all still exits 0 as NOT CHECKED (got {rc})")
 
         # instrument failure must not read as a pass
         (t / "README.md").write_text("# Fleet instruments\n\nnothing here\n")
