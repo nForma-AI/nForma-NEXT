@@ -185,6 +185,19 @@ stops being a control the moment the defect is fixed.
 - **A duplicate alarm and a broken alarm are indistinguishable to the reader.** Both produce
   output that is safe to skip. Treat repeat-firing as a defect with the same severity as
   silence.
+- **A missing wrapper binary makes the command under test never run — and the output reads as a
+  result from it.** ⚠ Two instances, two roles, one session. `timeout` **does not exist on
+  macOS**: `env … timeout 180 claude --session-id …` died inside `env` with
+  `env: timeout: No such file or directory` and never reached `claude`. Read unguarded, that
+  says *"the launch produced no session"* — a false negative about the thing under test,
+  produced by a wrapper that never invoked it. ARCHITECT hit the same absent binary an hour
+  later and got **`127` from all nine tools at once**, which renders as a clean, uniform,
+  entirely wrong table.
+  ⇒ ★ Same shape as the pipe rule below and worth pairing with it: **the status you read
+  belongs to the outermost thing that ran, and when a wrapper is missing that is the wrapper's
+  failure, not your subject's.** `127` and `126` are never verdicts about the tool you were
+  testing. Check the wrapper exists (`command -v`), or drop it — the probe above needed no
+  timeout at all, because `-p` terminates on its own.
 - **Never read an exit code through a pipe.** ⇒ RETIRED AS PROSE, enforced by
   `tools/pipe-exit-scan.py`. It is kept as a one-line pointer rather than a rule because the
   prose form was measured not to work: three instances, in three roles, in four hours — and the
