@@ -502,6 +502,13 @@ is not.
 File it where it survives you. Do not send it as a message; a report routed
 through another pane consumes the context of whoever must act on it.
 
+⚠ **Put your session id in the body** — the 8-character prefix of your transcript
+filename. Without it, *"has this session already reported?"* is answerable only
+from a local state file that dies with whoever kept it, and the alternative is
+re-asking an agent to spend context on a report it has already delivered.
+Measured: of the first two reports filed, one carried its id and one did not, so
+the dedupe could not be derived and had to be remembered instead.
+
 > **DX cannot ask for what it does not know happened.**
 > A pull-only channel measures DX's imagination, not the fleet's friction.
 
