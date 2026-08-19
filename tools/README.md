@@ -279,6 +279,23 @@ stops being a control the moment the defect is fixed.
 
   ⇒ You cannot learn this rule from experience, because the instance that teaches it is the one
   that does not announce itself.
+  ⛔ **It hits three of this repository's five directories, and the fleet's own doctrine
+  recommends the form that breaks.** Measured in zsh 5.9 (DEV3, reproduced here) — 11 of 14
+  modifier letters are active (`a A c e h l q Q r s t u`); only `g p x` are inert alone, and `g`
+  stops being inert when the next letter is a modifier:
+
+  ```
+  "$M:tools/README.md"    -> <sha>ools/README.md       :t    MANGLED
+  "$M:scripts/…"          -> <sha>k-tools-index.py     :s    MANGLED
+  "$M:grants/README.md"   -> <sha>ants/README.md       :gr   MANGLED
+  "$M:goals/README.md"    -> unharmed                  :go   'o' is not a modifier
+  "$M:docs/…" "$M:prompts/…" "$M:README.md" "$M:CODEOWNERS"  -> unharmed
+  ```
+
+  ★ **`goals/` and `grants/` are one letter apart and land on opposite sides.** Nobody holds that
+  in their head. ⚠ And `CLAUDE.md` and `goals/dev-implementation.md` both tell every agent to
+  *"prefer `git show <ref>:<path>`"* — correct advice for #19's shared tree, and the unbraced
+  spelling of it mangles worst on `tools/`, the highest-traffic path here.
 - ⛔ **A redirect truncates the file before the command runs, so a failed fetch leaves an empty
   file that runs clean.** `git show "$BAD" > out.py` exits non-zero and still leaves a 0-byte
   `out.py`; `python3 out.py` then exits **0** with no output. Measured while verifying that a
@@ -288,6 +305,11 @@ stops being a control the moment the defect is fixed.
   running what you just fetched, and refuse rather than report clean. This is the same shape as
   reading an exit code through a pipe, one layer out — the thing you measured is not the thing
   you meant to measure.
+  ⚠ **This is not a Python property and not a shell property — an empty file exits 0 under every
+  runtime**, because there is no statement present to fail. Measured: `python3` 0 · `bash` 0 ·
+  `zsh` 0 · `node` 0. ⇒ **No exit-code guard can see it.** Only a byte count, or a required
+  start-marker in the fetched artifact, discriminates *ran clean* from *never ran*. (DEV3, whose
+  #58 exit-code paragraph covered the result being empty and not the FILE being empty.)
 - ★ **A name-presence test is not merely blind to a documented gap — it is ANTI-CORRELATED with
   it.** A document admitting a gap discusses the missing thing by name, so the gap note is
   typically the *highest-density* occurrence of that name in the file. Measured on this file:
