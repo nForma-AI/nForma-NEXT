@@ -43,7 +43,23 @@ request**, which is visible whether or not anyone remembers the rule.
    reservation, **obedience is indistinguishable from underperformance** — and the zero reads as
    thoroughness, so nothing prompts anyone to look for the cause.
 
-   ⇒ **A reservation lives in every goal file it binds. Never in a message.**
+   ⇒ **A reservation lives in ONE document that every goal file it binds REFERENCES. Never in a
+   message, and never as four copies.**
+
+   ⚠ The first draft of this clause said *"in every goal file it binds"*. **That is wrong**, and the
+   reason generalises: four copies with nothing syncing them is the hand-maintained-count defect at
+   the doctrine layer — one count in this repository drifted **five times in one day, by five
+   authors**. A reservation duplicated four ways drifts the same way, and **its drift produces no
+   error.**
+
+   ⇒ It is also the reference-not-the-thing rule in a third medium. A goal **file** carrying a copy
+   of a reservation is the same defect as a **message** carrying one: the copy is
+   authoritative-looking and unsynced. The goal file **points**.
+
+   ⛔ **And this is not free — it trades a sync defect for a delivery one, so state the cost rather
+   than discover it.** Four copies are at least *in* the file the agent already reads. A referenced
+   document is **one more artifact a running agent has not loaded**, which makes this correct **and
+   more dependent on the delivery gap below.**
    ⛔ Every such list defers *upward* — `reserved to TEAMLEAD`, and TEAMLEAD's to the operator.
    **The topmost role's list must name what is reserved to the OPERATOR**, or the chain has no
    base case and the authority at the top is unbounded by construction rather than by decision.
@@ -136,6 +152,34 @@ request**, which is visible whether or not anyone remembers the rule.
    ⚠ A contract that names only the permitted path is incomplete. Name what an agent does
    when it needs something the operator alone can give — otherwise the rule forbids the wrong
    route without supplying the right one, and the traffic finds its own way.
+
+## ⛔ Durable is not delivered — and this fleet has no complete-delivery channel but a relaunch
+
+Making a rule durable fixes **provenance**, not **arrival**. A pointer broadcast to nine panes has
+**exactly the delivery property of the rule it points at**: one pane at a time, satisfied for whoever
+was told, silently absent for everyone else.
+
+```
+content durable   -> git, reviewable, attributable        SOLVED
+delivery complete -> every bound agent has actually read it   NOT SOLVED
+```
+
+⇒ `prompts/` and `goals/` load **at session start**. A running agent never re-reads them, so an
+amendment reaches **zero** running agents. **The only channel that delivers to every pane is a
+relaunch** — which makes a relaunch a *doctrine-delivery mechanism* and not merely a substrate test.
+
+★ **The read is available on demand; nothing triggers it.** Any pane can run
+`git show origin/main:goals/README.md` at any moment — the capability is present and unused, which
+is this fleet's most repeated shape. The gap is a **trigger**, not a primitive.
+
+⇒ Candidate, **proposed and deliberately NOT armed**: a watch on `git log origin/main -- goals/ prompts/`
+that notifies a pane when its own doctrine changes under it. ⛔ Whether any pane arms one is a
+scheduler-level decision and the scheduler is TEAMLEAD — *an agent that arms only what it is confident
+will be ratified has replaced the authorizer's judgement with its prediction of that judgement*, and
+that clause is two sections above this one.
+
+⚠ Unmeasured: whether a notified agent re-reads, or notes the notification and continues on the copy
+it loaded. [NOT-YET-MEASURED]
 
 ## ⚠ A self-dispatch list must be able to return EMPTY
 
@@ -230,10 +274,25 @@ does not move — a design property, not agent behaviour.
    ```
    1. the fix LANDED ON MAIN            — not merged-on-a-branch, landed
    2. the MECHANISM is retired          — not the instance
-   3. an instrument reports the defect absent — BY EXECUTION, never by reading
+   3. an instrument reports the defect absent — BY EXECUTION, never by reading,
+      ⛔ AND EVERY LEG OF THAT VERDICT MUST ITSELF BE A READING
    4. that instrument has been shown to FAIL on real data
       ⛔ otherwise its "clean" establishes nothing
    ```
+
+   ⛔ **Criterion 3 does not accept an aggregate.** An exit code that folds VERIFIED together with
+   ESTABLISHED-NOTHING does not satisfy it, whatever it aggregates to. The usable test needs no
+   source-reading:
+
+   > **Ask the instrument what it did NOT check. If it cannot tell you, it cannot satisfy
+   > criterion 3.**
+
+   ⚠ This constrains the **reader of a verdict**, not the instrument — `tools/` already handles the
+   honest case with exit `2`, and the measured defect was an unchecked leg **folded into a passing
+   aggregate**. ⛔ And its own weakness is recorded by its author: the closure that produced it
+   **already stated "the numeral leg is not checked" in prose**, and the inference was wrong anyway.
+   **Writing a limitation down does not stop it being load-bearing.** Treat criterion 3 as the
+   weakest of the four until something scans for it.
 
    ⚠ **Criterion 4 is the load-bearing one**, and the first closure to meet it did so **by accident**:
    the same checker had been run against `main` forty minutes earlier on unrelated work and returned
