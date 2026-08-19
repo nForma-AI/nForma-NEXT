@@ -185,7 +185,12 @@ def selftest():
 
 
 def main():
-    if "--selftest" in sys.argv:
+    # ⛔ `--self-test` is the directory convention; six tools use it and this file
+    # was the only `--selftest`. A known-positive reachable only under a name
+    # nobody would guess is worse than an absent one, because its existence has
+    # been ASSERTED. A reviewer pointed the tool at the fixture, got the normal
+    # scan, and nearly recorded that as a clean negative.
+    if "--self-test" in sys.argv or "--selftest" in sys.argv:
         return selftest()
     files = tracked()
     if not files:
@@ -198,7 +203,7 @@ def main():
         if not os.path.exists(p):
             continue
         if p.startswith("tools/testdata/"):
-            continue          # fixtures are scanned only by --selftest
+            continue          # fixtures are scanned only by --self-test
         if is_shell(p):
             scanned += 1
             findings += [(p, *h) for h in scan_shell(p)]
@@ -209,11 +214,31 @@ def main():
         print("⛔ zero scannable files — ESTABLISHED NOTHING, not clean.", file=sys.stderr)
         return 2
 
+    # ★ The control runs on EVERY scan, not only under a flag. `0 findings` is the
+    # output this tool almost always produces, and it is indistinguishable between
+    # "nothing matched" and "the matcher is broken" unless something known-positive
+    # fires in the same run. Cheap: three regex applications against a tracked file.
+    kp = [h for h in scan_shell(SELFTEST_POSITIVE) if "MUST NOT" not in h[1]]
+    if len(kp) < 3:
+        print(f"⛔ CONTROL FAILED: the known-positive fixture matched {len(kp)} of 3 "
+              "idioms. The matcher cannot fire, so a finding count from this run — "
+              "including zero — establishes NOTHING. No verdict is emitted.",
+              file=sys.stderr)
+        return 3
+
     for path, n, src, why in findings:
         print(f"{path}:{n}")
         print(f"    {src}")
         print(f"    ⇒ {why}")
-    print(f"\n{len(findings)} finding(s) across {scanned} scanned file(s).", file=sys.stderr)
+    print(f"\n{len(findings)} finding(s) across {scanned} scanned file(s). "
+          f"known-positive fired {len(kp)}/3.", file=sys.stderr)
+    print("⛔ SCOPE: COMMITTED FILES ONLY. Every observed instance of this defect — six, "
+          "four roles, one day — was an ad-hoc shell command, and NONE was in a committed "
+          "file. So `0 findings` means NO COMMITTED FILE CONTAINS IT. It is not evidence "
+          "about the population the defect actually lives in, which this tool structurally "
+          "cannot see. ⇒ ADDABLE — NEEDS A DIFFERENT INSTRUMENT: a PreToolUse hook is the "
+          "only surface where those commands exist; matcher measured at 2.5%% fire / 80%% "
+          "precision, mechanism untested, not installed.", file=sys.stderr)
     print("⚠ Matched on SHAPE after stripping comments and skipping non-fenced prose. "
           "Occurrences inside comments, and inline `PIPESTATUS` in prose, are MENTIONS and "
           "are deliberately not reported — this repo's own warning paragraph is one, and "
