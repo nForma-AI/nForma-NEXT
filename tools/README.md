@@ -32,7 +32,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |
-| `stranded-branches.py` | did any merged PR leave work behind on its branch? | 0 clean · 1 stranded · **2 established nothing** |
+| `stranded-branches.py` | has any merged PR's branch got commits with no equivalent change upstream? | 0 none · 1 unmatched commits · **2 established nothing** |
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
 
 ## What each one is for
