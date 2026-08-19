@@ -40,7 +40,16 @@ Per `goals/README.md` §4, adopted from ARCHITECT and binding for `goals/`:
 [measured: nForma-NEXT <date>]    MEASURED-HERE
 [measured: Blazing-Back <date>]   INHERITED — ⚠ not re-measured here, do NOT act on the number
 [NOT-YET-MEASURED]                the slot applies here; nothing has measured it; ASK
+DROPPED                           the slot does NOT exist here · why · recorded, not deleted
 ```
+
+⚠ `NOT-YET-MEASURED` and `DROPPED` are different and collapsing them loses the audit: the first
+says *someone should measure this*, the second says *there is nothing here to measure*.
+
+⛔ **Anchor every number with an as-of time and write it in the PAST TENSE.** A dated measurement
+in the present tense decays into a false claim, silently. This file has already done it once —
+see the ladder measurement below, which was true when written and false 94 minutes later. Write
+*measured `<value>` at `<date time>`; re-measure before relying on it.*
 
 ⛔ The discriminator is **per sentence, not per section.** A reserved action is doctrine
 (*merging is reserved*) whose trigger list is a calibration (*and `gh pr create` counts, because
@@ -164,14 +173,52 @@ revision carried. The ordering is not obvious and the rungs are ordered highest-
 ⚠ The rationale numbers in `goals/README.md` (36 opened / 0 closed / 26 open PRs / 22 blocked)
 are **not ours.** [measured: Blazing-Back 2026-08-19]
 
-**This board, measured 2026-08-19:** `0 open PRs · 11 open issues · 4 closed · 8 PRs, all
-merged`. [measured: nForma-NEXT 2026-08-19]
+**This board was measured twice.** Both readings are kept, because the pair is worth more than
+either — and the second falsified a sentence the first revision of this file stated in the
+present tense.
 
-⇒ With zero open PRs, **rungs 1 and 3 are currently empty by measurement.** That is worth
-stating rather than assuming: `goals/README.md` requires a ladder that can report empty, and on
-this board it demonstrably can. The ratio the ordering was designed against — a backlog
-draining slower than it fills — **has not been measured here and must not be assumed from the
-other estate's numbers.** [NOT-YET-MEASURED — no open/close rate over time for this repository]
+```
+2026-08-19 20:22Z     0 open PRs · 11 open issues ·  4 closed ·  8 PRs merged
+2026-08-19 21:56Z     2 open PRs · 25 open issues ·  4 closed · 34 PRs merged
+                        ^ both CONFLICTING
+```
+
+⇒ **Re-measure before relying on either. Neither describes now.**
+[measured: nForma-NEXT 2026-08-19 21:56Z]
+
+★ **The ladder was measured empty at rungs 1 and 3, and was occupied 94 minutes later.** The
+first revision wrote *"rungs 1 and 3 are currently empty by measurement"* — true when written,
+false within the hour, and nothing marked the transition. `goals/README.md` §4 now requires an
+as-of anchor and the past tense, citing that exact sentence. This is the worked example, kept
+here rather than quietly corrected: **a dated measurement in the present tense decays into a
+false claim, and the decay is silent.**
+
+⇒ So the ladder *can* report empty on this board — which is the property the standard demands —
+but **"is empty" is never a fact about this repository, only about a timestamp.**
+
+### The open/close rate — MEASURED, and it is the ratio the ordering was designed against
+
+The previous revision marked this `NOT-YET-MEASURED`. It is now measured here, and the slot is
+filled with a local number rather than the other estate's:
+
+```
+full day  2026-08-19 00:01Z → 21:56Z     29 issues opened ·  4 closed
+last 94m  2026-08-19 20:22Z → 21:56Z      5 issues opened ·  0 closed · 26 PRs merged
+```
+
+[measured: nForma-NEXT 2026-08-19 21:56Z, `gh issue list --state all --limit 200` filtered on
+`createdAt`/`closedAt`; limit exceeded the population, so the read was not truncated]
+
+⛔ **Rung 2 has never fired on this board.** All four closed issues were closed in one sweep
+before the fleet's current session; **zero have closed since**, across 26 merged PRs. The
+pattern `goals/README.md` warns about — *a backlog growing faster than it drains reds nothing* —
+is not a hazard imported from the other estate. It is this repository's measured state, and it
+is more concentrated here (5 opened / 0 closed in 94 minutes) than the number that motivated the
+rule there (36 / 0 in a day).
+
+⚠ **This does not license skipping rung 1 to close things.** The order stands. It means rung 2
+is reliably non-empty and is being passed over, which is exactly the failure the ordering exists
+to prevent — every agent following the loop correctly while the board does not move.
 
 ⛔ **Report the empty rung; do not descend to rung 5 to stay busy.** *Maximum autonomy is not
 maximum activity.* An unassigned role is idle, not under-informed.
@@ -220,11 +267,28 @@ doing the orchestrator's job through a channel that should not exist. [measured:
 
 ### MEASURED-HERE
 
-- **Nine agents share one working tree.** A `git checkout` in any pane rewrites every other
-  pane's files — *including the role prompts they are currently running on*. Prefer
-  `git show <ref>:<path>` over checking anything out; use `git worktree add` for branch work.
-  ⚠ PR #22 landed worktree isolation but it applies **at next launch, not now** — landed ≠
-  loaded, the same gap as prose. [measured: nForma-NEXT 2026-08-19, #19]
+- **Per-role worktrees are PROVISIONED but not universally OCCUPIED — and the distinction is
+  the whole hazard.** The previous revision said *"nine agents share one working tree"*; that
+  was true when written and is now stale. At 21:56Z `git worktree list` showed eleven
+  worktrees under `.claude/worktrees/` — `architect`, `dev1`-`dev4`, `dev5`, `devops`, `dx` —
+  so PR #22 is **exercised**, not merely landed.
+
+  ⛔ **But provisioning is not occupancy.** At that same reading the shared tree at
+  `/Users/jonathanborduas/code/nForma-NEXT` was still checked out on `main`, and DEV5 was
+  operating from it while `.claude/worktrees/dev5` sat unused at a detached HEAD. **A worktree
+  that exists and a worktree an agent is actually in are different states**, and only the
+  second removes the #19 hazard. Check which one you are in — `git rev-parse --show-toplevel`
+  — before assuming isolation you were provisioned.
+
+  ⇒ Standing rule, unchanged by the provisioning: prefer `git show <ref>:<path>` over checking
+  anything out, and use a worktree for branch work. A `checkout` in the *shared* tree still
+  rewrites the role prompts every pane running there has loaded.
+  [measured: nForma-NEXT 2026-08-19 21:56Z, #19, #22]
+
+  ⚠ `.claude/worktrees/dev5` and `.claude/worktrees/dx` were at the **same detached commit**
+  (`c29aa60`) at that reading. Not diagnosed; flagged to DEVOPS. Two role-named worktrees
+  sharing a commit is either benign provisioning or a mis-binding, and those are not
+  distinguishable from the listing alone. [NOT-YET-MEASURED — cause unestablished]
 - **One git credential is shared by every pane**, so GitHub attributes all work to the same
   operator. **Name yourself in the PR body** — it is the only attribution layer that exists.
   [measured: nForma-NEXT 2026-08-19, #4]
