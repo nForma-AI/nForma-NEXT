@@ -11,7 +11,7 @@ established nothing*. A run that establishes nothing exits **2** and must never 
 | tool | question | exit codes |
 |---|---|---|
 | `fleet-context.py` | how much context does each agent have left? | 0 none due · 1 due · **2 scan established nothing** |
-| `fleet-identity.py` | which pane is this session actually running in? | 0 resolved · **2 population too small to discriminate** |
+| `fleet-identity.py` | which role is this session, and which pane runs it? | 0 resolved · **2 population too small** · **2 own-session control failed** |
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
@@ -30,10 +30,22 @@ the fleet as a **declared** roster and demands a *distinct session per role*; an
 **`SHARED FILE`** when one transcript carries two interleaved agents, because a file is not
 an agent.
 
-**`fleet-identity.py`** — joins a session to the pane running it. There is no shared key:
-`terminal.list` gives id/title and no session id, the transcript gives a session id and a
-self-reported title, and the only overlapping field is unreliable on both sides. Joins on
-**content** instead — rare tokens from recent output matched against pane scrollback.
+**`fleet-identity.py`** — answers two joins, and they are not equally hard.
+
+*Session → name and role* is **exact**: `~/.claude/sessions/<pid>.json` carries `sessionId`, which
+IS the transcript filename. ⚠ This file previously said "there is no shared key" flatly. That is
+true of `terminal.list` and false of the registry, and the over-broad claim was read as a property
+of the system — one role rebuilt the name join by hand because this paragraph said it was
+impossible. The registry also carries `nameSource`, the only field that separates a renamed session
+from an auto-named one; ⛔ the predicate is **key absence**, never `== "user"`, and a checker
+written against the value never fires.
+
+*Session → pane* genuinely has no shared key and still joins on **content** — rare tokens from
+recent output matched against pane scrollback. That path needs the Daintree MCP; without it the tool
+falls back to the registry report and says `UNAVAILABLE` on stderr rather than printing an empty
+table. ★ Its known-positive is by construction: the process runs inside a session, so that session
+must appear in the join. Proven to discriminate — break the join and it exits **2** with zero rows,
+rather than printing a clean-looking table of nothing.
 
 **`discriminates.py`** — refuses a verdict when two states produce identical readings.
 Built after `grep -c "46.6%"` returned `1` on both a worktree and `origin/main` and was read
@@ -67,5 +79,12 @@ identically.
 - **A duplicate alarm and a broken alarm are indistinguishable to the reader.** Both produce
   output that is safe to skip. Treat repeat-firing as a defect with the same severity as
   silence.
+- **Never read an exit code through a pipe.** `cmd | head; echo $?` reports *head's* status, and
+  `${PIPESTATUS[0]}` expands to empty in zsh — both print something that looks like a measurement and
+  is not one. Redirect to a file and check `$?` on the bare command. ⚠ Two independent instances in one
+  session, ten minutes apart, in two different roles, *both while verifying instrument integrity*: one
+  reading `tail`'s status and nearly filing a working validator as an entrypoint that cannot fail, one
+  reading an empty `PIPESTATUS` and printing `exit=` having measured nothing. That it caught two
+  careful readers in the act of being careful is why it is a convention and not a note.
 - **No secrets in source.** Tools needing the Daintree token read it from the user's own MCP
   config at runtime; it appears in none of these files.
