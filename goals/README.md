@@ -296,6 +296,21 @@ pane blocked for fifteen minutes on a ruling that had already been made. **Secon
 same hour, by the role that had just adopted the finding.** Recorded because a rule whose own
 author breaks it while writing it down is the kind this repository keeps measuring.
 
+⛔ **And the pointer half does not close it either.** A pointer broadcast to nine panes has the
+same delivery property as a rule broadcast to nine panes: **the content is now durable, the
+delivery is still one-pane-at-a-time.** What would close it is a pane reading this file on a
+schedule it does not need the orchestrator to trigger — and this fleet has no such mechanism
+except a relaunch, which loads every artifact fresh. ⇒ **Until then the reservation is durable
+and its delivery is not, and those are different properties.** Raised by the DEV that had just
+been blocked by the incomplete half.
+
+⚠ **The criterion-3 clause above is itself a rule, and a rule is a check with no execution
+record.** The closure it was written for **already contained** the sentence *"the numeral leg is
+not checked"* in its own what-this-does-NOT-assert section. The fact was recorded and the
+inference was still wrong. ⇒ **Writing a limitation down does not stop it being load-bearing.**
+Treat criterion 3's clause as the weakest of the four until something scans for it. Recorded by
+its own author.
+
 ⚠ **Landing this file does not reach a running agent.** Goals and prompts load when they load.
 The complete pattern is: **the artifact is the authority; the broadcast is a reference to it.**
 
@@ -307,7 +322,12 @@ rather than implied:
 
 1. the fix **landed on `main`** — not merged-on-a-branch, landed
 2. the **MECHANISM** is retired, not the instance
-3. an instrument reports the defect absent, **by execution** rather than by reading
+3. an instrument reports the defect absent, **by execution** rather than by reading — and
+   ⛔ **every leg of that verdict must itself be a reading.** An exit code that aggregates
+   VERIFIED with ESTABLISHED-NOTHING does not satisfy this criterion, whatever it aggregates
+   to. Before accepting a pass, enumerate what the instrument checked and what it **declined**
+   to check. *Usable test, no source-reading required:* **ask the instrument what it did NOT
+   check. If it cannot tell you, it cannot satisfy criterion 3.**
 4. ⛔ that instrument has been **demonstrated to FAIL on real data**, or its `clean`
    establishes nothing
 
