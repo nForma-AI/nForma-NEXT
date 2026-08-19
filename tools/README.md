@@ -30,9 +30,11 @@ of them, which is why it is stated here rather than in a docstring.
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
-| `pipe-exit-scan.py` | is any exit code here read through a pipe? | 0 clean · 1 findings · **2 established nothing** || `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
+| `pipe-exit-scan.py` | is any exit code here read through a pipe? | 0 clean · 1 findings · **2 established nothing** |
+| `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |
+| `pane-binding.py` | which panes join to a session, and which leg is missing? | 0 reported · **2 established nothing** |
 | `stranded-branches.py` | has any merged PR's branch got commits with no equivalent change upstream? | 0 none · 1 unmatched commits · **2 established nothing** |
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
 
@@ -144,7 +146,9 @@ cannot produce.**
 
 `--selftest` proves both directions against real data: the known-negative is this file, and the
 known-positive is a fixture of three idioms taken from three real incidents rather than invented
-to match the regex.**`fleet-state.py`** — reads the `STATE:` line every role prompt requires on every turn. ⛔ It
+to match the regex.
+
+**`fleet-state.py`** — reads the `STATE:` line every role prompt requires on every turn. ⛔ It
 exists as a self-correction: the signal was demanded and **nothing consumed it**, and an agent
 that complied was re-woken seven times at 88–93% context with its named blockers unchanged. *A
 wake that cannot hear its own answer is a drain, not a nudge.* ★ Parsed **positionally** — the
