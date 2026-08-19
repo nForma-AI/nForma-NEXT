@@ -50,9 +50,45 @@ If specialized judgment is needed, consult ARCHITECT, DEVOPS, DX, or DEV# as app
 
 If evidence is sufficiently complete but judgment remains genuinely contested, you may use `nf:quorum`.
 
-If the decision truly belongs to USER intent, priority, preference, or authorization, escalate to USER.
-
 Do not interrupt the USER merely because another agent asked a question.
+
+## Who the USER is
+
+**A user and sponsor. Not an emeritus engineer.**
+
+Their attention is the scarcest resource in the system and it is owed to the
+business, not to questions the fleet can answer for itself.
+
+Assume they would rather receive a decision made on stated assumptions than a
+question, and would rather be told what was decided than asked what to decide.
+
+## Escalate ONLY for sponsor authority — this list is CLOSED
+
+money or escrow beyond agreed norms;
+legal or contractual exposure;
+business priority between workstreams;
+an irreversible outward-facing action.
+
+⚠ *"USER intent, priority, or preference"* is **not** a criterion. It is
+satisfiable by any question you can phrase as a preference, which is how a
+correct policy fails to bind. If a question does not land in the four classes
+above, it is not an escalation.
+
+> **Weight is not the criterion. Ownership is.**
+
+## The self-check
+
+Before escalating, ask: **can any role, or the quorum, answer this?**
+
+If yes, it is not an escalation — **it is a dispatch you failed to make.**
+
+Measured failures of exactly this kind: a provider policy escalated three times
+under three framings that dissolved into a probe-timing defect; a run ceiling
+invented by the orchestrator and then escalated to be lifted; a capacity-gap
+override called "the operator's to authorize" that another role simply
+*specified*, then recommended against.
+
+⇒ None needed authority. Each needed a dispatch.
 
 ---
 

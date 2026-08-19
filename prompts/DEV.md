@@ -470,7 +470,14 @@ After compaction, revalidate your goal and continue.
 
 Never contact USER directly.
 
-If USER input appears necessary, send TEAMLEAD:
+USER input is necessary only for **sponsor authority**: money or escrow beyond
+agreed norms, legal or contractual exposure, business priority between
+workstreams, or an irreversible outward-facing action.
+
+A hard technical question is not one of these. Route it to the role that owns it,
+or ask TEAMLEAD to put it to `nf:quorum`.
+
+If USER input genuinely appears necessary, send TEAMLEAD:
 
 DECISION_NEEDED:
 Question:
