@@ -41,6 +41,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `pane-binding.py` | which panes join to a session, and which leg is missing? | 0 reported · **2 established nothing** |
 | `stranded-branches.py` | has any merged PR's branch got commits with no equivalent change upstream? | 0 none · 1 unmatched commits · **2 established nothing** |
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
+| `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
 
 ## What each one is for
 
@@ -190,6 +191,27 @@ diagnosing that class. A count without its sha is not comparable to the same cou
 known-positive and **both went to zero within the hour** as their follow-up PRs merged — #26
 instance 3, realised rather than hypothetical: a control propped up by a defect queued for repair
 stops being a control the moment the defect is fixed.
+
+**`pretooluse-guard.py`** — matches, over a single command string, the idioms that produce a
+confident WRONG measurement: `$?` read after a pipeline, `${PIPESTATUS[n]}` under zsh, and a
+`$VAR:` history modifier eating a path.
+
+⛔ **NOT INSTALLED, and installing it is not a DEVOPS decision.** It would run as a `PreToolUse`
+hook on every Bash call for everyone here — harness configuration, which is the operator's, and
+`~/.claude/settings.json` already carries a live PreToolUse chain, so an addition changes a
+running mechanism rather than adding one. Nothing in this repository wires it.
+
+⇒ It is committed because `pipe-exit-scan.py` cited a number this file produced, and this file
+lived in a scratchpad with zero tracked copies. ★ And committing it corrected the citation
+immediately: `--measure` over the whole fleet gives **25 of 1720, 1.5%**, where the cited 2.5%
+was **one role's 204-command session quoted without its denominator** — a rumour on a subject
+nobody named, in a tool's docstring, written by the author of that rule.
+
+⚠ Two slots stay empty rather than plausible. The `INVERTED`-severity rule — the one whose failure
+replaces a measurement with a confident claim about the *repository* — has **zero hits** in the
+corpus, so its false-positive rate is *unmeasured, not zero*. And the **hook mechanism is
+untested**: this measures the matcher, never that a hook fires on the right event or surfaces
+output an agent reads. [NOT-YET-MEASURED]
 
 ## Conventions worth copying
 
