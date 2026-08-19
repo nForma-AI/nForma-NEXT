@@ -214,9 +214,12 @@ workarounds against the third.
 ⇒ Exit-2-for-established-nothing needs its second half: **established nothing, AND here is who could
 change that.** Written `ADDABLE — <who>: <what>`.
 
-⚠ Swept: `daintree-control.py` (both paths), `fleet-identity.py`, `stranded-branches.py`. **NOT
-swept:** `fleet-context.py`, `discriminates.py`, `wake-yield.py`, `fleet-state.py`, and tools owned by
-other roles. Their refusal messages are **unread, not remedy-free**. [NOT-YET-MEASURED] (#73)
+⚠ Swept: `daintree-control.py` (both paths), `fleet-identity.py`, `stranded-branches.py`,
+`fleet-context.py`, `fleet-state.py`. **`discriminates.py` and `wake-yield.py` need no annotation** —
+their refusals are *the verdict*, not an obstacle: a non-discriminating comparison and an
+un-analysable interval have no remedy beyond a different input, and inventing an `ADDABLE` line for
+them would be a remedy slot filled to look complete. **NOT swept:** tools owned by other roles.
+[measured: nForma-NEXT 2026-08-19] (#73)
 
 ## Conventions worth copying
 

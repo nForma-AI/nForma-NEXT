@@ -99,7 +99,10 @@ def main():
     # least one session must carry a parseable STATE line. If none does, the parser is
     # broken or the prompts never landed — either way the run established nothing.
     if not any(r["state"] for r in rows):
-        print("⛔ CONTROL FAILED — no session carries a parseable STATE line. Either the "
+        print("⛔ CONTROL FAILED — no session carries a parseable STATE line.\n"
+              "   ADDABLE — FIXABLE BY THE PANES: the STATE line is a self-report; if none\n"
+              "   parses, ask the roles to emit it rather than treating the fleet as silent.\n"
+              "   Either the "
               "requirement has not reached any prompt, or this parser is broken. Both make "
               "every 'no declaration' below meaningless: VOID, not 'nobody is blocked'.",
               file=sys.stderr)
