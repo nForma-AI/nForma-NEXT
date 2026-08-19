@@ -26,9 +26,28 @@ def session_depth(path):
     """Context depth = the prompt size of the LAST COMPLETED assistant turn.
 
     A lower bound: a session mid-turn is already higher than this reports.
-    Returns (name, depth) or (name, None) when no assistant turn carries usage.
+
+    ⚠ The returned name is SELF-REPORTED and is NOT an identity.
+
+    Measured: one transcript carries TEAMLEAD, IMPLEMENTER2 and DEV2, and the
+    records ALTERNATE — TEAMLEAD/DEV2/TEAMLEAD/DEV2 for a hundred cycles. A
+    rename does not oscillate, so these records are not a rename history and
+    last-wins is not "the current name": it is whichever record was written
+    last. Reading it that way produced a confident false claim that TEAMLEAD had
+    been renamed to DEV2, while both panes were in fact live and correctly named.
+
+    `names` is therefore the DISTINCT set. More than one entry means the file
+    cannot name its own session, not that the session was renamed.
+
+    ⛔ There is no key joining a session to a Daintree pane: terminal.list gives
+    id/title/worktreeId and no session id; the transcript gives a session id and
+    a self-reported title. The only shared field is the title, which is stale on
+    one side and duplicated on the other. Treat the depth as sound and the
+    attribution as unverified.
+
+    Returns (names, depth); names is an ordered list of every title seen.
     """
-    name, last = None, None
+    names, last = [], None
     with open(path, errors="replace") as fh:
         for line in fh:
             try:
@@ -36,16 +55,18 @@ def session_depth(path):
             except Exception:
                 continue                      # a partial trailing write is normal
             if rec.get("type") in ("custom-title", "agent-name"):
-                name = rec.get("customTitle") or rec.get("agentName") or name
+                n = rec.get("customTitle") or rec.get("agentName")
+                if n and n not in names:      # distinct set: these records ALTERNATE
+                    names.append(n)
             msg = rec.get("message")
             if isinstance(msg, dict) and msg.get("role") == "assistant" and msg.get("usage"):
                 last = msg["usage"]
     if last is None:
-        return name, None
-    return name, (last.get("input_tokens", 0)
-                  + last.get("cache_read_input_tokens", 0)
-                  + last.get("cache_creation_input_tokens", 0)
-                  + last.get("output_tokens", 0))
+        return names, None
+    return names, (last.get("input_tokens", 0)
+                   + last.get("cache_read_input_tokens", 0)
+                   + last.get("cache_creation_input_tokens", 0)
+                   + last.get("output_tokens", 0))
 
 
 def scan(active_within_s, limit):
@@ -65,13 +86,16 @@ def scan(active_within_s, limit):
                 idle_s = time.time() - os.path.getmtime(path)
                 if idle_s > active_within_s:
                     continue
-                name, depth = session_depth(path)
+                names, depth = session_depth(path)
             except Exception:
                 unreadable += 1
                 continue
             if depth is None:
                 continue
-            rows.append({"name": name or "(unnamed)",
+            rows.append({"name": (names[-1] if names else "(unnamed)"),
+                         "names": names,
+                         "ambiguous": len(names) > 1,
+                         "session": os.path.basename(path)[:8],
                          "depth": depth,
                          "pct": 100.0 * depth / limit,
                          "idle_min": int(idle_s // 60),
@@ -103,11 +127,19 @@ def main():
     else:
         for r in (due if args.quiet else rows):
             mark = "  <-- DUE" if r["pct"] >= args.threshold else ""
-            print(f"{r['depth']:>9,} {r['pct']:>6.1f}%  {r['name']:<14} "
-                  f"{r['idle_min']:>4}m  {r['project']}{mark}")
+            # A name this session also answered to earlier. Printing only the last
+            # one turns a guess into an assertion.
+            warn = f"  ⚠name-ambiguous({'/'.join(r['names'])})" if r["ambiguous"] else ""
+            print(f"{r['depth']:>9,} {r['pct']:>6.1f}%  {r['name']:<14} {r['session']}  "
+                  f"{r['idle_min']:>4}m  {r['project']}{mark}{warn}")
         if not args.quiet:
+            amb = sum(1 for r in rows if r["ambiguous"])
             print(f"\n{len(rows)} active session(s) across {roots} project dir(s); "
                   f"{len(due)} at/over {args.threshold:.0f}%", file=sys.stderr)
+            print("⚠ names are SELF-REPORTED, not identities, and cannot be joined to a "
+                  "Daintree pane. Depth is per-session and sound; attribution is not."
+                  + (f" {amb} session(s) answered to more than one name." if amb else ""),
+                  file=sys.stderr)
 
     # An unreadable transcript is not a low-context transcript. Say so loudly.
     if unreadable:
