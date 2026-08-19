@@ -77,7 +77,70 @@ SESSIONS = os.path.expanduser("~/.claude/sessions")
 PROJECTS = os.path.expanduser("~/.claude/projects")
 ROLES = ["TEAMLEAD", "ARCHITECT", "DEVOPS", "DX", "DEV1", "DEV2", "DEV3", "DEV4", "DEV5"]
 
-TOKEN_RE = re.compile(r"ROLE-READY\s+(\S+)\s+repo=(\S+)\s+branch=(\S+)")
+# DEV.md is a template shared by DEV1..DEV5, so the role->file map is not identity.
+PROMPT_FOR = {r: f"prompts/{r}.md" for r in ["TEAMLEAD", "ARCHITECT", "DEVOPS", "DX"]}
+PROMPT_FOR.update({f"DEV{i}": "prompts/DEV.md" for i in range(1, 10)})
+
+
+# ⚠ A hash short enough to collide is not a comparison. The bootstrap emits 12
+# chars; at 1 char a claim reads CURRENT roughly 1 in 16 times. Anything shorter
+# than this is UNVERIFIED — refused, not compared. (Reviewer's measurement: the
+# live half of a two-clause prefix test, where the second clause never differed
+# from the first across five cases and only widened what could pass.)
+MIN_DOCTRINE = 7
+
+
+def doctrine_verdict(claimed, current):
+    """WHICH VERSION of its prompt was this pane launched with?
+
+    Pure, so it can carry its own known-positive AND known-negative. It shipped
+    with neither in the first revision — the only control in this file to arrive
+    that way, in a file whose --self-test refuses every verdict when a control
+    fails. It asserted a standard it exempted its own newest check from.
+
+    Returns (state, note). States are distinct because the remedies are:
+      current     nothing
+      STALE       relaunch that pane; a prompt loads at session start
+      UNKNOWN     ⛔ ABSENT IS NOT CURRENT. A three-field token is SILENT about
+                  doctrine, and silence must never resolve to a pass — that is
+                  the #20 defect, where a fact with no slot rendered as absent
+                  rather than unknown.
+      UNVERIFIED  the comparison could not be made; not a pass either
+    """
+    if claimed is None:
+        return "UNKNOWN", ("no doctrine= in the token — this pane predates the hash step, "
+                           "so its prompt version is UNKNOWN, not current")
+    if len(claimed) < MIN_DOCTRINE:
+        return "UNVERIFIED", (f"doctrine={claimed!r} is shorter than {MIN_DOCTRINE} chars — "
+                              "too short to discriminate; refused rather than compared")
+    if not current:
+        return "UNVERIFIED", "could not hash the prompt at HEAD — doctrine UNVERIFIED, not verified"
+    if current.startswith(claimed):
+        return "current", ""
+    return "STALE", (f"doctrine STALE: pane launched with {claimed}, HEAD has {current[:12]} — "
+                     "this pane is executing a superseded prompt and cannot be told; "
+                     "a prompt loads at session start")
+
+
+def _hash_object(top, relpath):
+    """git hash-object of the file AS COMMITTED AT HEAD, not as it sits on disk.
+
+    ⛔ Deliberate: the working tree is shared and a peer's checkout moves it, so
+    hashing the file on disk would compare a pane's launch-time doctrine against
+    whatever branch someone else last checked out. HEAD of the pane's own tree is
+    the stable referent.
+    """
+    out = subprocess.run(["git", "-C", top, "rev-parse", f"HEAD:{relpath}"],
+                         capture_output=True, text=True)
+    return out.stdout.strip() if out.returncode == 0 and out.stdout.strip() else None
+
+# ⚠ `doctrine=` is OPTIONAL on purpose. Nine panes are running RIGHT NOW that
+# emitted a three-field token, and they cannot be retrofitted — a prompt loads at
+# session start. A consumer that required the new field would report the entire
+# live fleet as malformed, which is #39 in the other direction: the producer
+# changed, and the consumer asserted the NEW state space against old data.
+TOKEN_RE = re.compile(
+    r"ROLE-READY\s+(\S+)\s+repo=(\S+)\s+branch=(\S+)(?:\s+doctrine=(\S+))?")
 
 # Steps are written two ways in the bootstraps this fleet has actually used:
 #   legacy : "1. Run: /rename DEV2 2. Read prompts/DEV.md ..."
@@ -478,7 +541,13 @@ def audit(role, row):
         return v
 
     claimed_role, claimed_repo, claimed_branch = token.group(1), token.group(2), token.group(3)
-    v["token"] = f"ROLE-READY {claimed_role} repo={claimed_repo} branch={claimed_branch}"
+    claimed_doctrine = token.group(4)
+    # ⛔ Reconstruct from what was MATCHED, not from a fixed template. The previous
+    # version rebuilt the token from three fields; with a fourth present it would
+    # have displayed a token the pane never emitted — a quiet lie rather than a
+    # crash, which is the failure mode that survives review.
+    v["token"] = token.group(0)
+    v["doctrine"] = claimed_doctrine
 
     # ★ The claim/substrate cross-checks. These matter not because the token is
     # trusted but because prompts/README.md REQUIRES the line to quote values the
@@ -511,6 +580,28 @@ def audit(role, row):
     elif env["NFORMA_ROLE"] != role:
         v["negatives"].append(f"NFORMA_ROLE={env['NFORMA_ROLE']!r} but the registry name is "
                               f"{role!r} — the identity triple disagrees with itself")
+    # ★ WHICH VERSION of the doctrine is this pane executing?
+    #
+    # prompts/README.md argues the IDENTITY case correctly — `echo $NFORMA_ROLE`
+    # is an off-pane effect rather than a claim the agent makes about itself — and
+    # never makes the same argument for the prompt's CONTENT. ROLE-READY proves the
+    # file was reachable, not which version was read.
+    #
+    # A pane running stale doctrine is the party LEAST able to report that it is,
+    # so the hash is taken by the substrate at launch and merely quoted here.
+    # ⚠ No `DEV#` fallback: PROMPT_FOR already holds DEV1..DEV9 and has no `DEV#`
+    # key, so a regex fallback to it returned None for every input ever passed —
+    # measured on DEV3, DEV12, DEVX. It produced no wrong verdict, and it read as
+    # coverage while providing none. Removed rather than fixed; an unrecognised
+    # role lands in the honest UNVERIFIED path.
+    prompt = PROMPT_FOR.get(claimed_role)
+    cur = _hash_object(top, prompt) if (top and prompt) else None
+    state, note = doctrine_verdict(claimed_doctrine, cur)
+    v["doctrine_state"] = state
+    if state == "STALE":
+        v["negatives"].append(note)
+    elif state in ("UNKNOWN", "UNVERIFIED"):
+        v["unknowns"].append(note)
     return v
 
 
@@ -689,7 +780,26 @@ def self_test():
               "or silently passes an unmeasured value", file=sys.stderr)
     ok_neg = known_negative()
     ok_env = env_control(registry())
-    if ok_clean and ok_dirty and ok_claim and ok_neg and ok_env:
+    # ⛔ Known-positive #3, added because the doctrine check shipped with NEITHER a
+    # positive nor a negative — the only control here to do so, in a file that
+    # refuses every verdict when a control fails.
+    CUR = "abcdef0123456789abcdef0123456789abcdef01"
+    d_cur = doctrine_verdict(CUR[:12], CUR)[0]
+    d_stale = doctrine_verdict("ffffffffffff", CUR)[0]
+    d_absent = doctrine_verdict(None, CUR)[0]
+    d_short = doctrine_verdict("abc", CUR)[0]
+    d_nohash = doctrine_verdict(CUR[:12], None)[0]
+    print(f"  known-positive  doctrine current : {d_cur}")
+    print(f"  known-positive  doctrine stale   : {d_stale}")
+    print(f"  known-positive  doctrine absent  : {d_absent}   (ABSENT IS NOT CURRENT)")
+    print(f"  known-positive  doctrine short   : {d_short}   (refused, not compared)")
+    print(f"  known-positive  cannot hash HEAD : {d_nohash}")
+    ok_doc = (d_cur == "current" and d_stale == "STALE" and d_absent == "UNKNOWN"
+              and d_short == "UNVERIFIED" and d_nohash == "UNVERIFIED")
+    if not ok_doc:
+        print("  ⛔ the doctrine check does not discriminate a stale prompt from a current "
+              "one, or resolves a MISSING field to a pass", file=sys.stderr)
+    if ok_clean and ok_dirty and ok_claim and ok_neg and ok_env and ok_doc:
         # ⚠ "every", not a numeral. This line read "both controls" while printing
         # five, then ten, then thirteen — a hand-counted number describing a list
         # drifts on the next addition and emits no error while doing it. DEVOPS
@@ -699,7 +809,8 @@ def self_test():
         print("  ✅ every control discriminated: an unexecutable step from an executed one "
               "(identical ROLE-READY on both), a claim that matches substrate from one that "
               "does not, a MENTION of a step from a record of running it, and a wrapped or "
-              "substituted invocation from either")
+              "substituted invocation from either, and a stale prompt version from a current "
+              "one — with a MISSING doctrine field reading UNKNOWN rather than either")
         return True
     return False
 

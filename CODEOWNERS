@@ -5,3 +5,8 @@
 /prompts/      @jobordu
 /goals/        @jobordu
 /tools/        @jobordu
+
+# grants/ holds AD-HOC AUTHORIZATIONS. Review here is not a courtesy — it is the
+# only thing standing between a committed file and a capability, since the checker
+# that reads these records authenticates nothing itself (grants/README.md).
+/grants/       @jobordu
