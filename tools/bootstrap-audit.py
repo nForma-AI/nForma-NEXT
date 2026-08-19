@@ -77,7 +77,30 @@ SESSIONS = os.path.expanduser("~/.claude/sessions")
 PROJECTS = os.path.expanduser("~/.claude/projects")
 ROLES = ["TEAMLEAD", "ARCHITECT", "DEVOPS", "DX", "DEV1", "DEV2", "DEV3", "DEV4", "DEV5"]
 
-TOKEN_RE = re.compile(r"ROLE-READY\s+(\S+)\s+repo=(\S+)\s+branch=(\S+)")
+# DEV.md is a template shared by DEV1..DEV5, so the role->file map is not identity.
+PROMPT_FOR = {r: f"prompts/{r}.md" for r in ["TEAMLEAD", "ARCHITECT", "DEVOPS", "DX"]}
+PROMPT_FOR.update({f"DEV{i}": "prompts/DEV.md" for i in range(1, 10)})
+
+
+def _hash_object(top, relpath):
+    """git hash-object of the file AS COMMITTED AT HEAD, not as it sits on disk.
+
+    ⛔ Deliberate: the working tree is shared and a peer's checkout moves it, so
+    hashing the file on disk would compare a pane's launch-time doctrine against
+    whatever branch someone else last checked out. HEAD of the pane's own tree is
+    the stable referent.
+    """
+    out = subprocess.run(["git", "-C", top, "rev-parse", f"HEAD:{relpath}"],
+                         capture_output=True, text=True)
+    return out.stdout.strip() if out.returncode == 0 and out.stdout.strip() else None
+
+# ⚠ `doctrine=` is OPTIONAL on purpose. Nine panes are running RIGHT NOW that
+# emitted a three-field token, and they cannot be retrofitted — a prompt loads at
+# session start. A consumer that required the new field would report the entire
+# live fleet as malformed, which is #39 in the other direction: the producer
+# changed, and the consumer asserted the NEW state space against old data.
+TOKEN_RE = re.compile(
+    r"ROLE-READY\s+(\S+)\s+repo=(\S+)\s+branch=(\S+)(?:\s+doctrine=(\S+))?")
 
 # Steps are written two ways in the bootstraps this fleet has actually used:
 #   legacy : "1. Run: /rename DEV2 2. Read prompts/DEV.md ..."
@@ -305,7 +328,13 @@ def audit(role, row):
         return v
 
     claimed_role, claimed_repo, claimed_branch = token.group(1), token.group(2), token.group(3)
-    v["token"] = f"ROLE-READY {claimed_role} repo={claimed_repo} branch={claimed_branch}"
+    claimed_doctrine = token.group(4)
+    # ⛔ Reconstruct from what was MATCHED, not from a fixed template. The previous
+    # version rebuilt the token from three fields; with a fourth present it would
+    # have displayed a token the pane never emitted — a quiet lie rather than a
+    # crash, which is the failure mode that survives review.
+    v["token"] = token.group(0)
+    v["doctrine"] = claimed_doctrine
 
     # ★ The claim/substrate cross-checks. These matter not because the token is
     # trusted but because prompts/README.md REQUIRES the line to quote values the
@@ -326,6 +355,37 @@ def audit(role, row):
     v["unknowns"] += unk
     v["unknowns"].append("$NFORMA_ROLE is per-process and not cross-pane readable — "
                          "the env leg of the identity triple is UNMEASURED, not agreeing")
+
+    # ★ WHICH VERSION of the doctrine is this pane executing?
+    #
+    # prompts/README.md argues the IDENTITY case correctly — `echo $NFORMA_ROLE`
+    # is an off-pane effect rather than a claim the agent makes about itself — and
+    # never makes the same argument for the prompt's CONTENT. ROLE-READY proves the
+    # file was reachable, not which version was read.
+    #
+    # A pane running stale doctrine is the party LEAST able to report that it is,
+    # so the hash is taken by the substrate at launch and merely quoted here.
+    if claimed_doctrine is None:
+        # ⚠ ABSENT is not CURRENT. A three-field token is silent about doctrine,
+        # and silence must not resolve to a pass — that is the exact defect a
+        # fixed-arity token produced in #20, where a fact with no slot rendered
+        # as absent rather than unknown.
+        v["unknowns"].append("no doctrine= in the token — this pane predates the hash step, "
+                             "so its prompt version is UNKNOWN, not current")
+    elif top:
+        prompt = PROMPT_FOR.get(claimed_role) or PROMPT_FOR.get(re.sub(r"\d+$", "#", claimed_role))
+        cur = _hash_object(top, prompt) if prompt else None
+        if cur is None:
+            v["unknowns"].append(f"cannot hash {prompt!r} in {top} — doctrine version "
+                                 "UNVERIFIED, not verified")
+        elif cur.startswith(claimed_doctrine) or claimed_doctrine.startswith(cur[:len(claimed_doctrine)]):
+            v["doctrine_state"] = "current"
+        else:
+            v["doctrine_state"] = "STALE"
+            v["negatives"].append(
+                f"doctrine STALE: pane launched with {prompt} at {claimed_doctrine}, "
+                f"HEAD has {cur[:12]} — this pane is executing a superseded prompt and "
+                "cannot be told; a prompt loads at session start")
     return v
 
 
