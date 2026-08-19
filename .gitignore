@@ -7,3 +7,7 @@ prompts/.claude/nf-session-seen-*.flag
 
 # Local analysis cache, regenerated on demand.
 .planning/
+
+# Per-agent git worktrees (see #19). Daintree/Claude place them inside the repo,
+# so without this every worktree dirties `git status` in every other pane.
+.claude/worktrees/

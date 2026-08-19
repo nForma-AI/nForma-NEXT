@@ -123,19 +123,90 @@ def registry():
     return out
 
 
-def name_audit(row):
-    """Did this session's name come from a rename, or was it auto-derived?
+# Anything under this many seconds after process start is a name the LAUNCH set.
+# Calibration: `claude -n X` wrote nameSince 2 MILLISECONDS after startedAt.
+# Every post-hoc naming measured sat at 27s or beyond. 5s is two orders of
+# magnitude above the launch case and two below the nearest non-launch case, so
+# the threshold is not load-bearing -- but the raw delta is printed regardless,
+# because a reader should be able to overrule the bucket.
+LAUNCH_WINDOW_S = 5
 
-    ⛔ The predicate is KEY ABSENCE, not a value. A successful rename REMOVES
-    `nameSource`; it never sets it to "user". The strings "auto" and "user" do
-    occur in the CLI binary and are the obvious thing to test for -- a checker
-    written against them never fires on any row this system produces, and
-    reports a clean fleet forever. Measured on nine panes renamed in place.
+
+DAINTREE_STATE = os.path.expanduser("~/Library/Application Support/Daintree/projects")
+
+
+def panel_titles(cwd):
+    """★ Leg 2 of the identity triple, WITHOUT the Daintree MCP.
+
+    §4 requires `logical identity = Daintree panel name = Claude session name`.
+    Legs 1 and 3 are readable from the transcript and the session registry. Leg 2
+    was believed to need `terminal.list` over MCP -- and no `daintree` MCP server
+    is configured on this machine, so the panel leg went UNVERIFIED for the whole
+    session and was accepted on the operator's word instead.
+
+    It does not need MCP. Daintree persists project state to
+    ~/Library/Application Support/Daintree/projects/<hash>/state.json, which
+    carries every pane's `title`, `titleMode` and `cwd`.
+
+    ⚠ `titleMode` matters as much as `title`. "user" means the title is PINNED;
+    "default" means agent auto-titling may overwrite it, so a correct title
+    under "default" is correct-for-now and not an established identity.
+
+    ⚠ This is a persisted view, not the live UI, so it can lag. The caller is
+    given the file's mtime and must state it -- an identity read from a stale
+    file is exactly the class of evidence this repo requires a timestamp on.
+    """
+    best, mtime = {}, None
+    for path in glob.glob(os.path.join(DAINTREE_STATE, "*", "state.json")):
+        try:
+            doc = json.load(open(path))
+        except Exception:
+            continue
+        panes = [t for t in doc.get("terminals", []) if t.get("cwd") == cwd]
+        if not panes:
+            continue
+        mtime = os.path.getmtime(path)
+        for t in panes:
+            if t.get("title"):
+                best[t["title"]] = t.get("titleMode")
+    return best, mtime
+
+
+def name_audit(row):
+    """WHEN did this session's name arrive -- at launch, or afterwards?
+
+    ⛔ Key absence is necessary and NOT sufficient, and the insufficiency is the
+    whole point. `nameSource` absent collapses at least THREE mechanisms:
+
+        (i)   named by `-n <name>` at launch
+        (ii)  named by a real `/rename`
+        (iii) a registry row patched by another process
+
+    An earlier version of this function returned "explicit" for all three and
+    was used to conclude that the `-n` recipe change had worked. It had not:
+    the recipe post-dated the running fleet by thirteen minutes, and the names
+    came from (iii). Two mechanisms, one reading -- the discriminates.py case,
+    inside the fix for a previous instance of the same case.
+
+    ★ `nameSince - startedAt` separates (i) from (ii)+(iii) by arithmetic. A
+    launch flag cannot name a pane ten minutes after boot.
+
+    ⛔ It does NOT separate (ii) from (iii). Both are "later", both leave the key
+    absent, and the field holds only the most recent write -- measured, when an
+    operator's `/rename` at +48min silently overwrote a registry patch at +12min
+    and left no trace of the earlier one. So the bucket is `later`, never
+    `/rename`. Naming the finer mechanism would be this same error one level
+    down.
     """
     if row is None:
-        return "no-registry-row"
-    src = row.get("nameSource")
-    return "explicit" if src is None else src
+        return "no-registry-row", None
+    if row.get("nameSource") is not None:
+        return "derived", None
+    since, start = row.get("nameSince"), row.get("startedAt")
+    if not (since and start):
+        return "explicit-when-unknown", None
+    delta = (since - start) / 1000.0
+    return ("at-launch" if delta < LAUNCH_WINDOW_S else "later"), delta
 
 
 def bootstrap_role(path):
@@ -207,6 +278,12 @@ def self_reported(path):
     return names
 
 
+def _dt(v):
+    """Seconds between process start and the name being written. Printed beside
+    the bucket so a reader can overrule the threshold rather than trust it."""
+    return "-" if v is None else (f"{v:.0f}s" if v < 600 else f"{v/60:.0f}m")
+
+
 def fit(v, w):
     """Pad or CLIP to exactly w. A bare f-string width pads but never clips, so a
     long value silently merges with the next column: 'deepagents-nextjs-11' +
@@ -235,7 +312,7 @@ def registry_report(reg, as_json):
             rows.append({"session": sid[:8],
                          "role": bootstrap_role(path),
                          "name": (row or {}).get("name"),
-                         "named": name_audit(row),
+                         "named": name_audit(row)[0], "named_after_s": name_audit(row)[1],
                          "pid": (row or {}).get("pid"),
                          "status": (row or {}).get("status"),
                          "agrees": bool(row) and (row.get("name") == bootstrap_role(path)),
@@ -244,22 +321,49 @@ def registry_report(reg, as_json):
     if as_json:
         print(json.dumps(rows, indent=2))
         return
-    print("MODE: registry join (session -> role, name, name-origin). "
-          "Does NOT resolve which pane runs a session; that needs Daintree.")
-    print(f"{'session':<10}{'ROLE':<11}{'name':<22}{'origin':<16}{'pid':>7}  agrees")
+    print("MODE: registry join (session -> role, name, when-named). "
+          "Does NOT resolve WHICH pane runs WHICH session; that needs Daintree.")
+    print(f"{'session':<10}{'ROLE':<11}{'name':<22}{'origin':<12}{'+s':>8}{'pid':>7}  agrees")
     for r in rows:
         flag = "OK" if r["agrees"] else ("DRIFT" if r["role"] and r["name"] else "-")
         fb = ""
         if r["self_reported"] is not None:
             fb = "  fallback=transcript " + (",".join(r["self_reported"]) or "(none)") + " UNRELIABLE"
         print(f"{fit(r['session'],10)}{fit(r['role'],11)}{fit(r['name'],22)}"
-              f"{fit(r['named'],16)}{str(r['pid'] or '-'):>7}  {flag}{fb}")
+              f"{fit(r['named'],12)}{_dt(r['named_after_s']):>8}"
+              f"{str(r['pid'] or '-'):>7}  {flag}{fb}")
     sys.stdout.flush()
+    # ⛔ NOT `rev-parse --show-toplevel`. In a worktree that returns the WORKTREE
+    # path, and Daintree records the pane's cwd as the MAIN tree -- so the lookup
+    # silently found nothing and printed "LEG 2 UNAVAILABLE". Measured the first
+    # time this tool was run from inside a worktree, by the change that added it.
+    # `git worktree list --porcelain` names the main tree first, always.
+    cwd = os.path.realpath(os.getcwd())
+    wt = subprocess.run(["git", "-C", cwd, "worktree", "list", "--porcelain"],
+                        capture_output=True, text=True).stdout
+    top = next((ln[9:] for ln in wt.splitlines() if ln.startswith("worktree ")), "")
+    panels, pmtime = panel_titles(top or cwd)
+    if panels:
+        roles = {r["role"] for r in rows if r["role"]}
+        missing = sorted(roles - set(panels))
+        loose = sorted(t for t, m in panels.items() if m != "user")
+        stamp = time.strftime("%H:%M:%S", time.localtime(pmtime)) if pmtime else "?"
+        print(f"\nLEG 2 (Daintree panel titles, from persisted state, measured {stamp}): "
+              f"{len(panels)} panes for {os.path.basename(top or cwd)}", file=sys.stderr)
+        print(f"  roles with no matching panel : {', '.join(missing) or 'none'}", file=sys.stderr)
+        print(f"  titles NOT pinned (titleMode != user, so auto-titling may overwrite): "
+              f"{', '.join(loose) or 'none'}", file=sys.stderr)
+    else:
+        print("\n⚠ LEG 2 UNAVAILABLE: no Daintree project state found for this repo. "
+              "The panel leg is UNVERIFIED, not verified-absent.", file=sys.stderr)
     drifted = [r for r in rows if r["role"] and r["name"] and not r["agrees"]]
-    derived = [r for r in rows if r["named"] not in ("explicit", "no-registry-row")]
+    derived = [r for r in rows if r["named"] == "derived"]
+    later = [r for r in rows if r["named"] == "later"]
     print(f"\n{len(rows)} sessions. {len(drifted)} name/role disagreements, "
-          f"{len(derived)} still auto-derived (never renamed).", file=sys.stderr)
-    print("⚠ 'explicit' means the nameSource KEY IS ABSENT. It is never the string 'user'.",
+          f"{len(derived)} still auto-derived, {len(later)} named AFTER launch.", file=sys.stderr)
+    print("⚠ 'at-launch' means the name came from the launch flag. 'later' means a /rename OR a\n"
+          "  registry patch -- those two are NOT distinguishable here and must not be reported as\n"
+          "  one. A 'later' count above zero means the recipe's -n is UNPROVEN for those panes.",
           file=sys.stderr)
 
 
@@ -356,7 +460,7 @@ def main():
                          "resolved": resolved,
                          "role": bootstrap_role(path),
                          "name": (rrow or {}).get("name"),
-                         "named": name_audit(rrow),
+                         "named": name_audit(rrow)[0], "named_after_s": name_audit(rrow)[1],
                          # transcript parse is the FALLBACK now, not the source
                          "self_reported": self_reported(path) if rrow is None else None})
     rows.sort(key=lambda r: -r["hits"])
