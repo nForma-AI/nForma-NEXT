@@ -59,5 +59,13 @@ identically.
   *not* establish, because a caveat that lives only in a README is read once.
 - **Prove the failure path.** `daintree-control.py` takes a `DAINTREE_CFG` override purely so
   its VOID path can be exercised — a control that has only ever passed is not a control.
+- **Roll the baseline forward.** A `--since` diff against a *fixed* snapshot re-reports the
+  same event on every run. Measured: one compaction was reported as news four sweeps in a
+  row, against a baseline 172 minutes old. **An alarm that fires forever on one event trains
+  its reader to ignore it** — which is worse than not firing, because the reader also stops
+  seeing the next one. Snapshot *after* reporting, so each run measures one interval.
+- **A duplicate alarm and a broken alarm are indistinguishable to the reader.** Both produce
+  output that is safe to skip. Treat repeat-firing as a defect with the same severity as
+  silence.
 - **No secrets in source.** Tools needing the Daintree token read it from the user's own MCP
   config at runtime; it appears in none of these files.
