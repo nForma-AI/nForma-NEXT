@@ -65,7 +65,7 @@ def session_depth(path):
 
     Returns (names, depth); names is an ordered list of every title seen.
     """
-    names, last = [], None
+    names, last, recent = [], None, []
     with open(path, errors="replace") as fh:
         for line in fh:
             try:
@@ -79,12 +79,36 @@ def session_depth(path):
             msg = rec.get("message")
             if isinstance(msg, dict) and msg.get("role") == "assistant" and msg.get("usage"):
                 last = msg["usage"]
+                u = msg["usage"]
+                recent.append(u.get("input_tokens", 0) + u.get("cache_read_input_tokens", 0)
+                              + u.get("cache_creation_input_tokens", 0) + u.get("output_tokens", 0))
     if last is None:
-        return names, None
+        return names, None, False
+
+    # ⛔ One transcript file is NOT one agent. Measured: two panes wrote to a single
+    # .jsonl under one consistent sessionId, producing two interleaved depth series —
+    # 856k and 690k, alternating within seconds. "The last assistant reading" is then
+    # whichever agent wrote most recently, i.e. a coin flip, and every depth reported
+    # for that file was unattributable. Nothing in the file declares the split; the
+    # sessionId field is present, stable, and wrong to use as an identity.
+    #
+    # Detect it: if recent readings fall into two clusters separated by a large gap and
+    # BOTH recur, the file is shared and no single number describes it.
+    window = recent[-40:]
+    ambiguous = False
+    if len(window) >= 8:
+        lo, hi = min(window), max(window)
+        if hi - lo > 100_000:
+            mid = (lo + hi) / 2
+            below = [v for v in window if v < mid]
+            above = [v for v in window if v >= mid]
+            # both sides populated and recurring => interleaved, not a compaction
+            ambiguous = len(below) >= 3 and len(above) >= 3
+
     return names, (last.get("input_tokens", 0)
                    + last.get("cache_read_input_tokens", 0)
                    + last.get("cache_creation_input_tokens", 0)
-                   + last.get("output_tokens", 0))
+                   + last.get("output_tokens", 0)), ambiguous
 
 
 def scan(active_within_s, limit):
@@ -104,13 +128,14 @@ def scan(active_within_s, limit):
                 idle_s = time.time() - os.path.getmtime(path)
                 if idle_s > active_within_s:
                     continue
-                names, depth = session_depth(path)
+                names, depth, shared = session_depth(path)
             except Exception:
                 unreadable += 1
                 continue
             if depth is None:
                 continue
-            rows.append({"name": (names[-1] if names else "(unnamed)"),
+            rows.append({"shared_file": shared,
+                         "name": (names[-1] if names else "(unnamed)"),
                          "names": names,
                          "ambiguous": len(names) > 1,
                          "session": os.path.basename(path)[:8],
@@ -234,14 +259,19 @@ def main():
             # A name this session also answered to earlier. Printing only the last
             # one turns a guess into an assertion.
             warn = f"  ⚠name-ambiguous({'/'.join(r['names'])})" if r["ambiguous"] else ""
+            if r.get("shared_file"):
+                warn += "  ⛔SHARED FILE — two agents, depth UNATTRIBUTABLE"
             print(f"{r['depth']:>9,} {r['pct']:>6.1f}%  {r['name']:<14} {r['session']}  "
                   f"{r['idle_min']:>4}m  {r['project']}{mark}{warn}")
         if not args.quiet:
             amb = sum(1 for r in rows if r["ambiguous"])
             print(f"\n{len(rows)} active session(s) across {roots} project dir(s); "
                   f"{len(due)} at/over {args.threshold:.0f}%", file=sys.stderr)
+            shared = sum(1 for r in rows if r.get("shared_file"))
             print("⚠ names are SELF-REPORTED, not identities, and cannot be joined to a "
-                  "Daintree pane. Depth is per-session and sound; attribution is not."
+                  "Daintree pane. ⛔ Depth is per-FILE, and a file is not an agent: "
+                  f"{shared} file(s) carry two interleaved agents, where no single depth "
+                  "describes either."
                   + (f" {amb} session(s) answered to more than one name." if amb else ""),
                   file=sys.stderr)
 
