@@ -203,10 +203,32 @@ them at launch so they are never quietly forgotten:
   "check with no execution record" failure the ⚠ note above warns about, committed by the very
   file meant to remove it.
 
-TEAMLEAD is consequently **not** told to gate on the other eight `ROLE-READY` lines: it cannot read
-other panes' output without the Daintree MCP, so that check would have no execution record from
-inside the pane. Verifying fleet readiness is an operator or DEVOPS action, against the PREFLIGHT
-checklist.
+TEAMLEAD is consequently **not** told to gate on the other eight `ROLE-READY` lines.
+
+> ⚠ **CORRECTED.** This paragraph previously gave the reason as *"it cannot read other panes' output
+> without the Daintree MCP, so that check would have no execution record from inside the pane."*
+> **The premise is false, and it was false when written.** It is true of a pane's *stdout* and false
+> of its *transcript*: `~/.claude/projects/*/<sessionId>.jsonl` is readable by every pane with no MCP,
+> `tools/fleet-identity.py` already reads peers' assistant text from it, and TEAMLEAD's own cold-start
+> inventory was built by parsing peer transcripts **before** this passage was cited as a constraint —
+> 14 of 14 readable, measured. Two instruments for the same content; only one of them was barred.
+> ⇒ **"A readiness gate is impossible" is retired as a reason and must not be cited again.** The
+> correction is recorded rather than silently rewritten, because a reason that was used to justify a
+> design decision has to stay visible after it collapses. (#20, #33.)
+
+The decision stands on a different and stronger footing. **Every fact the token asserts is already
+readable from substrate, more reliably, without asking the agent** — the role from the session
+registry's `name` (written by the owning process), the repo from that row's `cwd`, and the branch
+from the `gitBranch` the harness stamps onto the very record carrying the claim. So a gate on the
+three assertions would check a self-report against better evidence, and its only reachable negative
+is *"the pane never launched"*, which the registry answers directly.
+
+⛔ Measured across the nine-pane fleet: **9 of 9 tokens were true in all three facts, and 9 of 9
+bootstraps contained a step with no execution record.** A consumer of the assertions passes every
+pane. ⇒ The auditable thing is not what the line claims but the **interval it delimits** — see
+`tools/bootstrap-audit.py`, which treats `ROLE-READY` as punctuation closing the bootstrap window
+and audits what actually ran inside it. Verifying fleet readiness remains an operator or DEVOPS
+action, against the PREFLIGHT checklist and that audit.
 
 More broadly, a recipe is **substrate**. It launches panes and delivers a first prompt. It cannot
 express authority grants, instruction lifecycle, evidence validity, admission/merit, or budgets —
