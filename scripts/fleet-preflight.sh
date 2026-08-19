@@ -165,10 +165,13 @@ if [ -x scripts/fleet-worktree.sh ]; then
   if scripts/fleet-worktree.sh check >/dev/null 2>&1; then
     ok "every declared role has an isolated worktree"
   else
-    scripts/fleet-worktree.sh check 2>&1 | grep '^  MISSING' | while read -r _ r; do
-      bad "role '$r' has NO isolated tree — it works in the shared tree"
+    scripts/fleet-worktree.sh check 2>&1 | while read -r st r pa rest; do
+      case "$st" in
+        MISSING) bad  "$r has NO isolated tree — it works in the SHARED tree; run fleet-worktree.sh create" ;;
+        OUTSIDE) bad  "$r isolated OUTSIDE the convention at $pa — MOVE it; creating would duplicate it" ;;
+        DUP)     note "$r has TWO trees ($pa $rest) — commits land in whichever the pane is in; needs a deliberate decision" ;;
+      esac
     done
-    note "run scripts/fleet-worktree.sh create"
   fi
 else
   note "scripts/fleet-worktree.sh not executable — worktree coverage UNMEASURED, not clean"
