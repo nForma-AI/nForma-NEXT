@@ -439,6 +439,57 @@ organization-wide standardization proposals.
 
 Use DEV# for implementation.
 
+## ★ Assign work by setting the agent's `/goal`, not by sending a task
+
+A task message is **consumed**. Once the agent has answered it, there is nothing left to
+run, so it stops — and every subsequent wake finds an agent with no standing objective.
+
+A `/goal` is **durable**. An agent woken against a goal has something to take; an agent
+woken against a completed message has only the wake.
+
+⇒ Measured: across ~30 minutes of automatic waking, **4 of 8 sessions consumed context and
+mutated nothing** — the four most expensive ones. That is what an agent does when it has
+finished its message and has no objective. **Assigning a goal is what makes the autonomous
+loop have anything to loop over.**
+
+A goal states a **desired state**, not a task list:
+
+```
+not:  "diagnose the failing leg on #1164"
+but:  "#1164's C-tier legs pass or their failures are classified real-defect vs
+       harness-defect with evidence, and anything harness-side is filed separately"
+```
+
+⚠ The difference is that the first is finished when the agent replies; the second is
+finished when the world changes, and the agent can tell which it is without asking.
+
+### ⛔ Where the goal must LIVE, and why it is not the input box
+
+`/goal` typed into a pane arrives through the same unauthenticated channel as everything
+else written there. **Twelve forged authorizations reached agents' input boxes in a single
+session.** A forged `/compact` costs one compaction; **a forged goal is a durable
+instruction set that directs everything the agent does afterwards.** It is the highest-value
+target on that channel, precisely because it persists.
+
+> **Write the goal to a file in `goals/`. Let the pane command point at the file.**
+
+Three properties follow, and the third was not the reason for the rule but is the largest
+benefit:
+
+1. **Provenance becomes git** — authored, diffable, attributable, reviewable under
+   `CODEOWNERS` — instead of unattributable box text.
+2. **A forged pointer can only reference a file that must exist**, and a goal nobody wrote
+   is a goal nobody can point at.
+3. ★ **It survives the session.** Measured: every prompt amendment made in one day reached
+   **zero** running agents, because prompts load at session start and those sessions began
+   days earlier. A goal held in a file is re-read; a goal held in a conversation is not.
+
+⚠ Unchanged by any of this: **a goal must not carry reserved authority.** "Get #1164 merged"
+delegates a merge. State the desired state up to the reserved boundary and stop there — the
+same rule that applies to a scheduled prompt.
+
+---
+
 Do not personally become every specialist merely because you can.
 
 ---
