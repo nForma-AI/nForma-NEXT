@@ -311,9 +311,16 @@ doing the orchestrator's job through a channel that should not exist. [measured:
 
   ⛔ **SILENT WRONG OBJECT is the one to fear.** When the modifier consumes the *whole* path,
   the argument collapses to the bare ref and `git show "$M:scripts/validate-recipe.py"` becomes
-  `git show <commit>` — **rc=0, 325 bytes, a commit header.** Not an error, not empty: plausible
-  content from the wrong object, which a downstream reader will parse. ⇒ A byte-count guard does
-  **not** catch this one; only bracing, or checking that the content is what you asked for.
+  `git show <commit>` — **rc=0, non-empty, a commit header.** Not an error, not empty: plausible
+  content from the wrong object, which a downstream reader will parse.
+
+  ⇒ It defeats **both** guards in use: an **exit-code** guard sees `0`, and a **byte-count**
+  guard sees a non-empty file. Only bracing, or checking the content is what you asked for.
+
+  ⚠ **Cite the property, not the byte count.** Measured across three commits the same command
+  returned 325 / 308 / 306 bytes — it is the length of whatever commit header git printed, so
+  it varies per ref and per reader. `rc=0` and *non-empty* are the invariants; the number is a
+  rumour without its commit, which is the rule from #34 applied to my own measurement.
 
   ★ And because the loud form and the silent forms come from the same directory, **a fleet can
   hit `bad substitution` repeatedly and conclude the idiom fails safely.** It does not; it fails
