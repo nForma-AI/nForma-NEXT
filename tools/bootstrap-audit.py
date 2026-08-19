@@ -172,6 +172,56 @@ def anchors(cmd):
     return out
 
 
+QUOTED = re.compile('\'[^\']*\'|"[^"]*"', re.S)
+SEPARATORS = re.compile(r"&&|\|\||;|\||\n")
+ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
+
+# The shell's own grammar words. ⚠ This is a CLOSED set defined by POSIX shell,
+# not an open-ended list of program names — that distinction is what keeps this
+# from being the blocklist the position rule exists to avoid. `if git push` runs
+# git; `sudo git push` might, and the difference is that one of these words is
+# grammar and the other is somebody's binary.
+SHELL_KEYWORDS = {"if", "then", "else", "elif", "fi", "while", "until", "do", "done",
+                  "for", "case", "esac", "select", "function", "time", "!", "{", "}"}
+SUBSTITUTION = re.compile(r"\$\(|`")
+
+
+def command_positions(shell):
+    """The words this shell string actually invokes, as opposed to mentions.
+
+    ⛔ MEASURED, not anticipated. Text presence was the matching rule and it read
+    all three of these as EXECUTED:
+
+        echo "git rev-parse --show-toplevel && git branch --show-current"
+        grep -n "git rev-parse --show-toplevel && git branch --show-current" f
+        git rev-parse --show-toplevel && git branch --show-current
+
+    Only the third runs anything. ⇒ The fix is not a blocklist of echo/grep/cat —
+    that enumerates the mentions you thought of. It is POSITION: quoted spans are
+    removed, the remainder is split on shell separators, and the first bare word
+    of each segment is what got invoked. A command named inside a quoted argument
+    occupies no command position, whatever tool quoted it.
+
+    ★ Same remedy as DX.md §19's "parse the last line POSITIONALLY, never search
+    for the keyword", and as matching `goals/` rather than the word `goal`. #36
+    names the class: MATCH ON SOMETHING A MENTION CANNOT PRODUCE. A quotation can
+    reproduce any text; it cannot occupy a command position.
+    """
+    bare = QUOTED.sub(" ", shell)
+    out = set()
+    for seg in SEPARATORS.split(bare):
+        for word in seg.split():
+            if ASSIGN.match(word):
+                continue                  # leading FOO=bar env assignments
+            w = word.lstrip("(")
+            if w in SHELL_KEYWORDS:
+                continue                  # grammar, not a command — the command follows
+            out.add(w)
+            break
+    return out, bool(SUBSTITUTION.search(bare)), bare
+
+
 def registry():
     """sessionId -> row, and name -> row. Written by the owning process."""
     by_name = {}
@@ -206,6 +256,97 @@ def main_tree(cwd):
     except Exception:
         pass
     return None
+
+
+def env_of(pid):
+    """One pane's environment, read from OUTSIDE it. Returns (vars, readable).
+
+    ⛔ THIS FUNCTION EXISTS BECAUSE THE LIMIT IT REPLACES WAS FALSE. Earlier
+    versions printed, on every pane of every run:
+
+        "$NFORMA_ROLE is per-process and not cross-pane readable — the env leg of
+         the identity triple is UNMEASURED, not agreeing"
+
+    That was DESCRIBED, never run. `ps eww` reads any same-user process's
+    environment: 37 variables recovered from each of the nine live panes. ⇒ The
+    tool was emitting a false UNKNOWN nine times per run and calling it honesty.
+
+    ★ The distinction that makes this worth a function: a limit you have MEASURED
+    is a limit; a limit you have only DESCRIBED is a defect you have not looked
+    at, and it has no input that could contradict it — a control with no reachable
+    failing state, sitting in the section whose whole purpose is honesty. DX filed
+    that on #26 with two of its own; this is mine.
+
+    ⚠ `readable` is returned separately and is not inferable from an empty dict.
+    A dead process and a process with no such variable are DIFFERENT STATES, and
+    collapsing them is how "the check found nothing" becomes "the check passed".
+    """
+    out = subprocess.run(["ps", "eww", "-o", "command=", "-p", str(pid)],
+                         capture_output=True, text=True)
+    toks = out.stdout.split()
+    env = {}
+    for t in toks:
+        if "=" in t:
+            k, _, val = t.partition("=")
+            if k and k.isupper() and k.replace("_", "").isalnum():
+                env[k] = val
+    # The control: a process whose environment we can read has SOME standard
+    # variables. Zero of them means ps did not answer, whatever its exit code.
+    readable = bool(env)
+    return env, readable
+
+
+def env_control(reg):
+    """Known-positive and known-negative for env_of(), on the process class that matters.
+
+    ⛔ THE FIRST TWO VERSIONS OF THIS CONTROL WERE BOTH WRONG, and the control
+    caught both — the third and fourth times it has refused this tool's verdicts.
+
+      v1  mutated `os.environ` and read this process back. `ps` reports the
+          environment captured at EXEC, so an in-process mutation never appears.
+      v2  spawned `/bin/sleep` with a nonce. macOS returns NO environment at all
+          for SIP-protected system binaries: 8 bytes, just the command line.
+
+    ⚠ v2's failure is the important one, because it is a WRONG-POPULATION defect
+    (#1) and it would have been invisible in the other direction. Had the probe
+    happened to succeed on a system binary, the control would have certified an
+    instrument on a process class that is not the one it is used against. The
+    panes run a user binary from ~/.local/bin, whose environment IS readable — so
+    the control must run against a PANE, not against a convenient stand-in.
+
+    Positive: a live pane's environment contains HOME. Negative: the same read
+    does not contain a nonce that exists nowhere. Together these show the reader
+    discriminates present from absent on the real population, which is the only
+    claim env_of() makes. Third case: a pid that cannot exist must be UNREADABLE,
+    never "absent" — dead and unset are different states.
+
+    ⚠ Stated limit, and this one is RUN rather than described: `ps eww` yields no
+    environment for SIP-protected binaries, so env_of() answers for agent panes
+    and would silently report "absent" for a system process. Every caller here
+    passes a pane pid.
+    """
+    live = next((r for r in reg.values() if r.get("pid")), None)
+    if not live:
+        print("  ⛔ no live pane in the registry to control against", file=sys.stderr)
+        return False
+    env, readable = env_of(live["pid"])
+    pos = readable and "HOME" in env
+    neg = "NFORMA_AUDIT_PROBE_7f3a" not in env
+    _, ghost = env_of(2 ** 22)
+    dead_ok = not ghost
+    print(f"  known-positive  env of a live pane: "
+          f"{f'{len(env)} vars incl. HOME' if pos else 'HOME NOT FOUND — reader is blind'}")
+    print(f"  known-negative  a nonce variable  : "
+          f"{'correctly absent' if neg else 'REPORTED PRESENT — reader invents values'}")
+    print(f"  known-negative  env of dead pid   : "
+          f"{'UNREADABLE (correct)' if dead_ok else 'readable — dead would read as unset'}")
+    if not pos:
+        print("  ⛔ cannot read a live pane's environment — every env verdict below would be "
+              "a false ABSENCE, which reads exactly like a real finding", file=sys.stderr)
+    if not dead_ok:
+        print("  ⛔ a nonexistent process reads as readable — a dead pane would report its "
+              "identity carrier as ABSENT rather than UNKNOWN", file=sys.stderr)
+    return pos and neg and dead_ok
 
 
 def blocks(rec):
@@ -302,6 +443,38 @@ def match_step(cmd, calls):
     if best_hits < len(want):
         missing = [a for a in want if a not in best[1].lower()]
         return "UNDECIDED", f"partial match; absent from the best candidate: {missing}"
+    # ⛔ The anchors are all present — but presence is what `echo "<the command>"`
+    # also produces. Require the step's own leading word to occupy a COMMAND
+    # POSITION in the matched shell string before calling this execution.
+    lead = (cmd.split() or [""])[0].lower()
+    positions, unresolved, bare = command_positions(best[1])
+    if lead and lead not in {w.lower() for w in positions}:
+        # ⛔ THREE-WAY, not two. ARCHITECT measured that the two-way version missed
+        # four real-execution shapes — `sudo git push`, `xargs -I{} git push`,
+        # `echo $(git push)`, `if git push; then` — and every miss landed in the
+        # unknown bucket. ⇒ Safe for "did THIS pane comply", NOT safe for "how
+        # widespread is non-compliance", because it inflates the rate. #20's
+        # content IS a rate, and this tool is what measures the next one. Same
+        # defect as the false positive above, pointed the other way.
+        #
+        # ★ The fix is still not a blocklist. Quoted vs unquoted is structural:
+        #   only inside quotes            -> a MENTION. Text cannot run.
+        #   unquoted, not command position -> INDETERMINATE. It may be wrapped
+        #                                     (sudo/xargs), substituted, or an
+        #                                     argument, and this parser cannot say.
+        # Enumerating wrapper names would be the blocklist; noticing that a
+        # segment has a shape we do not resolve is not.
+        bare_words = {w.lower().lstrip("(") for w in bare.split()}
+        if unresolved or lead in bare_words:
+            return "INDETERMINATE", (
+                f"{lead!r} appears UNQUOTED but not in a command position"
+                + (" and the segment contains a command substitution" if unresolved else "")
+                + " — it may be wrapped, substituted, or an argument. This parser cannot "
+                  "resolve which, and an unresolvable input must not share a verdict with a "
+                  "clean negative")
+        return "MENTIONED-ONLY", (f"the matched command contains the step text but never invokes "
+                                  f"{lead!r} — it appears only inside a quoted argument, so this "
+                                  f"is a MENTION of the step, not a record of running it")
     if best[2] is True:
         return "ERRORED", "the matching command returned is_error"
     if best[2] is None:
@@ -356,8 +529,8 @@ def audit(role, row):
         v["steps"].append((s[:72], state, why))
         if state in ("UNEXECUTED", "ERRORED", "UNEXECUTABLE"):
             v["negatives"].append(f"step {state}: {s[:60]!r} — {why}")
-        elif state == "UNDECIDED":
-            v["unknowns"].append(f"step UNDECIDED: {s[:60]!r} — {why}")
+        elif state in ("UNDECIDED", "MENTIONED-ONLY", "INDETERMINATE"):
+            v["unknowns"].append(f"step {state}: {s[:60]!r} — {why}")
 
     if token is None:
         # ⚠ Not automatically a negative. A pane may legitimately still be in its
@@ -393,9 +566,20 @@ def audit(role, row):
         {"role": claimed_role, "repo": claimed_repo, "branch": claimed_branch}, observed)
     v["negatives"] += neg
     v["unknowns"] += unk
-    v["unknowns"].append("$NFORMA_ROLE is per-process and not cross-pane readable — "
-                         "the env leg of the identity triple is UNMEASURED, not agreeing")
-
+    # ★ Leg 3 of the identity triple, MEASURED. See env_of() for why this is not
+    # the "unmeasurable" it was previously reported as.
+    env, readable = env_of(row.get("pid"))
+    if not readable:
+        v["unknowns"].append(f"could not read pid {row.get('pid')}'s environment — the env "
+                             f"leg is UNKNOWN (process gone?), not absent")
+    elif "NFORMA_ROLE" not in env:
+        v["negatives"].append(
+            "NFORMA_ROLE is ABSENT from this pane's environment, established by reading "
+            f"{len(env)} of its variables from outside it. prompts/README.md calls this the "
+            "authoritative identity carrier; on this pane it does not exist")
+    elif env["NFORMA_ROLE"] != role:
+        v["negatives"].append(f"NFORMA_ROLE={env['NFORMA_ROLE']!r} but the registry name is "
+                              f"{role!r} — the identity triple disagrees with itself")
     # ★ WHICH VERSION of the doctrine is this pane executing?
     #
     # prompts/README.md argues the IDENTITY case correctly — `echo $NFORMA_ROLE`
@@ -474,6 +658,88 @@ def _synth(path, boot, include_calls):
             fh.write(json.dumps(r) + "\n")
 
 
+# ⛔ THE KNOWN-NEGATIVE. Inputs the audit must REJECT.
+#
+# #26, clause added from this tool's own failure: a known-positive proves a
+# control CAN fire and says nothing about whether it fires WRONGLY — and a false
+# positive reads as health. ARCHITECT hit the same wall within the hour, with a
+# signature fallback that resolved nine sessions to one file at an identical
+# score while its known-positive passed throughout. Two tools, two roles, one
+# hour. That is a rate, not an anecdote.
+#
+# ⚠ REAL DATA, not a fixture. `MENTION_REAL` is the actual `SendMessage` input
+# that made this tool report `/rename DEVOPS` as EXECUTED — DEVOPS telling
+# TEAMLEAD that /rename had NOT taken on any pane. A fixture contains only the
+# failure you already imagined; this one was in the fleet's transcripts the whole
+# time and was found by reading the rows instead of the summary.
+#
+# ★ ARCHITECT's sharper half, recorded because it applies here too: that instance
+# was caught because the answer was TOO CLEAN (nine identical scores), which is
+# aesthetic judgement rather than a control. The rejection path must be
+# EXERCISED, not described — so these run on every invocation, before any verdict.
+MENTION_REAL = json.dumps({
+    "to": "nforma-next-3d [c9020a]",
+    "summary": "DEVOPS: fleet /rename did not take on any pane",
+    "message": "DEVOPS -> TEAMLEAD. Blocking operational finding. /rename took on ZERO of the "
+               "9 fleet panes. All 9 have nameSource=derived.",
+})
+
+STEP_REAL = "git rev-parse --show-toplevel && git branch --show-current"
+
+# ⚠ A SINGLE-command step, for the wrapper cases. STEP_REAL contains `&&`, so
+# wrapping only its first half leaves `git branch --show-current` genuinely in a
+# command position and every wrapper case reads EXECUTED for a correct reason —
+# the fixture defeats its own test. Second time a fixture, not the matcher, was
+# the defect here; the control caught both.
+STEP_ONE = "git rev-parse --show-toplevel"
+
+
+def known_negative():
+    """Every case here must NOT read EXECUTED. The last one must still read EXECUTED —
+    a rejection rule that also kills true positives is a worse control, not a safer one."""
+    cases = [
+        ("real SendMessage prose (the input that caused the original false pass)",
+         [("SendMessage", MENTION_REAL, False)], "/rename DEVOPS", False),
+        ("the step echoed inside a quoted argument",
+         [("Bash", f'echo "{STEP_REAL}"', False)], STEP_REAL, False),
+        ("the step grepped for in a file",
+         [("Bash", f'grep -n "{STEP_REAL}" notes.md', False)], STEP_REAL, False),
+        ("the step genuinely run, after an unrelated leading command",
+         [("Bash", f"cd /tmp && {STEP_REAL}", False)], STEP_REAL, True),
+        ("the step run behind a shell keyword (`if git …; then`)",
+         [("Bash", f"if {STEP_ONE}; then echo ok; fi", False)], STEP_ONE, True),
+        ("the step piped into (`cat f | git …`)",
+         [("Bash", f"cat f | {STEP_ONE}", False)], STEP_ONE, True),
+        ("a single-command step echoed — still only a mention",
+         [("Bash", f'echo "{STEP_ONE}"', False)], STEP_ONE, False),
+    ]
+    # ⚠ ARCHITECT's shapes: each RUNS the step, so none may read EXECUTED here only
+    # because the parser resolved it — but none may read MENTIONED-ONLY either.
+    # MENTIONED-ONLY asserts "text cannot run", which is FALSE for all of these.
+    # They must land in INDETERMINATE, the bucket that says so.
+    wrapped = [("wrapped in sudo", f"sudo {STEP_ONE}"),
+               ("driven by xargs", f"xargs -I{{}} {STEP_ONE}"),
+               ("inside a command substitution", f"echo $({STEP_ONE})")]
+    ok = True
+    for label, shell in wrapped:
+        state, _ = match_step(STEP_ONE, [("Bash", shell, False)])
+        good = state == "INDETERMINATE"
+        print(f"  known-negative  {'✅' if good else '⛔'} {state:<15} {label} — must not read "
+              f"MENTIONED-ONLY (it really ran)")
+        ok = ok and good
+    for label, calls, step, want_executed in cases:
+        state, _ = match_step(step, calls)
+        got = (state == "EXECUTED")
+        flag = "✅" if got == want_executed else "⛔"
+        if got != want_executed:
+            ok = False
+        print(f"  known-negative  {flag} {state:<15} {label}")
+    if not ok:
+        print("  ⛔ the audit either accepted a MENTION as execution, or rejected a genuine "
+              "one. Either way its EXECUTED verdicts are not evidence.", file=sys.stderr)
+    return ok
+
+
 def self_test():
     """Returns True if the audit DISCRIMINATES the two constructed states."""
     tmp = tempfile.mkdtemp(prefix="bootstrap-audit-kp-")
@@ -512,6 +778,8 @@ def self_test():
     if not ok_claim:
         print("  ⛔ the claim comparison does not discriminate agreement from disagreement, "
               "or silently passes an unmeasured value", file=sys.stderr)
+    ok_neg = known_negative()
+    ok_env = env_control(registry())
     # ⛔ Known-positive #3, added because the doctrine check shipped with NEITHER a
     # positive nor a negative — the only control here to do so, in a file that
     # refuses every verdict when a control fails.
@@ -531,11 +799,18 @@ def self_test():
     if not ok_doc:
         print("  ⛔ the doctrine check does not discriminate a stale prompt from a current "
               "one, or resolves a MISSING field to a pass", file=sys.stderr)
-    if ok_clean and ok_dirty and ok_claim and ok_doc:
+    if ok_clean and ok_dirty and ok_claim and ok_neg and ok_env and ok_doc:
+        # ⚠ "every", not a numeral. This line read "both controls" while printing
+        # five, then ten, then thirteen — a hand-counted number describing a list
+        # drifts on the next addition and emits no error while doing it. DEVOPS
+        # hit the identical drift in a file that inherited this string from here,
+        # two hours after removing the same defect from tools/README.md's header.
+        # A count that is not computed is a claim nobody re-checks.
         print("  ✅ every control discriminated: an unexecutable step from an executed one "
-              "(identical ROLE-READY on both), a claim that matches substrate from one "
-              "that does not, and a stale prompt version from a current one — with a "
-              "MISSING doctrine field reading UNKNOWN rather than either")
+              "(identical ROLE-READY on both), a claim that matches substrate from one that "
+              "does not, a MENTION of a step from a record of running it, and a wrapped or "
+              "substituted invocation from either, and a stale prompt version from a current "
+              "one — with a MISSING doctrine field reading UNKNOWN rather than either")
         return True
     return False
 
@@ -569,7 +844,7 @@ def main():
         if v.get("token"):
             print(f"    token   {v['token']}")
         for s, state, why in v["steps"]:
-            colour = {"EXECUTED": "32", "UNEXECUTED": "31", "ERRORED": "31", "UNEXECUTABLE": "31"}.get(state, "33")
+            colour = {"EXECUTED": "32", "UNEXECUTED": "31", "ERRORED": "31", "UNEXECUTABLE": "31", "MENTIONED-ONLY": "33", "INDETERMINATE": "33"}.get(state, "33")
             print(f"    \033[{colour}m{state:<10}\033[0m Run: {s}")
         for n in v["negatives"]:
             print(f"    \033[31mNEGATIVE\033[0m   {n}")

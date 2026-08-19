@@ -109,6 +109,7 @@
       "type": "terminal",
       "title": "PREFLIGHT",
       "env": {
+        "NFORMA_ROLE": "PREFLIGHT",
         "NFORMA_FLEET_SIZE": "9"
       },
       "command": "bash scripts/fleet-preflight.sh",

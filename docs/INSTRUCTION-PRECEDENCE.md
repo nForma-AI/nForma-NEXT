@@ -288,6 +288,27 @@ Kind: **AUTHORITY** (q2). Sources: goal file reserved list (2) vs TEAMLEAD grant
 this a ceiling-raise from below? **No.** The list reserves the action *to TEAMLEAD*, naming
 TEAMLEAD as the competent grantor. ⇒ **AUTHORISED.**
 
+⚠ **The reservation's stated _reason_ is false in this repository, and the verdict survives it
+anyway — which is the part worth keeping.** Measured while writing this file: **zero** workflow
+files and zero `*.yml`/`*.yaml` across all **19** remote refs. There is no pipeline here, so
+`git push` and `gh pr create` draw no metered lease and are not CI spend. That justification was
+carried over from another estate and did not transfer — [#42](https://github.com/nForma-AI/nForma-NEXT/issues/42)
+established it for ARCHITECT's goal file and re-based the reservation on *reserved because
+TEAMLEAD admits work*; the DEV file still carries the untransferred wording ([#16](https://github.com/nForma-AI/nForma-NEXT/issues/16)'s
+DEV half is open, and five DEVs hold that file).
+
+⇒ **The classification and the resolution are unchanged.** It is still AUTHORITY at q2 and still
+authorised under R2, because TEAMLEAD is the named grantor under *either* rationale. **A worked
+example whose premise moved and whose answer did not is the better known-positive** — it shows
+the procedure keying on *who may grant*, not on *why the thing was reserved*, which is the
+property that lets a reserved list be re-based without re-deriving every precedence decision that
+referenced it.
+
+⛔ **But do not read that as harmless.** §2's q2 deliberately points at the reserved list rather
+than copying it, and this is why: **a reserved list can be right for a reason that is wrong**, and
+an over-restriction produces no error signal — nothing goes red when an agent obeys a bound that
+should not exist. The list is the authority; its rationale is not.
+
 ★ The distinction R2 exists to draw, invisible without it:
 
 > **`Reserved to TEAMLEAD` means TEAMLEAD may grant it. `Reserved to the operator` means TEAMLEAD

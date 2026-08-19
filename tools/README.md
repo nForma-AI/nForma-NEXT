@@ -16,6 +16,7 @@ established nothing*. A run that establishes nothing exits **2** and must never 
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
+| `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |
 
 ## What each one is for
 
@@ -109,5 +110,73 @@ that window. See #20.
   contains the command; only the `command` field is evidence that it ran. This is
   `discriminates.py`'s retraction case — *a retraction quotes the claim it retracts* — one
   layer up, in a different instrument, found the same day.
+- **Always brace a ref variable — `${REF}:path`, never `$REF:path`.** zsh applies its history
+  modifiers to an unbraced `$VAR:`, so `$P:tools/README.md` expands to `c29aa60ools/README.md`
+  (`:t` = tail) and `$B:scripts/…` expands with `:s` consumed. ⛔ **The failure mimics a domain
+  answer:** git replies `unknown revision or path not in the working tree`, which reads as *the
+  file is not there*. Measured twice in one session — one produced two empty fixtures and four
+  exit codes nearly filed as a broken checker; the other was one step from reporting
+  `tools/README.md` missing from `main` and inverting a closure verdict about that very file.
+  ★ **It is data-dependent, which is the part that makes it dangerous:** in the same script
+  `$P:goals/`, `$P:scripts/` and `$P:.daintree/` were all correct, because only the letters that
+  happen to be modifiers bite. A script can be right nine times and wrong on the tenth path.
+  Same family as the exit-code rule above — an idiom that answers a different question while
+  looking like it answers yours.
+- **Pin a sweep to an immutable SHA, not to a ref.** `git rev-parse origin/main` once, then read
+  everything at that SHA. ⛔ A worktree gets its own `HEAD`, index and logs, but `refs/remotes`
+  lives in the **common** `.git` — so `git show origin/main:<path>` resolves the ref *at read
+  time* and follows every peer's fetch. Measured: `origin/main` advanced mid-audit under a
+  pinned-*looking* read; two `git ls-tree origin/main scripts/` calls twenty minutes apart
+  returned 2 files and then 3. **Only an immutable SHA pins**, and worktree isolation does not
+  change this — it isolates the working tree, not the refs.
+  ⚠ **Pinning protects the READ, not the WRITE.** The two are different propositions and the
+  rule covers only the first. A branch cut from a pinned SHA still has to land on a moving
+  target, so a peer editing the same file mid-flight produces a merge conflict that no amount of
+  pinning prevents — measured, on the very PR that added this rule. Re-pin and rebase before
+  pushing; expect the conflict rather than being surprised by it.
+- **Whitespace-normalise before matching a rendered body.** `#23`'s rule is *verify by content,
+  never by position* — this is the failure mode one step inside it. A content predicate is still
+  positional if its unit is the LINE: `"no reachable passing state"` returned **False** against a
+  PR body that contains exactly that phrase, wrapped. ⇒ The artifact was correct and the check was
+  not, which is indistinguishable from the artifact being wrong. Collapse runs of whitespace on
+  both sides first. ⚠ Measured twice the same day, at two altitudes: once against a rendered PR
+  body, once against a wrapped Markdown bullet where a `grep` reported *"not there"* for
+  *"not looked at"*.
+- ⛔ **Restricting to the `command` field was NOT enough, and the gap was measured rather than
+  imagined.** `echo "git rev-parse --show-toplevel"` and `grep -n "git rev-parse …" f` both read
+  **EXECUTED**: they are command fields, and they contain every anchor. ⇒ **Match on POSITION,
+  not on presence.** Strip quoted spans, split on shell separators, take the first bare word of
+  each segment — that is what was *invoked*. A command named inside a quoted argument occupies
+  no command position, whatever quoted it. ★ Not a blocklist of `echo`/`grep`/`cat`: a blocklist
+  enumerates the mentions you thought of. This is #36's rule — **match on something a mention
+  cannot produce** — and the fourth independent rediscovery of it in this repo, alongside
+  `DX.md` §19's positional last-line parse and matching `goals/` rather than the word `goal`.
+- ⛔ **A limit you have MEASURED is a limit. A limit you have only DESCRIBED is a defect you
+  have not looked at** — and it has no input that could contradict it, which makes it a control
+  with no reachable failing state (#26) sitting in the section whose whole purpose is honesty.
+  Measured: `bootstrap-audit.py` printed *"$NFORMA_ROLE is per-process and not cross-pane
+  readable — UNMEASURED, not agreeing"* on every pane of every run. It was never run. `ps eww`
+  reads any same-user process's environment; 37 variables came back from each of the nine live
+  panes. ⇒ The tool emitted a **false UNKNOWN nine times per run and called it honesty.** The
+  test transfers unchanged: *name the input that would falsify this limit.*
+- ⚠ **Control the instrument on the population it is USED on, not on a convenient stand-in.**
+  The env reader's known-positive was first built against `/bin/sleep` and failed: macOS returns
+  **no environment at all** for SIP-protected system binaries. Had it happened to pass, it would
+  have certified the reader on a process class it is never pointed at — #1's wrong-population
+  defect, inside a control. It now runs against a live agent pane.
+- ⛔ **An unresolvable input must not share a verdict with a clean negative** — the exit-2
+  convention applied *inside* a function rather than at a process boundary. Measured by
+  ARCHITECT against the position rule above: `sudo git push`, `xargs -I{} git push`,
+  `echo $(git push)` and `if git push; then` all RUN the command and all read as *not found*.
+  Every miss landed in the unknown bucket, which is safe for *"did this pane comply?"* and
+  **unsafe for *"how widespread is non-compliance?"*** — it inflates the rate, and #20's content
+  **is** a rate. ⇒ Same defect as the false positive above, pointed the other way, and invisible
+  because it produces the finding you were already expecting. Split three ways: *only inside
+  quotes* → `MENTIONED-ONLY` (text cannot run); *unquoted but not in a command position, or a
+  command substitution* → `INDETERMINATE` (it may be wrapped, substituted, or an argument, and
+  the parser cannot say). ★ Still not a blocklist: enumerating wrapper names would be one,
+  **noticing that a segment has a shape you do not resolve is not.**
+- **A mention is a third state, not a negative.** `MENTIONED-ONLY` means *no execution evidence*,
+  which is not *evidence of no execution*. It counts as unknown and never as a pass.
 - **No secrets in source.** Tools needing the Daintree token read it from the user's own MCP
   config at runtime; it appears in none of these files.
