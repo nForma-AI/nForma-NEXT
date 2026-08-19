@@ -1,0 +1,7 @@
+# Changing another role's operating doctrine should require that role to see it.
+# This is the mechanical form of "route it to the owner" — it does not depend on
+# anyone remembering to route.
+
+/prompts/      @jobordu
+/goals/        @jobordu
+/tools/        @jobordu
