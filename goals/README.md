@@ -26,10 +26,37 @@ request**, which is visible whether or not anyone remembers the rule.
 1. **Desired state** — the condition that would make the role's work finished, written so
    that a reader can tell whether it currently holds.
 2. **Reserved actions** — what the role must never self-grant. State them; do not imply them.
+   ⛔ Every such list defers *upward* — `reserved to TEAMLEAD`, and TEAMLEAD's to the operator.
+   **The topmost role's list must name what is reserved to the OPERATOR**, or the chain has no
+   base case and the authority at the top is unbounded by construction rather than by decision.
+   A ceiling that is never written cannot be exceeded, which is not the same as not existing.
 3. **The self-dispatch order** — what to do when a task completes and nothing was assigned.
    ⚠ It must be able to terminate. See below.
 4. **Standing calibrations** — measured numbers with their provenance, so they are not
-   re-derived wrongly. A number without a measurement date is a rumour.
+   re-derived wrongly. A number without a measurement date is a rumour — and a number without
+   a **repository** is a rumour on a subject nobody named.
+
+   Each carries one of three states, because the alternative to a wrong calibration is not a
+   missing one:
+
+   ```
+   MEASURED-HERE     value · date · how it was measured
+   INHERITED         value · origin repository · ⚠ not re-measured here — do NOT act on it
+   NOT-YET-MEASURED  the slot exists, nothing has measured it here, ASK before assuming
+   ```
+
+   ⛔ The third is load-bearing. Re-scoping a vendored goal by **inventing** the numbers the
+   template asks for produces a slot that has yielded no verdict, rendered as though it had —
+   a prose instance of the never-concluded state in #2. An explicitly empty slot is a visible
+   request for a measurement; a fabricated one is invisible and is believed.
+
+   ⚠ **A rule whose justification is a measurement is a calibration**, wherever it sits. The
+   discriminator is per sentence, not per section: *would this sentence change if the
+   repository changed?* A reserved action is doctrine (*merging is reserved*) whose trigger
+   list is a calibration (*and `gh pr create` counts, because it draws a lease*). Filing the
+   pair as one bullet is what lets another estate's measurement arrive wearing the grammar of
+   a rule — and that failure produces **no error**, only a role over-restricted into declining
+   work it was authorised to do.
 5. **What the role does NOT own** — the boundary is half the definition, and it is the half
    that gets absorbed.
 6. **The channel contract** — who this role may talk to, and who it must route through.
@@ -145,7 +172,22 @@ cannot.
 ## Who writes one
 
 DX owns the goal standard and reviews goal changes; the role itself proposes its content.
-A role appearing without a goal is a DX defect, not the role's.
+A role appearing without a goal **scoped to the repository it is operating on** is a DX
+defect, not the role's.
+
+⛔ The scope qualifier is not pedantry — without it the test is satisfiable by any file. Three
+of the first four goals written passed it while pointing at another product's board (#16). A
+standard satisfied by files that do not describe the project is **worse than a missing file**,
+because the missing file is visible.
+
+⇒ So `Repository:` is a required field in a fixed form, and the check is mechanical:
+
+```
+goal.repository  ==  git remote get-url origin
+```
+
+Prose asking a reader to notice a mismatch is the thing this repository exists to move into the
+substrate. **This one is ten lines and belongs to DEVOPS**, not to whoever remembers.
 
 ## ⛔ There is no org-wide standard this shadows
 
