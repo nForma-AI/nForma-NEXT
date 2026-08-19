@@ -177,13 +177,68 @@ SEPARATORS = re.compile(r"&&|\|\||;|\||\n")
 ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
 
-# The shell's own grammar words. ⚠ This is a CLOSED set defined by POSIX shell,
-# not an open-ended list of program names — that distinction is what keeps this
-# from being the blocklist the position rule exists to avoid. `if git push` runs
-# git; `sudo git push` might, and the difference is that one of these words is
-# grammar and the other is somebody's binary.
+# ⛔ THE ONLY WORDS THAT MAY EVER BE SKIPPED IN COMMAND POSITION.
+#
+# These are shell GRAMMAR — reserved words of POSIX sh, plus the three keywords
+# bash and zsh add. Skipping them is not the blocklist the position rule exists to
+# avoid, because the set is fixed by a language specification and cannot grow with
+# anyone's habits.
+#
+# ⚠ THE TEMPTATION IS TO WIDEN THIS, and it will arrive later, to someone who was
+# not part of the conversation that created it. `env`, `nohup`, `timeout`, `nice`,
+# `sudo`, `xargs`, `stdbuf`, `command`, `exec` all LOOK like grammar and are
+# binaries or builtins that take a command as an argument. Adding any of them
+# would make `sudo git push` resolve to EXECUTED — which is a guess, not a reading,
+# because `sudo` may equally have failed to authenticate.
+#
+#   > The moment this list stops being derivable from the shell specification,
+#   > it becomes the blocklist the position rule refused.
+#
+# Wrapped invocations are INDETERMINATE by design. That is the honest verdict and
+# it is not an accuracy problem to be tuned away.
+#
+# ★ NOT HYPOTHETICAL. ARCHITECT reached for `timeout` by reflex while auditing every
+# instrument in this repo for #26 — macOS does not ship it, so ALL NINE TOOLS
+# returned 127 and produced a uniform, confident, meaningless table that would have
+# read as a clean result for every row. The first wrapper on that list was chosen
+# by a careful author, in this repo, the same afternoon. That is why this is a
+# CONTROL (see keyword_control) and not a comment: a prose caveat is a check with
+# no execution record, and this one has to survive its own author.
+POSIX_RESERVED = {"!", "{", "}", "case", "do", "done", "elif", "else", "esac", "fi",
+                  "for", "if", "in", "then", "until", "while"}
+SHELL_ADDED = {"select", "function", "time"}   # bash/zsh keywords, not POSIX
+GRAMMAR = POSIX_RESERVED | SHELL_ADDED
+
 SHELL_KEYWORDS = {"if", "then", "else", "elif", "fi", "while", "until", "do", "done",
                   "for", "case", "esac", "select", "function", "time", "!", "{", "}"}
+
+
+def keyword_control():
+    """Refuse the run if SHELL_KEYWORDS has grown a word that is not shell grammar.
+
+    ⛔ The failure this exists for is an EDIT, not an input — which is why no
+    ordinary known-negative would catch it. Someone hits `sudo git push` reading
+    INDETERMINATE, decides that is a false negative, and adds `sudo`. Every other
+    control in this file still passes: the fixtures do not use sudo, the live
+    fleet does not use sudo, and the change reads as a small accuracy improvement.
+    The tool would then report a guess as a reading, in the direction of the
+    finding its operator expects — the asymmetry from #26.
+    """
+    intruders = SHELL_KEYWORDS - GRAMMAR
+    print(f"  known-positive  keyword set      : "
+          f"{'grammar only' if not intruders else f'INTRUDERS {sorted(intruders)}'}")
+    # The known-negative: the guard must actually reject a binary if one is added.
+    would_reject = bool(({"sudo", "timeout", "env"} | SHELL_KEYWORDS) - GRAMMAR)
+    print(f"  known-negative  a binary added   : "
+          f"{'would be rejected' if would_reject else 'ACCEPTED — the guard is inert'}")
+    if intruders:
+        print(f"  ⛔ SHELL_KEYWORDS contains {sorted(intruders)}, which are not shell grammar. "
+              f"A wrapper skipped in command position turns a GUESS into an EXECUTED verdict. "
+              f"Wrapped invocations must stay INDETERMINATE.", file=sys.stderr)
+    if not would_reject:
+        print("  ⛔ the guard cannot reject a binary — it is inert and would permit the edit "
+              "it exists to prevent", file=sys.stderr)
+    return not intruders and would_reject
 SUBSTITUTION = re.compile(r"\$\(|`")
 
 
@@ -799,7 +854,13 @@ def self_test():
     if not ok_doc:
         print("  ⛔ the doctrine check does not discriminate a stale prompt from a current "
               "one, or resolves a MISSING field to a pass", file=sys.stderr)
-    if ok_clean and ok_dirty and ok_claim and ok_neg and ok_env and ok_doc:
+    ok_kw = keyword_control()
+    # ⛔ EVERY control joins this conjunction. The rebase that produced this line had
+    # `ok_doc` on one side and `ok_kw` on the other, and taking either side whole
+    # would have DROPPED a control silently — it would still run, still print, and
+    # its result would be discarded. That is #26 inside a merge resolution, and it is
+    # why a conflict on a conjunction is never a positional conflict.
+    if ok_clean and ok_dirty and ok_claim and ok_neg and ok_env and ok_doc and ok_kw:
         # ⚠ "every", not a numeral. This line read "both controls" while printing
         # five, then ten, then thirteen — a hand-counted number describing a list
         # drifts on the next addition and emits no error while doing it. DEVOPS
