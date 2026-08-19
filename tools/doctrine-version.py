@@ -38,6 +38,12 @@ ARCHITECT.md@592 with an identical score. It was caught because the answer was t
 ⇒ A matcher whose failure mode is a plausible uniform number is worse than one whose failure
 mode is silence. UNKNOWN rows below are that silence, and they are honest.
 
+★ Why this matcher is immune to the mention-vs-use class that bit two other tools here the
+same afternoon: it compares blob CONTENT, not command text. A historical blob either is or is
+not that byte sequence, so a transcript merely *discussing* a prompt version cannot resolve to
+it. ⛔ Do not "harden" this into a keyword or path match — that would trade the one property
+that makes it safe for an appearance of rigour. (Raised by DEV2, #33.)
+
 Exit: 0 every reading current · 1 at least one agent is stale · 2 established nothing.
 """
 import argparse
@@ -162,18 +168,38 @@ def main():
         print("    is reported AMBIGUOUS below and is NOT resolved to one of them.")
 
     root = Path(args.projects)
-    dirs = [d for d in root.glob("*") if d.is_dir()
-            and Path(repo).name.replace(".", "-").lower() in d.name.lower()]
+
+    # ⛔ Enumerate worktrees from git, not from a name pattern. A role tree placed anywhere
+    # without the repo name in its path is invisible to a name match — DEV5's improvised tree
+    # under /private/tmp was covered by coincidence, not by construction. `git worktree list`
+    # enumerates trees wherever they are. The name match is kept as a fallback for sessions
+    # whose tree has since been removed, and each directory reports how it was found.
+    def encode(path):
+        return str(path).replace("/", "-").replace(".", "-")
+
+    found = {}
+    for line in (git("worktree", "list", "--porcelain", cwd=repo) or "").splitlines():
+        if line.startswith("worktree "):
+            d = root / encode(line[len("worktree "):])
+            if d.is_dir():
+                found[d] = "git"
+    for d in root.glob("*"):
+        if d.is_dir() and d not in found and \
+                Path(repo).name.replace(".", "-").lower() in d.name.lower():
+            found[d] = "name"
+    dirs = list(found)
     if not dirs:
         print(f"\nVOID  no transcript directory under {root} matches {Path(repo).name}",
               file=sys.stderr)
         print("      established nothing about any agent's loaded doctrine", file=sys.stderr)
         return 2
 
+    by_git = sum(1 for m in found.values() if m == "git")
     print(f"\nSwept {len(dirs)} transcript director{'y' if len(dirs) == 1 else 'ies'} "
-          f"(worktrees included):")
+          f"({by_git} enumerated from `git worktree list`, "
+          f"{len(dirs) - by_git} by name match):")
     for d in dirs:
-        print(f"  {d.name}")
+        print(f"  [{found[d]:4}] {d.name}")
 
     rows, readings, swept = [], 0, 0
     for d in dirs:
