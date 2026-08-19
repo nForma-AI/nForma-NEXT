@@ -11,3 +11,13 @@ prompts/.claude/nf-session-seen-*.flag
 # Per-agent git worktrees (see #19). Daintree/Claude place them inside the repo,
 # so without this every worktree dirties `git status` in every other pane.
 .claude/worktrees/
+
+# Python build output. ⛔ Committed once, on the branch for #20, by `git add -A`
+# after a tool was imported for introspection. Two reasons it must not recur, and
+# the second is the one that belongs in THIS repo: a committed .pyc goes stale
+# against its .py and the interpreter may still load it — a file asserting a
+# version of the code that is not the code, which is #29's doctrine-version
+# defect in binary. Name files when staging; `-A` stages whatever ran.
+__pycache__/
+*.pyc
+*.pyo
