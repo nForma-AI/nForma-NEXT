@@ -52,7 +52,12 @@ the decision** — otherwise you will be read as available and left alone.
 - **Merged PRs are a selected population.** Sampling them undercounts failures.
 - ⛔ Never write a closing keyword (`fixes`/`closes`/`resolves` + `#N`) in a PR body, title,
   or commit subject. It fires on **negation** and on **adjacency** (`fail-closed (#1104`).
-  Use `Refs #N`. Scan with `ci_guard_closing_keywords.py`.
+⛔ There is NO closing-keyword guard. `scripts/ci_guard_closing_keywords.py` does not
+exist on HEAD or `origin/main` — verified against a directory holding 7 other
+`ci_guard_*` scripts, so the convention is real and this one is simply unbuilt.
+A ⛔-level standing rule whose only named instrument is absent is enforced by
+whoever remembers to hand-roll a grep. Until it exists, roll your own and say so;
+building it belongs to DEVOPS under the coverage remit — the class, not the instance.
 - `.github/workflows/ci-pr.yml` `concurrency:` (`group: ci-pr-${{ github.run_id }}`,
   `cancel-in-progress: false`) is **NEVER CHANGE** per CLAUDE.md, enforced by A1.
 

@@ -43,6 +43,36 @@ words: *maximum autonomy is not maximum activity.*
 > **Write the rungs so that "none applies" is reachable this week.** A loop that cannot
 > report empty is not autonomy, it is a busy-wait.
 
+## ⛔ A self-dispatch loop needs an ENGINE, and the engine must not carry authorization
+
+A goal document cannot make an agent self-invoke. An agent executes when prompted and then
+waits, so a written loop is an instruction with nothing behind it — measured: eight agents
+sat at `waiting`, each having stated a next action and stopped.
+
+**The primitive exists.** `CronCreate` enqueues a prompt to the agent itself on a schedule;
+`Monitor` wakes it on an event. Verified by resolution rather than assumption: both resolve
+for at least one DEV role. ⇒ **The loop was unrun because nobody said the primitive was
+there.** That is a documentation failure, not a capability gap.
+
+Three constraints, from reading the schemas rather than assuming them:
+
+- **`ScheduleWakeup` is not the general primitive.** It is bound to `/loop` dynamic mode.
+  `CronCreate` is the general one. Telling a fleet to "use ScheduleWakeup" sends most of it
+  into a category error.
+- **`CronCreate` is session-only and idle-gated.** Nothing is written to disk, and jobs fire
+  only while the REPL is idle — so a loop dies silently at compaction or exit, which is the
+  same failure as a goal file, later and harder to see. **Re-arming must be the loop's own
+  first action**, or the fix reintroduces the defect on a delay.
+- ⛔ **A scheduled prompt must never carry authorization.** If the timer says *"continue the
+  queue"* and the queue's next item is a push, the agent has self-granted CI spend on a
+  timer. A loop may dispatch diagnosis and preparation, and must stop at anything reserved.
+
+⚠ The third is a security constraint, not a style note. Eleven forged authorizations reached
+agents' input boxes in a single session. **A timer that re-enters an agent with a
+plausible-sounding instruction is the same attack surface — and worse, because it carries
+genuine provenance.** A forgery can be caught by checking the channel; a real cron job
+cannot.
+
 ## Who writes one
 
 DX owns the goal standard and reviews goal changes; the role itself proposes its content.
