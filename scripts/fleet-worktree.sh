@@ -90,6 +90,35 @@ check)
   # survived authoring.
   printf 'conventional location: %s\n' "$WT_DIR"
   printf '%s' "$report"
+  # ⛔ PROVISIONED IS NOT OCCUPIED, AND THIS SCRIPT CAN ONLY SEE THE FIRST.
+  #
+  # Every state above answers "does a worktree EXIST for this role". None answers
+  # "is that role WORKING in it", and the #19 hazard lives entirely in the second:
+  # an agent in the shared tree running `git checkout` rewrites the role prompts of
+  # every pane there, whether or not a tree was provisioned for it.
+  #
+  # Measured: all 8 agent panes' registry `cwd` is the SHARED tree, while 9
+  # role worktrees sit provisioned. A check reporting "all roles isolated" would
+  # read as ISOLATED on precisely the configuration that is not.
+  #
+  # ⚠ And the registry `cwd` cannot close it either. It is captured at LAUNCH. This
+  # very script's author has committed from .claude/worktrees/devops all session
+  # while its registry row still says the shared tree, because an agent `cd`s inside
+  # a single tool call and nothing outside the process observes that.
+  #
+  # ⇒ Three states, one measurable from here:
+  #     provisioned        `git worktree list`      measurable
+  #     launched-into      registry cwd             measurable, LAUNCH-time only
+  #     operating-in       per-command cwd          ⛔ NOT MEASURABLE from outside
+  #
+  # Per tools/README.md: an instrument that can see only part of the question says
+  # so rather than reporting clean on the part it can see.
+  printf '\n⛔ OCCUPANCY NOT MEASURED. The states above are PROVISIONING.\n'
+  printf '   Whether a role is WORKING in its tree is not observable from here: an\n'
+  printf '   agent changes directory inside a single tool call, and the session\n'
+  printf '   registry records only the cwd it was LAUNCHED with.\n'
+  printf '   ⇒ "all roles isolated" above means all roles HAVE a tree. It does NOT\n'
+  printf '     mean the shared tree is unused, and the #19 hazard lives there.\n'
   if [ "$n_outside" -gt 0 ]; then
     printf '\n⚠ %d role(s) isolated OUTSIDE the conventional location:%s\n' "$n_outside" "$outside_list"
     printf '  Attributable but invisible to any check keyed on that directory.\n'
@@ -111,7 +140,8 @@ check)
     printf '  rather than less likely. Run: %s create\n' "$0"
   fi
   [ "$n_missing" -gt 0 ] || [ "$n_outside" -gt 0 ] || [ "$n_dup" -gt 0 ] && exit 1
-  printf '\nall roles isolated in the conventional location\n'
+  printf '\nall roles provisioned in the conventional location\n'
+
   ;;
 create)
   if [ "$n_missing" -eq 0 ]; then
