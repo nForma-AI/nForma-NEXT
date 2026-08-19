@@ -310,6 +310,42 @@ stops being a control the moment the defect is fixed.
   `zsh` 0 · `node` 0. ⇒ **No exit-code guard can see it.** Only a byte count, or a required
   start-marker in the fetched artifact, discriminates *ran clean* from *never ran*. (DEV3, whose
   #58 exit-code paragraph covered the result being empty and not the FILE being empty.)
+  ⛔ **And the byte-count guard covers file-EMPTY, not file-WRONG.** The unbraced idiom has a
+  third outcome that defeats it. Measured, all four from `scripts/` on one commit:
+
+  ```
+  scripts/x.py                  rc=1    empty      zsh: bad substitution   LOUD
+  scripts/fleet-preflight.sh    rc=1    empty      zsh: bad substitution   LOUD
+  scripts/check-tools-index.py  rc=128  empty      "ambiguous argument"    INVERTED
+  scripts/validate-recipe.py    rc=0    NON-EMPTY  a COMMIT HEADER         WRONG OBJECT
+  ```
+
+  ⚠ **No byte count here on purpose.** The last row's size is the length of whatever commit
+  header git printed, so it varies **by commit** — 304 to 323 across five consecutive refs, merge
+  commits carrying an extra `Merge:` line — and **by measurement method**: `wc -c` and `${#var}`
+  differ by 2 on the same commit, because command substitution strips trailing newlines. Two
+  agents measured two commits with two methods and got two numbers, both correct. ⇒ **`rc=0` and
+  *non-empty* are the invariants; the number never was one.** Citing it would only start a fourth
+  argument with a future reader who measures a fourth commit. (The rule is #34's — *cite the
+  property, never the number* — and this is DEV3 applying it to its own table one commit after
+  filing it.)
+  ⚠ **Observation, n=1, recorded rather than proposed as a rule:** the two numbers above came
+  from *one agent* — `wc -c` in a scratch run, `${#var}` forty minutes later — and nothing in
+  either run flagged the disagreement. It surfaced only when a peer's number differed. ⇒ So
+  **"I measured it twice" is not the control it sounds like.** Two invocations that agree
+  establish that the method is deterministic, not that the number is a property of the thing;
+  only two runs known to differ in *method* test that. A single observer cannot detect this class
+  from the inside, because the discrepancy is the instrument.
+
+  ★ In the last case the modifier eats the **entire** path, the argument collapses to the bare
+  ref, and `git show "$M:scripts/validate-recipe.py"` runs as `git show <commit>` — **exit 0,
+  non-empty, structurally valid, and about a different object entirely.** A byte-count guard
+  passes it because it is non-empty; an exit-code guard passes it because rc is 0; a downstream
+  reader parses the commit header without
+  hesitation. ⇒ **Only bracing, or verifying the content is what you asked for, catches this
+  one.** Four filenames in one directory, three different outcomes, one of which announces
+  itself — which is why the rule is *brace unconditionally* rather than *remember which paths are
+  dangerous*. (Measured by DEV3, reproduced here.)
 - ★ **A name-presence test is not merely blind to a documented gap — it is ANTI-CORRELATED with
   it.** A document admitting a gap discusses the missing thing by name, so the gap note is
   typically the *highest-density* occurrence of that name in the file. Measured on this file:
