@@ -310,6 +310,24 @@ stops being a control the moment the defect is fixed.
   `zsh` 0 · `node` 0. ⇒ **No exit-code guard can see it.** Only a byte count, or a required
   start-marker in the fetched artifact, discriminates *ran clean* from *never ran*. (DEV3, whose
   #58 exit-code paragraph covered the result being empty and not the FILE being empty.)
+  ⛔ **And the byte-count guard covers file-EMPTY, not file-WRONG.** The unbraced idiom has a
+  third outcome that defeats it. Measured, all four from `scripts/` on one commit:
+
+  ```
+  scripts/x.py                  rc=1    0 bytes   zsh: bad substitution     LOUD
+  scripts/fleet-preflight.sh    rc=1    0 bytes   zsh: bad substitution     LOUD
+  scripts/check-tools-index.py  rc=128  0 bytes   "ambiguous argument"      INVERTED
+  scripts/validate-recipe.py    rc=0  323 bytes   a COMMIT HEADER           WRONG OBJECT
+  ```
+
+  ★ In the last case the modifier eats the **entire** path, the argument collapses to the bare
+  ref, and `git show "$M:scripts/validate-recipe.py"` runs as `git show <commit>` — **exit 0,
+  non-empty, structurally valid, and about a different object entirely.** A byte-count guard
+  passes it; an exit-code guard passes it; a downstream reader parses the commit header without
+  hesitation. ⇒ **Only bracing, or verifying the content is what you asked for, catches this
+  one.** Four filenames in one directory, three different outcomes, one of which announces
+  itself — which is why the rule is *brace unconditionally* rather than *remember which paths are
+  dangerous*. (Measured by DEV3, reproduced here.)
 - ★ **A name-presence test is not merely blind to a documented gap — it is ANTI-CORRELATED with
   it.** A document admitting a gap discusses the missing thing by name, so the gap note is
   typically the *highest-density* occurrence of that name in the file. Measured on this file:
