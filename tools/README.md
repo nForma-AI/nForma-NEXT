@@ -34,7 +34,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
-| `pipe-exit-scan.py` | is any exit code here read through a pipe? | 0 clean · 1 findings · **2 established nothing** |
+| `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |

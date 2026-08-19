@@ -65,7 +65,7 @@ this file.
 
 Exit: 0 clean · 1 findings · 2 established nothing (no files scanned).
 """
-import os, re, subprocess, sys
+import glob, json, os, re, subprocess, sys, time
 
 # `cmd | cmd ; echo $?`  — the status read belongs to the LAST pipeline element.
 AFTER_PIPE = re.compile(r"\|[^|&;]+[;&][^#\n]*\$\?")
@@ -74,6 +74,71 @@ PIPESTATUS = re.compile(r"\$\{PIPESTATUS\[")
 FENCE = re.compile(r"^\s*```\s*(bash|sh|shell|console)\s*$", re.I)
 FENCE_END = re.compile(r"^\s*```\s*$")
 
+
+
+HEREDOC = re.compile(r"<<-?\s*'?\"?([A-Za-z_][A-Za-z0-9_]*)'?\"?\n(.*?)^\1\s*$", re.S | re.M)
+
+
+def executable_part(cmd):
+    """⛔ Strip heredoc BODIES. Measured on 204 real agent commands: the dominant
+    false positive is a command that WRITES DOCUMENTATION ABOUT the idiom — a
+    README paragraph, a fixture, a commit message, a friction report. Every one is
+    a mention being written, not a pipeline being run. Same use/mention split as
+    the prose exclusion, one layer in: a heredoc body is content, the shell around
+    it is code.
+    """
+    return HEREDOC.sub("\n", cmd)
+
+
+TRANSCRIPTS = os.path.expanduser("~/.claude/projects")
+
+
+def scan_transcripts(limit_hours=None):
+    """The population the defect actually lives in: agent shell invocations.
+
+    ⛔ Matches ONLY on `tool_use` records whose `name` is Bash, reading the
+    `command` field. Never assistant text. That is not a heuristic — it is the
+    use/mention discriminator as a key lookup: a command field is an EFFECT, prose
+    is a DESCRIPTION, and no wording can make one look like the other.
+
+    Measured by DEV2 over this fleet's transcripts: 32 real invocations across 7 of
+    9 sessions, against 18 prose mentions in the same corpus. A text scan would
+    report 50 — a 56% over-report, every one of them a sentence about the trap.
+    """
+    hits = []
+    for proj in glob.glob(os.path.join(TRANSCRIPTS, "*")):
+        for path in glob.glob(os.path.join(proj, "*.jsonl")):
+            if limit_hours and time.time() - os.path.getmtime(path) > limit_hours * 3600:
+                continue
+            try:
+                fh = open(path, errors="replace")
+            except OSError:
+                continue
+            for ln, line in enumerate(fh, 1):
+                if '"tool_use"' not in line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                for b in (rec.get("message") or {}).get("content") or []:
+                    if not (isinstance(b, dict) and b.get("type") == "tool_use"
+                            and b.get("name") == "Bash"):
+                        continue
+                    cmd = (b.get("input") or {}).get("command") or ""
+                    body = executable_part(cmd)
+                    for src in body.splitlines():
+                        code = strip_comment(src)
+                        if AFTER_PIPE.search(code):
+                            hits.append((os.path.basename(path)[:8], ln, src.strip(),
+                                         "$? read after a pipeline, in an EXECUTED command"))
+                        elif PIPESTATUS.search(code):
+                            hits.append((os.path.basename(path)[:8], ln, src.strip(),
+                                         "PIPESTATUS in an EXECUTED command"))
+    return hits
+
+
+HEREDOC_HELP = "--transcripts    scan agent shell invocations instead of committed files"
 
 def tracked():
     out = subprocess.run(["git", "ls-files"], capture_output=True, text=True)
@@ -192,6 +257,20 @@ def main():
     # scan, and nearly recorded that as a clean negative.
     if "--self-test" in sys.argv or "--selftest" in sys.argv:
         return selftest()
+    if "--transcripts" in sys.argv:
+        hits = scan_transcripts()
+        for sid, ln, src, why in hits:
+            print(f"{sid}:{ln}\n    {src}\n    ⇒ {why}")
+        print(f"\n{len(hits)} occurrence(s) in EXECUTED commands across agent transcripts.",
+              file=sys.stderr)
+        print("⚠ OCCURRENCES, not defects. Some will be in contexts where the exit code was "
+              "not load-bearing; this establishes the rate, not that every one produced a "
+              "wrong reading.", file=sys.stderr)
+        print("⛔ Matched on `tool_use`.`command` ONLY — never assistant prose. The same "
+              "corpus holds prose mentions of this exact idiom, including this repo's own "
+              "convention documenting it, and a text scan over it over-reports by ~56%.",
+              file=sys.stderr)
+        return 1 if hits else 0
     files = tracked()
     if not files:
         print("⛔ no tracked files — ESTABLISHED NOTHING, not clean. "
@@ -237,7 +316,7 @@ def main():
           "file. So `0 findings` means NO COMMITTED FILE CONTAINS IT. It is not evidence "
           "about the population the defect actually lives in, which this tool structurally "
           "cannot see. ⇒ ADDABLE — NEEDS A DIFFERENT INSTRUMENT: a PreToolUse hook is the "
-          "only surface where those commands exist; matcher measured at 2.5%% fire / 80%% "
+          "only surface where those commands exist; matcher measured at 2.5% fire / 80% "
           "precision, mechanism untested, not installed.", file=sys.stderr)
     print("⚠ Matched on SHAPE after stripping comments and skipping non-fenced prose. "
           "Occurrences inside comments, and inline `PIPESTATUS` in prose, are MENTIONS and "
