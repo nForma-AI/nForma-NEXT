@@ -58,7 +58,10 @@ def daintree_endpoint():
         sys.exit(f"cannot read {CFG}: {exc}")
     srv = (cfg.get("mcpServers") or {}).get("daintree")
     if not srv:
-        sys.exit("no 'daintree' MCP server configured — nothing to resolve against")
+        sys.exit("no 'daintree' MCP server configured — nothing to resolve against.\n"
+                 "   ADDABLE — NEEDS THE OPERATOR: add a `daintree` entry to mcpServers\n"
+                 "   in ~/.claude.json. Until then use --registry-only, which answers\n"
+                 "   role/name/when-named without any MCP.")
     auth = (srv.get("headers") or {}).get("Authorization")
     if not auth:
         sys.exit("daintree server has no Authorization header configured")

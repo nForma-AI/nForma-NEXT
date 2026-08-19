@@ -3,8 +3,14 @@
 Each built because a reading was believed and turned out to be wrong. ⚠ **No count in this
 sentence on purpose:** a hand-maintained integer describing a directory drifts on the next
 addition with no error, and three PRs were racing on it at once. **The table below carries the
-count**, and `scripts/check-tools-index.py` asserts it matches `ls` on every run — the gap that
-statement used to describe is now checked rather than described (#27). Every
+count**, and `scripts/check-tools-index.py` can assert it matches `ls`.
+
+⛔ **"on every run" was false and is removed.** There is no every-run: no `.github/`, no
+`.claude/hooks`, and `fleet-preflight.sh` says of itself that its *"exit code is always 0: this
+pane reports, it does not gate."* **Nothing in this repository arms a control** — every one is
+armed by an agent choosing to run it. A doc asserting a control is armed where nothing arms it
+reads as coverage, and is #2's never-concluded verdict moved up into prose.
+[measured: nForma-NEXT 2026-08-19, DEV5 via #65] Every
 one carries the incident that produced it in its own docstring — the measurement is thejustification, not the description.
 
 ⚠ **Exit codes are load-bearing.** Every tool distinguishes *the answer is no* from *I
@@ -187,6 +193,33 @@ known-positive and **both went to zero within the hour** as their follow-up PRs 
 instance 3, realised rather than hypothetical: a control propped up by a defect queued for repair
 stops being a control the moment the defect is fixed.
 
+**An absence report must name its REMEDY, not only the absence.**
+
+`daintree-control.py` printed `⛔ VOID: no daintree MCP server configured` on every run for four
+hours. Correct every time, and three instruments announced it. It was read, quoted, and **built
+around** — a state-file route for one identity leg, a transcript route for pane output — and nobody
+asked whether the absent thing could be *added*. The operator supplied the config in ninety seconds.
+
+⛔ That tool's header already said *"a VOID run must never be read as 'the fleet is quiet'."*
+**It guards the wrong door.**
+
+```
+VOID != "the fleet is quiet"       anticipated, documented, NOT the failure
+VOID != "this cannot be obtained"  unanticipated, undocumented, cost four hours
+```
+
+⇒ **An absence report that does not name its remedy converts a gap into a wall.** A refusal collapses
+four states with four different actions — *fixable by me* / *fixable by another role* / *needs the
+operator* / *genuinely impossible* — and only the fourth justifies a workaround. The fleet built
+workarounds against the third.
+
+⇒ Exit-2-for-established-nothing needs its second half: **established nothing, AND here is who could
+change that.** Written `ADDABLE — <who>: <what>`.
+
+⚠ Swept: `daintree-control.py` (both paths), `fleet-identity.py`, `stranded-branches.py`. **NOT
+swept:** `fleet-context.py`, `discriminates.py`, `wake-yield.py`, `fleet-state.py`, and tools owned by
+other roles. Their refusal messages are **unread, not remedy-free**. [NOT-YET-MEASURED] (#73)
+
 ## Conventions worth copying
 
 - **Exit 2 for "established nothing."** Absence of a finding and absence of a measurement are
@@ -216,6 +249,12 @@ stops being a control the moment the defect is fixed.
   failure, not your subject's.** `127` and `126` are never verdicts about the tool you were
   testing. Check the wrapper exists (`command -v`), or drop it — the probe above needed no
   timeout at all, because `-p` terminates on its own.
+- **Quote or `./`-prefix a `<ref>:<path>` argument.** zsh reads `:t` `:s` `:h` `:r` `:e` as history
+  modifiers, so `git show $S:tools/README.md` silently loses the path and returns `fatal:` — and a
+  `grep -c` over that failure scores **0 mentions**: a mangled instrument reading as a clean negative.
+  `git show "$S:./tools/README.md"` defeats it. ⚠ `pipe-exit-scan.py` does **not** catch this — there
+  is no pipe. Same signature, different mechanism, and the scanner finding nothing says nothing about
+  it. [measured: nForma-NEXT 2026-08-19, DEV5 and DEV1]
 - **Never read an exit code through a pipe.** ⇒ RETIRED AS PROSE, enforced by
   `tools/pipe-exit-scan.py`. It is kept as a one-line pointer rather than a rule because the
   prose form was measured not to work: three instances, in three roles, in four hours — and the
@@ -223,13 +262,6 @@ stops being a control the moment the defect is fixed.
   task*, against this very paragraph. ⛔ A rule that exists and does not fire is worse than no
   rule, because its presence is mistaken for coverage.
 
-- **Never read an exit code through a pipe.** `cmd | head; echo $?` reports *head's* status, and
-  `${PIPESTATUS[0]}` expands to empty in zsh — both print something that looks like a measurement and
-  is not one. Redirect to a file and check `$?` on the bare command. ⚠ Two independent instances in one
-  session, ten minutes apart, in two different roles, *both while verifying instrument integrity*: one
-  reading `tail`'s status and nearly filing a working validator as an entrypoint that cannot fail, one
-  reading an empty `PIPESTATUS` and printing `exit=` having measured nothing. That it caught two
-  careful readers in the act of being careful is why it is a convention and not a note.
 - ⛔ **A known-positive proves a control CAN fire. It does not prove the control fires
   CORRECTLY.** Measured, inside the tool built for #26: `bootstrap-audit.py`'s known-positive
   passed — it genuinely discriminated a defective bootstrap from a clean one — and the same run
