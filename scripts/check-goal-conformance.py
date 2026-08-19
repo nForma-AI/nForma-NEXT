@@ -121,8 +121,21 @@ def main():
         return self_test()
     rev = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
                          capture_output=True, text=True).stdout.strip()
-    files = sorted(f for f in os.listdir("goals")
-                   if f.endswith(".md") and f != "README.md") if os.path.isdir("goals") else []
+    # ⛔ NOT "every .md that is not README". That population is wrong and it fired
+    # the moment this checker got a caller: `goals/RESERVED-ACTIONS.md` is a shared
+    # reference, not a role goal, and it was reported as missing five of six.
+    # A checker whose population is "everything in the directory" measures the
+    # directory's naming discipline, not the thing it claims to check.
+    #
+    # A role goal declares a Repository line — the standard's own header form.
+    # ⚠ Files that carry it and nothing else are still checked, which is correct:
+    # a file claiming to be a role goal must satisfy the six.
+    files, skipped = [], []
+    for f in sorted(os.listdir("goals")) if os.path.isdir("goals") else []:
+        if not f.endswith(".md") or f == "README.md":
+            continue
+        head = open(os.path.join("goals", f), errors="replace").read(2000)
+        (files if re.search(r"^\*\*Repository:\*\*", head, re.M) else skipped).append(f)
     if not files:
         print("⛔ no goal files found under goals/ — ESTABLISHED NOTHING, not conformant.\n"
               "   ADDABLE — FIXABLE HERE: run from the repository root.", file=sys.stderr)
@@ -136,6 +149,13 @@ def main():
         bad += bool(miss)
         print(f"  {'FAIL' if miss else 'ok  '}  {f:<40} {'missing: ' + ', '.join(miss) if miss else 'all six'}")
     print(f"\n{len(files) - bad} of {len(files)} conformant.", file=sys.stderr)
+    # ⛔ Name what was skipped. A population that silently excludes files is how
+    # "all conformant" gets believed — and the exclusion rule here is a heuristic
+    # on a header line, not a fact about the file.
+    if skipped:
+        print(f"⚠ NOT CHECKED (no `**Repository:**` header, so not treated as a role goal): "
+              f"{', '.join(skipped)}. That is a heuristic — if one of these IS a role goal, "
+              f"this run missed it.", file=sys.stderr)
     print("⚠ Presence of a HEADING, not quality of its content. A §1 that is present "
           "and aspirational passes here and should still fail review.", file=sys.stderr)
     return 1 if bad else 0
