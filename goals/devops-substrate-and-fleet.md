@@ -1,5 +1,10 @@
 # DEVOPS — the machinery the fleet runs on is observable, honest, and committed
 
+⚠ **QA is half this role.** You own not only that the machinery runs, but that it
+would **catch** something. A green pipeline that detects nothing is a DEVOPS
+defect, not a DEV# one — and when a defect turns out to be a class rather than an
+instance, closing the class is yours to push forward.
+
 **Repository:** /Users/jonathanborduas/code/DigitalFrontier-infra → github.com/Borduas-Holdings/Blazing-Back
 **Established:** 2026-08-19. Standing until TEAMLEAD or the operator redirects it.
 
