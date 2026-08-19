@@ -82,6 +82,46 @@ PROMPT_FOR = {r: f"prompts/{r}.md" for r in ["TEAMLEAD", "ARCHITECT", "DEVOPS", 
 PROMPT_FOR.update({f"DEV{i}": "prompts/DEV.md" for i in range(1, 10)})
 
 
+# ⚠ A hash short enough to collide is not a comparison. The bootstrap emits 12
+# chars; at 1 char a claim reads CURRENT roughly 1 in 16 times. Anything shorter
+# than this is UNVERIFIED — refused, not compared. (Reviewer's measurement: the
+# live half of a two-clause prefix test, where the second clause never differed
+# from the first across five cases and only widened what could pass.)
+MIN_DOCTRINE = 7
+
+
+def doctrine_verdict(claimed, current):
+    """WHICH VERSION of its prompt was this pane launched with?
+
+    Pure, so it can carry its own known-positive AND known-negative. It shipped
+    with neither in the first revision — the only control in this file to arrive
+    that way, in a file whose --self-test refuses every verdict when a control
+    fails. It asserted a standard it exempted its own newest check from.
+
+    Returns (state, note). States are distinct because the remedies are:
+      current     nothing
+      STALE       relaunch that pane; a prompt loads at session start
+      UNKNOWN     ⛔ ABSENT IS NOT CURRENT. A three-field token is SILENT about
+                  doctrine, and silence must never resolve to a pass — that is
+                  the #20 defect, where a fact with no slot rendered as absent
+                  rather than unknown.
+      UNVERIFIED  the comparison could not be made; not a pass either
+    """
+    if claimed is None:
+        return "UNKNOWN", ("no doctrine= in the token — this pane predates the hash step, "
+                           "so its prompt version is UNKNOWN, not current")
+    if len(claimed) < MIN_DOCTRINE:
+        return "UNVERIFIED", (f"doctrine={claimed!r} is shorter than {MIN_DOCTRINE} chars — "
+                              "too short to discriminate; refused rather than compared")
+    if not current:
+        return "UNVERIFIED", "could not hash the prompt at HEAD — doctrine UNVERIFIED, not verified"
+    if current.startswith(claimed):
+        return "current", ""
+    return "STALE", (f"doctrine STALE: pane launched with {claimed}, HEAD has {current[:12]} — "
+                     "this pane is executing a superseded prompt and cannot be told; "
+                     "a prompt loads at session start")
+
+
 def _hash_object(top, relpath):
     """git hash-object of the file AS COMMITTED AT HEAD, not as it sits on disk.
 
@@ -365,27 +405,19 @@ def audit(role, row):
     #
     # A pane running stale doctrine is the party LEAST able to report that it is,
     # so the hash is taken by the substrate at launch and merely quoted here.
-    if claimed_doctrine is None:
-        # ⚠ ABSENT is not CURRENT. A three-field token is silent about doctrine,
-        # and silence must not resolve to a pass — that is the exact defect a
-        # fixed-arity token produced in #20, where a fact with no slot rendered
-        # as absent rather than unknown.
-        v["unknowns"].append("no doctrine= in the token — this pane predates the hash step, "
-                             "so its prompt version is UNKNOWN, not current")
-    elif top:
-        prompt = PROMPT_FOR.get(claimed_role) or PROMPT_FOR.get(re.sub(r"\d+$", "#", claimed_role))
-        cur = _hash_object(top, prompt) if prompt else None
-        if cur is None:
-            v["unknowns"].append(f"cannot hash {prompt!r} in {top} — doctrine version "
-                                 "UNVERIFIED, not verified")
-        elif cur.startswith(claimed_doctrine) or claimed_doctrine.startswith(cur[:len(claimed_doctrine)]):
-            v["doctrine_state"] = "current"
-        else:
-            v["doctrine_state"] = "STALE"
-            v["negatives"].append(
-                f"doctrine STALE: pane launched with {prompt} at {claimed_doctrine}, "
-                f"HEAD has {cur[:12]} — this pane is executing a superseded prompt and "
-                "cannot be told; a prompt loads at session start")
+    # ⚠ No `DEV#` fallback: PROMPT_FOR already holds DEV1..DEV9 and has no `DEV#`
+    # key, so a regex fallback to it returned None for every input ever passed —
+    # measured on DEV3, DEV12, DEVX. It produced no wrong verdict, and it read as
+    # coverage while providing none. Removed rather than fixed; an unrecognised
+    # role lands in the honest UNVERIFIED path.
+    prompt = PROMPT_FOR.get(claimed_role)
+    cur = _hash_object(top, prompt) if (top and prompt) else None
+    state, note = doctrine_verdict(claimed_doctrine, cur)
+    v["doctrine_state"] = state
+    if state == "STALE":
+        v["negatives"].append(note)
+    elif state in ("UNKNOWN", "UNVERIFIED"):
+        v["unknowns"].append(note)
     return v
 
 
@@ -480,10 +512,30 @@ def self_test():
     if not ok_claim:
         print("  ⛔ the claim comparison does not discriminate agreement from disagreement, "
               "or silently passes an unmeasured value", file=sys.stderr)
-    if ok_clean and ok_dirty and ok_claim:
-        print("  ✅ both controls discriminated: an unexecutable step from an executed one "
-              "(identical ROLE-READY on both), and a claim that matches substrate from one "
-              "that does not")
+    # ⛔ Known-positive #3, added because the doctrine check shipped with NEITHER a
+    # positive nor a negative — the only control here to do so, in a file that
+    # refuses every verdict when a control fails.
+    CUR = "abcdef0123456789abcdef0123456789abcdef01"
+    d_cur = doctrine_verdict(CUR[:12], CUR)[0]
+    d_stale = doctrine_verdict("ffffffffffff", CUR)[0]
+    d_absent = doctrine_verdict(None, CUR)[0]
+    d_short = doctrine_verdict("abc", CUR)[0]
+    d_nohash = doctrine_verdict(CUR[:12], None)[0]
+    print(f"  known-positive  doctrine current : {d_cur}")
+    print(f"  known-positive  doctrine stale   : {d_stale}")
+    print(f"  known-positive  doctrine absent  : {d_absent}   (ABSENT IS NOT CURRENT)")
+    print(f"  known-positive  doctrine short   : {d_short}   (refused, not compared)")
+    print(f"  known-positive  cannot hash HEAD : {d_nohash}")
+    ok_doc = (d_cur == "current" and d_stale == "STALE" and d_absent == "UNKNOWN"
+              and d_short == "UNVERIFIED" and d_nohash == "UNVERIFIED")
+    if not ok_doc:
+        print("  ⛔ the doctrine check does not discriminate a stale prompt from a current "
+              "one, or resolves a MISSING field to a pass", file=sys.stderr)
+    if ok_clean and ok_dirty and ok_claim and ok_doc:
+        print("  ✅ every control discriminated: an unexecutable step from an executed one "
+              "(identical ROLE-READY on both), a claim that matches substrate from one "
+              "that does not, and a stale prompt version from a current one — with a "
+              "MISSING doctrine field reading UNKNOWN rather than either")
         return True
     return False
 
