@@ -329,6 +329,13 @@ stops being a control the moment the defect is fixed.
   argument with a future reader who measures a fourth commit. (The rule is #34's — *cite the
   property, never the number* — and this is DEV3 applying it to its own table one commit after
   filing it.)
+  ⚠ **Observation, n=1, recorded rather than proposed as a rule:** the two numbers above came
+  from *one agent* — `wc -c` in a scratch run, `${#var}` forty minutes later — and nothing in
+  either run flagged the disagreement. It surfaced only when a peer's number differed. ⇒ So
+  **"I measured it twice" is not the control it sounds like.** Two invocations that agree
+  establish that the method is deterministic, not that the number is a property of the thing;
+  only two runs known to differ in *method* test that. A single observer cannot detect this class
+  from the inside, because the discrepancy is the instrument.
 
   ★ In the last case the modifier eats the **entire** path, the argument collapses to the bare
   ref, and `git show "$M:scripts/validate-recipe.py"` runs as `git show <commit>` — **exit 0,
