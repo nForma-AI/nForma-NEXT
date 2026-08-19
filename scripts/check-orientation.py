@@ -20,6 +20,7 @@ by construction — they contain characters no real path here does.
 
 Exit: 0 all pointers resolve · 1 at least one is dangling · 2 established nothing.
 """
+import argparse
 import re
 import sys
 from pathlib import Path
@@ -44,7 +45,18 @@ def extract(text):
 
 
 def main():
-    self_test = "--self-test" in sys.argv
+    # ⛔ Strict argument parsing, and it is a #26 fix rather than tidiness. This read
+    # `"--self-test" in sys.argv` and therefore ACCEPTED ANYTHING: `--not-a-real-flag`,
+    # `--repo /nonexistent`, `utter garbage` — all exited 0. An operator who typos a flag
+    # got a clean pass from a checker that had silently ignored the instruction.
+    # ⇒ A tool with no reachable failing state for misuse is the #26 class, and this one
+    # was written BY the pane filing #26 instances, four hours before it audited others
+    # for the same defect. argparse rejects an unknown flag with exit 2.
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--self-test", action="store_true",
+                    help="exercise the extractor's rejection cases before reporting")
+    args = ap.parse_args()
+    self_test = args.self_test
 
     if not DOC.is_file():
         print(f"VOID  CLAUDE.md not found at {DOC}", file=sys.stderr)
