@@ -142,5 +142,41 @@ that window. See #20.
   both sides first. ⚠ Measured twice the same day, at two altitudes: once against a rendered PR
   body, once against a wrapped Markdown bullet where a `grep` reported *"not there"* for
   *"not looked at"*.
+- ⛔ **Restricting to the `command` field was NOT enough, and the gap was measured rather than
+  imagined.** `echo "git rev-parse --show-toplevel"` and `grep -n "git rev-parse …" f` both read
+  **EXECUTED**: they are command fields, and they contain every anchor. ⇒ **Match on POSITION,
+  not on presence.** Strip quoted spans, split on shell separators, take the first bare word of
+  each segment — that is what was *invoked*. A command named inside a quoted argument occupies
+  no command position, whatever quoted it. ★ Not a blocklist of `echo`/`grep`/`cat`: a blocklist
+  enumerates the mentions you thought of. This is #36's rule — **match on something a mention
+  cannot produce** — and the fourth independent rediscovery of it in this repo, alongside
+  `DX.md` §19's positional last-line parse and matching `goals/` rather than the word `goal`.
+- ⛔ **A limit you have MEASURED is a limit. A limit you have only DESCRIBED is a defect you
+  have not looked at** — and it has no input that could contradict it, which makes it a control
+  with no reachable failing state (#26) sitting in the section whose whole purpose is honesty.
+  Measured: `bootstrap-audit.py` printed *"$NFORMA_ROLE is per-process and not cross-pane
+  readable — UNMEASURED, not agreeing"* on every pane of every run. It was never run. `ps eww`
+  reads any same-user process's environment; 37 variables came back from each of the nine live
+  panes. ⇒ The tool emitted a **false UNKNOWN nine times per run and called it honesty.** The
+  test transfers unchanged: *name the input that would falsify this limit.*
+- ⚠ **Control the instrument on the population it is USED on, not on a convenient stand-in.**
+  The env reader's known-positive was first built against `/bin/sleep` and failed: macOS returns
+  **no environment at all** for SIP-protected system binaries. Had it happened to pass, it would
+  have certified the reader on a process class it is never pointed at — #1's wrong-population
+  defect, inside a control. It now runs against a live agent pane.
+- ⛔ **An unresolvable input must not share a verdict with a clean negative** — the exit-2
+  convention applied *inside* a function rather than at a process boundary. Measured by
+  ARCHITECT against the position rule above: `sudo git push`, `xargs -I{} git push`,
+  `echo $(git push)` and `if git push; then` all RUN the command and all read as *not found*.
+  Every miss landed in the unknown bucket, which is safe for *"did this pane comply?"* and
+  **unsafe for *"how widespread is non-compliance?"*** — it inflates the rate, and #20's content
+  **is** a rate. ⇒ Same defect as the false positive above, pointed the other way, and invisible
+  because it produces the finding you were already expecting. Split three ways: *only inside
+  quotes* → `MENTIONED-ONLY` (text cannot run); *unquoted but not in a command position, or a
+  command substitution* → `INDETERMINATE` (it may be wrapped, substituted, or an argument, and
+  the parser cannot say). ★ Still not a blocklist: enumerating wrapper names would be one,
+  **noticing that a segment has a shape you do not resolve is not.**
+- **A mention is a third state, not a negative.** `MENTIONED-ONLY` means *no execution evidence*,
+  which is not *evidence of no execution*. It counts as unknown and never as a pass.
 - **No secrets in source.** Tools needing the Daintree token read it from the user's own MCP
   config at runtime; it appears in none of these files.
