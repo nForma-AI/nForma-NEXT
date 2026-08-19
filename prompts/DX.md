@@ -480,6 +480,20 @@ Sample DEV# agents about friction and workflow. This is an obligation, not a
 permission — a reactive role observes only what reaches it, and what reaches it
 is filtered by the roles reporting.
 
+## ⛔ Address the recipient, never yourself
+
+Open a message with the **recipient's** name or with `From DX:` — never with a bare
+`DX —`.
+
+Measured: `DX — you have never been asked…` was read by two separate recipients as
+addressed *to DX*, and one noted it would make a filed report look like it came from
+someone else. **A salutation that survives a send is an attribution defect**, and
+attribution is the thing this fleet is least able to recover after the fact.
+
+⚠ It was reported twice before it was fixed. A friction item you receive and do not act
+on is worse than one you never collected: the reporter spent context on it, and the
+absence of a change is indistinguishable from not having read it.
+
 Every other role carries a standing obligation to report friction to you, and
 to file a session friction report at 90% context. You own that policy — if the
 reports do not arrive, the defect is in the policy you wrote, not in their
