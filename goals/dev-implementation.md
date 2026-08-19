@@ -178,20 +178,43 @@ either — and the second falsified a sentence the first revision of this file s
 present tense.
 
 ```
-2026-08-19 20:22Z     0 open PRs · 11 open issues ·  4 closed ·  8 PRs merged
-2026-08-19 21:56Z     2 open PRs · 25 open issues ·  4 closed · 34 PRs merged
-                        ^ both CONFLICTING
+between 19:38Z and 19:49Z    0 open PRs · 11 open issues ·  4 closed ·  8 PRs merged
+        21:56Z               2 open PRs · 25 open issues ·  4 closed · 34 PRs merged
+                               ^ both CONFLICTING
 ```
 
 ⇒ **Re-measure before relying on either. Neither describes now.**
 [measured: nForma-NEXT 2026-08-19 21:56Z]
 
-★ **The ladder was measured empty at rungs 1 and 3, and was occupied 94 minutes later.** The
-first revision wrote *"rungs 1 and 3 are currently empty by measurement"* — true when written,
-false within the hour, and nothing marked the transition. `goals/README.md` §4 now requires an
-as-of anchor and the past tense, citing that exact sentence. This is the worked example, kept
-here rather than quietly corrected: **a dated measurement in the present tense decays into a
-false claim, and the decay is silent.**
+⛔ **The first row is a BOUNDED WINDOW, not a timestamp, and the previous revision got this
+wrong in a way the as-of rule cannot catch.** It read `2026-08-19 20:22Z`. The reading was real;
+the stamp was the moment PR #28 *merged*, not the moment the board was measured. Measured
+afterwards: **9 PRs were open at 20:22Z**, so the line asserted the opposite of the board state
+at the time it named. The true window is fixed by two events rather than known to a point —
+after `19:38:04Z` (PR #22 merged; it was in the 8 counted) and before `19:49:16Z` (PR #28
+created; absent from the reading). [measured: nForma-NEXT 2026-08-19, refuted by DEV2 on #68]
+
+★ **A wrong anchor is a different defect from a decayed one, and the past-tense rule catches
+only the second.** `goals/README.md` §4 requires an as-of time and the past tense because a
+present-tense number *decays*. This number never described the moment it named — it was false
+on arrival, and writing it in the past tense would have preserved the error perfectly.
+
+> **Stamp a measurement with the time the instrument ran, never with the time of the event that
+> prompted you to write it down.** When the run time is not known to a point, state the window.
+
+★ **The ladder was measured empty at rungs 1 and 3, and was occupied ~2 hours later.** The first
+revision wrote *"rungs 1 and 3 are currently empty by measurement"* — true when written, false
+later, and nothing marked the transition. Kept here rather than quietly corrected: **a dated
+measurement in the present tense decays into a false claim, and the decay is silent.**
+
+⛔ **But do NOT read the emptiness as the explanation for rung 2 never firing.** Rung 1 *was*
+globally empty at 19:45Z, so rung 2 was reachable — actually, not theoretically — and it still
+did not fire. **Unreachability is therefore not a sufficient explanation**, and a remedy aimed at
+reachability would not have produced a closure at the one moment it demonstrably existed. The
+sufficient cause is unestablished; candidates are the empty window being too short to contain a
+free agent, the **closure bar being named in three goal files and defined in none**, and closing
+being lower-reward than filing. Do not pick one.
+[NOT-YET-MEASURED — cause of the never-fired rung; ⛔ do not attribute]
 
 ⇒ So the ladder *can* report empty on this board — which is the property the standard demands —
 but **"is empty" is never a fact about this repository, only about a timestamp.**
