@@ -32,6 +32,23 @@ request**, which is visible whether or not anyone remembers the rule.
    re-derived wrongly. A number without a measurement date is a rumour.
 5. **What the role does NOT own** — the boundary is half the definition, and it is the half
    that gets absorbed.
+6. **The channel contract** — who this role may talk to, and who it must route through.
+   ⛔ Omitted from the first seven goals written, and the omission was not seven oversights
+   but one template gap. An agent that hit something only the operator could resolve had **no
+   route**, so the operator reached into panes directly to close the gap — doing the
+   orchestrator's job through a channel that should not exist.
+
+   State it explicitly, including the exceptions:
+
+   ```
+   OPERATOR <-> TEAMLEAD                       the channel
+   OPERATOR <-> DX                             permitted while the team model is being built
+   OPERATOR <-> DEV# / ARCHITECT / DEVOPS      ⛔ not a channel
+   ```
+
+   ⚠ A contract that names only the permitted path is incomplete. Name what an agent does
+   when it needs something the operator alone can give — otherwise the rule forbids the wrong
+   route without supplying the right one, and the traffic finds its own way.
 
 ## ⚠ A self-dispatch list must be able to return EMPTY
 
