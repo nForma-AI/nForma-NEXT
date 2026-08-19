@@ -90,35 +90,34 @@ check)
   # survived authoring.
   printf 'conventional location: %s\n' "$WT_DIR"
   printf '%s' "$report"
-  # ⛔ PROVISIONED IS NOT OCCUPIED, AND THIS SCRIPT CAN ONLY SEE THE FIRST.
+  # ⛔ TWO PREDICATES, TWO PROPOSITIONS, AND THEY CURRENTLY DISAGREE.
   #
-  # Every state above answers "does a worktree EXIST for this role". None answers
-  # "is that role WORKING in it", and the #19 hazard lives entirely in the second:
-  # an agent in the shared tree running `git checkout` rewrites the role prompts of
-  # every pane there, whether or not a tree was provisioned for it.
+  # An earlier revision of this block said occupancy was NOT MEASURABLE from
+  # outside. That is falsified. It measured SESSION cwd, found every pane under the
+  # main tree, and attached a cwd reading to an occupancy claim.
   #
-  # Measured: all 8 agent panes' registry `cwd` is the SHARED tree, while 9
-  # role worktrees sit provisioned. A check reporting "all roles isolated" would
-  # read as ISOLATED on precisely the configuration that is not.
+  #   session cwd    would a `git checkout` HERE move files under other panes?
+  #                  -> YES, fleet-wide. All 8 agent panes launched in the main tree.
+  #   worktree HEAD  are agents doing their work in ISOLATION?
+  #                  -> YES. 9 of 10 role worktrees sit on a role-named branch.
   #
-  # ⚠ And the registry `cwd` cannot close it either. It is captured at LAUNCH. This
-  # very script's author has committed from .claude/worktrees/devops all session
-  # while its registry row still says the shared tree, because an agent `cd`s inside
-  # a single tool call and nothing outside the process observes that.
+  # ⚠ NEITHER PREDICATE IS BROKEN. Agents `cd` per commit, so cwd answers "where was
+  # this session STARTED", never "where is this agent WORKING" — and a worktree on a
+  # role-named branch is positive evidence that work happened there. The defect was
+  # attaching one measurement to the other proposition.
   #
-  # ⇒ Three states, one measurable from here:
-  #     provisioned        `git worktree list`      measurable
-  #     launched-into      registry cwd             measurable, LAUNCH-time only
-  #     operating-in       per-command cwd          ⛔ NOT MEASURABLE from outside
+  # ⇒ This script already reads HEAD. It had the right instrument before anyone had
+  # the right question, which is why the fix is a sentence and not a rewrite.
   #
-  # Per tools/README.md: an instrument that can see only part of the question says
-  # so rather than reporting clean on the part it can see.
-  printf '\n⛔ OCCUPANCY NOT MEASURED. The states above are PROVISIONING.\n'
-  printf '   Whether a role is WORKING in its tree is not observable from here: an\n'
-  printf '   agent changes directory inside a single tool call, and the session\n'
-  printf '   registry records only the cwd it was LAUNCHED with.\n'
-  printf '   ⇒ "all roles isolated" above means all roles HAVE a tree. It does NOT\n'
-  printf '     mean the shared tree is unused, and the #19 hazard lives there.\n'
+  # ⛔ What remains true, and is the part worth printing: a role worktree existing
+  # does not stop any pane from working in the shared tree, and the #19 hazard lives
+  # there. Provisioning is necessary and not sufficient.
+  printf '\n⚠ These states are PROVISIONING. Occupancy is a different question and is\n'
+  printf '  answerable — by worktree HEAD, not by session cwd: a role tree sitting on a\n'
+  printf '  role-named branch is evidence that work happened in it.\n'
+  printf '  ⇒ But provisioning does not PREVENT a pane working in the shared tree, and\n'
+  printf '    a `git checkout` there still rewrites every other pane files. The #19\n'
+  printf '    hazard lives in that gap, not in whether a tree exists.\n'
   if [ "$n_outside" -gt 0 ]; then
     printf '\n⚠ %d role(s) isolated OUTSIDE the conventional location:%s\n' "$n_outside" "$outside_list"
     printf '  Attributable but invisible to any check keyed on that directory.\n'
