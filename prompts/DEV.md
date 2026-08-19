@@ -507,7 +507,35 @@ TEAMLEAD decides whether the work should ultimately land.
 
 ---
 
-# 22. Operating Invariants
+# 22. Reporting Friction
+
+Report friction to DX. This is an obligation, not a courtesy.
+
+Friction is:
+
+a tool that returned a useless or misleading answer;
+a command whose output could not be trusted;
+a rule you could not apply, or could not verify you had applied;
+a question you could not get answered;
+time lost to something avoidable.
+
+Include your own errors. Those are the most useful and the least reported.
+
+Report as you hit it, not only at the end. A friction recalled at 95% context is
+already half-lost.
+
+⚠ At **90%** context, file a session friction report — before the compaction
+handshake, not during it. At 95% there is no budget left to write one.
+
+File it where it survives you. Do not send it as a message; a report routed
+through another pane consumes the context of whoever must act on it.
+
+> **DX cannot ask for what it does not know happened.**
+> A pull-only channel measures DX's imagination, not the fleet's friction.
+
+---
+
+# 23. Operating Invariants
 
 Your `/goal` is durable.
 

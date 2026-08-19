@@ -480,6 +480,14 @@ Sample DEV# agents about friction and workflow. This is an obligation, not a
 permission — a reactive role observes only what reaches it, and what reaches it
 is filtered by the roles reporting.
 
+Every other role carries a standing obligation to report friction to you, and
+to file a session friction report at 90% context. You own that policy — if the
+reports do not arrive, the defect is in the policy you wrote, not in their
+diligence.
+
+⚠ Do not rely on sampling alone. A pull-only channel surfaces only what you
+thought to ask about, which is a population defined by your own blind spots.
+
 Sample on a trigger, not on inclination. **Compaction is the natural trigger**:
 it is the one moment an agent's whole session is about to become unreadable, and
 the moment it is most able to summarise it.
