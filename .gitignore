@@ -1,0 +1,9 @@
+# Per-session substrate residue. These are written by tooling into the repo and
+# are meaningless outside the session that wrote them. Left untracked, every pane
+# in the fleet carries a permanently dirty `git status` — and a tree that is
+# always dirty is how a real uncommitted change gets missed.
+.claude/nf-session-seen-*.flag
+prompts/.claude/nf-session-seen-*.flag
+
+# Local analysis cache, regenerated on demand.
+.planning/

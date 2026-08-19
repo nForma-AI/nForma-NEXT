@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 """Resolve a Claude session (transcript) to the Daintree pane that is running it.
 
-⛔ Why this is not a one-liner. There is no shared key:
+⛔ Why the PANE join is not a one-liner. terminal.list has no shared key:
 
   terminal.list  -> id, title, worktreeId          ... and NO session id
   transcript     -> session id, self-reported name ... and NO pane id
+
+⚠ CORRECTED: an earlier version of this paragraph said "there is no shared key"
+flatly. That is true of terminal.list and FALSE of the session registry --
+~/.claude/sessions/<pid>.json carries sessionId AND name, and sessionId IS the
+transcript filename. The over-broad claim cost real work: it was read as a
+property of the system, so the name join was rebuilt by content matching when an
+exact join was already available. Session -> NAME is exact. Session -> PANE is
+what still needs content.
 
 The only overlapping field is the *name*, and it is unreliable on both sides:
   - pane side: two panes carried the title IMPLEMENTER3 simultaneously;
@@ -30,6 +38,17 @@ The Daintree token is read from the user's own MCP config. It is never embedded.
 import collections, glob, json, os, re, subprocess, sys, time
 
 CFG = os.path.expanduser("~/.claude.json")
+
+
+def _daintree_configured():
+    """Non-fatal probe. daintree_endpoint() exits; a fallback path needs to ask
+    without dying, so the two are separate questions and separate functions."""
+    try:
+        cfg = json.load(open(CFG))
+    except Exception:
+        return False
+    srv = (cfg.get("mcpServers") or {}).get("daintree")
+    return bool(srv and (srv.get("headers") or {}).get("Authorization"))
 
 
 def daintree_endpoint():
@@ -73,6 +92,83 @@ def payload(res):
     return obj
 
 
+SESSIONS = os.path.expanduser("~/.claude/sessions")
+
+
+def registry():
+    """Authoritative session name/identity, keyed by sessionId.
+
+    ⛔ This is the shared key the module docstring says does not exist. That
+    statement is true of `terminal.list` and false of the session registry:
+    ~/.claude/sessions/<pid>.json carries BOTH `sessionId` (which IS the
+    transcript filename) and `name`. So session -> name is an exact join and
+    needs no content matching. Only session -> PANE still does.
+
+    ⚠ This column used to be parsed out of the transcript (`customTitle` /
+    `agentName`). That source is documented above as unreliable -- one file
+    records ALTERNATE TEAMLEAD/DEV2 for ~100 cycles -- and reading it as "the
+    current name" reported a rename that never happened. The registry does not
+    have that failure mode: it is written by the owning process, not narrated
+    by the agent.
+    """
+    out = {}
+    for path in glob.glob(os.path.join(SESSIONS, "*.json")):
+        try:
+            row = json.load(open(path))
+        except Exception:
+            continue                      # one unreadable row is not a failed run
+        sid = row.get("sessionId")
+        if sid:
+            out[sid] = row
+    return out
+
+
+def name_audit(row):
+    """Did this session's name come from a rename, or was it auto-derived?
+
+    ⛔ The predicate is KEY ABSENCE, not a value. A successful rename REMOVES
+    `nameSource`; it never sets it to "user". The strings "auto" and "user" do
+    occur in the CLI binary and are the obvious thing to test for -- a checker
+    written against them never fires on any row this system produces, and
+    reports a clean fleet forever. Measured on nine panes renamed in place.
+    """
+    if row is None:
+        return "no-registry-row"
+    src = row.get("nameSource")
+    return "explicit" if src is None else src
+
+
+def bootstrap_role(path):
+    """The role a session was LAUNCHED as, from its first user message.
+
+    Distinct from any name it now carries: the name can be patched, the
+    bootstrap cannot. A disagreement between the two is the finding.
+    """
+    try:
+        for line in open(path, errors="replace"):
+            m = re.search(r"You are (TEAMLEAD|ARCHITECT|DEVOPS|DX|DEV[1-9])\b", line)
+            if m:
+                return m.group(1)
+    except OSError:
+        pass
+    return None
+
+
+def control(reg):
+    """Known-positive by construction: this process runs INSIDE a session, so
+    that session MUST be joinable. If the join is broken, this returns False.
+
+    ⛔ The control this replaces was "the table printed N rows", which both the
+    working and the broken version produce -- a non-discriminating control, of
+    exactly the kind discriminates.py exists to refuse. Returns None when the
+    control cannot be run at all, which is a third state and not a pass.
+    """
+    me = os.environ.get("CLAUDE_CODE_SESSION_ID")
+    if not me:
+        return None
+    return me in reg
+
+
 def rare_tokens(path, limit=120):
     """Tokens unlikely to appear in another pane: issue refs, comma-numbers,
     short hashes, long identifiers. Drawn from the most recent assistant turns."""
@@ -111,8 +207,85 @@ def self_reported(path):
     return names
 
 
+def fit(v, w):
+    """Pad or CLIP to exactly w. A bare f-string width pads but never clips, so a
+    long value silently merges with the next column: 'deepagents-nextjs-11' +
+    'derived' rendered as 'deepagents-nextjs-11derived', which reads as a single
+    value and hides the audit field entirely."""
+    v = "-" if v in (None, "") else str(v)
+    return (v[:w - 2] + "..") if len(v) > w else v.ljust(w)
+
+
+def registry_report(reg, as_json):
+    """⚠ DIFFERENT QUESTION from the pane join, and it says so.
+
+    Answers: which role was this session launched as, what name does it carry
+    now, and did that name come from a rename? It does NOT answer which pane is
+    running it -- that still needs Daintree. Per tools/README.md 1b, an
+    instrument that changes its question must say so in its output, or its
+    diffs are fabrications.
+    """
+    rows = []
+    for proj in glob.glob(os.path.expanduser("~/.claude/projects/*")):
+        for path in glob.glob(os.path.join(proj, "*.jsonl")):
+            if time.time() - os.path.getmtime(path) > 3 * 3600:
+                continue
+            sid = os.path.basename(path)[:-6]
+            row = reg.get(sid)
+            rows.append({"session": sid[:8],
+                         "role": bootstrap_role(path),
+                         "name": (row or {}).get("name"),
+                         "named": name_audit(row),
+                         "pid": (row or {}).get("pid"),
+                         "status": (row or {}).get("status"),
+                         "agrees": bool(row) and (row.get("name") == bootstrap_role(path)),
+                         "self_reported": self_reported(path) if row is None else None})
+    rows.sort(key=lambda r: (r["role"] or "~", r["session"]))
+    if as_json:
+        print(json.dumps(rows, indent=2))
+        return
+    print("MODE: registry join (session -> role, name, name-origin). "
+          "Does NOT resolve which pane runs a session; that needs Daintree.")
+    print(f"{'session':<10}{'ROLE':<11}{'name':<22}{'origin':<16}{'pid':>7}  agrees")
+    for r in rows:
+        flag = "OK" if r["agrees"] else ("DRIFT" if r["role"] and r["name"] else "-")
+        fb = ""
+        if r["self_reported"] is not None:
+            fb = "  fallback=transcript " + (",".join(r["self_reported"]) or "(none)") + " UNRELIABLE"
+        print(f"{fit(r['session'],10)}{fit(r['role'],11)}{fit(r['name'],22)}"
+              f"{fit(r['named'],16)}{str(r['pid'] or '-'):>7}  {flag}{fb}")
+    sys.stdout.flush()
+    drifted = [r for r in rows if r["role"] and r["name"] and not r["agrees"]]
+    derived = [r for r in rows if r["named"] not in ("explicit", "no-registry-row")]
+    print(f"\n{len(rows)} sessions. {len(drifted)} name/role disagreements, "
+          f"{len(derived)} still auto-derived (never renamed).", file=sys.stderr)
+    print("⚠ 'explicit' means the nameSource KEY IS ABSENT. It is never the string 'user'.",
+          file=sys.stderr)
+
+
 def main():
     as_json = "--json" in sys.argv
+    reg = registry()
+
+    ctl = control(reg)
+    if ctl is False:
+        print("⛔ CONTROL FAILED: this process's own session "
+              f"({os.environ.get('CLAUDE_CODE_SESSION_ID','?')[:8]}) is not in the registry join. "
+              "The join is broken or the registry is unreadable. Every row below would be "
+              "unreliable, so none is printed. This is 'established nothing', not 'nothing found'.",
+              file=sys.stderr)
+        return 2
+    if ctl is None:
+        print("⚠ CONTROL NOT RUN: CLAUDE_CODE_SESSION_ID unset, so the join has no "
+              "known-positive. Output below is UNVERIFIED.", file=sys.stderr)
+
+    if "--registry-only" in sys.argv or not _daintree_configured():
+        if "--registry-only" not in sys.argv:
+            print("⚠ No 'daintree' MCP server configured -- falling back to the registry join. "
+                  "Pane resolution is UNAVAILABLE, not empty.", file=sys.stderr)
+        registry_report(reg, as_json)
+        return 0
+
     url, auth = daintree_endpoint()
     handshake = subprocess.run(
         ["curl", "-sD", "-", "-o", "/dev/null", "-H", f"Authorization: {auth}",
@@ -175,23 +348,35 @@ def main():
             resolved = (len(scroll) >= 2
                         and best >= 4
                         and best >= 2 * max(second, 1))
-            rows.append({"session": os.path.basename(path)[:8],
+            sid = os.path.basename(path)[:-6]
+            rrow = reg.get(sid)
+            rows.append({"session": sid[:8],
                          "pane": title.get(tid) if resolved else None,
                          "hits": best, "runner_up": second,
                          "resolved": resolved,
-                         "self_reported": self_reported(path)})
+                         "role": bootstrap_role(path),
+                         "name": (rrow or {}).get("name"),
+                         "named": name_audit(rrow),
+                         # transcript parse is the FALLBACK now, not the source
+                         "self_reported": self_reported(path) if rrow is None else None})
     rows.sort(key=lambda r: -r["hits"])
 
     if as_json:
         print(json.dumps(rows, indent=2))
     else:
-        print(f"{'session':<10}{'PANE':<16}{'hits':>5}{'2nd':>5}  {'verdict':<11}self-reported")
+        print(f"{'session':<10}{'ROLE':<11}{'name':<22}{'origin':<16}"
+              f"{'PANE':<16}{'hits':>5}{'2nd':>5}  verdict")
         for r in rows:
             v = "RESOLVED" if r["resolved"] else ("ambiguous" if r["hits"] else "no match")
-            sr = ",".join(r["self_reported"]) or "(none)"
-            warn = "  ⚠file cannot name itself" if len(r["self_reported"]) > 1 else ""
-            print(f"{r['session']:<10}{str(r['pane'] or '-'):<16}{r['hits']:>5}"
-                  f"{r['runner_up']:>5}  {v:<11}{sr}{warn}")
+            fb = ""
+            if r["self_reported"] is not None:
+                sr = ",".join(r["self_reported"]) or "(none)"
+                fb = f"  fallback=transcript {sr} UNRELIABLE"
+                if len(r["self_reported"]) > 1:
+                    fb += " ⚠file cannot name itself"
+            print(f"{fit(r['session'],10)}{fit(r['role'],11)}{fit(r['name'],22)}"
+                  f"{fit(r['named'],16)}{fit(r['pane'],16)}{r['hits']:>5}"
+                  f"{r['runner_up']:>5}  {v}{fb}")
         n = sum(1 for r in rows if r["resolved"])
         print(f"\n{n} of {len(rows)} sessions resolved to a pane. "
               f"Unresolved means UNKNOWN, not unattached.", file=sys.stderr)
