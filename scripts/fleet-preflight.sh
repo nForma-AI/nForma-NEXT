@@ -94,11 +94,75 @@ for r in "${ROLES[@]}"; do
     "$r" "${repo:-?}" "${branch:-?}" "$src"
 done
 
+section 'Panel identity (measured, not asserted)'
+# ⛔ This section exists because the prose it replaces was FALSE against the live
+# fleet and an orchestrator believed it: it stated recipe-set titles are unpinned,
+# a reader generalised that to "titles are unpinned", and explained a stale pane
+# name as auto-titling overwriting a panel. Both halves were wrong — the titles
+# were pinned and the session was dead. An instrument asserting a substrate fact
+# in an operator-facing readout must measure it or say it did not.
+if ! command -v python3 >/dev/null 2>&1; then
+  note "python3 not on PATH — panel titles UNMEASURED, not verified"
+else
+  python3 - "${main_tree:-$toplevel}" <<'PANELS'
+import glob, json, os, sys, time
+top = sys.argv[1] if len(sys.argv) > 1 else ""
+base = os.path.expanduser("~/Library/Application Support/Daintree/projects")
+found, mtime = {}, None
+for path in glob.glob(os.path.join(base, "*", "state.json")):
+    try:
+        doc = json.load(open(path))
+    except Exception:
+        continue
+    panes = [t for t in doc.get("terminals", []) if t.get("cwd") == top]
+    if not panes:
+        continue
+    mtime = os.path.getmtime(path)
+    for t in panes:
+        if t.get("title"):
+            found[t["title"]] = t.get("titleMode")
+if not found:
+    print("  \033[33mwarn\033[0m  no Daintree project state for this repo — "
+          "panel titles UNMEASURED, not verified")
+    sys.exit(0)
+stamp = time.strftime("%H:%M:%S", time.localtime(mtime))
+print(f"  \033[32mok\033[0m    {len(found)} panes in Daintree state, read {stamp} "
+      f"(persisted view — it can lag the live UI)")
+roles = ["TEAMLEAD", "ARCHITECT", "DEVOPS", "DX", "DEV1", "DEV2", "DEV3", "DEV4", "DEV5"]
+missing = [r for r in roles if r not in found]
+loose = sorted(t for t, m in found.items() if m != "user")
+if missing:
+    print(f"  \033[31mFAIL\033[0m  roles with no panel: {', '.join(missing)}")
+else:
+    print("  \033[32mok\033[0m    every declared role has a panel")
+if loose:
+    print(f"  \033[33mwarn\033[0m  titles NOT pinned (titleMode != user, auto-titling may "
+          f"overwrite): {', '.join(loose)}")
+else:
+    print("  \033[32mok\033[0m    every title pinned (titleMode=user)")
+PANELS
+fi
+
+# ⚠ The companion half of the same claim. "$NFORMA_ROLE is the authoritative
+# identity" is true only WHEN IT IS SET, and it was empty in every pane of the
+# fleet that first shipped it — so the readout pointed the operator at an
+# authority that did not exist while dismissing one that did.
+if [ -n "${NFORMA_ROLE:-}" ]; then
+  ok "\$NFORMA_ROLE=$NFORMA_ROLE in this pane — env carrier is live here"
+else
+  note "\$NFORMA_ROLE is EMPTY in this pane — the env carrier is NOT established here"
+fi
+note "this pane cannot read another pane's environment: the nine ROLE-READY lines are self-reports, not measurements"
+
 section 'Known substrate limits'
 cat <<'LIMITS'
-  · Panel titles set by a recipe are NOT pinned (titleMode defaults to
-    "default"), so agent auto-titling may overwrite them after launch. The
-    authoritative identity is $NFORMA_ROLE inside each pane, not the tab label.
+  · Recipes have no `titleMode` field, so a recipe-set title starts unpinned and
+    agent auto-titling may overwrite it. ⚠ That is a claim about recipe-set
+    titles ONLY — a human rename pins the title afterwards. This readout no
+    longer asserts which case holds; see "Panel identity" above, which MEASURES
+    it. An earlier version stated the unpinned case unconditionally, was false
+    against a live fleet whose nine panes all read titleMode "user", and an
+    orchestrator built a wrong attribution on it.
   · A recipe cannot sequence: all 10 panes spawn concurrently via
     Promise.allSettled. There is no ordering and no inter-pane dependency.
     A daintree-assistant pane does not solve this — it is a legal pane type,
