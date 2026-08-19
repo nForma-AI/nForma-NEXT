@@ -70,12 +70,21 @@ def stranded(rows):
     by_ref = {}
     for r in rows:
         by_ref.setdefault(r["headRefName"], []).append(r["number"])
-    found, checked = [], 0
+    found, checked, deleted, unfetched = [], 0, [], []
     for ref, prs in sorted(by_ref.items()):
         remote = f"origin/{ref}"
         rc, sha, _ = sh("git", "rev-parse", "--short", remote)
         if rc != 0:
-            continue                      # ref deleted on merge: the good case
+            # ⛔ NOT one state. "Deleted on merge" is the good case; "exists on
+            # origin but not in this clone" is a FETCH GAP, and the two are
+            # indistinguishable from a failed rev-parse. Conflating them
+            # under-reports toward "nothing is stranded" — the flattering
+            # direction — inside the detector for work going unnoticed. That is
+            # a silently shrinking population, which is the defect this family
+            # of tools exists to refuse.
+            _, ls, _ = sh("git", "ls-remote", "--heads", "origin", ref)
+            (unfetched if ls.strip() else deleted).append(ref)
+            continue
         checked += 1
         rc, cnt, _ = sh("git", "rev-list", "--count", f"{BASE}..{remote}")
         if rc != 0:
@@ -83,7 +92,11 @@ def stranded(rows):
             continue
         if int(cnt) > 0:
             found.append((ref, sha, int(cnt), prs))
-    return found, checked
+    return found, checked, deleted, unfetched
+
+
+def by_ref_count(rows):
+    return {r["headRefName"] for r in rows}
 
 
 def verdict(count_by_ref):
@@ -97,14 +110,26 @@ def verdict(count_by_ref):
     return sorted(ref for ref, n in count_by_ref.items() if n is None or n > 0)
 
 
+# ⇒ Three fixture tiers, not two. LIVE-REAL decays: both stranded branches this
+# tool was built for read zero within the hour. SYNTHETIC comes from the author's
+# model and can only confirm it. CAPTURED-REAL is an observation taken from the
+# world and frozen — the row below was actually read on 2026-08-19 before the ref
+# moved. It does not decay, and because the predicate takes counts rather than
+# objects it does not depend on any SHA surviving `git gc`.
+CAPTURED = {"dev4/instruction-precedence": 1}   # observed at f5e71bb, merged PR #32
+
+
 def self_test():
+    cap = verdict(dict(CAPTURED))
+    print(f"  captured-real   observed row  : {cap}   (read from the world 2026-08-19)")
     pos = verdict({"a/merged-clean": 0, "b/stranded": 3})
     neg = verdict({"a/merged-clean": 0, "c/also-clean": 0})
     unk = verdict({"d/unreadable": None})
     print(f"  known-positive  stranded ref   : {pos}")
     print(f"  known-negative  all merged     : {neg}")
     print(f"  known-positive  unreadable ref : {unk}   (unreadable is not zero)")
-    ok = (pos == ["b/stranded"] and neg == [] and unk == ["d/unreadable"])
+    ok = (pos == ["b/stranded"] and neg == [] and unk == ["d/unreadable"]
+          and cap == ["dev4/instruction-precedence"])
     print("  ✅ discriminated" if ok else "  ⛔ FAILED to discriminate", file=sys.stderr)
     return 0 if ok else 2
 
@@ -123,7 +148,13 @@ def main():
               "A repo with merged PRs returning an empty list is a broken query, "
               "not a tidy history.", file=sys.stderr)
         return 2
-    found, checked = stranded(rows)
+    found, checked, deleted, unfetched = stranded(rows)
+    if unfetched:
+        print(f"⛔ {len(unfetched)} merged-PR ref(s) exist on origin but not in this clone: "
+              f"{', '.join(unfetched)} — a fetch or prune failure. Those refs were NOT examined, "
+              "so this run ESTABLISHED NOTHING about them and must not be read as clean.",
+              file=sys.stderr)
+        return 2
     if checked == 0:
         print(f"⛔ {len(rows)} merged PRs, but NOT ONE of their refs still exists locally — "
               "ESTABLISHED NOTHING. Expected at least one surviving ref; a fetch or prune "
@@ -133,7 +164,12 @@ def main():
         n = "UNREADABLE" if cnt is None else f"{cnt} commit(s)"
         print(f"{ref}@{sha}  {n} not on {BASE}   (merged PR{'s' if len(prs) > 1 else ''} "
               f"{', '.join('#%d' % p for p in prs)})")
-    print(f"\n{len(found)} stranded of {checked} surviving merged-PR ref(s).", file=sys.stderr)
+    # ⚠ Every ref accounted for, in named buckets. A denominator that silently
+    # excludes part of its population is how "0 stranded" gets believed.
+    print(f"\n{len(found)} stranded of {checked} examined; "
+          f"{len(deleted)} ref(s) deleted on merge (nothing to examine); "
+          f"{checked + len(deleted)} of {len(by_ref_count(rows))} merged-PR refs accounted for.",
+          file=sys.stderr)
     print("⚠ Each row is stamped with the ref's object id AT MEASUREMENT TIME. Refs move — "
           "three observers of one ref disagreed within an hour, none of them wrong. A count "
           "without its sha is not comparable to the same count from another run.",
