@@ -317,10 +317,21 @@ doing the orchestrator's job through a channel that should not exist. [measured:
   ⇒ It defeats **both** guards in use: an **exit-code** guard sees `0`, and a **byte-count**
   guard sees a non-empty file. Only bracing, or checking the content is what you asked for.
 
-  ⚠ **Cite the property, not the byte count.** Measured across three commits the same command
-  returned 325 / 308 / 306 bytes — it is the length of whatever commit header git printed, so
-  it varies per ref and per reader. `rc=0` and *non-empty* are the invariants; the number is a
-  rumour without its commit, which is the rule from #34 applied to my own measurement.
+  ⚠ **Cite the property, not the byte count — it varies on TWO independent axes and an as-of
+  anchor fixes neither.**
+
+  ```
+  BY COMMIT   d1d2759 → 325   8865275 → 308   d8df773 → 306
+              merge commits carry an extra `Merge:` line; subjects differ in length
+  BY METHOD   one commit:  `| wc -c` → 325     `${#var}` via $( ) → 323
+              command substitution strips trailing newlines
+  ```
+
+  ⛔ Two agents measured this and reported 325 and 323. **Same commit, two methods** — the
+  by-commit axis is real and was *not* the cause, and dating the measurement would have
+  concealed rather than resolved it. ⇒ `rc=0` and *non-empty* are the invariants; the number is
+  a rumour without its commit **and its method**, which is #34's rule meeting a second axis
+  nobody had looked for. [measured: nForma-NEXT 2026-08-19]
 
   ★ And because the loud form and the silent forms come from the same directory, **a fleet can
   hit `bad substitution` repeatedly and conclude the idiom fails safely.** It does not; it fails
