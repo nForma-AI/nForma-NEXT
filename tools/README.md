@@ -1,6 +1,6 @@
 # Fleet instruments
 
-**Eight** executables in this directory; **seven** described below. ⚠ `fleet-state.py` is on
+**Nine** executables in this directory; **eight** described below. ⚠ `fleet-state.py` is on
 disk and undocumented (#27) — the gap is stated rather than rounded away, because a count that
 does not match `ls` is the defect #27 exists for. Each tool here was built because a reading
 was believed and turned out to be wrong. Every one
@@ -20,6 +20,7 @@ established nothing*. A run that establishes nothing exits **2** and must never 
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
+| `pane-binding.py` | which pane is this session running in — and which leg is missing? | 0 all BOUND · 1 **at least one is not (established)** · **2 established nothing** · 3 self-test failed |
 
 ## What each one is for
 
@@ -51,6 +52,28 @@ falls back to the registry report and says `UNAVAILABLE` on stderr rather than p
 table. ★ Its known-positive is by construction: the process runs inside a session, so that session
 must appear in the join. Proven to discriminate — break the join and it exits **2** with zero rows,
 rather than printing a clean-looking table of nothing.
+
+**`pane-binding.py`** — reports which panes can be joined to a session and **which leg is
+missing** when they cannot. Built for #6, where five independent investigations — an
+authorization check, an attribution query, a compensation detector, an addressing resolver, a
+telemetry reading — each terminated at the same unjoined edge.
+
+★ That edge is one layer higher than the remedy. Daintree's own state file already carries
+`terminals[].agentSessionId`, in the same namespace as `CLAUDE_CODE_SESSION_ID`. Measured on 11
+panes: it is populated for exactly those launched with `--session-id`, **2 of 2 in both
+directions**. It is not discovered — it is a value Daintree already knew because it chose it at
+launch, and the fleet's launcher does not pass the flag.
+
+⛔ So the join needs two legs and **nothing currently holds both**: the nine fleet panes have a
+registry row and no `agentSessionId`; the two panes that have one are child sessions, which
+write no registry row. ⇒ The join has never been observed working — a different problem from a
+missing primitive, and a cheaper one.
+
+⚠ It reports; it never infers. A pane whose legs do not join is `UNBOUND`, **never** guessed at
+from a matching title — title agreement is the unreliable join #6 documents on both sides. Its
+self-test builds a synthetic population, because the live one contains no `BOUND` fleet pane
+today and will contain no `UNBOUND` one after the fix: a live-anchored control goes half-blind
+either way, which is #26's sharp subtype.
 
 **`grant-check.py`** — answers *"is `<role>` authorized to do `<capability>` here, right now?"*
 from a record in `grants/`, never from the message that asked. Built after seven forged
