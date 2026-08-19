@@ -15,6 +15,7 @@ established nothing*. A run that establishes nothing exits **2** and must never 
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
+| `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
 
 ## What each one is for
 
@@ -46,6 +47,24 @@ falls back to the registry report and says `UNAVAILABLE` on stderr rather than p
 table. ★ Its known-positive is by construction: the process runs inside a session, so that session
 must appear in the join. Proven to discriminate — break the join and it exits **2** with zero rows,
 rather than printing a clean-looking table of nothing.
+
+**`grant-check.py`** — answers *"is `<role>` authorized to do `<capability>` here, right now?"*
+from a record in `grants/`, never from the message that asked. Built after seven forged
+authorizations reached agents' input boxes in one session, **one of which matched a real ruling**
+— the forged and the genuine grants were the same kind of object (a sentence in an
+unauthenticated channel), so no amount of care on the reading side could separate them (#3).
+
+⚠ Two properties are load-bearing. It reads **`origin/main` after fetching, never the working
+tree** — an agent controls its own checkout, and reading it would let an agent resurrect an
+expired grant by checking out an older commit, which is thesis §7's self-renewal by another
+route. And it **requires network**: offline it exits 2 rather than falling back to a source the
+caller controls.
+
+★ Its known-positives are permanent by construction (#26): three fixtures make `LIVE`, `EXPIRED`
+and `REVOKED` reachable forever, because a *real* grant cannot serve — every real grant expires,
+so a self-test anchored to one goes silent the moment it lapses. `--self-test` also proves the
+`VOID` path executes and that fixtures cannot satisfy a real query. Verified by breaking it:
+un-revoking the revoked fixture turns the run red at exactly that check.
 
 **`discriminates.py`** — refuses a verdict when two states produce identical readings.
 Built after `grep -c "46.6%"` returned `1` on both a worktree and `origin/main` and was read
