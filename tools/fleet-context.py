@@ -21,6 +21,24 @@ import argparse, glob, json, os, sys, time
 
 LIMIT_DEFAULT = 1_000_000
 
+# ⛔ The fleet is a DECLARED population, not whatever sessions exist on the machine.
+#
+# This scan sweeps every project directory — necessary, because an agent working in a
+# git worktree gets its own and a single-directory scan silently omits it (measured: a
+# pane at 97.7% was missed exactly that way). But the same sweep pulls in unrelated
+# workstreams, and reporting them as "the fleet" is a wrong-population defect in the
+# tool built to avoid them.
+#
+# Per the standard: a population that MIRRORS something living is derived; a population
+# that IS the decision is declared, and every declared member must be asserted to still
+# resolve. This roster is the decision — a reviewed choice about who is on this team —
+# so it is declared here and checked on every run.
+#
+# A member that stops resolving is reported LOUDLY. A roster naming a role that has since
+# gone silent reports "nothing due" with a cause that is false.
+FLEET_ROLES = ("TEAMLEAD", "ARCHITECT", "DEVOPS", "DX",
+               "DEV1", "DEV2", "DEV3", "DEV4", "DEV5")
+
 
 def session_depth(path):
     """Context depth = the prompt size of the LAST COMPLETED assistant turn.
@@ -114,6 +132,9 @@ def main():
     ap.add_argument("--limit", type=int, default=LIMIT_DEFAULT)
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--quiet", action="store_true", help="print only sessions at/over threshold")
+    ap.add_argument("--fleet-only", action="store_true",
+                    help="restrict to the DECLARED fleet roster. Without it, unrelated "
+                         "workstreams on this machine are included and reported as such.")
     ap.add_argument("--snapshot", metavar="FILE", help="write the current reading, for a later --since")
     ap.add_argument("--since", metavar="FILE",
                     help="report the DELTA against a snapshot — what an event COST the fleet in "
@@ -126,6 +147,44 @@ def main():
         print("SCAN FAILED: no project directories found — this is not 'all clear'",
               file=sys.stderr)
         return 2
+
+    # Partition BEFORE thresholding: a stranger at 90% is not a fleet member due a report.
+    def in_fleet(r):
+        return any(n in FLEET_ROLES for n in r["names"])
+    outside = [r for r in rows if not in_fleet(r)]
+    if args.fleet_only:
+        rows = [r for r in rows if in_fleet(r)]
+
+    # ⛔ Requiring only that the NAME appears is not enough, and this passed vacuously
+    # on its first run. A transcript records every title a session has answered to, so one
+    # session carrying TEAMLEAD/IMPLEMENTER2/DEV2 satisfied both the TEAMLEAD and DEV2
+    # entries at once — while DEV2's real session was absent from the scan entirely, and
+    # the roster reported all nine resolving.
+    #
+    # One session cannot be two roles. Demand a DISTINCT session per role.
+    claims = {}
+    for role in FLEET_ROLES:
+        claims[role] = [r["session"] for r in rows if role in r["names"]]
+
+    missing = [role for role in FLEET_ROLES if not claims[role]]
+    if missing:
+        print(f"⛔ DECLARED FLEET MEMBERS NOT RESOLVING: {', '.join(missing)} — absent from "
+              f"the scan. A declared member that stops resolving makes every 'nothing due' "
+              f"below true of a smaller fleet than the one declared.", file=sys.stderr)
+
+    for i, role_a in enumerate(FLEET_ROLES):
+        for role_b in FLEET_ROLES[i + 1:]:
+            shared = set(claims[role_a]) & set(claims[role_b])
+            if shared and len(claims[role_a]) == 1 and len(claims[role_b]) == 1:
+                print(f"⛔ {role_a} and {role_b} are BOTH satisfied by session "
+                      f"{sorted(shared)[0]}. One session cannot be two roles, so one of "
+                      f"them is UNVERIFIED — its real session is not in this scan and the "
+                      f"roster check would otherwise report it healthy.", file=sys.stderr)
+    if outside and not args.fleet_only:
+        print(f"⚠ {len(outside)} session(s) outside the declared fleet are included: "
+              f"{', '.join(sorted({r['name'] for r in outside}))}. They are other workstreams "
+              f"on this machine, not this team. Use --fleet-only to exclude them.",
+              file=sys.stderr)
 
     due = [r for r in rows if r["pct"] >= args.threshold]
 
