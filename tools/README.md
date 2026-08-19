@@ -5,8 +5,7 @@ sentence on purpose:** a hand-maintained integer describing a directory drifts o
 addition with no error, and three PRs were racing on it at once. **The table below carries the
 count**, and `scripts/check-tools-index.py` asserts it matches `ls` on every run — the gap that
 statement used to describe is now checked rather than described (#27). Every
-one carries the incident that produced it in its own docstring — the measurement is the
-justification, not the description.
+one carries the incident that produced it in its own docstring — the measurement is thejustification, not the description.
 
 ⚠ **Exit codes are load-bearing.** Every tool distinguishes *the answer is no* from *I
 established nothing*. A run that establishes nothing exits **2** and must never be read as
@@ -152,6 +151,15 @@ wake that cannot hear its own answer is a drain, not a nudge.* ★ Parsed **posi
 final non-empty line of the last assistant turn — never by searching for the token anywhere in
 the text, because a keyword scan is tripped by any turn *discussing* blockage and this fleet
 produced five such instances in one session. A quoted example is never the last line.
+
+**`doctrine-version.py`** — answers which version of its role prompt each agent is actually
+running. `ROLE-READY` proves the prompt file was *reachable*; it never says which version was
+read, and the version is the part that decides behaviour. ★ It takes no cooperation from the
+agent: the bootstrap already runs `cat $NFORMA_ROLE_PROMPT`, so the read lands in the transcript
+and is matched against every historical blob — **an off-pane effect, not a claim a possibly-stale
+agent makes about its own staleness**, which matters because that agent is the party least able
+to report it. Two versions are only distinguishable if neither contains the other; a session
+matching both is reported AMBIGUOUS rather than resolved to the convenient one.
 
 **`bootstrap-audit.py`** — audits the interval a `ROLE-READY` line closes, rather than the
 three facts it asserts. ⛔ Measured on the live nine-pane fleet: **every token was true in all
