@@ -8,14 +8,37 @@ and omitted a DIFFERENT one. That distribution is the evidence: the template is 
 the problem, NOTHING CHECKS COMPLETENESS. Six required headings is the most
 mechanically checkable rule in the standard and it is the one being missed.
 
-⛔ AND THE MANUAL CHECK IT REPLACES PRODUCED A FALSE FAIL. A reviewer ran
-`gh pr diff <n> | grep -i "desired state"`, got no output, and ruled a goal file
-non-conformant for a section that was present — the same command reproduced minutes
-later returns it at line 55. `gh` lags the remote ref; it has been measured lagging
-three times in one session.
+⛔ THE LOAD-BEARING PROPERTY: READ THE FILE AT A REVISION, NEVER A DIFF.
 
-⇒ So this reads THE FILE, at a named revision, and prints the revision it read.
-A conformance verdict that cannot say what it inspected is not a verdict.
+The manual check this replaces produced a FALSE FAIL, and the cause is not what it
+first looked like. A reviewer ruled a goal file non-conformant for a missing
+`## Desired state`, evidenced by a grep filtered to ADDED lines:
+
+    git show <ref> -- <file> | grep -c "^+## Desired state"   ->  0
+    git show <ref> -- <file> | grep -c "^ ## Desired state"   ->  1   (context, unchanged)
+    git log -S"## Desired state"                              ->  present since 13:15
+
+The section had been in the file for hours. The re-scope preserved it byte-identical,
+so it appears as an ADDED line exactly zero times.
+
+★ AND THE DIRECTION IS PERVERSE, WHICH IS WHY IT NEEDS A GUARD AND NOT A NOTE:
+conformance is a property of the FILE; a diff answers *what did this change add*.
+Different propositions — and the second is SILENT ABOUT EVERY ELEMENT A CHANGE
+CORRECTLY LEFT ALONE. **The better a re-scope is at preserving what already
+conformed, the less of it a diff-based review can see.** A file that satisfied all
+six and changed nothing would read as satisfying none.
+
+⇒ So: never `gh pr diff`, never `git show <ref> -- <file>`, never `^+`. Read the
+file, at a named revision, and print the revision read. ⚠ A future maintainer
+optimising this toward a diff for speed reintroduces exactly this defect, and it
+will present as a confident FAIL on the most conservative changes.
+
+⚠ Two other explanations were offered for the same failure and BOTH WERE WRONG:
+`gh` lag (measured: the commit landed thirty minutes before the review, no race)
+and a separator-keyed heading extractor (the reviewer's grep keyed on `## `, not on
+an em-dash). Recorded because a checker built against a plausible-but-wrong
+diagnosis guards a door nothing came through — the decoration-tolerant matching
+below is still right, and it is not what went wrong.
 
 Exit: 0 all conformant · 1 an element is missing · 2 ESTABLISHED NOTHING.
 """
@@ -66,7 +89,29 @@ def self_test():
     print(f"  known-negative  decorated headings   : {'pass' if ok_dec else 'FAIL'}")
     print("  ⇒ the decorated case is the one that matters: the manual check this "
           "replaces dropped the only heading with no suffix.", file=sys.stderr)
-    ok = ok_full and ok_miss and ok_dec
+    # ⛔ THE PROPERTY ITSELF, MADE EXECUTABLE. A docstring saying "never a diff"
+    # does not stop a maintainer optimising toward one. This asserts that the
+    # diff-based method FAILS on a case the file-based method passes — so if
+    # anyone rewrites check() to read a diff, this control goes red rather than
+    # the tool going quietly wrong on the most conservative changes.
+    #
+    # The view a diff gives of a conformant file that was NOT modified: no added
+    # lines at all. Faithful to the real incident — the heading was preserved
+    # byte-identical, so it appeared as an added line exactly zero times.
+    diff_view = "\n".join(l for l in full.splitlines() if l.startswith("+"))
+    diff_missing = [l for l, v in check(diff_view) if not v]
+    file_missing = [l for l, v in check(full) if not v]
+    ok_diff = len(diff_missing) == 6 and file_missing == []
+    print(f"  known-positive  diff view of an UNCHANGED conformant file : "
+          f"{len(diff_missing)}/6 read as missing")
+    print(f"  known-negative  same content read as a FILE               : "
+          f"{len(file_missing)}/6 missing")
+    if not ok_diff:
+        print("  ⛔ the file/diff distinction is not being enforced — if check() now reads "
+              "a diff, it will report a confident FAIL on any change that correctly left "
+              "a conforming section alone", file=sys.stderr)
+
+    ok = ok_full and ok_miss and ok_dec and ok_diff
     print("\nselftest PASS" if ok else "\nselftest FAIL")
     return 0 if ok else 2
 
