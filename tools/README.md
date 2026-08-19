@@ -164,6 +164,18 @@ that window. See #20.
   **no environment at all** for SIP-protected system binaries. Had it happened to pass, it would
   have certified the reader on a process class it is never pointed at — #1's wrong-population
   defect, inside a control. It now runs against a live agent pane.
+- ⛔ **An unresolvable input must not share a verdict with a clean negative** — the exit-2
+  convention applied *inside* a function rather than at a process boundary. Measured by
+  ARCHITECT against the position rule above: `sudo git push`, `xargs -I{} git push`,
+  `echo $(git push)` and `if git push; then` all RUN the command and all read as *not found*.
+  Every miss landed in the unknown bucket, which is safe for *"did this pane comply?"* and
+  **unsafe for *"how widespread is non-compliance?"*** — it inflates the rate, and #20's content
+  **is** a rate. ⇒ Same defect as the false positive above, pointed the other way, and invisible
+  because it produces the finding you were already expecting. Split three ways: *only inside
+  quotes* → `MENTIONED-ONLY` (text cannot run); *unquoted but not in a command position, or a
+  command substitution* → `INDETERMINATE` (it may be wrapped, substituted, or an argument, and
+  the parser cannot say). ★ Still not a blocklist: enumerating wrapper names would be one,
+  **noticing that a segment has a shape you do not resolve is not.**
 - **A mention is a third state, not a negative.** `MENTIONED-ONLY` means *no execution evidence*,
   which is not *evidence of no execution*. It counts as unknown and never as a pass.
 - **No secrets in source.** Tools needing the Daintree token read it from the user's own MCP

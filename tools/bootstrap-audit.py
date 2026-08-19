@@ -114,6 +114,16 @@ SEPARATORS = re.compile(r"&&|\|\||;|\||\n")
 ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
 
+# The shell's own grammar words. ⚠ This is a CLOSED set defined by POSIX shell,
+# not an open-ended list of program names — that distinction is what keeps this
+# from being the blocklist the position rule exists to avoid. `if git push` runs
+# git; `sudo git push` might, and the difference is that one of these words is
+# grammar and the other is somebody's binary.
+SHELL_KEYWORDS = {"if", "then", "else", "elif", "fi", "while", "until", "do", "done",
+                  "for", "case", "esac", "select", "function", "time", "!", "{", "}"}
+SUBSTITUTION = re.compile(r"\$\(|`")
+
+
 def command_positions(shell):
     """The words this shell string actually invokes, as opposed to mentions.
 
@@ -141,9 +151,12 @@ def command_positions(shell):
         for word in seg.split():
             if ASSIGN.match(word):
                 continue                  # leading FOO=bar env assignments
-            out.add(word.lstrip("("))
+            w = word.lstrip("(")
+            if w in SHELL_KEYWORDS:
+                continue                  # grammar, not a command — the command follows
+            out.add(w)
             break
-    return out
+    return out, bool(SUBSTITUTION.search(bare)), bare
 
 
 def registry():
@@ -371,7 +384,31 @@ def match_step(cmd, calls):
     # also produces. Require the step's own leading word to occupy a COMMAND
     # POSITION in the matched shell string before calling this execution.
     lead = (cmd.split() or [""])[0].lower()
-    if lead and lead not in {w.lower() for w in command_positions(best[1])}:
+    positions, unresolved, bare = command_positions(best[1])
+    if lead and lead not in {w.lower() for w in positions}:
+        # ⛔ THREE-WAY, not two. ARCHITECT measured that the two-way version missed
+        # four real-execution shapes — `sudo git push`, `xargs -I{} git push`,
+        # `echo $(git push)`, `if git push; then` — and every miss landed in the
+        # unknown bucket. ⇒ Safe for "did THIS pane comply", NOT safe for "how
+        # widespread is non-compliance", because it inflates the rate. #20's
+        # content IS a rate, and this tool is what measures the next one. Same
+        # defect as the false positive above, pointed the other way.
+        #
+        # ★ The fix is still not a blocklist. Quoted vs unquoted is structural:
+        #   only inside quotes            -> a MENTION. Text cannot run.
+        #   unquoted, not command position -> INDETERMINATE. It may be wrapped
+        #                                     (sudo/xargs), substituted, or an
+        #                                     argument, and this parser cannot say.
+        # Enumerating wrapper names would be the blocklist; noticing that a
+        # segment has a shape we do not resolve is not.
+        bare_words = {w.lower().lstrip("(") for w in bare.split()}
+        if unresolved or lead in bare_words:
+            return "INDETERMINATE", (
+                f"{lead!r} appears UNQUOTED but not in a command position"
+                + (" and the segment contains a command substitution" if unresolved else "")
+                + " — it may be wrapped, substituted, or an argument. This parser cannot "
+                  "resolve which, and an unresolvable input must not share a verdict with a "
+                  "clean negative")
         return "MENTIONED-ONLY", (f"the matched command contains the step text but never invokes "
                                   f"{lead!r} — it appears only inside a quoted argument, so this "
                                   f"is a MENTION of the step, not a record of running it")
@@ -429,7 +466,7 @@ def audit(role, row):
         v["steps"].append((s[:72], state, why))
         if state in ("UNEXECUTED", "ERRORED", "UNEXECUTABLE"):
             v["negatives"].append(f"step {state}: {s[:60]!r} — {why}")
-        elif state in ("UNDECIDED", "MENTIONED-ONLY"):
+        elif state in ("UNDECIDED", "MENTIONED-ONLY", "INDETERMINATE"):
             v["unknowns"].append(f"step {state}: {s[:60]!r} — {why}")
 
     if token is None:
@@ -558,6 +595,13 @@ MENTION_REAL = json.dumps({
 
 STEP_REAL = "git rev-parse --show-toplevel && git branch --show-current"
 
+# ⚠ A SINGLE-command step, for the wrapper cases. STEP_REAL contains `&&`, so
+# wrapping only its first half leaves `git branch --show-current` genuinely in a
+# command position and every wrapper case reads EXECUTED for a correct reason —
+# the fixture defeats its own test. Second time a fixture, not the matcher, was
+# the defect here; the control caught both.
+STEP_ONE = "git rev-parse --show-toplevel"
+
 
 def known_negative():
     """Every case here must NOT read EXECUTED. The last one must still read EXECUTED —
@@ -571,8 +615,27 @@ def known_negative():
          [("Bash", f'grep -n "{STEP_REAL}" notes.md', False)], STEP_REAL, False),
         ("the step genuinely run, after an unrelated leading command",
          [("Bash", f"cd /tmp && {STEP_REAL}", False)], STEP_REAL, True),
+        ("the step run behind a shell keyword (`if git …; then`)",
+         [("Bash", f"if {STEP_ONE}; then echo ok; fi", False)], STEP_ONE, True),
+        ("the step piped into (`cat f | git …`)",
+         [("Bash", f"cat f | {STEP_ONE}", False)], STEP_ONE, True),
+        ("a single-command step echoed — still only a mention",
+         [("Bash", f'echo "{STEP_ONE}"', False)], STEP_ONE, False),
     ]
+    # ⚠ ARCHITECT's shapes: each RUNS the step, so none may read EXECUTED here only
+    # because the parser resolved it — but none may read MENTIONED-ONLY either.
+    # MENTIONED-ONLY asserts "text cannot run", which is FALSE for all of these.
+    # They must land in INDETERMINATE, the bucket that says so.
+    wrapped = [("wrapped in sudo", f"sudo {STEP_ONE}"),
+               ("driven by xargs", f"xargs -I{{}} {STEP_ONE}"),
+               ("inside a command substitution", f"echo $({STEP_ONE})")]
     ok = True
+    for label, shell in wrapped:
+        state, _ = match_step(STEP_ONE, [("Bash", shell, False)])
+        good = state == "INDETERMINATE"
+        print(f"  known-negative  {'✅' if good else '⛔'} {state:<15} {label} — must not read "
+              f"MENTIONED-ONLY (it really ran)")
+        ok = ok and good
     for label, calls, step, want_executed in cases:
         state, _ = match_step(step, calls)
         got = (state == "EXECUTED")
@@ -664,7 +727,7 @@ def main():
         if v.get("token"):
             print(f"    token   {v['token']}")
         for s, state, why in v["steps"]:
-            colour = {"EXECUTED": "32", "UNEXECUTED": "31", "ERRORED": "31", "UNEXECUTABLE": "31", "MENTIONED-ONLY": "33"}.get(state, "33")
+            colour = {"EXECUTED": "32", "UNEXECUTED": "31", "ERRORED": "31", "UNEXECUTABLE": "31", "MENTIONED-ONLY": "33", "INDETERMINATE": "33"}.get(state, "33")
             print(f"    \033[{colour}m{state:<10}\033[0m Run: {s}")
         for n in v["negatives"]:
             print(f"    \033[31mNEGATIVE\033[0m   {n}")
