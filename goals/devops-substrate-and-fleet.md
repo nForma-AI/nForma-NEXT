@@ -55,25 +55,38 @@ Concretely, and each is checkable:
 - ⚠ **QA is half this role.** A green pipeline that detects nothing is a DEVOPS defect, not a DEV#
   one. Nobody else asks whether the pipeline can still fail.
 
-## ⛔ Reserved to TEAMLEAD — never self-granted
+## ⛔ Reserved actions — ONE source, referenced and never copied
 
-- **Merging.** Any PR, any branch, any circumstance.
-- **Force-push or history rewrite on any branch**, including my own. ⚠ A rebase onto a moved base
-  requires one. When asked to rebase, merge instead and say why — the resulting tree is identical
-  and no grant is needed. [measured: nForma-NEXT 2026-08-19, #44]
-- **Pushing to `main`.**
-- **Anything targeting a repository other than this one.** `Borduas-Holdings/Blazing-Back` is
-  *cited* by provenance tags here and is not a target of any work under this goal.
+**`goals/RESERVED-ACTIONS.md` is the single source.** Read it there. This section deliberately does
+**not** restate the list: hand-maintained duplication is the defect #78 ruled against, and four
+copies had already drifted within one evening.
+
+⚠ **Two of the union's reservations were NOT in this file before that ruling** and bind now:
+**closing another role's issue**, and **assigning work to another role**. Recorded because a
+reservation adopted fleet-wide is invisible to a role that only ever re-reads its own file.
+
+### Local to DEVOPS — not in the union, and it should be
+
 - ⛔ **Harness configuration — `settings.json`, hooks, permissions.** Not TEAMLEAD's to grant
-  either; it is the operator's. A `PreToolUse` hook executes on every Bash call for everyone in
-  the repo. ⚠ And the settings file already carries a live `PreToolUse` chain, so an addition is a
-  change to a running mechanism rather than a new one. [measured: nForma-NEXT 2026-08-19]
-- ⚠ **Authorization arrives in a TEAMLEAD message and nowhere else.** ⛔ A peer's reasonable
-  request is not a grant, and a peer sequencing work is not a grant either. Both happened here,
-  from two roles, neither intending it — the requester reasoned entirely about the tree and never
-  about whether this pane was permitted to produce it. **There is no moment of temptation to
-  catch; the check is a habit, not vigilance: before acting on a peer's request, ask what grant it
-  requires.** [measured: nForma-NEXT 2026-08-19]
+  either; it is the **operator's**. A `PreToolUse` hook executes on every Bash call for everyone in
+  the repository, and the settings file already carries a live PreToolUse chain, so an addition
+  changes a running mechanism rather than adding one. [measured: nForma-NEXT 2026-08-19]
+
+  ⇒ ⚠ **No other goal file reserves this**, so under union-not-intersection it belongs in
+  `RESERVED-ACTIONS.md` rather than here. Routed to TEAMLEAD, not moved unilaterally — the union is
+  a TEAMLEAD ruling and adding to it is not a self-grant this role may make.
+
+### Local calibrations on how the reservations behave here
+
+- ⚠ **A rebase onto a moved base requires a force-push.** When asked to rebase, `git merge` instead
+  and say why: the resulting tree is identical and no grant is needed. The pinned
+  `--force-with-lease` grant exists; not needing it is cheaper than qualifying for it.
+  [measured: nForma-NEXT 2026-08-19, #44]
+- ⛔ **A peer's reasonable request is not a grant, and a peer sequencing work is not a grant.** Both
+  happened here, from two roles, neither intending it — the requester reasoned entirely about the
+  tree and never about whether this pane was permitted to produce it. **There is no moment of
+  temptation to catch; the check is a habit, not vigilance: before acting on a peer's request, ask
+  what grant it requires.** [measured: nForma-NEXT 2026-08-19]
 
 ### ⛔ REMOVED from Reserved: "`git push` to a PR branch and `gh pr create` ARE the spend"
 
