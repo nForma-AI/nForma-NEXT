@@ -17,6 +17,7 @@ established nothing*. A run that establishes nothing exits **2** and must never 
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |
+| `stranded-branches.py` | did any merged PR leave work behind on its branch? | 0 clean · 1 stranded · **2 established nothing** |
 
 ## What each one is for
 
@@ -71,6 +72,21 @@ three facts it carries, and every bootstrap had a step with no execution record*
 consumer that verified the assertions would have passed all nine. The token is treated as
 punctuation delimiting the bootstrap window, never as a claim; the audit is of what ran inside
 that window. See #20.
+
+**`stranded-branches.py`** — commits sitting on a branch whose PR already merged. Found 2 of 15 by
+hand; the mechanism (`git for-each-ref` + `git rev-list --count`) already existed and **had no
+reader**, which is `fleet-state.py`'s shape one layer over — a signal demanded with no consumer built.
+
+★ Every row is stamped with the ref's object id **at measurement time**, and that is why this is a
+tool rather than a doctrine line. Three observers measured one ref within an hour and got three
+different values — 3 commits, 749 lines, then 4 commits and 755 lines — **none of them wrong when
+taken.** The ref moved, inside a thread about refs moving, among agents who had just finished
+diagnosing that class. A count without its sha is not comparable to the same count from another run.
+
+⚠ Its fixture is synthetic on purpose. The two live stranded branches were the obvious
+known-positive and **both went to zero within the hour** as their follow-up PRs merged — #26
+instance 3, realised rather than hypothetical: a control propped up by a defect queued for repair
+stops being a control the moment the defect is fixed.
 
 ## Conventions worth copying
 
