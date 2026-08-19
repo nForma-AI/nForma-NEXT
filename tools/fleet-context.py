@@ -152,6 +152,7 @@ def main():
     def in_fleet(r):
         return any(n in FLEET_ROLES for n in r["names"])
     outside = [r for r in rows if not in_fleet(r)]
+    all_rows = list(rows)          # the scanned population, before any filtering
     if args.fleet_only:
         rows = [r for r in rows if in_fleet(r)]
 
@@ -211,8 +212,14 @@ def main():
             total += max(d, 0)              # a large drop is a compaction, not a cost
             note = "  <-- COMPACTED" if d < -300_000 else ""
             print(f"{r['session']:<10}{prev:>10,}{r['depth']:>10,}{d:>+10,}  {r['name']}{note}")
+        # ⛔ Compare against the population actually scanned, not the filtered view.
+        # With --fleet-only the filtered rows exclude every stranger, so iterating the
+        # raw snapshot reported six live sessions as GONE. A filtering artifact that
+        # renders as "vanished" is worse than no check: it manufactures alarms in the
+        # exact field meant to catch real disappearances.
+        present = {r["session"] for r in all_rows}
         for sess, prev in before.items():
-            if not any(r["session"] == sess for r in rows):
+            if sess not in present:
                 print(f"{sess:<10}{prev:>10,}{'-':>10}{'GONE':>10}  "
                       f"⚠ vanished — not the same as idle")
         print(f"\nfleet-wide context consumed since snapshot: {total:,} tokens "
