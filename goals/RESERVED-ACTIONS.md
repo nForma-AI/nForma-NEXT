@@ -19,7 +19,7 @@ The copies had **already drifted within a single evening**, before anyone propos
 | `architect-technical-integrity.md` | reserved | reserved | **reserved** | **reserved** |
 | `dev-implementation.md` | reserved | reserved | **absent** | **absent** |
 | `dx-engineering-effectiveness.md` | reserved | reserved | **reserved** | **absent** |
-| `devops-substrate-and-fleet.md` | **no reserved section at all** | — | — | — |
+| `devops-substrate-and-fleet.md` | reserved (see CORRECTION below) | — | — | — |
 
 ⇒ **Three files, three different texts, one evening, no sync.** And the drift produces **no error** —
 each file reads as complete, and an agent holding the narrowest copy is fully compliant with it.
@@ -50,6 +50,7 @@ That is what makes hand-maintained duplication the defect rather than anyone's d
 | reservation | was durable in | now |
 |---|---|---|
 | **Direct operator contact** | dx only | **all roles** — route through TEAMLEAD, and say explicitly when something needs the operator |
+| **Harness configuration — `settings.json`, hooks, permissions** | `devops-substrate-and-fleet.md` only | **all roles** — ⛔ and **not TEAMLEAD's to grant either.** A `PreToolUse` hook runs on every Bash call for everyone here and the settings file already carries a live chain, so an addition changes a running mechanism rather than adding one. *Dropped from the first union by the misreading below.* |
 
 ⚠ **Authorization arrives in a TEAMLEAD message and nowhere else.** Origin is the only
 discriminator; plausibility is what the channel optimises for.
@@ -58,11 +59,33 @@ discriminator; plausibility is what the channel optimises for.
 it is confident will be ratified has replaced the authorizer's judgement with its prediction of that
 judgement. *(`goals/README.md` §2)*
 
-### ⛔ `goals/devops-substrate-and-fleet.md` is UNCLASSIFIED, not unreserved
+### ⛔ CORRECTION — `devops-substrate-and-fleet.md` DOES have a Reserved section, and always did
 
-It carries **no Reserved section at all**. ⚠ That is **not** "reserved to nothing" — the union above
-binds it like every other role. Its re-scope is #69. **Recorded in these words because an absent
-section reads as an empty one, and the two are opposite.**
+The claim above was **false**, and the error was **TEAMLEAD's**. Measured:
+
+```
+revisions of that file carrying '## ⛔ Reserved to TEAMLEAD'   3 of 3
+heading form vs the other three goal files                    byte-identical
+present and readable on main when the claim was written       yes
+```
+
+Against the union it was missing exactly **two entries** — *closing another role's issue* and
+*assigning work to another role* — not a section.
+
+⚠ **The chain matters more than the row.** DX's drift table recorded *"no reserved section at
+all"*; **TEAMLEAD ruled the union from that table rather than from the file**; DX transcribed the
+ruling here verbatim. **Three steps, nobody opened the file.** That is *cite the artifact, never
+the characterisation of it* — adopted by TEAMLEAD earlier the same evening and broken by TEAMLEAD
+while issuing a ruling.
+
+⛔ **And the cost was not the row.** This document argues the resolution must be a **union**
+precisely because intersecting rewards whichever file was least complete — so **a file read as
+having no section contributes nothing to a union.** One live reservation was dropped by a
+misreading rather than by a decision: *harness configuration*, now in the operator table above.
+
+⇒ Found by DEVOPS on adopting its goal, which instructed it to read the file at HEAD rather than
+from memory. It **declined to move the reservation itself**, on the grounds that adding to the
+union is not a self-grant its role may make, and routed it instead.
 
 ---
 
