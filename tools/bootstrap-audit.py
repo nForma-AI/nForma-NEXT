@@ -690,10 +690,16 @@ def self_test():
     ok_neg = known_negative()
     ok_env = env_control(registry())
     if ok_clean and ok_dirty and ok_claim and ok_neg and ok_env:
-        print("  ✅ both controls discriminated: an unexecutable step from an executed one "
-              "(identical ROLE-READY on both), and a claim that matches substrate from one "
-              "that does not — and it rejected every MENTION of a step while still "
-              "accepting the step genuinely run")
+        # ⚠ "every", not a numeral. This line read "both controls" while printing
+        # five, then ten, then thirteen — a hand-counted number describing a list
+        # drifts on the next addition and emits no error while doing it. DEVOPS
+        # hit the identical drift in a file that inherited this string from here,
+        # two hours after removing the same defect from tools/README.md's header.
+        # A count that is not computed is a claim nobody re-checks.
+        print("  ✅ every control discriminated: an unexecutable step from an executed one "
+              "(identical ROLE-READY on both), a claim that matches substrate from one that "
+              "does not, a MENTION of a step from a record of running it, and a wrapped or "
+              "substituted invocation from either")
         return True
     return False
 
