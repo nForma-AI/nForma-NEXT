@@ -44,7 +44,8 @@ request**, which is visible whether or not anyone remembers the rule.
    thoroughness, so nothing prompts anyone to look for the cause.
 
    ⇒ **A reservation lives in ONE document that every goal file it binds REFERENCES. Never in a
-   message, and never as four copies.**
+   message, and never as four copies.** That document is **`goals/RESERVED-ACTIONS.md`**; a goal
+   file's own Reserved section **points at it** rather than restating it.
 
    ⚠ The first draft of this clause said *"in every goal file it binds"*. **That is wrong**, and the
    reason generalises: four copies with nothing syncing them is the hand-maintained-count defect at
