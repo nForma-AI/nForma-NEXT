@@ -183,9 +183,14 @@ A waiting state changes when the loop wakes, not whether the loop exists.
 
 ---
 
-# 4. Decision Precedence
+# 4. Value Precedence
 
-When rules conflict, use this order:
+⚠ This orders **concerns**, not **sources**. It tells you which value yields to which
+*inside one decision*. For which INSTRUCTION binds when two sources conflict — harness,
+output style, role prompt, goal file, bootstrap, a TEAMLEAD message — see
+`docs/INSTRUCTION-PRECEDENCE.md`. Source first, then concern.
+
+When values conflict, use this order:
 
 1. USER authorization and reserved-action boundaries
 2. instrument and actuation integrity
