@@ -54,7 +54,16 @@ request**, which is visible whether or not anyone remembers the rule.
 
    ⛔ **Anchor every number with an as-of time, and state it in the past tense.** A dated
    measurement written in the present tense decays into a false claim: *"rungs 1 and 3 are
-   currently empty"* was true when measured and false within the hour. Write *measured empty at
+   currently empty"* was true when measured and false within the hour — **94 minutes**, with
+   nothing marking the transition.
+
+   > ⛔ **"is empty" is never a fact about this repository, only about a timestamp.**
+
+   ⚠ And when a stale reading is corrected, **keep both readings as a pair rather than swapping the
+   stale one out**: the pair carries the *decay rate* and neither reading does. A corrected single
+   number satisfies this rule and destroys the evidence for it.
+
+   Write *measured empty at
    `<date time>`; re-measure before relying on it.* The rolling-window warning below is the same
    defect; this is its form for prose.
 
@@ -117,11 +126,82 @@ does not move — a design property, not agent behaviour.
 
 **The ordering, highest first:**
 
-1. **Clear a blocker on the BOARD** — not on *your* PR. ⚠ Scope it explicitly: an agent with
+1. **Clear a blocker on the BOARD** — not on *your* PR.
+
+   ⛔ **A rung item held by another agent is NOT yours to clear. Notify the owner and descend —
+   notifying *is* the clearing action available to you.** ⚠ And the notification **is the work**:
+   descending without it leaves the blocker exactly as blocked and turns rung 1 into a no-op that
+   reports as followed.
+
+   > *Occupied but not mine to clear* is a **third state**, and the ladder read only *empty* /
+   > *not empty*. An agent following it literally either stalls at rung 1 forever or reaches into
+   > a peer's in-flight branch.
+
+   Measured: two blocked PRs were held by roles with **live worktrees**, and rebasing an active
+   peer's branch desyncs its working tree — the shared-tree hazard arriving through the rung meant
+   to be the most valuable. Found by an agent working the ladder **from the top** rather than
+   jumping to what it had already noticed; an agent that skips to its preferred rung never
+   discovers that rung 1 has an unrepresentable state.
+
+   ⛔ **And the ladder says which RUNG, never which AGENT.** Ordered and shared across N agents,
+   it converges them on the top non-empty rung by construction. Measured twice, independently:
+
+   ```
+   4 of 5 DEVs went to rung 1; THREE diagnosed the SAME conflict (#68)
+   2 further roles named rung 2 as their next action within minutes of each other
+   ```
+
+   Nobody did anything wrong in either case, which is the point — every agent followed the order
+   correctly and the order is what sent them.
+
+   ⚠ ★ And it recurred **on the fix**: the issue recording the collision (#68) and the PR amending
+   the ladder were authored in parallel, by two roles, neither aware of the other, within twenty
+   minutes. **A collision between an issue about collisions is the strongest available evidence
+   that the defect is structural rather than attentional.** ⇒ **That makes the orchestrator the allocator of every rung, which is the
+   bottleneck the goal standard exists to remove**, reintroduced by the ordering that removed it.
+
+   > **Claim the item on the board before working it. `gh issue edit <n> --add-assignee @me`.**
+
+   ⚠ The claim surface already exists and was never used: **0 of 26 open issues and 0 of 6 open PRs
+   carried an assignee.** ⇒ The convergence was not a missing primitive. It was an unused field —
+   durable, atomic, fleet-visible, and already on every item.
+
+   ★ It also supplies the missing **detector** for the third state above. *Occupied but not mine to
+   clear* previously required contacting the owner to discover; an assignee who is not you makes it
+   readable before any work starts, which is the difference between a rule and an instrument.
+
+   ⚠ Not established: whether claiming is honoured under contention, or whether two agents can claim
+   within the same window. Assignment is not a lock. [NOT-YET-MEASURED]
+
+   ⚠ Scope it explicitly: an agent with
    no blocked PR of its own falls straight through to the bottom rung while 22 sit blocked.
    Verified before writing this: 5 of 6 sampled blocked PRs had **3-4 genuinely failing
    checks**, so this rung is executable, not decorative.
-2. **Close what is already fixed.** ⛔ This rung is missing from the obvious version and it
+2. **Close what is already fixed.**
+
+   ⛔ **The closure bar, which three goal files invoked and none defined.** `goals/README.md`,
+   `goals/architect-technical-integrity.md` and `goals/dev-implementation.md` all condition this
+   rung on *"the closure bar is met"* — and every occurrence is a **use, not a definition**. A rung
+   gated on an unspecified predicate is a rung each agent gates differently.
+
+   > **The bar is not "the fix landed." It is: has the originating incident been PREVENTED — with
+   > the preventing mechanism NAMED, and RUN at least once?**
+
+   Landed ≠ loaded ≠ exercised. A merged fix that no execution has passed through is a claim, and
+   this repository's own subject is claims that cannot fail.
+
+   ⚠ **And the bar must itself be falsifiable**: before closing, name the input that would show the
+   issue is *not* closable. If you cannot name one you ran, you have not met the bar — you have
+   described meeting it.
+
+   ⇒ Worked negative, and a rung returning a clean NO is the rung working: #19 was examined for
+   closure, `scripts/fleet-worktree.sh check` exited 1 with two roles holding two trees each, and
+   the not-closable finding was recorded **on the issue** rather than passed over.
+
+   ⚠ Where an issue has a tool, the tool's exit code supplies the bar. **Where it has none, nothing
+   does** — and that gap is unclosed. [NOT-YET-MEASURED — no bar exists for a toolless issue]
+
+   ⛔ This rung is missing from the obvious version and it
    is the one the numbers demand: **36 opened, 0 closed.** Adding priority to *finding* does
    not create *closing*. An issue whose fix has landed and whose closure bar is met is pure
    backlog reduction at near-zero cost.
