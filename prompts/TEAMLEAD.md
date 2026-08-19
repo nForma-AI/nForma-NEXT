@@ -872,8 +872,23 @@ Include your own errors. Those are the most useful and the least reported.
 Report as you hit it, not only at the end. A friction recalled at 95% context is
 already half-lost.
 
-⚠ At **80%** context, file a session friction report — well before the
-compaction handshake, not during it.
+⚠ **Two triggers, and the second exists because the first is biased.**
+
+**Depth trigger:** at **80%** context, file a session friction report — well
+before the compaction handshake, not during it.
+
+**Coverage trigger:** file one if you have not filed this session, regardless of
+depth, when asked.
+
+⛔ A depth trigger alone **selects for tired agents and calls the result "the
+fleet"**. Measured: with an 80% trigger, four of eight roles would never have
+been asked in a fourteen-hour session, because their work does not load context.
+Every finding collected would have come from sessions at 77-83%, and nothing
+would distinguish a real defect from an artefact of a loaded session.
+
+★ That is a wrong-population defect in the collection policy itself — committed
+by the role that wrote the standard about wrong-population defects, which is why
+the coverage half is stated rather than left to judgement.
 
 ★ **80%, not 90%, and the reason is not the one you would guess.** Measured on
 two agents: writing a report costs ~2-2.5% of a 1M window. That is trivially
