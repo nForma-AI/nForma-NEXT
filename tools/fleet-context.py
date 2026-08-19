@@ -114,6 +114,11 @@ def main():
     ap.add_argument("--limit", type=int, default=LIMIT_DEFAULT)
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--quiet", action="store_true", help="print only sessions at/over threshold")
+    ap.add_argument("--snapshot", metavar="FILE", help="write the current reading, for a later --since")
+    ap.add_argument("--since", metavar="FILE",
+                    help="report the DELTA against a snapshot — what an event COST the fleet in "
+                         "context. A broadcast that knocks seven agents off their in-flight work "
+                         "is not free, and nothing else measures it.")
     args = ap.parse_args()
 
     rows, unreadable, roots = scan(args.active_hours * 3600, args.limit)
@@ -123,6 +128,36 @@ def main():
         return 2
 
     due = [r for r in rows if r["pct"] >= args.threshold]
+
+    if args.snapshot:
+        with open(args.snapshot, "w") as fh:
+            json.dump({r["session"]: r["depth"] for r in rows}, fh)
+        print(f"snapshot: {len(rows)} sessions -> {args.snapshot}", file=sys.stderr)
+
+    if args.since:
+        try:
+            before = json.load(open(args.since))
+        except Exception as exc:
+            # An unreadable snapshot is not "no change". Fail loudly.
+            print(f"⛔ cannot read {args.since}: {exc}", file=sys.stderr)
+            return 2
+        total = 0
+        print(f"{'session':<10}{'before':>10}{'after':>10}{'delta':>10}  name (self-reported)")
+        for r in rows:
+            prev = before.get(r["session"])
+            if prev is None:
+                print(f"{r['session']:<10}{'-':>10}{r['depth']:>10,}{'NEW':>10}  {r['name']}")
+                continue
+            d = r["depth"] - prev
+            total += max(d, 0)              # a large drop is a compaction, not a cost
+            note = "  <-- COMPACTED" if d < -300_000 else ""
+            print(f"{r['session']:<10}{prev:>10,}{r['depth']:>10,}{d:>+10,}  {r['name']}{note}")
+        for sess, prev in before.items():
+            if not any(r["session"] == sess for r in rows):
+                print(f"{sess:<10}{prev:>10,}{'-':>10}{'GONE':>10}  "
+                      f"⚠ vanished — not the same as idle")
+        print(f"\nfleet-wide context consumed since snapshot: {total:,} tokens "
+              f"({total / 1e6 * 100:.1f}% of one 1M window)", file=sys.stderr)
 
     if args.json:
         print(json.dumps({"rows": rows, "due": due, "unreadable": unreadable,
