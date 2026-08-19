@@ -99,16 +99,15 @@ copies had already drifted within one evening.
 **closing another role's issue**, and **assigning work to another role**. Recorded because a
 reservation adopted fleet-wide is invisible to a role that only ever re-reads its own file.
 
-### Local to DEVOPS — not in the union, and it should be
+### ⇒ Harness configuration is now in the union, and this file no longer carries it
 
-- ⛔ **Harness configuration — `settings.json`, hooks, permissions.** Not TEAMLEAD's to grant
-  either; it is the **operator's**. A `PreToolUse` hook executes on every Bash call for everyone in
-  the repository, and the settings file already carries a live PreToolUse chain, so an addition
-  changes a running mechanism rather than adding one. [measured: nForma-NEXT 2026-08-19]
+`settings.json`, hooks and permissions were reserved **only here**, so a misread of this file as
+having no Reserved section kept them out of the union entirely. Adopted fleet-wide by TEAMLEAD in
+#91 and reserved to the **OPERATOR** — not TEAMLEAD's to grant either.
 
-  ⇒ ⚠ **No other goal file reserves this**, so under union-not-intersection it belongs in
-  `RESERVED-ACTIONS.md` rather than here. Routed to TEAMLEAD, not moved unilaterally — the union is
-  a TEAMLEAD ruling and adding to it is not a self-grant this role may make.
+⛔ **Removed from this file rather than kept alongside.** Keeping a local copy of a reservation now
+in the single source is the duplication #78 ruled against, and it would be committed by the role
+that proposed the adoption. Read it in `goals/RESERVED-ACTIONS.md`.
 
 ### Local calibrations on how the reservations behave here
 
