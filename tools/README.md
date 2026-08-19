@@ -41,7 +41,6 @@ of them, which is why it is stated here rather than in a docstring.
 | `pane-binding.py` | which panes join to a session, and which leg is missing? | 0 reported · **2 established nothing** |
 | `stranded-branches.py` | has any merged PR's branch got commits with no equivalent change upstream? | 0 none · 1 unmatched commits · **2 established nothing** |
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
-| `check-goal-conformance.py` | does each goal file carry all six required elements? | 0 conformant · 1 an element missing · **2 established nothing** |
 
 ## What each one is for
 
