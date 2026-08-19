@@ -3,9 +3,13 @@
 Each built because a reading was believed and turned out to be wrong. ⚠ **No count in this
 sentence on purpose:** a hand-maintained integer describing a directory drifts on the next
 addition with no error, and three PRs were racing on it at once. **The table below carries the
-count**, and `scripts/check-tools-index.py` asserts it matches `ls` on every run — the gap that
-statement used to describe is now checked rather than described (#27). Every
-one carries the incident that produced it in its own docstring — the measurement is thejustification, not the description.
+count**, and `scripts/check-tools-index.py` derives it from `ls` — ⚠ **when someone runs it.**
+Nothing invokes it: there is no `.github/`, no hook, and `fleet-preflight.sh` does not call it.
+So #27's defect is **mitigated, not prevented** — add a thirteenth tool with no row and nothing
+fires until a human asks. Stated rather than implied, because *"asserts it matches `ls` on every
+run"* — the wording that stood here — reads as coverage to a future maintainer and there is no
+*every run*. Every one carries the incident that produced it in its own docstring — the
+measurement is the justification, not the description.
 
 ⚠ **Exit codes are load-bearing.** Every tool distinguishes *the answer is no* from *I
 established nothing*. A run that establishes nothing exits **2** and must never be read as
@@ -257,6 +261,65 @@ stops being a control the moment the defect is fixed.
   happen to be modifiers bite. A script can be right nine times and wrong on the tenth path.
   Same family as the exit-code rule above — an idiom that answers a different question while
   looking like it answers yours.
+  ⛔ **Double-quoting is NOT protection, and that is the hole this rule had.** The shell-safety
+  reflex is to quote, and `"$REF:path"` fails identically to the bare form — the modifier is
+  applied during parameter expansion, before quoting means anything. Measured: `"$X:scripts/f"`
+  and `$X:scripts/f` both fail; only `"${X}:scripts/f"` is correct. **Braces, not quotes.** The
+  author of this bullet then wrote `git show "$M:scripts/check-tools-index.py"` two hours later
+  while verifying a merge, and was protected by nothing.
+  ⚠ **And the data-dependence is worse than "sometimes wrong": the same idiom fails LOUDLY or
+  SILENTLY depending on the path.** `:s` needs delimiters, so a path that supplies them is
+  rewritten and a path that does not raises `bad substitution`:
+
+  ```
+  $X:scripts/f                    -> zsh: bad substitution        (exit 1, obvious)
+  $M:scripts/check-tools-index.py -> <sha>k-tools-index.py        (silent; git then says
+                                     "unknown revision or path" — i.e. THE FILE IS NOT THERE)
+  ```
+
+  ⇒ You cannot learn this rule from experience, because the instance that teaches it is the one
+  that does not announce itself.
+  ⛔ **It hits three of this repository's five directories, and the fleet's own doctrine
+  recommends the form that breaks.** Measured in zsh 5.9 (DEV3, reproduced here) — 11 of 14
+  modifier letters are active (`a A c e h l q Q r s t u`); only `g p x` are inert alone, and `g`
+  stops being inert when the next letter is a modifier:
+
+  ```
+  "$M:tools/README.md"    -> <sha>ools/README.md       :t    MANGLED
+  "$M:scripts/…"          -> <sha>k-tools-index.py     :s    MANGLED
+  "$M:grants/README.md"   -> <sha>ants/README.md       :gr   MANGLED
+  "$M:goals/README.md"    -> unharmed                  :go   'o' is not a modifier
+  "$M:docs/…" "$M:prompts/…" "$M:README.md" "$M:CODEOWNERS"  -> unharmed
+  ```
+
+  ★ **`goals/` and `grants/` are one letter apart and land on opposite sides.** Nobody holds that
+  in their head. ⚠ And `CLAUDE.md` and `goals/dev-implementation.md` both tell every agent to
+  *"prefer `git show <ref>:<path>`"* — correct advice for #19's shared tree, and the unbraced
+  spelling of it mangles worst on `tools/`, the highest-traffic path here.
+- ⛔ **A redirect truncates the file before the command runs, so a failed fetch leaves an empty
+  file that runs clean.** `git show "$BAD" > out.py` exits non-zero and still leaves a 0-byte
+  `out.py`; `python3 out.py` then exits **0** with no output. Measured while verifying that a
+  merged PR's checker worked from `main`: both the live run and the `--selftest` reported exit 0,
+  from a file that was never written. **A clean pass and a control that never ran are
+  byte-identical here.** ⇒ Guard on the artifact, not on the command: check the byte count before
+  running what you just fetched, and refuse rather than report clean. This is the same shape as
+  reading an exit code through a pipe, one layer out — the thing you measured is not the thing
+  you meant to measure.
+  ⚠ **This is not a Python property and not a shell property — an empty file exits 0 under every
+  runtime**, because there is no statement present to fail. Measured: `python3` 0 · `bash` 0 ·
+  `zsh` 0 · `node` 0. ⇒ **No exit-code guard can see it.** Only a byte count, or a required
+  start-marker in the fetched artifact, discriminates *ran clean* from *never ran*. (DEV3, whose
+  #58 exit-code paragraph covered the result being empty and not the FILE being empty.)
+- ★ **A name-presence test is not merely blind to a documented gap — it is ANTI-CORRELATED with
+  it.** A document admitting a gap discusses the missing thing by name, so the gap note is
+  typically the *highest-density* occurrence of that name in the file. Measured on this file:
+  `fleet-state.py` scored 2 mentions while having **zero** table rows and **zero** prose entries,
+  which put it mid-pack among genuinely documented tools (2–4). Three agents independently read
+  the directory as fully documented. ⇒ Match **structure** — `^| \`x.py\` |` for a row,
+  `^**\`x.py\`**` for an entry — never a bare name. Sibling of `discriminates.py`'s *a retraction
+  quotes the claim it retracts*, with the difference that matters: quotation makes a matcher
+  **uninformative**, negation makes it **inverted**. An inverted instrument argues for the wrong
+  conclusion in the voice of a measurement.
 - **Pin a sweep to an immutable SHA, not to a ref.** `git rev-parse origin/main` once, then read
   everything at that SHA. ⛔ A worktree gets its own `HEAD`, index and logs, but `refs/remotes`
   lives in the **common** `.git` — so `git show origin/main:<path>` resolves the ref *at read
