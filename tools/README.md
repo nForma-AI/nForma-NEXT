@@ -520,6 +520,16 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
   record-type prefilter, and the two headline cases passed against a "broken" version that
   could not exhibit the bug. Copying the previous function in verbatim turned 2 failures into
   5. **A break you wrote from memory tests your memory.**
+- **A difference is evidence only if one state does not differ from ITSELF.** `discriminates.py`
+  exists to refuse a false *same* verdict and shipped unable to refuse a false *differ* one:
+  `--a 'date +%N' --b 'date +%N'` — one state, a noise check — returned **✅ DISCRIMINATED,
+  exit 0**. It had a known-DIFFERENT control and no known-SAME one. Each command is now read
+  twice and must agree with itself. ⇒ **The two controls are not interchangeable and a tool
+  needs both**, including the tool whose whole subject is that principle.
+- ⚠ **A control pair is not verified to use the same check.** `--control-a 'echo 1'
+  --control-b 'echo 2'` satisfies it while the real check is pure noise. Nothing in the tool can
+  enforce that, so the ✅ line now prints the control commands and states what it did **not**
+  establish — an unenforceable requirement should be visible, not implied.
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
@@ -530,6 +540,7 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
 python3 tools/test_fleet_context.py     # exit 0 = pass, 1 = a control failed
 python3 tools/test_fleet_state.py
 python3 tools/test_fleet_identity.py
+python3 tools/test_discriminates.py
 ```
 
 ⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only
