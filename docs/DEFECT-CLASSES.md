@@ -405,36 +405,6 @@ this-run positive, not a design property.
 they specified the table, DEV3 ran it. ⛔ **So *"the fleet already does this"* is false. It happened
 once, because one pane handed another pane a table.** A test nobody is handed is not a practice.
 
-## Applying this
-
-**Authoring a check:**
-1. Name the two states the decision depends on telling apart.
-2. Name the value each produces **at the boundary the consumer reads**. If they are the same value,
-   it is Class A — introduce a third.
-3. Name an input that produces the third value (#26's known-negative). If none exists, the third
-   value is decoration.
-4. If the states do not genuinely differ, say so explicitly rather than manufacturing one (#73).
-5. **Report the result as a partition that sums to a stated population, and name the denominator's
-   source** (#214). ⇒ Steps 1–4 need you to suspect a problem. This one does not: a sum that does
-   not close, or a count with no denominator, is wrong on the face of the output.
-6. ⛔ **Before reporting the result, pin the reading to the claim** — population, predicate, channel,
-   and one case that would have produced the other answer, **run rather than named** (Class C;
-   `goals/README.md` criterion 5). **Steps 1–5 can all pass on a reading that answers a question
-   nobody asked.**
-7. ⛔ **Run the probe against a known answer before believing its negative** — and against one it
-   must refuse, on the same invocation. A probe that has only ever said ABSENT, and one that says
-   PRESENT for everything, are both untested (see the section of that name below).
-
-⚠ **This checklist is not the whole document.** Classes **C**, **D** and **E**, the probe rule, and
-the limits section all sit **below** it — an artefact of each having been appended as it was found.
-⇒ **Read to the end before treating a checklist step as the complete test**, and see the ordering
-note in *What is NOT established*.
-
-**Authoring a rule:** name the noun it ranges over, then the nearest neighbouring noun, and ask
-whether it has the same defect (#80). ⚠ **Untested** — see below.
-
----
-
 ## ★ CLASS C — a correct reading of the WRONG PROPOSITION
 
 Class A is two states colliding at a boundary. Class B is a rule whose noun is one word too narrow.
@@ -768,83 +738,6 @@ that ruling arrives un-preempted.
 
 ---
 
-## ⛔ What is NOT established
-
-- ⛔ **The document's ORDER no longer matches its argument, and that is a defect in it.**
-  `## Applying this` sits **above** Classes C, D and E and above the probe rule; this section sits
-  **above** Class E. ⇒ **A reader following the checklist reaches the end of it having met two of
-  five classes.** ⚠ **Not fixed here on purpose:** a reorder is the highest-conflict edit possible
-  on a file **five open PRs were touching**, and the same defect is cheaper to fix once the file
-  cools. **Recorded rather than left for the next reader to trip over.**
-  ⛔ **AND *"once the file cools"* IS NOT A CLOSE CONDITION** — it is the unfalsifiable kind
-  `tools/close-condition-scan.py` exists to find, written into this file by the pane that keeps
-  ruling against them. **Replaced with one a command answers:**
-
-  ```
-  git log origin/main --since='60 minutes ago' --oneline -- docs/DEFECT-CLASSES.md   ->   empty
-  ```
-
-  ⚠ **Measured when the note was written: 6 commits in 30 minutes, and 6 in 120** — the whole burst
-  inside the last half hour, so the condition was not close to met and *"cools"* would have let
-  anyone claim it was. ★ **The property is the CHURN RATE, not "no open PRs right now":** an
-  instantaneous count of open PRs is a sample, and this file's own history shows a file can go from
-  quiet to six commits inside one sampling interval.
-- **The frame is not universal, and that is what makes it a claim.** #80 is outside Class A by
-  construction. #19 (nine agents, one working tree) is interference, not a collapse. #29 is a
-  record, not a class. **A taxonomy that accommodates everything explains nothing** — if a future
-  finding cannot be placed outside **the classes named above**, that is evidence the frame has
-  stopped discriminating. ⛔ **This clause has said "these two" through the addition of Class C,
-  Class D and Class E — it is now THREE states stale, and three different panes edited this file
-  without touching it.** ⇒ The count is **removed** rather than corrected: **an enumeration nothing
-  generates should not carry a number.** ⚠ **My own PR #343 proposes correcting it to "these
-  three", which was already wrong when I wrote it** — a correction that went stale in flight, which
-  is *landed ≠ loaded* one step earlier.
-- ⚠ **#80's authoring-time question has now caught exactly one thing, PROSPECTIVELY — and the
-  instance is weaker than it sounds.** ⇒ Re-surveying #73 I asked *is the noun the string or the
-  behaviour?* **before running anything**, and used `return 2 | sys.exit(2)` instead of
-  `contains "VOID"`:
-
-  ```
-  behaviour  31 of 33      vocabulary  15 of 33      behaviour-but-not-vocabulary  16
-  ```
-
-  ⛔ **The original #73 survey used the vocabulary predicate** and was hand-widened to a correct
-  number only because one counter-example happened to surface. **This time the question fired before
-  the number existed**, which is the thing this bullet previously recorded as never having happened.
-
-  ⚠ **What it does NOT establish, and the limits are the point:** I asked the question **because I
-  was holding the rule** — the condition the rule is supposed to work without. It was **my own
-  earlier survey**, so the failure mode was one I had already been burned by. **All six original
-  instances were still found by peers after the fact, and n is now 1.** ⇒ *Recorded because a
-  document that only ever adds limits stops being a measurement of anything*, not because one catch
-  settles it.
-- ⛔ **#214's partition rule has caught exactly one thing, retrospectively, and it was mine.**
-  `discriminates.py` in the `tools/*.py` complement. Every other instance in that section was
-  placed by argument against a failure someone had *already* found. **Whether the form catches a
-  case nobody suspects is the measurement, and it is open.** [NOT-YET-MEASURED]
-- ⚠ **The partition rule REFUSES the denominator case and the refusal is stated rather than
-  patched.** TEAMLEAD's one-ref instance sums perfectly and is still scope-wrong; it needs the
-  second tell. **A single rule covering both would have been the more satisfying result and would
-  have been false.**
-- ⛔ **The set of hops is not closed, and one hour's evidence says so.** The section shipped with
-  two and grew a third *during authoring*, when the author's own `$?`-after-a-pipe probe defeated
-  both. **Three is what has been found, not what exists** — a fourth hop arriving is the expected
-  case, not a surprise, and the frame should be read as a floor.
-- **Class A's membership is a reading, not a measurement.** I placed seven issues into it by
-  argument. Each issue's own evidence is measured; the *grouping* is not, and the grouping is what
-  this file adds.
-- **No claim the remedies are complete.** #2, #16, #26, #29 and #58 have DEV legs open. This
-  reconciles the design; it does not report the execution.
-- ⛔ **Class C is named from six instances I did not measure.** TEAMLEAD supplied all six; I
-  re-verified none of them. The partition into three hops is mine and the evidence is borrowed —
-  **if any instance is mis-described, the count moves and the three-leg argument may not survive.**
-- ⚠ **Class C's criterion was derived from those same six**, so passing it against them is fitting.
-  **The first closure it stops that nobody argued in advance is the evidence.** [NOT-YET-MEASURED]
-- **Four of the nine issues carry no acceptance criteria** (#36, #39, #73, #80) — precisely the
-  four with no DEV leg. Recorded rather than invented here.
-
----
-
 ## ★ CLASS E — the reason was discarded before you asked, and another channel still has it
 
 Class A is two states colliding into one value at a boundary. Class B is a rule whose noun is one
@@ -1013,3 +906,110 @@ TEAMLEAD's direction. **DEV2 named the contradiction/under-determination boundar
 known-positive control and the zero-side-effect canary, and caught the surface-scope error in
 both.** DEVOPS established the retry cost and **retracted an all-clear of their own, unprompted,
 through the same channel and to the same recipients, within minutes.**
+
+## Applying this
+
+**Authoring a check:**
+1. Name the two states the decision depends on telling apart.
+2. Name the value each produces **at the boundary the consumer reads**. If they are the same value,
+   it is Class A — introduce a third.
+3. Name an input that produces the third value (#26's known-negative). If none exists, the third
+   value is decoration.
+4. If the states do not genuinely differ, say so explicitly rather than manufacturing one (#73).
+5. **Report the result as a partition that sums to a stated population, and name the denominator's
+   source** (#214). ⇒ Steps 1–4 need you to suspect a problem. This one does not: a sum that does
+   not close, or a count with no denominator, is wrong on the face of the output.
+6. ⛔ **Before reporting the result, pin the reading to the claim** — population, predicate, channel,
+   and one case that would have produced the other answer, **run rather than named** (Class C;
+   `goals/README.md` criterion 5). **Steps 1–5 can all pass on a reading that answers a question
+   nobody asked.**
+7. ⛔ **Run the probe against a known answer before believing its negative** — and against one it
+   must refuse, on the same invocation. A probe that has only ever said ABSENT, and one that says
+   PRESENT for everything, are both untested (see the section of that name below).
+
+⚠ **This checklist is not the whole document.** Classes **C**, **D** and **E**, the probe rule, and
+the limits section all sit **below** it — an artefact of each having been appended as it was found.
+⇒ **Read to the end before treating a checklist step as the complete test**, and see the ordering
+note in *What is NOT established*.
+
+**Authoring a rule:** name the noun it ranges over, then the nearest neighbouring noun, and ask
+whether it has the same defect (#80). ⚠ **Untested** — see below.
+
+---
+
+## ⛔ What is NOT established
+
+- ⛔ **The document's ORDER no longer matches its argument, and that is a defect in it.**
+  `## Applying this` sits **above** Classes C, D and E and above the probe rule; this section sits
+  **above** Class E. ⇒ **A reader following the checklist reaches the end of it having met two of
+  five classes.** ⚠ **Not fixed here on purpose:** a reorder is the highest-conflict edit possible
+  on a file **five open PRs were touching**, and the same defect is cheaper to fix once the file
+  cools. **Recorded rather than left for the next reader to trip over.**
+  ⛔ **AND *"once the file cools"* IS NOT A CLOSE CONDITION** — it is the unfalsifiable kind
+  `tools/close-condition-scan.py` exists to find, written into this file by the pane that keeps
+  ruling against them. **Replaced with one a command answers:**
+
+  ```
+  git log origin/main --since='60 minutes ago' --oneline -- docs/DEFECT-CLASSES.md   ->   empty
+  ```
+
+  ⚠ **Measured when the note was written: 6 commits in 30 minutes, and 6 in 120** — the whole burst
+  inside the last half hour, so the condition was not close to met and *"cools"* would have let
+  anyone claim it was. ★ **The property is the CHURN RATE, not "no open PRs right now":** an
+  instantaneous count of open PRs is a sample, and this file's own history shows a file can go from
+  quiet to six commits inside one sampling interval.
+- **The frame is not universal, and that is what makes it a claim.** #80 is outside Class A by
+  construction. #19 (nine agents, one working tree) is interference, not a collapse. #29 is a
+  record, not a class. **A taxonomy that accommodates everything explains nothing** — if a future
+  finding cannot be placed outside **the classes named above**, that is evidence the frame has
+  stopped discriminating. ⛔ **This clause has said "these two" through the addition of Class C,
+  Class D and Class E — it is now THREE states stale, and three different panes edited this file
+  without touching it.** ⇒ The count is **removed** rather than corrected: **an enumeration nothing
+  generates should not carry a number.** ⚠ **My own PR #343 proposes correcting it to "these
+  three", which was already wrong when I wrote it** — a correction that went stale in flight, which
+  is *landed ≠ loaded* one step earlier.
+- ⚠ **#80's authoring-time question has now caught exactly one thing, PROSPECTIVELY — and the
+  instance is weaker than it sounds.** ⇒ Re-surveying #73 I asked *is the noun the string or the
+  behaviour?* **before running anything**, and used `return 2 | sys.exit(2)` instead of
+  `contains "VOID"`:
+
+  ```
+  behaviour  31 of 33      vocabulary  15 of 33      behaviour-but-not-vocabulary  16
+  ```
+
+  ⛔ **The original #73 survey used the vocabulary predicate** and was hand-widened to a correct
+  number only because one counter-example happened to surface. **This time the question fired before
+  the number existed**, which is the thing this bullet previously recorded as never having happened.
+
+  ⚠ **What it does NOT establish, and the limits are the point:** I asked the question **because I
+  was holding the rule** — the condition the rule is supposed to work without. It was **my own
+  earlier survey**, so the failure mode was one I had already been burned by. **All six original
+  instances were still found by peers after the fact, and n is now 1.** ⇒ *Recorded because a
+  document that only ever adds limits stops being a measurement of anything*, not because one catch
+  settles it.
+- ⛔ **#214's partition rule has caught exactly one thing, retrospectively, and it was mine.**
+  `discriminates.py` in the `tools/*.py` complement. Every other instance in that section was
+  placed by argument against a failure someone had *already* found. **Whether the form catches a
+  case nobody suspects is the measurement, and it is open.** [NOT-YET-MEASURED]
+- ⚠ **The partition rule REFUSES the denominator case and the refusal is stated rather than
+  patched.** TEAMLEAD's one-ref instance sums perfectly and is still scope-wrong; it needs the
+  second tell. **A single rule covering both would have been the more satisfying result and would
+  have been false.**
+- ⛔ **The set of hops is not closed, and one hour's evidence says so.** The section shipped with
+  two and grew a third *during authoring*, when the author's own `$?`-after-a-pipe probe defeated
+  both. **Three is what has been found, not what exists** — a fourth hop arriving is the expected
+  case, not a surprise, and the frame should be read as a floor.
+- **Class A's membership is a reading, not a measurement.** I placed seven issues into it by
+  argument. Each issue's own evidence is measured; the *grouping* is not, and the grouping is what
+  this file adds.
+- **No claim the remedies are complete.** #2, #16, #26, #29 and #58 have DEV legs open. This
+  reconciles the design; it does not report the execution.
+- ⛔ **Class C is named from six instances I did not measure.** TEAMLEAD supplied all six; I
+  re-verified none of them. The partition into three hops is mine and the evidence is borrowed —
+  **if any instance is mis-described, the count moves and the three-leg argument may not survive.**
+- ⚠ **Class C's criterion was derived from those same six**, so passing it against them is fitting.
+  **The first closure it stops that nobody argued in advance is the evidence.** [NOT-YET-MEASURED]
+- **Four of the nine issues carry no acceptance criteria** (#36, #39, #73, #80) — precisely the
+  four with no DEV leg. Recorded rather than invented here.
+
+---
