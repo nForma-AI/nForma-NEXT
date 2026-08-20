@@ -977,6 +977,37 @@ the dedupe could not be derived and had to be remembered instead.
 
 ---
 
+## ★ You CAN observe the fleet without this pane's own MCP — `tools/daintree-control.py`
+
+⛔ **Measured 2026-08-20 (#265): a TEAMLEAD concluded it could not observe the fleet while this
+tool sat unmentioned in this document.** It was never named here — `grep -c` over this file
+returned **0** for `daintree-control`, `mcpServers` and `MCP`.
+
+It reads the Daintree endpoint and bearer from `~/.claude.json` and goes over **HTTP via curl**.
+⇒ It needs **no MCP tool surface in the calling pane** and touches **no other worktree**, so a
+session guard that refuses cross-worktree `git` calls does not block it. Run from any pane:
+
+```
+$ python3 tools/daintree-control.py
+✅ control passes — 9 panes, states ['waiting', 'working'], at least one `working` as required
+```
+
+⚠ **Its VOID message names the remedy, not just the absence** — if no `daintree` entry exists in
+`mcpServers`, it says so and says the operator can add one. ⛔ That message *"was read, quoted and
+BUILT AROUND for four hours because it named the absence and not the remedy"* — its own words. **A
+tool reporting a fixable gap is not a tool reporting a wall.**
+
+⚠⚠ **AND IT DOES NOT SOLVE THE SECTION BELOW.** It returns the same `waiting`/`working` states,
+so it still cannot separate *finished* from *blocked-on-TEAMLEAD*. ⇒ **Two different questions:**
+
+```
+can I observe the fleet at all?          YES — this tool, from any pane
+what does a pane's state MEAN?           NO observational discriminator exists (below)
+```
+
+⛔ Do not read this section as retiring the next one. It removes the *capability* gap and leaves
+the *semantic* one exactly where it was.
+
 ## ⛔ End every turn with a declared STATE line
 
 The orchestrator's monitor cannot tell *finished* from *blocked-on-TEAMLEAD*. Measured:
