@@ -65,9 +65,17 @@ VERDICT, NOTHING, NOVOCAB, NEVERRUN, SLOW = (
 # ⛔ NOTHING CAUGHT IT, because nothing runs `--self-test`. TEAMLEAD named that as #2's territory.
 # ⇒ A bare run answers "did it produce a verdict". It does NOT answer "is that verdict worth
 #   anything", and an instrument whose own known-positive is broken reads VERDICT-SEEN either way.
-STPASS, STFAIL, STNONE = "SELFTEST-PASS", "SELFTEST-FAIL", "NO-SELF-TEST"
-# A flag no instrument can plausibly implement. Used as the NEGATIVE half of a differential.
-BOGUS = "--zzz-not-a-real-flag"
+STPASS, STFAIL, STNONE, STDECL = ("SELFTEST-PASS", "SELFTEST-FAIL", "NO-SELF-TEST",
+                                  "SELFTEST-DECLARED")
+SELFTEST = "--self-test"
+# ⛔ THE PROBE MUST BE THE SAME LENGTH AS THE REAL FLAG, and this was measured rather than
+# reasoned. A flag NAME influences output beyond its own occurrence: `gh`'s usage block wraps to
+# a width the argument affects, so `--self-test` (11) and `--zzz-not-a-real-flag` (21) produced
+# usage text that differed in LAYOUT after the name itself was masked out. gh-complete.py was
+# then read as recognising a flag it has never heard of. ⇒ Masking a token cannot undo a layout
+# effect the token caused. Same length, and the difference is substance.
+BOGUS = "--zzzz-zzzz"
+assert len(BOGUS) == len(SELFTEST), "the probe must be length-matched or masking is unsound"
 
 
 def documented_codes(src):
@@ -101,17 +109,33 @@ def selftest_state(path, timeout=TIMEOUT):
     recognised. That is `discriminates.py`'s principle applied to argument parsing.
     """
     try:
-        real = subprocess.run([sys.executable, str(path), "--self-test"], capture_output=True,
+        real = subprocess.run([sys.executable, str(path), SELFTEST], capture_output=True,
                               text=True, timeout=timeout, cwd=str(ROOT))
         alt = subprocess.run([sys.executable, str(path), BOGUS], capture_output=True,
                              text=True, timeout=timeout, cwd=str(ROOT))
+        bare = subprocess.run([sys.executable, str(path)], capture_output=True,
+                              text=True, timeout=timeout, cwd=str(ROOT))
     except subprocess.TimeoutExpired:
         return STNONE, f"no self-test verdict within {timeout}s — bound is the caller's"
     except OSError as e:
         return STNONE, f"could not execute: {e}"
 
-    if _norm(real, "--self-test") == _norm(alt, BOGUS):
-        return STNONE, "does not distinguish --self-test from a nonexistent flag"
+    if _norm(real, SELFTEST) == _norm(alt, BOGUS):
+        return STNONE, "ABSENT — does not distinguish --self-test from a nonexistent flag"
+
+    # ⛔ THE THIRD STATE, and it is worse than ABSENT. `add_argument("--self-test")` with nothing
+    # reading args.self_test is a DECLARATION of a self-test, not an implementation: argparse
+    # accepts the flag, the tool runs its NORMAL path, and the normal verdict is returned.
+    # ⇒ On a healthy fleet that normal run exits 0, and a census reads "control passed" for a
+    #   control that never ran. That is #2's own subject, manufactured by the flag parser.
+    # ⚠ An argument parser is a surface where a MENTION is indistinguishable from a CAPABILITY,
+    #   and it is the one surface nobody audits. (Found by TEAMLEAD on doctrine-version.py, which
+    #   declares the flag at line 235 and reads args.self_test zero times.)
+    if (real.returncode, real.stdout, real.stderr) == (bare.returncode, bare.stdout, bare.stderr):
+        return STDECL, ("DECLARED but NOT WIRED — --self-test is accepted and produces the "
+                        "IDENTICAL output to a bare run. Its exit code is the normal verdict, "
+                        "not a control result. ⛔ A passing exit here would be a normal run "
+                        "misread as a passing control.")
     if "Traceback (most recent call last)" in (real.stderr or ""):
         last = [l for l in (real.stderr or "").strip().splitlines() if l.strip()][-1][:80]
         return STFAIL, f"self-test crashed: {last}"
@@ -189,13 +213,14 @@ def census(index=None, tools_dir=None, timeout=TIMEOUT):
     width = max(len(n) for n, *_ in rows)
     for n, st, detail, sst, sdetail in rows:
         out.append(f"  {st:<20} {sst:<14} {n:<{width}}  {detail}")
-        if sst == STFAIL:
+        if sst in (STFAIL, STDECL):
             out.append(f"  {'':<20} {'':<14} {'':<{width}}  ⛔ {sdetail}")
 
     tally = {s: sum(1 for _, x, *_ in rows if x == s)
              for s in (VERDICT, NOTHING, NOVOCAB, SLOW, NEVERRUN)}
     tally["SELF-EXCLUDED"] = sum(1 for _, x, *_ in rows if x == "SELF-EXCLUDED")
-    stally = {s: sum(1 for *_, x, _ in rows if x == s) for s in (STPASS, STFAIL, STNONE)}
+    stally = {s: sum(1 for *_, x, _ in rows if x == s)
+              for s in (STPASS, STFAIL, STDECL, STNONE)}
     stally[STNONE] -= tally["SELF-EXCLUDED"]  # the self row carries no self-test reading
     out.append("")
     out.append("  " + " · ".join(f"{k} {v}" for k, v in tally.items()))
@@ -210,7 +235,8 @@ def census(index=None, tools_dir=None, timeout=TIMEOUT):
     out.append("  note  a bare run answers 'did it conclude'; the self-test column answers"
                " 'is that conclusion worth anything' — an instrument with a broken known-positive"
                " reads VERDICT-SEEN either way (#151)")
-    rc = 1 if (tally[NEVERRUN] or tally[NOVOCAB] or tally[SLOW] or stally[STFAIL]) else 0
+    rc = 1 if (tally[NEVERRUN] or tally[NOVOCAB] or tally[SLOW]
+               or stally[STFAIL] or stally[STDECL]) else 0
     return rc, out, rows
 
 
@@ -266,6 +292,22 @@ def self_test():
             # Without masking, the two outputs differ and this would read as having a self-test.
             ("st_echo.py",
              "import sys\nprint('unrecognised:', sys.argv[1])\nraise SystemExit(2)", STNONE),
+            # ⛔ THE SHAPE THAT DEFEATED THE FIRST VERSION. Not an echo — a LAYOUT effect: the
+            # rejection text is truncated to a fixed width, so the flag's LENGTH shifts where the
+            # cut falls even after the flag name is masked out. This is gh-complete.py's real
+            # shape, synthesised. It passes only because the probe is length-matched.
+            # ⚠ st_echo.py above did NOT cover this: it was validated on a shape I invented, and
+            # the real one differed. A control validated on a homogeneous sample has been
+            # validated on the sample's homogeneity.
+            ("st_wrap.py",
+             "import sys\nprint(('unknown flag ' + sys.argv[1] + ' ' + 'x'*60)[:48])\n"
+             "raise SystemExit(2)", STNONE),
+            # ⛔ DECLARED: argparse accepts the flag and nothing reads it, so the tool runs its
+            # normal path and returns its normal verdict. Worse than ABSENT — see selftest_state.
+            ("st_declared.py",
+             "import argparse,sys\n"
+             "ap=argparse.ArgumentParser()\nap.add_argument('--self-test',action='store_true')\n"
+             "ap.parse_args()\nprint('normal report')\nraise SystemExit(0)", STDECL),
         ]
         for name, body, want in st_cases:
             p2 = _fixture(d, name, body, True)
