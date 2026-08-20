@@ -127,8 +127,100 @@ def assess(doc, key=None, headers=None):
     return stated == len(doc[k]), stated, len(doc[k]), k
 
 
+def self_test():
+    """⛔ Controls for the tool that refuses silent prefixes — which shipped without any.
+
+    Measured 2026-08-20: of 26 instruments in tools/, 16 carried a control and 10 did
+    not, and this file was on the second list. ★ A tool whose whole subject is "your
+    reading is a prefix of a population you never saw" had no check that it could tell
+    a complete reading from a truncated one.
+
+    ⚠ Every case drives `assess()` and `link_complete()` on SYNTHETIC payloads. No
+    network, no `gh`, no rate limit, and nothing drawn from this repository — so each
+    case stays reachable in the REPAIRED state (#26). A control whose inputs come from
+    a live API is a control that goes silent when the API is healthy.
+
+    ⛔ Both REFUSAL directions are covered on purpose. A truncation detector that only
+    proves it accepts complete readings has demonstrated nothing: the verdict it exists
+    to emit is the negative one.
+
+    ★ VERIFIED AGAINST A SABOTAGED ANALYZER, and the probe had to be fixed first.
+    Inverting every comparison in the whole module breaks dispatch, so the sabotaged
+    copy never reaches these cases and exits non-zero from a traceback — which a probe
+    scoring `exit != 0` reads as "the control caught it". It caught nothing; it never
+    ran. Mutating ONLY assess/link_complete/array_key — the analyzer, not the dispatch,
+    not the oracle — the control emits 7 lines and 3 FAILs and exits 1.
+
+    ⇒ MUTATE THE SUBJECT, NOT THE DISPATCH. A probe coarse enough to break main()
+    measures reachability of main(). This is the correction to the sweep on #26, whose
+    first two published figures were both artifacts of the probe rather than readings
+    of the controls.
+    """
+    ok = True
+
+    def check(label, fn, want):
+        nonlocal ok
+        try:
+            got = fn()
+        except RuntimeError as e:
+            got = ("RAISED", str(e)[:40])
+        good = (got == want) if want != "RAISES" else (isinstance(got, tuple) and got[0] == "RAISED")
+        ok = ok and good
+        print(f"  {'ok  ' if good else 'FAIL'}  {label}: got {got!r}")
+        return good
+
+    # ── counted lists: the check-runs shape that produced the incident ──────────
+    check("known-positive  stated == received -> complete",
+          lambda: assess({"total_count": 3, "check_runs": [1, 2, 3]})[:3], (True, 3, 3))
+
+    # ⛔ THE case: 30 of 54, no error, a clean answer about a set never seen.
+    check("known-negative  stated 54, received 30 -> TRUNCATED",
+          lambda: assess({"total_count": 54, "check_runs": list(range(30))})[:3], (False, 54, 30))
+
+    check("known-negative  a dict with NO total_count -> refuses",
+          lambda: assess({"check_runs": [1, 2]}), "RAISES")
+
+    check("known-negative  two list keys, population ambiguous -> refuses",
+          lambda: assess({"total_count": 2, "a": [1], "b": [2]}), "RAISES")
+
+    check("known-negative  --key naming a non-list -> refuses",
+          lambda: assess({"total_count": 1, "items": [1], "x": 5}, key="x"), "RAISES")
+
+    # ── bare arrays: no total stated, completeness carried by the Link header ───
+    check("known-positive  bare array, no rel=next -> complete by absent Link",
+          lambda: assess([1, 2, 3], headers={"link": ""})[:3], (True, 3, 3))
+
+    check("known-negative  bare array WITH rel=next -> refuses (it IS a prefix)",
+          lambda: assess([1, 2, 3], headers={"link": '<...page=2>; rel="next"'}), "RAISES")
+
+    # ⛔ The distinction the docstring calls a different input, not no input:
+    #    absent headers is UNKNOWN, and unknown must refuse rather than assume.
+    check("known-negative  bare array, headers NOT supplied -> refuses",
+          lambda: assess([1, 2, 3]), "RAISES")
+
+    # ── link_complete on its own, both directions and the casing variants ───────
+    check("known-positive  link_complete: no Link header at all -> True",
+          lambda: link_complete({}), True)
+    check("known-negative  link_complete: rel=next present -> False",
+          lambda: link_complete({"Link": '<...>; rel="next"'}), False)
+    check("known-positive  link_complete: rel=prev only -> True",
+          lambda: link_complete({"link": '<...>; rel="prev"'}), True)
+
+    print("\nboth refusal directions and both signals exercised" if ok
+          else "\n⛔ a documented refusal could not be produced")
+    return 0 if ok else 1
+
+
 def main():
     args = [a for a in sys.argv[1:]]
+
+    # ⛔ Before the no-args branch below, which exits 2 with usage. Exit 2 is a real
+    # verdict elsewhere in this fleet ("established nothing"), so a control that can
+    # only be reached by first satisfying the argument parser is a control whose
+    # invocation is indistinguishable from a usage error (#58).
+    if "--self-test" in args:
+        return self_test()
+
     if not args:
         print(__doc__.strip().split("Usage:")[1], file=sys.stderr)
         return 2
