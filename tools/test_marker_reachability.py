@@ -93,6 +93,44 @@ def main():
     f += not check("unparseable is UNKNOWN, not a verdict",
                    mr.admits("network and (", {"network"}), None)
 
+    # ── 6. defects found AFTER the PR was opened, by pulling one thread ──────────
+    # Each was a confident wrong answer, and they alternate direction — which is the
+    # thing to notice: fixing fail-open produced fail-closed, and fixing fail-closed
+    # produced fail-SILENT. Every intermediate version looked correct in isolation.
+
+    # 6a. only attributes under `pytest.mark` are markers. `pytest.mark.skipif(os.getenv(..))`
+    # yielded `getenv` — a fabricated marker name in a tool whose subject is markers.
+    with tempfile.TemporaryDirectory() as td:
+        p = os.path.join(td, "test_g.py")
+        open(p, "w").write("import os, pytest\n"
+                           "pytestmark = pytest.mark.skipif(os.getenv('X'), reason='y')\n")
+        f += not check("os.getenv is not a marker", mr.module_markers(p), set())
+        p2 = os.path.join(td, "test_h.py")
+        open(p2, "w").write("import pytest\npytestmark = pytest.mark.network\n")
+        f += not check("pytest.mark.network still is", mr.module_markers(p2), {"network"})
+
+    # 6b. `if ! pytest ...` is a command position. Omitting it made the per-file loop
+    # INVISIBLE rather than unresolved, so the 243 files it runs fell through to
+    # "no invocation covers this path".
+    f += not check("if ! pytest is an invocation",
+                   len(mr.invocations('          if ! pytest "${f}" -m "not e2e"; then\n')), 1)
+
+    # 6c. a `cd X` + `find Y` loop resolves to X/Y. Without this the conservative rule
+    # applied repo-wide and the tool reported ZERO findings — including its own known
+    # positive. Fail-silent is not a fix for fail-closed.
+    block = ("          cd control-plane/api\n"
+             "          for testfile in $(find tests -name 'test_*.py' | sort); do\n"
+             '          if ! pytest "${testfile}" -m "not e2e"; then\n')
+    invs = mr.invocations(block)
+    f += not check("cd+find resolves the loop path",
+                   invs[0][0] if invs else None, ["control-plane/api/tests"])
+    f += not check("and it is no longer flagged as variable",
+                   invs[0][2] if invs else None, False)
+
+    # 6d. an UNRESOLVABLE variable path must still be UNKNOWN, not resolved to something.
+    f += not check("a bare variable path stays unknown",
+                   mr.invocations('          pytest "${TESTFILE}" -m "not e2e"\n')[0][2], True)
+
     print()
     if f:
         print(f"{f} FAILED")

@@ -77,17 +77,64 @@ def command_position(line):
         before = line[:m.start()]
         # command position: start of line, or after a shell separator. Anything else —
         # `echo "... pytest ..."`, `pip install pytest` — is a mention, not a call.
-        if re.search(r"(^|[|;&(]|&&|\|\||^\s*-\s+run:\s*)\s*$", before):
+        # ⚠ `if ! pytest "${testfile}"` is how this estate writes its per-file loop, and
+        # omitting `if`/`!` made that invocation INVISIBLE rather than merely unresolved —
+        # so the 243 files it runs fell through to "no invocation covers this path".
+        # A parser gap and a fail-closed default compound into a confident wrong list.
+        if re.search(r"(^|[|;&(]|&&|\|\||run:|\bif\b|\bthen\b|\belse\b|!)\s*$", before):
             return m.end()
         if re.match(r"^\s*$", before):
             return m.end()
     return None
 
 
+CD = re.compile(r"(?:^|[|;&(]|&&)\s*cd\s+([^\s|;&]+)")
+FIND = re.compile(r"\bfind\s+([^\s|;&-][^\s|;&]*)")
+
+
+def resolve_variable_path(prior_lines):
+    """What directory does a `for f in $(find X)` loop actually walk?
+
+    ⛔ WITHOUT THIS THE TOOL GOES SILENT. Once `if ! pytest "${testfile}"` was recognised
+    as an invocation, the conservative rule — a variable path anywhere means coverage is
+    unresolvable — applied to the whole repository, and the tool reported **0 findings
+    including its own known positive.**
+
+    ★ Over-correcting fail-CLOSED into fail-SILENT is not a fix. A guard that can never
+    conclude is exactly as useless as one that concludes wrongly, and it is harder to
+    notice because its output looks like good news.
+
+    ⇒ The pattern is resolvable and is the one this estate actually writes:
+
+        cd control-plane/api
+        for testfile in $(find tests -name 'test_*.py' | sort); do
+          if ! pytest "${testfile}" -m "not e2e" ...
+
+    `cd` gives the prefix, `find` gives the subtree. Returns None when it cannot resolve,
+    and None still means UNKNOWN — the caution is kept for the cases that earned it.
+    """
+    cwd, found = "", None
+    for line in prior_lines:
+        m = CD.search(line)
+        if m:
+            c = m.group(1).strip("\"'")
+            if not c.startswith(("/", "$", "-")):
+                cwd = c
+        m = FIND.search(line)
+        if m:
+            f = m.group(1).strip("\"'")
+            if not f.startswith(("/", "$")):
+                found = f
+    if found is None:
+        return None
+    return os.path.join(cwd, found).lstrip("./")
+
+
 def invocations(workflow_text):
     """Every pytest invocation, as (paths, marker_expr, has_variable_path)."""
     out = []
-    for line in unfold(workflow_text).splitlines():
+    lines = unfold(workflow_text).splitlines()
+    for idx, line in enumerate(lines):
         pos = command_position(line)
         if pos is None:
             continue
@@ -114,7 +161,11 @@ def invocations(workflow_text):
                     skip_next = "=" not in t
                 continue
             if VARIABLE.search(t):
-                var = True
+                resolved = resolve_variable_path(lines[max(0, idx - 25):idx])
+                if resolved:
+                    paths.append(resolved)
+                else:
+                    var = True
                 continue
             if t.startswith(("&&", "||", "|", ";", ")")):
                 break
@@ -169,8 +220,15 @@ def module_markers(path):
         targets = node.targets if isinstance(node, ast.Assign) else [node.target]
         if not any(isinstance(t, ast.Name) and t.id == "pytestmark" for t in targets):
             continue
+        # ⛔ ONLY ATTRIBUTES HANGING OFF `pytest.mark`. Walking every Attribute collected
+        # `getenv` from `pytest.mark.skipif(os.getenv("X"))` and printed it as a marker —
+        # a made-up marker name in the output of a tool whose subject is markers.
         for sub in ast.walk(node.value) if node.value else []:
-            if isinstance(sub, ast.Attribute):
+            if not isinstance(sub, ast.Attribute):
+                continue
+            base = sub.value
+            if (isinstance(base, ast.Attribute) and base.attr == "mark"
+                    and isinstance(base.value, ast.Name) and base.value.id == "pytest"):
                 marks.add(sub.attr)
     marks.discard("mark")
     # ⛔ NOT EVERY `pytest.mark.X` IS A SELECTOR. `skipif`, `skip`, `xfail` and
@@ -258,14 +316,34 @@ def main():
         if rel in direct:
             reachable += 1        # run as a script, not collected — still run
             continue
+
+        # ⛔ THE INITIAL VERDICT WAS "UNREACHABLE", AND THAT CONFLATED TWO STATES.
+        # A file that NO invocation covers took the initial value and was reported as
+        # excluded-by-marker. Measured: it produced 6 e2e findings and, once the unmarked
+        # branch was also checked, 243 control-plane ones — all false. Those files are run
+        # by `cd control-plane/api && for f in $(find tests -name 'test_*.py')`, a loop
+        # whose path this parser cannot resolve.
+        #
+        # ⇒ "covered and excluded by a marker" is a claim this tool can support.
+        # "covered by nothing" is not, while any invocation takes a shell-variable path.
+        # They are now different states and only the first is a finding.
+        #
+        # ★ I had built BOTH failure directions into one file: this fail-CLOSED default,
+        # and a fail-OPEN branch that counted every unmarked file reachable without ever
+        # checking whether an invocation covers its path.
+        covering = [(w, p, e, v) for w, p, e, v in invs if covers(p, rel)]
+        if any(v for _w, _p, _e, v in covering) or any(v for _w, _p, _e, v in invs):
+            # ⚠ A variable-path invocation anywhere means this file MIGHT be run by it.
+            # Conservative on purpose: the alternative invented 249 findings.
+            unknown.append((rel, sorted(marks), ["a variable-path invocation exists; "
+                                                 "coverage cannot be resolved statically"]))
+            continue
+        if not covering:
+            unknown.append((rel, sorted(marks),
+                            ["no invocation covers this path — but see the note above"]))
+            continue
         verdict, why = "UNREACHABLE", []
-        for wfname, paths, expr, var in invs:
-            if not covers(paths, rel):
-                continue
-            if var:
-                verdict = "UNKNOWN"
-                why.append(f"{wfname}: variable path")
-                continue
+        for wfname, paths, expr, var in covering:
             a = admits(expr, marks)
             if a is None:
                 verdict = "UNKNOWN"
