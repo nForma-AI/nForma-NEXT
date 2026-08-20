@@ -143,8 +143,27 @@ def void(msg):
     return 2
 
 
+# ⛔ EQUALITY OVER A KNOWN SET, not `"--self-test" in argv`. Membership ACCEPTS the flag
+# without REJECTING anything else, so `--zzz` was silently discarded by the target filter
+# below and the tool ran a full scan of the DEFAULT population — returning an exit code
+# the caller reads as an answer to the question they thought they asked. That is
+# population substitution arriving through the argument parser. ⚠ Worse in a scanner than
+# in a checker, and worse again in combination: `--self-test --zzz` exited 0, so a real
+# flag plus a typo produced a clean control result that ignored half its invocation.
+# (#321's shape, measured here 2026-08-21. Kept INLINE rather than shared: an import is
+# what makes an instrument un-pinnable as a single file, and this one still is.)
+KNOWN_FLAGS = {"--self-test"}
+
+
 def main(argv):
-    if "--self-test" in argv:
+    unknown = [a for a in argv[1:] if a.startswith("-") and a not in KNOWN_FLAGS]
+    if unknown:
+        print("⛔ VOID: unrecognised flag(s): %s. Nothing was scanned — this is UNKNOWN, "
+              "never 'clean'. Known flags: %s" % (", ".join(unknown),
+                                                  ", ".join(sorted(KNOWN_FLAGS))),
+              file=sys.stderr)
+        return 2
+    if "--self-test" in argv[1:]:
         return self_test()
     root = os.environ.get("EP_ROOT") or os.getcwd()
     targets = [a for a in argv[1:] if not a.startswith("-")] or ["tools/"]
