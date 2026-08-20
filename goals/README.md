@@ -394,7 +394,7 @@ does not move — a design property, not agent behaviour.
    > **The bar is not "the fix landed." It is: has the originating incident been PREVENTED — with
    > the preventing mechanism NAMED, and RUN at least once?**
 
-   Operationally, four criteria, all four required:
+   Operationally, five criteria, all five required:
 
    ```
    1. the fix LANDED ON MAIN            — not merged-on-a-branch, landed
@@ -403,7 +403,48 @@ does not move — a design property, not agent behaviour.
       ⛔ AND EVERY LEG OF THAT VERDICT MUST ITSELF BE A READING
    4. that instrument has been shown to FAIL on real data
       ⛔ otherwise its "clean" establishes nothing
+   5. the READING IS PINNED TO THE PROPOSITION — name the POPULATION drawn, the
+      PREDICATE applied and the CHANNEL the value crossed, then name one case that
+      would have produced the OTHER answer and say which of the three it enters by
+      ⛔ "no such case exists" is not an answer. It is this criterion's failure mode.
    ```
+
+   ### ⛔ Criterion 5 exists because 1–4 check the INSTRUMENT and never its BINDING to the claim
+
+   Six instances in one day, across four roles, of **a correct reading of the wrong proposition** —
+   a predicate that ran fine, over the wrong population, reporting a true answer to a question
+   nobody asked. ⚠ **Every one passed criteria 3 and 4**: the tool executed, and each *could* fail
+   and *did* fail correctly on the data it was actually given.
+
+   ```
+   grep -cF <filename>       counted the name inside the gap-note SAYING it was undocumented
+   gh run list --limit 5     reported "5 runs"; the real figure was 100
+   AST mutant inversion      12 "controls" were programs that never ran; a crash scored as a catch
+   armed: false 9 of 9       7 of 9 were running monitors — the positive was ONE FIELD OVER
+   "depth-exhausted fleet"   folded in a pane at 34% and one at 74%
+   a decorated /compact      returned sent:true; it does not expand. Read as delivery
+   ```
+
+   ⇒ **Which leg catches which**, and the partition is why the criterion names three and not one:
+
+   ```
+   POPULATION   4 of 6   grep · gh run list · AST mutants · depth-exhausted
+   PREDICATE    1 of 6   armed: false
+   CHANNEL      1 of 6   sent:true  — transmission reported, effect assumed
+   ```
+
+   ⛔ **An unstated population is the largest hole and not the whole hole.** A criterion that said
+   only *"name the population"* would have passed two of these six.
+
+   ### ⚠ The falsifier for criterion 5, and it is the criterion's own bar
+
+   > **Criterion 5 is doing work iff at least one closure passes 1–4 and FAILS 5. If everything
+   > that passes 1–4 also passes 5, it is a restatement — ABOLISH it rather than tune it.**
+
+   *(DEV3's rule for the `delivered` state, applied to a criterion instead.)* ⚠ **Pre-tested, and
+   the test is weak by construction:** all six above pass 1–4 and fail 5 — but **criterion 5 was
+   derived from those six**, so this is fitting, not validation. The real evidence is the first
+   closure it stops that nobody argued in advance. `[NOT-YET-MEASURED]`
 
    ⛔ **Criterion 3 does not accept an aggregate.** An exit code that folds VERIFIED together with
    ESTABLISHED-NOTHING does not satisfy it, whatever it aggregates to. The usable test needs no
@@ -459,6 +500,9 @@ does not move — a design property, not agent behaviour.
    3. APPLIED to a case it was NOT DERIVED FROM, verdict recorded    <- replaces "reports absent"
    4. produced at least one REFUSAL — a case it declined or ruled     <- replaces "shown to FAIL"
       outside itself
+   5. the READING IS PINNED TO THE PROPOSITION                       unchanged, and applies
+      ⛔ a ruling has a population too: the cases considered. Name it, name the case
+         that would have ruled the other way, and say why it was in or out of scope.
    ```
 
    ⛔ **This is not a lighter bar, and it must not become one.** Neither 3 nor 4 can be satisfied by
