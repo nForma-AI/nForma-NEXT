@@ -95,6 +95,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `use-not-mention.py` | does this file CALL `<pattern>`, or merely TALK ABOUT calling it? | 0 no call · 1 at least one CALL · **2 established nothing** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
 | `named-referent-check.py` | does a requirement sentence name an identifier that does not exist? | 0 none · 1 candidates · **2 established nothing** |
+| `exists-anywhere.py` | does this name exist at ANY ref, or only on the one checked out? | 0 on the ref · 1 exists unmerged · 2 absent everywhere · **3 established nothing** |
 | `merge-watch.sh` | did a merge leave work behind, or drift the worktrees? | emits FINDING · VOID · UNDOCUMENTED; silence means ran-and-found-nothing |
 
 ## What each one is for
@@ -353,6 +354,18 @@ correct handling *generates* mentions — a tool that documents the defect neces
 pattern — so a *"does this code handle X"* scan gets **noisier as the estate improves**, with the
 noise concentrated in the files that are already right. ⇒ Resolves the **sink** rather than
 matching the text. (#36)
+
+**`exists-anywhere.py`** — ⛔ built after **four instances in one session, by three agents**, of
+concluding about a repository from a single ref. One reached publication and had to be retracted:
+`ci_guard_closing_keywords.py`, reported as never having existed by two agents who each ran
+`git ls-files | grep`, is **161 lines with its own test file** on an unmerged branch. ★ The
+object-store count is the discriminator and it is one command — `iter_console_backends` returns
+**0**, that guard returns **6**. ⇒ *"Never existed"* and *"exists on a ref you did not search"*
+are different defects with different remedies, **a wrong sentence versus an unmerged branch**, and
+`git grep`, `git ls-files` and a working-tree scan cannot tell them apart. ⚠ Deliberately a tool
+and **not** a `pretooluse-guard` rule: the wrong reading is not a wrong command, it is a correct
+command answering a narrower question than the one asked, so a guard would fire on the correct use
+— which this repository has already shipped once.
 
 **`named-referent-check.py`** — converted from a **convergence**, not from one report: two
 agents, different subsystems, no contact, within one hour found a named enforcement mechanism
