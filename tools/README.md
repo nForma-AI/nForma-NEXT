@@ -94,6 +94,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
 | `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
 | `use-not-mention.py` | does this file CALL `<pattern>`, or merely TALK ABOUT calling it? | 0 no call · 1 at least one CALL · **2 established nothing** |
+| `pointer-verified.py` | did this pane READ the artifact a pointer NAMED, before acting? | 0 all read · 1 at least one not · **2 established nothing** · **3 control failed** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
 | `named-referent-check.py` | does a requirement sentence name an identifier that does not exist? | 0 none · 1 candidates · **2 established nothing** |
 | `exists-anywhere.py` | does this name exist at ANY ref, or only on the one checked out? | 0 on the ref · 1 exists unmerged · 2 absent everywhere · **3 established nothing** |
@@ -372,6 +373,20 @@ re-derived from CI logs overnight had been on this machine for a month, and the 
 pointed at it existed while nobody opened its `docs/`. ⚠ And searching is not the remedy — 304
 repositories under `~/code` and 14,517 markdown files mention *exec*, so a keyword sweep returns a
 haystack. `reference-implementations.md` is therefore CURATED, and this watches the curation.
+
+**`pointer-verified.py`** — ⛔ *"verify at the artifact, never the message"* is this fleet's
+mitigation for #3 and it is **doctrine with no execution record** (#2). ⚠ The obvious tool is #26:
+*"did **any** artifact command run after the pointer"* scores 21 of 23 on its author's transcript
+and would score **any live pane clean**, because a working pane always runs `git` for something
+else. ⇒ So the predicate is specific — *did a command read **the ref-and-path the pointer
+named***. ⛔⛔ And the false positive is **guaranteed**: a pointer's text *contains* the command
+that would verify it, so any scan over the turn reports the pointer as self-verifying. **The
+population of false positives is created by the pointer format itself** (#36). Named artifacts are
+read from the inbound turn; **evidence only from `tool_use` command fields** — a quotation cannot
+occupy a tool call. ⚠ `READ-DIFFERENT` **over-reports on purpose**: a pointer names every file in a
+role's row including ones with a `+0/-0` delta, and reading only the changed ones is correct and
+scores FAIL. Narrowing it to guess which named file mattered would trade a *visible* over-report
+for an *invisible* under-report.
 
 **`use-not-mention.py`** — ⛔ a grep for a command finds every sentence *discussing* that command.
 Measured in a sweep its author wrote minutes after working on this exact class: two false
