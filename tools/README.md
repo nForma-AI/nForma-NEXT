@@ -92,6 +92,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
 | `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
+| `merge-watch.sh` | did a merge leave work behind, or drift the worktrees? | emits FINDING · VOID · UNDOCUMENTED; silence means ran-and-found-nothing |
 
 ## What each one is for
 
@@ -377,6 +378,25 @@ their refusals are *the verdict*, not an obstacle: a non-discriminating comparis
 un-analysable interval have no remedy beyond a different input, and inventing an `ADDABLE` line for
 them would be a remedy slot filled to look complete. **NOT swept:** tools owned by other roles.
 [measured: nForma-NEXT 2026-08-19] (#73)
+
+**`merge-watch.sh`** — a read-only monitor under the operator grant of 2026-08-20. Runs the
+merge-time instruments **when `main` moves**, not on a clock.
+
+★ **Placement, not schedule, is the finding.** `stranded-branches.py` already had a caller — at
+**launch** — and the regression it exists to catch arrives at **merge** time, hours before the next
+launch. A clock would be no better: the defect is not periodic, it is *caused by an event*. ⇒ So the
+cadence **is** the event.
+
+⛔ **Silence means ran-and-found-nothing.** It emits on findings, on VOID, and on any exit code the
+callee does not document — a watch whose quiet covers both states is the never-concluded defect with
+a schedule attached. Proven by stubbing the instrument's control to fail: the watch emits `VOID`
+rather than going dark.
+
+★ **Its control is one a fix cannot silence.** Before trusting a scan it asserts the instrument's own
+`--self-test`, which is synthetic and does not decay — unlike a known-positive drawn from live fleet
+state, which the fleet repairing itself turns negative. (An orchestrator declared exactly that defect
+in its own watch: its positive was propped up by the defect it detected, and both arms went to zero
+when the panes it notified read their files.)
 
 ## Conventions worth copying
 
