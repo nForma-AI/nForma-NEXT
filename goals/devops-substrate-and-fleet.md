@@ -140,6 +140,17 @@ The imported revision reserved CI runs on that basis. [measured: Blazing-Back 20
 ⇒ The **justification does not transfer**: zero workflow files on any ref here.
 [measured: nForma-NEXT 2026-08-19, ARCHITECT via #42]
 
+⛔ **STALE AS OF 2026-08-20 — `.github/workflows/tools.yml` is on `main` with passing runs.**
+The count is now 1, not 0. ⇒ The *conclusion* is unchanged and the *basis* moved: the
+reservation was already re-founded locally (TEAMLEAD owns admission of work), so it does not
+depend on the count. But a calibration that is quoted as a live measurement and has silently
+flipped is exactly what this file's provenance scheme exists to prevent.
+
+⚠ **I did not notice; another role did, while telling me about something else.** A number
+with a date reads as current until someone re-takes it, and nothing re-takes calibrations.
+[measured: nForma-NEXT 2026-08-20]
+[measured: nForma-NEXT 2026-08-19, ARCHITECT via #42]
+
 ⚠ **And "zero workflows" is not "no CI" — this pane got that wrong first.** PR #14 immediately ran
 CodeRabbit and two Socket Security checks. Those are **GitHub Apps**, invisible to
 `gh api .../actions/workflows`, which returns `0` identically for a repo with fifty App checks.
