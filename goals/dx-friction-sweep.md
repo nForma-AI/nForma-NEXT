@@ -278,6 +278,37 @@ reasons, neither filing it. **The convergence is the finding; either alone reads
   overestimate**, because compaction does not fire at a depth; it fires on the next request that
   would not fit, and one large request is enough.
 
+  ⛔⛔ **THE MARGIN TABLE ABOVE IS BUILT ON ATYPICAL CASES. MEASURED OVER 358 COMPACTIONS:**
+
+  | | |
+  | --- | --- |
+  | median depth immediately before a compaction | **99.9%** |
+  | range | 42.5% .. 100.7% |
+  | compactions that fired **below 80%** | **51 of 358 — 14%** |
+
+  ⇒ ★ **The typical session runs to ~100% before compacting, not to 80%.** So an agent asked at
+  75% usually has far more runway than the three-row table above implies — and **DEV4's
+  87.8% → 81 seconds was an outlier generalised into a rule.** I built a margin table from three
+  points, two of which were the unusual ones, and then reasoned from it for hours.
+
+  ⚠ **But the 14% is the irreducible part and it is why the trigger stays low.** One compaction in
+  seven fires below 80%, so *"most sessions have room"* is not a safety argument for any
+  individual session. ⇒ **Ask early because the tail is fat, not because the median is close.**
+
+  ⛔ **AND THIS RESOLVES THE DEPTH-VS-RUNTIME DISAGREEMENT** that #1275 and #1279 both left open.
+  Two agents sharing one transcript each reported **~15M tokens remaining** while that transcript
+  showed a band near 98%. Neither was lying and neither instrument is broken:
+
+  ```
+  transcript depth   the CONTEXT WINDOW.  Predicts compaction — median 99.9% at the step.
+  runtime counter    a SESSION TOKEN BUDGET.  Unrelated to the window; does not predict it.
+  ```
+
+  ⇒ **They measure different quantities, and no mapping between them has been established.**
+  A near-full budget is not evidence of a shallow context, and a deep context is not evidence of a
+  spent budget. ⚠ Cite whichever you actually measured, and never reconcile them by picking the
+  one that suits the decision.
+
   ⛔ **AND DO NOT PREDICT ONE SESSION FROM THE FLEET MEAN. MEASURED SPREAD, SAME SWEEP:**
 
   | session | burn |
