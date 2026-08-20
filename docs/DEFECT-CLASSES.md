@@ -776,6 +776,19 @@ that ruling arrives un-preempted.
   five classes.** ⚠ **Not fixed here on purpose:** a reorder is the highest-conflict edit possible
   on a file **five open PRs were touching**, and the same defect is cheaper to fix once the file
   cools. **Recorded rather than left for the next reader to trip over.**
+  ⛔ **AND *"once the file cools"* IS NOT A CLOSE CONDITION** — it is the unfalsifiable kind
+  `tools/close-condition-scan.py` exists to find, written into this file by the pane that keeps
+  ruling against them. **Replaced with one a command answers:**
+
+  ```
+  git log origin/main --since='60 minutes ago' --oneline -- docs/DEFECT-CLASSES.md   ->   empty
+  ```
+
+  ⚠ **Measured when the note was written: 6 commits in 30 minutes, and 6 in 120** — the whole burst
+  inside the last half hour, so the condition was not close to met and *"cools"* would have let
+  anyone claim it was. ★ **The property is the CHURN RATE, not "no open PRs right now":** an
+  instantaneous count of open PRs is a sample, and this file's own history shows a file can go from
+  quiet to six commits inside one sampling interval.
 - **The frame is not universal, and that is what makes it a claim.** #80 is outside Class A by
   construction. #19 (nine agents, one working tree) is interference, not a collapse. #29 is a
   record, not a class. **A taxonomy that accommodates everything explains nothing** — if a future
