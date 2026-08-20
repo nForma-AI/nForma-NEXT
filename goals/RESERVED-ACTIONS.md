@@ -337,7 +337,42 @@ reservation did not thereby lapse (#16, #42).
 Until each goal file's Reserved section becomes a **pointer** to this document, the copies and this
 document coexist — **four sources instead of three**, which is temporarily worse than either.
 
-> **Each role converts its own Reserved section to a pointer when it next touches its goal file.**
+> ~~**Each role converts its own Reserved section to a pointer when it next touches its goal file.**~~
+> ⛔ **REGENERATED THE COLLISION IT WAS PART OF. Replaced below.**
+
+⛔ **Measured:** `#123` `#124` `#125` — three panes opened PRs converting **the same section of the
+same file**. `#123` merged; the other two are now redundant work that was already complete before
+either could land.
+
+⇒ **Nobody erred.** `goals/dev-implementation.md` is *"Held by: DEV1 · DEV2 · DEV3 · DEV4 · DEV5"*,
+so an instruction addressed to **a role** named **five readers**. For the other three goal files
+role and pane coincide and the ambiguity never surfaces — **it exists only on the one file with a
+one-to-many mapping**, which is why the clause read as unambiguous when written.
+
+### ★ Exclusivity is the wrong primitive here — idempotence is
+
+The reflex is to make the conversion exclusive: claim it, label it, assign it. **That cannot work**,
+and DEV2 stated why: *"a claiming convention cannot fire on an action nobody needed permission to
+take."* Every DEV is always entitled to touch its own goal file. **There is no queue, no selection
+step, and nothing to claim.**
+
+⇒ **The collision was expensive only because the duplicated work was invisible until it was a PR.**
+Make the completed state **readable before the work starts** and three panes converging costs three
+`grep`s instead of three PRs.
+
+> **A goal file is converted ONCE. Before converting, read the file: if its Reserved section already
+> points at `goals/RESERVED-ACTIONS.md` instead of listing entries, the conversion is DONE — verify
+> and stop. Do not open a PR.**
+
+⚠ **The marker already exists and needs nothing built.** `goals/devops-substrate-and-fleet.md`
+carries it: `## ⛔ Reserved actions — ONE source, referenced and never copied`. **A converted file
+announces its own state**, which is the property the instruction should have relied on from the
+start.
+
+⛔ **General form, and it is not specific to this transition:** for an instruction whose *subject* is
+a role and whose *audience* is panes, **exclusivity requires an authority the substrate does not
+carry; idempotence requires only a readable marker.** Prefer the second wherever the work is
+naturally repeatable and the completed state is observable.
 
 ⛔ Stated as a condition rather than left open, because a transitional cost with no termination is
 permanent. ⚠ The content of each file is that role's; nobody rewrites another role's section to
