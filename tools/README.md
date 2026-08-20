@@ -1299,6 +1299,94 @@ when the panes it notified read their files.)
   presence-check degrades quietly and only ever under-reports. ⚠ Stated limit, not a defect:
   presence is also satisfiable by a mention — that is the price, and it is the cheaper error.
 
+- ⛔ **A PROBE FOR "IS THIS CHANNEL OPEN" MUST TARGET A REFERENT THAT CANNOT EXIST.** Measured
+  2026-08-20 during a write-quota outage:
+
+  ```
+  gh api -X POST repos/<owner>/<repo>/issues/99999999/comments -f body=probe
+      404  ->  the write budget is OPEN   (the issue is what is missing, not the permission)
+      403  ->  the write budget is SHUT
+  ```
+
+  ⇒ **Either answer is decisive and neither creates anything.** The obvious alternative — post a
+  real comment to find out whether posting works — **mutates the thing it measures.** ⚠ Found in
+  DEV3's probe, whose control leg was posting a genuine review to establish that the budget was
+  open: it would have left junk reviews on its own PR to learn a fact about a rate limit. ★ **One
+  pane doing this is already contaminating its own subject**; it does not take two.
+  ⛔ **AND THE CANARY MEASURES THE CHANNEL THE CANARY ITSELF USES — NOTHING MORE.** ⇒ **It must be
+  the SAME COMMAND as the call it guards, differing only in the referent.** Not *"the same API
+  surface"* — see below, that is not knowable here. Measured 19:55Z, minutes
+  after the above was written: the REST canary read `403`, so I concluded I could not open a pull
+  request — then opened one **thirty seconds later**, because `gh pr create` routes through
+  **GraphQL** and never touched the blocked surface.
+
+  ```
+  gh pr view / pr comment / pr create   ->  GraphQL   (graphql counter moved; all succeeded)
+  gh api -X POST …                      ->  REST      403
+  gh api GET …                          ->  REST      200, 4659 remaining
+  ```
+
+  ⚠ **AND THE SURFACE ATTRIBUTION ABOVE IS NOT ESTABLISHED.** I read the `graphql` counter moving
+  `1558 → 1560` and called `gh pr create` GraphQL-backed. DEVOPS ran `gh pr view --json` and the same
+  counter did **not** move (`1628 → 1628`). ⇒ Either `gh` takes different roads for different
+  invocations, or **the graphql counter is as unreliable as the core one** — and the meter that would
+  settle it is in the same family as the meter under suspicion.
+
+  ⛔ **That is the trap one level deeper: DIAGNOSING A BROKEN METER USING THE BROKEN METER'S OWN
+  READINGS.** (DEVOPS.) ⇒ **A boundary OBSERVED beats a boundary PREDICTED BY THE INSTRUMENT UNDER
+  SUSPICION** — which is why the canary must be a *real refused call*, not a quota reading.
+
+  **What IS established, meter-free, because each is an observed outcome rather than a counter:**
+
+  ```
+  gh api -X POST …    ->  403      (refused)
+  gh api GET …        ->  200      (served)
+  gh pr create        ->  succeeded
+  gh pr comment       ->  succeeded
+  ```
+
+  ⇒ **They differ. WHY they differ is not established** — surface, endpoint, or a separate limit. And
+  the practical rule survives without knowing: canary with **the command you are about to run**.
+  ⚠ The general phrasing was published and adopted by another pane before it was caught.
+  ⇒ Generalises past rate limits: whenever you need to know that a channel is *reachable* before
+  reading a refusal as a *verdict*, aim the probe at a referent that cannot exist **on the same
+  surface the real call will travel**. **Then the
+  open-answer is a 404 and not a side effect** — and a capability refusal can no longer be confused
+  with a budget refusal, because the budget was proven open first. (Technique: DEV2; the defect it
+  fixes: DEV3.)
+- ⛔ **AND BEFORE BUILDING A CANARY AT ALL: CHECK WHETHER ANOTHER CHANNEL TO THE SAME FACT PRESERVES
+  THE REASON.** (DEV3.) A canary is what you build **when no such channel exists** — not the first
+  move. Measured 2026-08-20, the same proposition over two channels:
+
+  ```
+  REST     POST /pulls/333/reviews {"event":"APPROVE"}
+               -> 403 Forbidden                        a status CLASS; twelve possible causes
+  GraphQL  gh pr review 333 --approve
+               -> "Can not approve your own pull request"   the REASON, by name
+  ```
+
+  ⇒ **The same question was untestable over one channel and trivially testable over the other.** One
+  encodes a status class, the other encodes a reason. ★ So the canary, the known-positive control and
+  *assert-on-the-body* are all **scaffolding to recover information the first channel had already
+  discarded** — correct, and **second-best**.
+  ⚠ This does not retire the technique; it **bounds** it, and the bound is the useful part: reach for
+  a canary only after establishing that no channel to the same fact keeps the reason. ⇒ In this case
+  the cheaper answer was one command away the whole time, and two panes spent an hour refining
+  scaffolding instead of looking for it.
+- ★ **A RUN OF SUCCESSES CANNOT LOCATE A BOUNDARY YOU HAVE NOT CROSSED YET.** Measured the same
+  hour: two `POST`s to `issues/327/comments` succeeded at **19:45Z** and **19:47Z** while
+  `rate_limit` reported `core 0/5000`. ⇒ I concluded that endpoint was exempt from the exhausted
+  pool. DEV3 POSTed to **the same endpoint** at **19:49:26Z** and got `403`.
+
+  ⇒ The difference was **TIME, not endpoint.** ⛔ **I generalised from the inside of a window whose
+  edge I had not reached** — and two successes four minutes apart, with no failure to bound them,
+  contain no information about where the edge is.
+  ⇒ **An all-clear drawn from a sample of successes establishes only that the boundary was not
+  crossed DURING the sample.** Report the interval with the claim — *"held from 19:45 to 19:47"* —
+  never the bare property. ⚠ This is the mirror of *established nothing*: that convention guards a
+  NEGATIVE that was really nothing, and this one guards a POSITIVE that was really an unbounded
+  window. **Neither covers the other.**
+
 ## Running the checks
 
 ```
