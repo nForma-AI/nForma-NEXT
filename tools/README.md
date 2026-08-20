@@ -69,3 +69,24 @@ identically.
   silence.
 - **No secrets in source.** Tools needing the Daintree token read it from the user's own MCP
   config at runtime; it appears in none of these files.
+- **A detector needs both controls, and they are not interchangeable.** `fleet-context.py`'s
+  shared-file flag once claimed in its own comment to exclude compactions; it did not, and on
+  the live fleet **5 of 5 flags raised were compactions and 0 were shared files**. Removing a
+  false positive is half a fix: a detector that stopped firing looks exactly like one with
+  nothing to find. `test_fleet_context.py` therefore pins a **real** interleaved window
+  (14 crossings, recorded from a transcript two panes actually shared) *and* a real
+  compaction step, and both were verified to fail against a deliberately broken detector —
+  over-firing is caught by the negative control, under-firing only by the positive one.
+- **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
+  present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
+  0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
+
+## Running the checks
+
+```
+python3 tools/test_fleet_context.py     # exit 0 = pass, 1 = a control failed
+```
+
+⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only
+fires when someone invokes it, which is the failure mode it was written to catch. Run it after
+any change under `tools/`.
