@@ -105,6 +105,47 @@ Code/docs — implementation state : what the system actually is
 The load-bearing rule: **if future engineering work depends on understanding an interaction,
 it must not exist only in Daintree.**
 
+### ⛔ A ROLE NAME IS NOT AN ADDRESS
+
+**Measured 2026-08-20, two callers, independently.** A message addressed to the bare name
+`TEAMLEAD` reached a `TEAMLEAD` on **another company's fleet**, returned `success:true`, and was
+stopped only because that recipient chose to check and decline.
+
+```
+ListAgents      51 rows   repository / worktree field on any row:  NONE
+terminal_list    9 panes  worktreeId on EVERY one
+```
+
+⇒ **The routing key exists one layer down and the messaging layer discards it.** Three identifier
+spaces are in play — **pane title**, **peer registry name**, **worktreeId** — and no rendering
+shows more than two at once.
+
+```
+REPLYING      uds:/tmp/cc-socks/<pid>.sock, copied from the `from=` stamp
+              ⇒ a value that ARRIVES WITH THE MESSAGE and cannot be resolved wrong
+INITIATING    terminal_list → read worktreeId → terminal_sendCommand <terminalId>
+              ⇒ the only send whose receipt echoes an id resolving to an estate
+BARE NAME     ⛔ not an address, and not rescued by appending a [ref]
+```
+
+⛔ **The documented `[ref]` disambiguator cannot fire here.** It triggers on *two rows sharing a
+name*; in the failing case **only one row is ever listed**. There is nothing to disambiguate
+against, and a convention keyed on a signal the listing does not emit is not a mitigation.
+
+★ **Uniqueness is read as correctness, and uniqueness is produced by the defect.** The foreign row
+looked unambiguous *because the correct local target was absent from that namespace*. ⚠ And the
+listing **excludes the caller**, so every pane sees its own role name as one rarer than it is —
+every pane is biased toward believing its own name is unique, which is the condition that reads
+as safe.
+
+⚠ **`success:true` establishes transport, never target.** A correct receipt and a misdelivered one
+render identically.
+
+⇒ **The check that actually worked was not at the sender.** Citing `owner/repo#number` in every
+reference made the misdelivery **self-detecting for the recipient** — every filename cited existed
+in their repo too; only the issue numbers disagreed. **Cite `owner/repo#number` always.**
+
+
 Consequences per role: ARCHITECT is GitHub-heavy for substantive review; DX produces nearly all
 mature findings as durable artifacts; DEVOPS uses Daintree for transient outages but GitHub/code
 for persistent operational work; DEV keeps reasoning that matters to future engineers attached to
