@@ -32,10 +32,37 @@ reserved  : merge · production/deploy · history rewrite · credential handling
 
 `sendCommand` returned `{"sent": true}` for messages that reached nobody, three distinct ways:
 a pane whose agent had exited, a workspace that silently flipped to another project, and text
-that landed in the input box and was never submitted.
+that landed in the input box and was never submitted. ⚠ The third **leaves the text in the box**,
+so the intuitive repair — send it again — double-delivers.
 
 `lastTransitionAt` advanced in **all three**, so the obvious verifier — compare a pre-send stamp —
 passes on every false case.
+
+**Measured since: five, and the fifth is not on this chain.** A mode is individuated by *which
+arrow fails*, whether the loss is *terminal or transient*, and *what false signal accompanies it*
+— never by which API produced the signal, or the list grows once per transport.
+
+| # | mode | arrow | terminal? | false signal |
+|---|---|---|---|---|
+| 1 | pane's agent had exited | gen→del | terminal | `sent: true` |
+| 2 | workspace silently flipped | gen→del *(wrong target)* | terminal | `sent: true` + `lastTransitionAt` |
+| 3 | text in the box, never submitted | del→consumed | terminal | `sent: true` · also `terminal.inject` → `ok` |
+| 4 | alive, delivered, queued, **not yet read** | del→consumed | ⚠ **transient** | `sent: true` + the pane reads *available* |
+| 5 | a standing instruction edited into a file **the launch path never opens** | gen→del | terminal | ⛔ **none** |
+
+⛔ **Mode 4 does not lose the message**, which is why nothing surfaces it: it is latency wearing
+the appearance of availability. The remedy is a **content-free nudge** — never a re-send, because
+the queued copies are still there.
+
+⛔ **Mode 5 is a PULL failure; 1–4 are PUSH failures.** Nothing was sent, so nothing returned
+true. ★ A wrong token eventually gets checked; **an absent signal gives nobody a reason to look**,
+which is why this one persisted longest — measured, committed prompts had reached **one of eight**
+live sessions. ★★ And its symptom is inverted: an undelivered *rule* does not look like a delivery
+failure, **it looks like disobedience**. Seven roles were not emitting a `STATE:` line nobody had
+ever asked them for. No other mode misattributes its failure to the recipient.
+
+⚠ **The count is of modes OBSERVED.** Mode 5 was invisible for a day because it emits nothing, so
+the absence of a sixth is the absence of a signal — not the absence of a mode.
 
 **Consequence:** an instruction is a tracked object with a lifecycle
 (`queued → delivered → acknowledged → acted-on`), and the terminal state is established by an
