@@ -68,31 +68,42 @@ jobs:
       # until someone remembered to list it, and silence is the worse failure. A
       # mis-defaulted suite fails loudly once and is fixed by one line in the author's own
       # file, touching nothing anyone else edits.
+      # ⛔ THE LOOP THAT USED TO BE INLINE HERE HAD TWO OUTCOMES, AND THE SUBJECT HAS THREE.
+      # `python3 "$f" || fail=1` folds exit 2 into FAILED. Exit 2 is this repository's "I
+      # established nothing" (#58) — and also what the runtime emits for a file it cannot
+      # open and what argparse emits for an argument it will not accept. Reporting a
+      # REFUSAL as a DEFECT is fail-closed-and-wrong, the pair nobody challenges because the
+      # gate erred toward caution, and it sends a reader to fix a test that was never broken.
+      #
+      # ⇒ MOVED OUT OF THIS FILE ON PURPOSE, and not only for length. A gate whose logic
+      # lives in YAML has no way to be exercised except by merging it: there is no local
+      # run, no control, and the first honest test is production. `scripts/gate-suites.sh`
+      # has a `--self-test` that plants suites exiting 0, 1 and 2 and asserts the
+      # classification — including the known-negative (an exit-1 suite must read FAILED,
+      # never UNESTABLISHED) and the stated limit, demonstrated rather than claimed.
+      #
+      # ⚠ It also shrinks this step to one line, which matters here specifically: this
+      # file's own header records that it caused 11 of 11 conflicting open-PR pairs.
       - name: hermetic test suites
-        run: |
-          set -uo pipefail
-          fail=0; ran=0
-          for f in tools/test_*.py; do
-            grep -q "^# SUITE-DEPENDS:" "$f" && continue
-            ran=$((ran+1)); echo "── $(basename "$f" .py)"
-            python3 "$f" || { echo "  ⛔ $(basename "$f") FAILED"; fail=1; }
-          done
-          # ⛔ A glob that matches nothing runs zero suites and exits 0. "All green" and
-          # "the loop never executed" are the same output, so the count is the discriminator.
-          if [ "$ran" -eq 0 ]; then
-            echo "⛔ ESTABLISHED NOTHING — zero hermetic suites matched. Not a pass."
-            exit 1
-          fi
-          echo "ran $ran hermetic suite(s)"
-          exit $fail
+        run: ./scripts/exit-code-gate.sh tools 'test_*.py' 'hermetic suite'
 
+      # ⛔ THE SAME COLLAPSED PAIR, IN THE STEP THAT ENFORCES EVERYTHING ELSE. This ran
+      # `python3 "$s"` under `set -euo pipefail`, where exit 1 and exit 2 fail the job
+      # IDENTICALLY. So a checker that FOUND SOMETHING and a checker that REFUSED TO SPEAK
+      # produce the same red, and a reader goes looking for a defect that may not exist —
+      # or, worse, dismisses a genuine finding as "that one always errors."
+      #
+      # ⚠ IT STILL BLOCKS ON BOTH. This is not a relaxation and must not become one: no
+      # `continue-on-error`, no `|| true`, and nothing moved out of the gating job. The
+      # header of this file already quotes the reason — "a gate that never refuses looks
+      # identical to one that does not exist." The change is what the red SAYS, not whether
+      # it is red.
+      #
+      #     0  the check ran and agreed with the world
+      #     1  FINDINGS      — it ran, concluded, and reported something. Go read it.
+      #     2  UNESTABLISHED — it refused. ⛔ No claim about the repository follows.
       - name: repo scripts
-        run: |
-          set -euo pipefail
-          for s in scripts/*.py ; do
-            echo "── $s"
-            python3 "$s"
-          done
+        run: ./scripts/exit-code-gate.sh scripts '*.py' 'repo check'
   fleet-dependent:
     name: fleet-dependent suites (reported, NOT gating)
     runs-on: ubuntu-latest

@@ -15,6 +15,35 @@ measurement is the justification, not the description.
 established nothing*. A run that establishes nothing exits **2** and must never be read as
 "all clear". This is the single convention worth carrying to any other tool here.
 
+⛔ **AND THE CONVENTION DOES NOT OWN THE NUMBER.** #58: `2` is also what the Python runtime
+emits for a file it cannot open, and what argparse emits for an argument it will not accept.
+`1` is also Python's uncaught-exception code, colliding with *finding*. ⇒ **The rule as
+originally written — "exit 2 must never be read as all clear" — is correct and unenforceable
+by the caller alone**, because two of the three producers of `2` are outside any tool's
+control.
+
+⇒ **So a CALLER must resolve `2` into a third outcome, not fold it into either of the other
+two.** Both available two-way readings are wrong:
+
+```
+2 read as PASS  ->  converts "I established nothing" into "all clear"      <- the defect itself
+2 read as FAIL  ->  operationally safe, epistemically FALSE: reports a DEFECT where there
+                    was a REFUSAL, and a reader fixes a test that was never broken
+```
+
+★ **Fail-closed-and-wrong is the more dangerous pair, because nobody challenges a gate that
+erred toward caution.** ⇒ `scripts/gate-suites.sh` is the reference implementation: it emits
+`PASSED` · `FAILED` · `UNESTABLISHED`, **blocks on all of `1` and `2`**, and says something
+different about each. Its own exit obeys the same convention it enforces — `1` for a finding,
+`2` when nothing failed but something never spoke, and `2` when the population was empty.
+
+⚠ **What no caller can currently separate**, stated because it is demonstrated by a control
+rather than argued: *our* `2` from the *runtime's* `2`. ARCHITECT's Tier 1 remedy on #58 — a
+start marker emitted **before** argument parsing, whose absence proves the tool never ran — is
+the only thing that does, and it is not available at the suite level: measured 2026-08-20,
+**2 of 30 `tools/test_*.py` files touch `runmarker` at all.** A gate cannot read a marker 28 of
+its subjects do not emit.
+
 ⛔ **A MARKER-CARRYING TOOL CANNOT BE PINNED AS A SINGLE FILE**, and the fleet's pinning practice
 does exactly that. Measured 2026-08-20: **8 of 26 instruments** `import runmarker`, so
 
