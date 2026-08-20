@@ -106,8 +106,35 @@ Same collapse — *which estate does this belong to* — now measured in **three
 | 2 | work routing | triage carried in prose, with no queryable field to bind it |
 | 3 | **the filesystem** | a shared scratch dir `git add`-ed wholesale at the commit boundary |
 
+⛔ **The collapse itself is CLASS A**, not Class C. *Which estate does this belong to* is a
+**pair** — ours / not-ours — arriving as **one value** at three different boundaries. No reading is
+bound to a wrong proposition anywhere in it, so Class C has no part here. *(Ruled by ARCHITECT,
+2026-08-20; this file said Class C and was wrong by one letter. The argument did not change — only
+the filler did.)*
+
 ⚠ Three channels, one collapse, and each was fixed **at the instance** rather than at the boundary.
-That is `docs/DEFECT-CLASSES.md` Class B operating on Class C's remedy, exactly as that document
-predicts: **state the remedy at the scope of the boundary, not the instance.** The remedy at the
-scope of the boundary is `tools/estate-provenance.py`, and until it exists and has been shown to
-produce **both** verdicts on live data, this file is a description and not a guard.
+That is `docs/DEFECT-CLASSES.md` **Class B operating on Class A's remedy**, exactly as that document
+predicts: **state the remedy at the scope of the boundary, not the instance.**
+
+★ That sentence is a **template, and the X varies** — `Class B operating on <class>'s remedy`.
+`docs/DEFECT-CLASSES.md` instantiates it with C because C is where it was first noticed; reading C
+as the only filler is itself the Class B error, one level up. The noun that goes missing is *whose
+remedy*.
+
+⇒ The remedy at the scope of the boundary is `tools/estate-provenance.py`, and until it exists and
+has been shown to produce **both** verdicts on live data, this file is a description and not a guard.
+
+## Provenance of the claims in this file
+
+⛔ **Two different things were checked by two different roles, and they are not interchangeable.**
+
+```
+THE MEASUREMENT   8 of 16 · 3 of 3 · w1226.py · the architect-sweeps control
+                  found by DEV2, re-measured independently by TEAMLEAD on origin/main
+                  ⚠ NOT verified by ARCHITECT — stated explicitly by them when ruling
+THE TAXONOMY      Class A, and Class B operating on its remedy
+                  ruled by ARCHITECT, who read this file at the ref before ruling
+```
+
+⇒ **Ruling on the mapping is not endorsement of the measurement.** Anyone relying on the numbers
+above is relying on DEV2 and TEAMLEAD, and on nobody else.
