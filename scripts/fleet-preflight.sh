@@ -262,12 +262,37 @@ if [ -r tools/stranded-branches.py ]; then
     if [ "$rc" -ge 2 ]; then
       note "stranded-branches ESTABLISHED NOTHING (exit $rc) — not clean; likely gh auth or network"
     else
-      printf '%s\n' "$out" | grep '^NO-UPSTREAM-MATCH' | while read -r _ ref rest; do
+      # ⛔ `cmd | while` RAN THESE IN A SUBSHELL, so every note()/ok() below
+      # incremented a copy of $warn/$pass that died with it. Measured: 73 warns
+      # and 1 ok printed in the body, 0 of them reaching the summary.
+      #
+      # ⚠ #267 diagnosed this as "the section prints its verdicts directly
+      # instead of using the counters". It does NOT — it calls note() and ok()
+      # like every other section. The verdicts WERE counted and the COUNT was
+      # discarded. Different defect, different fix: process substitution, not a
+      # rewrite onto the counting functions.
+      #
+      # ★ Found by tools/pipe-exit-scan.py, which named `warn` and `pass` at
+      # these exact lines — the matcher repaired under #266 for missing this
+      # one-liner shape. Behavioural proof: piped -> warn=0 with 3 notes
+      # emitted; `done < <(...)` -> warn=3.
+      branch_warn=0
+      while read -r _ ref rest; do
         note "$ref has commits with no upstream patch-match — ⚠ NOT proof of loss; recovery-by-recommit reads this way"
-      done
-      printf '%s\n' "$out" | grep -c '^EQUIVALENT-UPSTREAM' | while read -r n; do
-        [ "$n" -gt 0 ] && ok "$n ref(s) unreachable by sha but EQUIVALENT upstream — landed"
-      done
+        branch_warn=$((branch_warn+1))
+      done < <(printf '%s\n' "$out" | grep '^NO-UPSTREAM-MATCH')
+      equiv=$(printf '%s\n' "$out" | grep -c '^EQUIVALENT-UPSTREAM')
+      branch_ok=0
+      if [ "$equiv" -gt 0 ]; then
+        ok "$equiv ref(s) unreachable by sha but EQUIVALENT upstream — landed"
+        branch_ok=1
+      fi
+      # ⇒ #267 option 3: the section carries its own subtotal, so the fleet
+      # summary stays about the fleet while nothing the body printed is missing
+      # from a total. A reader who trusts the summary must not be able to miss
+      # what the body showed.
+      printf '  branch subtotal: %d warn, %d ok (counted in the Summary below)\n' \
+        "$branch_warn" "$branch_ok"
     fi
   fi
 else
