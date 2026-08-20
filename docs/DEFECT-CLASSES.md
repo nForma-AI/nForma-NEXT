@@ -705,6 +705,44 @@ Two corollaries, both measured the same day:
 2. **Assert on the body, never the status class — on BOTH channels, for opposite reasons.** On REST
    because the status is under-determined; on GraphQL because the status is meaningless.
 
+### ⛔ The limit case — a probe that makes NO request, whose silence looks like data
+
+Found the same evening, in the follow-up to the message where the surface-scope rule was accepted:
+
+```
+GH_DEBUG=api gh pr view 315 --json number             ->  NO HTTP request logged at all
+GH_DEBUG=api gh pr view 315 --json mergeStateStatus   ->  > POST /graphql   < 200 OK
+```
+
+`--json number` is **derivable from the argument**, so `gh` answers it without calling anything. The
+probe asked for the one field that requires no request. ⇒ **The counter did not move because the
+counter was never exercised** — and *not-moving was read as evidence about the counter.*
+
+★ **This is the corollary's limit case.** The earlier two instances used the *wrong* surface; this
+one used **no surface at all**, and produced a reading indistinguishable from a probe that ran and
+observed nothing. ⇒ **A probe that makes no request is #58's `never ran` arriving at the probe
+layer** — the same collapse the exit-code convention exists to prevent, one level below where
+anybody thought to look for it.
+
+⚠ **Three roles, three instances, one evening — the third committed while accepting the rule for
+the second.** The rule is easy to agree with and evidently hard to apply to your own next probe.
+⇒ Which is why the operational form must be mechanical rather than remembered:
+
+> **Show the request. If a probe cannot name the call it made, it did not make one.**
+> `GH_DEBUG=api` does not presuppose the thing under investigation; every counter-based method here
+> is circular, because the counters are what is in doubt.
+
+⚠ **Still unresolved, recorded rather than dropped**: whether the `graphql` counter is otherwise
+accurate. Same command, same field — three calls moved it `+0`, a later single call `+1`. Nobody
+chased it and nothing here depends on it.
+
+⇒ **Audited on this repository's committed instruments**: no `tools/*.py` or `scripts/*` invokes
+`gh api graphql`; every occurrence is docstring prose, a comment, or a test fixture. ⚠ **The
+exposure is therefore in the uncommitted population** — `api-budget.py` counts **509 `gh api
+graphql` invocations across nine transcripts**, which is ad-hoc inline instrument work (#261: 87% of
+it), and it is **not greppable from the repository**. A clean grep of `tools/` establishes nothing
+about the shape of the traffic.
+
 ### ⚠ What is NOT claimed
 
 - **Not that REST is defective.** `403` is a correct answer to *may this request proceed*. The
