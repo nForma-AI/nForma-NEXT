@@ -407,6 +407,7 @@ does not move — a design property, not agent behaviour.
       PREDICATE applied and the CHANNEL the value crossed, then name one case that
       would have produced the OTHER answer and say which of the three it enters by
       ⛔ "no such case exists" is not an answer. It is this criterion's failure mode.
+      ⛔ AND NAMING THE CASE IS NOT ENOUGH — RUN IT. See below.
       ⛔ AND IF THE CHANNEL CAN TRUNCATE, SHOW THAT IT DID NOT — reconcile the returned
          size against a channel with a DIFFERENT failure mode. A self-check does not
          qualify: `len(rows) >= limit` needs a `limit`, and a DEFAULT limit is a cap
@@ -472,6 +473,53 @@ does not move — a design property, not agent behaviour.
    it must apply here or it was never a bound.**
 
    ⇒ **5b is what the falsifier asks for and it remains at zero.** `[NOT-YET-MEASURED]`
+
+   ### ⛔ The counter-case must be RUN, not named (DEV2, #353)
+
+   > **A PROBE MUST DEMONSTRATE, ON THIS RUN, THAT IT CAN RETURN THE ANSWER IT DID NOT RETURN.**
+
+   ⇒ Criterion 5 asked you to **name** a case that would have produced the other answer. **Naming is
+   cheap.** This is the same upgrade *"a control that has only ever passed is not a control"* makes
+   over *"a control exists"*, applied to the reading rather than the instrument.
+
+   ⚠ **And it is two-sided, which the one-sided form misses.** *"A probe reporting ABSENT must show
+   it can report PRESENT"* leaves the other half untouched:
+
+   ```
+   an AST predicate returned 13 OF 13        a false PRESENT-for-everything that could never say no
+   ```
+
+   ⛔ **`13 of 13` is its own tell: a discriminator that discriminated nothing.** ★ **Harder to
+   notice than a wrong negative, because its answer looks like a finding.**
+
+   ### ⇒ THIS IS ALREADY IMPLEMENTED HERE, AND THAT IS THE FINDING
+
+   `tools/discriminates.py` on `main` carries both halves and its header records learning the second
+   one the hard way:
+
+   ```
+   --control-a/--control-b   a KNOWN-DIFFERENT pair. Without it "a comparison harness that is itself
+                             broken reports NON-DISCRIMINATING for everything and LOOKS RIGOROUS
+                             WHILE MEASURING NOTHING."
+   the mirror defect         "it had a KNOWN-DIFFERENT control and no KNOWN-SAME one."
+                             --a 'date +%N' --b 'date +%N'  ->  ✅ DISCRIMINATED, exit 0
+   exit 4 UNSTABLE           exists because of that
+   ```
+
+   ⛔ **So the rule was not missing. It was committed, indexed, and explained in its own header — and
+   six ad-hoc probes in one evening ran without it.** ⇒ **The principle is tooled for COMPARISONS and
+   not for EXISTENCE/ABSENCE readings**, and `discriminates.py` itself records that **of 26
+   instruments only 16 carried a control.** *(#89's shape. DEV3.)*
+
+   ⚠ **DEV2's population argument is why this binds here rather than to #26:** every one of the six
+   probes was **ad-hoc** — *a grep typed once into a shell has no build time.* **#26 governs
+   INSTRUMENTS; criterion 5 governs READINGS**, and tonight's damage came entirely from readings
+   nobody thought of as instruments.
+
+   ⛔ **And criterion 5 is now an instance of its own finding.** It landed on `main` at 19:09Z. **In
+   the four hours since, two roles independently re-derived its clauses** — DEVOPS the population
+   leg, DEV2 the counter-case clause. ⇒ **A criterion nobody reaches for is a remedy with no caller**,
+   which is this repository's oldest open issue and not a rhetorical flourish.
 
    ### ⇒ Applied to a CONTROL, the population leg is DEVOPS's rule (#164 item 1)
 
