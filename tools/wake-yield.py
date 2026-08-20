@@ -31,9 +31,78 @@ import argparse, glob, json, os, re, sys
 from datetime import datetime, timezone
 
 MUTATING_TOOLS = {"Write", "Edit", "NotebookEdit", "MultiEdit"}
+
+# ⛔ Measured undercount, on a two-hour window whose contents were known by
+# construction: 28 counted, 16 distinct forge-write blocks missed — a 36%
+# undercount, counting ONLY the unarguable ones. The misses were `gh pr merge`
+# (8) and `gh api graphql` mutations (7, posting review replies and resolving
+# threads). Both are squarely inside what the docstring promises to catch.
+#
+# ⚠ The bias has a sign. An agent using the forge's REST porcelain scores as
+# WORK; one doing the same work through graphql or `pr merge` scores as churn.
+# The instrument rewards a calling convention, not an action.
 MUTATING_SHELL = re.compile(
-    r"\b(git\s+(commit|push|tag)|gh\s+(issue|pr)\s+(create|comment|edit|close)|"
-    r"gh\s+api\b[^|]*-X\s*(POST|PATCH|PUT|DELETE))", re.I)
+    r"\b(git\s+(commit|push|tag)|"
+    r"gh\s+(issue|pr)\s+(create|comment|edit|close|merge|ready|review)|"
+    r"gh\s+release\s+(create|edit|delete)|"
+    r"gh\s+api\b[^|]*(-X|--method)\s*(POST|PATCH|PUT|DELETE))", re.I)
+
+# graphql needs its own test: it is POST by default, so there is no -X to match,
+# and a graphql QUERY must not count as a mutation.
+MUTATING_GRAPHQL = re.compile(r"gh\s+api\s+graphql[\s\S]*\bmutation\b", re.I)
+
+# ⛔ The list above is ENUMERATED, and a shell can mutate in unbounded ways —
+# a heredoc redirect, sed -i, a python one-liner that opens a file for writing.
+# Rather than pretend the enumeration is complete, anything that matches neither
+# the mutating forms nor this read-only set is counted as UNCLASSIFIED and
+# reported. A coverage gap that is visible can be judged; one folded into
+# "reads" is indistinguishable from an agent that did nothing.
+READ_ONLY_SHELL = re.compile(
+    r"^\s*(git\s+(status|log|diff|show|rev-list|rev-parse|fetch|ls-files|cherry|"
+    r"merge-base|worktree\s+list|branch\s+(-r|--list|--show-current))|"
+    r"gh\s+\w+\s+(view|list|status|checks)|"
+    # `gh api` is read-only ONLY because classify() tests the mutating forms
+    # first — -X/--method POST|PATCH|PUT|DELETE and a graphql `mutation`. Move
+    # this above them and every forge write becomes a read.
+    r"gh\s+api\b|"
+    r"grep|rg|cat|head|tail|less|ls|find|wc|jq|sort|uniq|awk|echo|date|which|"
+    r"pgrep|sed\s+-n|base64|curl\s+-s)\b", re.I)
+
+
+# A real command is compound: `cd /tmp && gh pr view … | jq …`. Anchoring the
+# read-only test at the start of the whole string therefore matched almost
+# nothing and pushed 1,032 of 1,244 actions into UNCLASSIFIED — a bucket that
+# swallows everything is as uninformative as one that swallows nothing. Segments
+# are classified individually and a command is read-only only if EVERY segment is.
+SEGMENT_SPLIT = re.compile(r"&&|\|\||;|\||\n")
+CD_OR_ENV = re.compile(r"^\s*(cd\s+\S+|[A-Z_][A-Z0-9_]*=\S*)\s*$")
+
+
+def read_only_command(command):
+    segments = [seg for seg in SEGMENT_SPLIT.split(command) if seg.strip()]
+    if not segments:
+        return False
+    checked = 0
+    for seg in segments:
+        if CD_OR_ENV.match(seg):
+            continue                       # navigation is not an action
+        if not READ_ONLY_SHELL.search(seg.strip()):
+            return False
+        checked += 1
+    # A command that is nothing but `cd` establishes nothing either way; treat it
+    # as read rather than manufacturing an unclassified.
+    return True if checked or segments else False
+
+
+def classify(name, args, command):
+    """mutating · read · unclassified. `command` is the Bash string, if any."""
+    if name in MUTATING_TOOLS:
+        return "mutating"
+    if MUTATING_SHELL.search(args) or MUTATING_GRAPHQL.search(args):
+        return "mutating"
+    if command is None:
+        return "read"                      # a non-Bash tool that is not in MUTATING_TOOLS
+    return "read" if read_only_command(command) else "unclassified"
 
 
 def parse_ts(value):
@@ -46,9 +115,9 @@ def parse_ts(value):
 
 
 def scan(path, since):
-    """Return (tokens_after, mutations, reads, text_turns) for records after `since`."""
+    """Return (cost, mutations, reads, unclassified, text_turns) after `since`."""
     first_depth = last_depth = None
-    mutations = reads = text_turns = 0
+    mutations = reads = unclassified = text_turns = 0
     for line in open(path, errors="replace"):
         try:
             rec = json.loads(line)
@@ -79,15 +148,20 @@ def scan(path, since):
                 continue
             used = True
             name = block.get("name", "")
-            args = json.dumps(block.get("input", {}))
-            if name in MUTATING_TOOLS or MUTATING_SHELL.search(args):
+            inp = block.get("input", {})
+            args = json.dumps(inp)
+            command = inp.get("command") if name == "Bash" and isinstance(inp, dict) else None
+            kind = classify(name, args, command)
+            if kind == "mutating":
                 mutations += 1
-            else:
+            elif kind == "read":
                 reads += 1
+            else:
+                unclassified += 1
         if not used:
             text_turns += 1
     cost = (last_depth - first_depth) if (last_depth and first_depth) else None
-    return cost, mutations, reads, text_turns
+    return cost, mutations, reads, unclassified, text_turns
 
 
 def main():
@@ -131,20 +205,27 @@ def main():
                     n = rec.get("customTitle") or rec.get("agentName")
                     if n and n not in names:
                         names.append(n)
-            cost, mut, rd, txt = scan(path, since)
-            if cost is None and not (mut or rd or txt):
+            cost, mut, rd, unk, txt = scan(path, since)
+            if cost is None and not (mut or rd or unk or txt):
                 continue
             rows.append((os.path.basename(path)[:8], "/".join(names) or "(unnamed)",
-                         cost, mut, rd, txt))
+                         cost, mut, rd, unk, txt))
     rows.sort(key=lambda r: -(r[2] or 0))
 
-    print(f"{'session':<10}{'name':<26}{'cost':>9}{'mutate':>8}{'read':>6}{'text':>6}  verdict")
-    tc = tm = 0
-    for sess, name, cost, mut, rd, txt in rows:
+    print(f"{'session':<10}{'name':<26}{'cost':>9}{'mutate':>8}{'read':>6}{'??':>5}"
+          f"{'text':>6}  verdict")
+    tc = tm = tu = 0
+    for sess, name, cost, mut, rd, unk, txt in rows:
         tc += cost or 0
         tm += mut
+        tu += unk
         if mut:
             v = "WORK"
+        elif unk:
+            # ⛔ Not "looked, did not act". The tool cannot see what these were,
+            # and folding a coverage gap into the read bucket manufactures the
+            # churn verdict this instrument exists to make trustworthy.
+            v = f"⚠ {unk} UNCLASSIFIED — no verdict"
         elif rd:
             v = "looked, did not act"
         elif txt:
@@ -152,13 +233,17 @@ def main():
         else:
             v = "silent"
         print(f"{sess:<10}{name[:26]:<26}{(f'{cost:+,}' if cost else '-'):>9}"
-              f"{mut:>8}{rd:>6}{txt:>6}  {v}")
-    print(f"\ncost {tc:,} tokens · {tm} mutating actions across {len(rows)} sessions",
-          file=sys.stderr)
-    if tm == 0 and tc > 0:
+              f"{mut:>8}{rd:>6}{unk:>5}{txt:>6}  {v}")
+    print(f"\ncost {tc:,} tokens · {tm} mutating actions · {tu} unclassified "
+          f"across {len(rows)} sessions", file=sys.stderr)
+    if tm == 0 and tc > 0 and tu == 0:
         print("⛔ COST WITH NO YIELD — every woken session consumed context and mutated "
               "nothing. That is the signature of churn, and it is the reading a "
               "cost-only instrument cannot produce.", file=sys.stderr)
+    elif tm == 0 and tc > 0 and tu:
+        print(f"⚠ NO VERDICT — 0 mutations counted, but {tu} shell actions were "
+              f"unclassified. 'No yield' cannot be distinguished from 'yield the "
+              f"classifier does not cover'.", file=sys.stderr)
     return 0
 
 
