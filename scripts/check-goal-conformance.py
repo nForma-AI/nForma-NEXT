@@ -47,15 +47,16 @@ merely NAMES it. See the SCOPE block below for the measurements that motivated i
 
     SIX=$'## Desired state\n## Reserved actions\n## Self-dispatch order\n'\
         $'## Standing calibrations\n## What this role does NOT own\n## Channel contract'
-    mkdir -p .fx-a/goals .fx-b/goals .fx-empty/goals
+    REC='{"terminals":[{"type":"claude","title":"ROLEX",
+          "env":{"NFORMA_ROLE":"ROLEX","NFORMA_GOAL":"goals/role.md"}}]}'
+    for v in a b; do mkdir -p .fx-$v/goals .fx-$v/.daintree/recipes
+      echo "$REC" > .fx-$v/.daintree/recipes/nforma-fleet.json; done
     { echo '**Repository:** /x -> github.com/nForma-AI/nForma-NEXT'; echo "$SIX"; } > .fx-a/goals/role.md
     { echo 'This goal is for work in nForma-NEXT, the nForma-NEXT repository.';
       echo "$SIX"; } > .fx-b/goals/role.md
     python3 tools/discriminates.py \
       --a "cd $PWD/.fx-a && python3 $PWD/scripts/check-goal-conformance.py" \
-      --b "cd $PWD/.fx-b && python3 $PWD/scripts/check-goal-conformance.py" \
-      --control-a "cd $PWD/.fx-a && python3 $PWD/scripts/check-goal-conformance.py" \
-      --control-b "cd $PWD/.fx-empty && python3 $PWD/scripts/check-goal-conformance.py"
+      --b "cd $PWD/.fx-b && python3 $PWD/scripts/check-goal-conformance.py"
 
     -> ✅ DISCRIMINATED   conforming exit=0 · mention-only exit=1
 
@@ -63,12 +64,13 @@ merely NAMES it. See the SCOPE block below for the measurements that motivated i
 origin` fails, scope reads UNVERIFIABLE for BOTH sides, and the comparison reports
 NON-DISCRIMINATING for a reason that has nothing to do with the check — an
 identical reading from two states that were never actually compared, which is the
-exact failure discriminates.py exists to refuse.
+exact failure discriminates.py exists to refuse. ⚠ Measured on the first attempt:
+it presented as "my check does not work", not as "my harness is misconfigured".
 
 Exit: 0 all conformant · 1 an element is missing OR a file is not scoped to this
       repository · 2 ESTABLISHED NOTHING.
 """
-import os, re, subprocess, sys
+import json, os, re, subprocess, sys
 
 # The six, from goals/README.md "What a role goal must contain". Each entry is
 # (label, regex over headings). ⚠ Matched on HEADINGS, not on body text: a file
@@ -115,11 +117,81 @@ HEADING = re.compile(r"^#{2,3}\s+(.*)$", re.M)
 SCOPE = re.compile(r"^\*\*Repository:\*\*\s*(.+)$", re.M)
 SLUG = re.compile(r"github\.com[:/]+([A-Za-z0-9._-]+)/([A-Za-z0-9._-]+?)(?:\.git)?\s*$")
 
-# How many of the six a file must show before "no Repository: line" is read as a
-# DEFECT rather than as "not a role goal". ⛔ Without this, a role goal missing its
-# scope declaration falls out of the population and is reported as skipped — which
-# is the exact case that produced the false 3-of-4, and skipped reads as benign.
-GOAL_SHAPED = 4
+# ⛔ THE POPULATION IS DECLARED, NOT DETECTED. ARCHITECT's ruling on #16.
+#
+# An earlier version of this file inferred the population with a threshold: a file
+# showing >= N of the six headings was treated as a role goal. ⚠ The number was not
+# the defect — ANY number is, and there is a live case on the board proving it:
+#
+#   goal files present         4  (+ dx-friction-sweep)
+#   roles the recipe declares  9  agent panes
+#   TEAMLEAD's goal file       ABSENT — zero headings, below EVERY threshold
+#   #17                        OPEN, and its subject is that absence
+#
+# ⇒ A DETECTED population can never report a MISSING member. A nonexistent file has
+# zero headings and falls below any threshold by construction, so the check reported
+# "4 of 4 conformant" while the role that owns the authorization ceiling had no goal
+# at all.
+#
+# ★ That is this file's own defect one layer further out. The `**Repository:**`
+# filter had its VALUE unread; the POPULATION was still inferred — so "this role has
+# no goal file" and "this file is not a role goal" collapsed into one value (absence
+# from the set) and the collapsed value was reported as success.
+#
+# The roles are knowable. The recipe declares them. Precedent: fleet-context.py
+# treats the fleet as a DECLARED roster for exactly this reason.
+RECIPE = os.path.join(".daintree", "recipes", "nforma-fleet.json")
+
+# ⚠ `type` is the agent discriminator, measured: nine panes are "claude" and
+# PREFLIGHT is "terminal". Keying on the title would need a name blocklist, which
+# is the shape this repository keeps refusing.
+AGENT_PANE = "claude"
+
+
+def declared_roles():
+    """[(role, declared_goal_path_or_None)] from the recipe, or None if unreadable.
+
+    ⛔ None is a THIRD state and the caller must not read it as an empty roster —
+    an unreadable recipe establishes nothing about conformance.
+    """
+    try:
+        doc = json.load(open(RECIPE, errors="replace"))
+    except Exception:
+        return None
+    out = []
+    for t in doc.get("terminals", []):
+        if t.get("type") != AGENT_PANE:
+            continue
+        env = t.get("env") or {}
+        role = env.get("NFORMA_ROLE") or t.get("title")
+        if role:
+            out.append((role, env.get("NFORMA_GOAL")))
+    return out or None
+
+
+HELD_BY = re.compile(r"^\*\*Held by:\*\*\s*(.+)$", re.M)
+
+
+def resolve_goal(role, declared, goals_dir="goals"):
+    """Which file carries this role's goal, and how we know. (path, key) or (None, why).
+
+    ★ Keyed on NFORMA_GOAL first — a substrate value set before the agent exists,
+    the same argument prompts/README.md makes for NFORMA_ROLE, applied to the goal.
+    ⚠ `Held by:` is the INTERIM key and is measured at 3 of 6 files, so it is a
+    fallback rather than the contract. A role with neither is NO-FILE — the verdict
+    a detected population cannot express.
+    """
+    if declared:
+        return (declared, "NFORMA_GOAL") if os.path.exists(declared) else (None, f"NFORMA_GOAL names {declared!r}, which does not exist")
+    if not os.path.isdir(goals_dir):
+        return None, "no goals/ directory"
+    for f in sorted(os.listdir(goals_dir)):
+        if not f.endswith(".md") or f == "README.md":
+            continue
+        m = HELD_BY.search(open(os.path.join(goals_dir, f), errors="replace").read(4000))
+        if m and re.search(rf"\b{re.escape(role)}\b", m.group(1)):
+            return os.path.join(goals_dir, f), "Held by:"
+    return None, "no NFORMA_GOAL in the recipe and no `Held by:` line naming this role"
 
 
 def this_repo():
@@ -156,15 +228,11 @@ def scope_verdict(text, mine):
         if got == mine:
             return "FOR-THIS-REPO", f"declares {got[0]}/{got[1]}"
         return "FOREIGN", f"declares {got[0]}/{got[1]}, this repo is {mine[0]}/{mine[1]}"
-    shaped = sum(v for _, v in check(text))
-    names_it = re.search(re.escape(mine[1]), text, re.I) is not None
-    if shaped >= GOAL_SHAPED and names_it:
-        return "MENTION-ONLY", (f"{shaped}/6 role-goal headings and the name {mine[1]!r} in the "
-                                f"body, but NO `**Repository:**` declaration — it names this "
-                                f"repository without being scoped to it")
-    if shaped >= GOAL_SHAPED:
-        return "NO-DECLARATION", f"{shaped}/6 role-goal headings and no `**Repository:**` line"
-    return "NOT-A-ROLE-GOAL", f"only {shaped}/6 role-goal headings"
+    if re.search(re.escape(mine[1]), text, re.I):
+        return "MENTION-ONLY", (f"the name {mine[1]!r} appears in the body but there is NO "
+                                f"`**Repository:**` declaration — it names this repository "
+                                f"without being scoped to it")
+    return "NO-DECLARATION", "no `**Repository:**` line and the repository name does not appear"
 
 
 def headings(text):
@@ -226,8 +294,7 @@ def self_test():
     cases = [("declares this repo", decl, "FOR-THIS-REPO"),
              ("declares another repo", foreign, "FOREIGN"),
              ("names it in prose only", mention, "MENTION-ONLY"),
-             ("role-goal shaped, says nothing", silent, "NO-DECLARATION"),
-             ("not a role goal at all", "## Unrelated", "NOT-A-ROLE-GOAL")]
+             ("says nothing about any repo", silent, "NO-DECLARATION")]
     ok_scope = True
     for label, text, want in cases:
         got, _ = scope_verdict(text, mine)
@@ -235,6 +302,31 @@ def self_test():
         ok_scope = ok_scope and good
         print(f"  {'known-negative' if want == 'FOR-THIS-REPO' else 'known-positive'}  "
               f"{'✅' if good else '⛔'} {got:<16} {label}")
+    # ⛔ THE ROSTER, both directions. The verdict a threshold cannot express is
+    # NO-FILE, and it is the one the live board needs — so it gets a control.
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix="goalconf-")
+    os.makedirs(os.path.join(tmp, "goals"))
+    open(os.path.join(tmp, "goals", "held.md"), "w").write("**Held by:** ROLEA (single seat)\n" + six)
+    cwd = os.getcwd()
+    os.chdir(tmp)
+    try:
+        p_a, k_a = resolve_goal("ROLEA", None)
+        p_b, k_b = resolve_goal("ROLEB", None)
+        p_c, k_c = resolve_goal("ROLEC", "goals/held.md")
+        p_d, _ = resolve_goal("ROLED", "goals/nope.md")
+    finally:
+        os.chdir(cwd)
+    ok_roster = (p_a and k_a == "Held by:") and p_b is None and (p_c and k_c == "NFORMA_GOAL") and p_d is None
+    print(f"  known-negative  {'✅' if p_a else '⛔'} resolved via Held by:      a declared role with a file")
+    print(f"  known-positive  {'✅' if p_b is None else '⛔'} NO-FILE                   a declared role with none")
+    print(f"  known-negative  {'✅' if p_c else '⛔'} resolved via NFORMA_GOAL  the substrate carrier wins")
+    print(f"  known-positive  {'✅' if p_d is None else '⛔'} NO-FILE                   NFORMA_GOAL names a missing file")
+    if not ok_roster:
+        print("  ⛔ the roster resolver cannot report NO-FILE — which is the verdict a "
+              "threshold-detected population could not express, and the reason it was "
+              "replaced", file=sys.stderr)
+
     # ⛔ And the property #16 is actually about: the MENTION case must not be
     # reachable from the same verdict as the DECLARATION case, no matter how many
     # times the name appears in the body.
@@ -246,7 +338,7 @@ def self_test():
         print("  ⛔ the scope check does not separate a DECLARATION from a MENTION — which is "
               "the false 3-of-4 in #16, reproduced", file=sys.stderr)
 
-    ok = ok_full and ok_miss and ok_dec and ok_diff and ok_scope and ok_spam
+    ok = ok_full and ok_miss and ok_dec and ok_diff and ok_scope and ok_spam and ok_roster
     print("\nselftest PASS" if ok else "\nselftest FAIL")
     return 0 if ok else 2
 
@@ -265,63 +357,75 @@ def main():
     # A role goal declares a Repository line — the standard's own header form.
     # ⚠ Files that carry it and nothing else are still checked, which is correct:
     # a file claiming to be a role goal must satisfy the six.
-    # ⛔ POPULATION CHANGED, AND THE OLD RULE WAS THE DEFECT. Selecting on "carries a
-    # `**Repository:**` line" made a role goal that OMITS the line invisible rather
-    # than failing — measured: such a file produced "no goal files found", exit 2.
-    # A file is now in scope if it carries the declaration OR is role-goal SHAPED
-    # (>= GOAL_SHAPED of the six headings), so a missing declaration is a verdict
-    # rather than an exclusion.
     mine = this_repo()
-    files, skipped = [], []
-    for f in sorted(os.listdir("goals")) if os.path.isdir("goals") else []:
-        if not f.endswith(".md") or f == "README.md":
-            continue
-        text = open(os.path.join("goals", f), errors="replace").read()
-        if re.search(r"^\*\*Repository:\*\*", text, re.M) or sum(v for _, v in check(text)) >= GOAL_SHAPED:
-            files.append(f)
-        else:
-            skipped.append(f)
-    if not files:
-        print("⛔ no goal files found under goals/ — ESTABLISHED NOTHING, not conformant.\n"
-              "   ADDABLE — FIXABLE HERE: run from the repository root.", file=sys.stderr)
+    roster = declared_roles()
+    if roster is None:
+        print(f"⛔ cannot read {RECIPE} — the role population is UNKNOWN, so this run "
+              f"ESTABLISHED NOTHING. It is not 'no roles'.\n"
+              f"   ADDABLE — FIXABLE HERE: run from the repository root.", file=sys.stderr)
         return 2
-    bad = 0
-    scoped_here = 0
-    unverifiable = False
+
     print(f"goal conformance at {rev or '?'} (working tree, not a cached PR view)")
     print(f"this repository, from `git remote get-url origin`: "
           f"{mine[0] + '/' + mine[1] if mine else '⛔ UNREADABLE'}")
-    for f in files:
-        text = open(os.path.join("goals", f), errors="replace").read()
+    print(f"population: {len(roster)} agent roles DECLARED by {RECIPE} "
+          f"(not files that look goal-shaped)")
+
+    bad = scoped_here = no_file = 0
+    unverifiable = False
+    seen = {}
+    for role, declared in roster:
+        path, key = resolve_goal(role, declared)
+        if path is None:
+            # ⛔ The verdict a detected population cannot express. TEAMLEAD is the
+            # live case: declared as a role, no goal file, and #17 is about that.
+            no_file += 1
+            bad += 1
+            print(f"  FAIL  {role:<10} scope: NO-FILE — {key}")
+            continue
+        text = open(path, errors="replace").read()
         miss = [l for l, v in check(text) if not v]
         verdict, why = scope_verdict(text, mine)
         ok_scope = verdict == "FOR-THIS-REPO"
         scoped_here += ok_scope
         unverifiable = unverifiable or verdict == "UNVERIFIABLE"
         bad += bool(miss) or not ok_scope
+        seen[path] = seen.get(path, 0) + 1
         mark = "ok  " if not miss and ok_scope else "FAIL"
-        print(f"  {mark}  {f:<40} elements: "
-              f"{'missing ' + ', '.join(miss) if miss else 'all six'}")
+        print(f"  {mark}  {role:<10} {os.path.basename(path):<38} "
+              f"[{key}] elements: {'missing ' + ', '.join(miss) if miss else 'all six'}")
         print(f"        {'    ' if ok_scope else '⛔  '}scope: {verdict} — {why}")
-    print(f"\n{len(files) - bad} of {len(files)} conformant "
-          f"(six elements AND scoped to this repository).", file=sys.stderr)
-    print(f"{scoped_here} of {len(files)} declare THIS repository structurally.", file=sys.stderr)
-    print("⛔ A file that merely NAMES this repository in its body is reported "
-          "MENTION-ONLY and counted as NOT scoped here — that distinction is #16, "
-          "and a mention cannot occupy a `**Repository:**` declaration.", file=sys.stderr)
+
+    print(f"\n{len(roster) - bad} of {len(roster)} roles conformant "
+          f"(a goal file, six elements, scoped to this repository).", file=sys.stderr)
+    print(f"{scoped_here} of {len(roster)} roles resolve to a file declaring THIS repository.",
+          file=sys.stderr)
+    if no_file:
+        print(f"⛔ {no_file} declared role(s) have NO GOAL FILE. A detected population could not "
+              f"report this — a nonexistent file has zero headings and falls below every "
+              f"threshold by construction, which is how 'all conformant' was reported while a "
+              f"role had nothing (#17).", file=sys.stderr)
+    # ⚠ Name the many-to-one mapping rather than let a shared file read as N files.
+    shared = {p: n for p, n in seen.items() if n > 1}
+    for p_, n in sorted(shared.items()):
+        print(f"⚠ {os.path.basename(p_)} serves {n} roles — one file, {n} holders. A defect in it "
+              f"is a defect for all {n}.", file=sys.stderr)
+    print("⛔ A file that merely NAMES this repository in its body is reported MENTION-ONLY "
+          "and counted as NOT scoped here — that distinction is #16, and a mention cannot "
+          "occupy a `**Repository:**` declaration.", file=sys.stderr)
+    # Files present in goals/ that no declared role claims.
+    if os.path.isdir("goals"):
+        claimed = {os.path.basename(p_) for p_ in seen}
+        orphan = [f for f in sorted(os.listdir("goals"))
+                  if f.endswith(".md") and f != "README.md" and f not in claimed]
+        if orphan:
+            print(f"⚠ in goals/ but claimed by NO declared role: {', '.join(orphan)}. Not a "
+                  f"failure — they fall out because no role declares them, not because they "
+                  f"scored below a threshold.", file=sys.stderr)
     if unverifiable:
         print("⛔ At least one scope verdict was UNVERIFIABLE (no readable origin remote). "
               "That is ESTABLISHED NOTHING, not a pass.", file=sys.stderr)
         return 2
-    # ⛔ Name what was skipped. A population that silently excludes files is how
-    # "all conformant" gets believed — and the exclusion rule here is a heuristic
-    # on a header line, not a fact about the file.
-    if skipped:
-        print(f"⚠ NOT CHECKED (no `**Repository:**` declaration AND fewer than {GOAL_SHAPED} of "
-              f"the six role-goal headings): {', '.join(skipped)}. ⛔ Both conditions must hold to "
-              f"be excluded — a file with the headings and no declaration is now reported "
-              f"MENTION-ONLY or NO-DECLARATION rather than skipped, because the old "
-              f"declaration-only filter made exactly that file invisible.", file=sys.stderr)
     print("⚠ Presence of a HEADING, not quality of its content. A §1 that is present "
           "and aspirational passes here and should still fail review.", file=sys.stderr)
     return 1 if bad else 0
