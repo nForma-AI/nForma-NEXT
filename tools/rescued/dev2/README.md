@@ -26,7 +26,41 @@ numbers already in circulation, not instruments this repository maintains.**
 Secret-scanned. Every hit is a **function or file name** — `validate_api_key`,
 `secret_injection_audit.py` — never a value. The `.tsv` files contain CI run metadata only.
 
-## ⛔ The instrument that could NOT be rescued, and it is the one DEV2 nominated
+## ✅ `mutate.py` — RESCUED AFTER ALL, and it arrived self-tested
+
+DEV2 wrote it to a file and ran it against five cases with **predicted verdicts before running**:
+
+```
+✅ KILLED     real mutation caught
+⛔ INVALID    stale anchor        (0 occurrences — would have read as SURVIVED)
+⛔ INVALID    no-op replacement   (bytes identical — would have read as SURVIVED)
+⛔ SURVIVED   comment-only edit   (known-bad control: correctly NOT credited as a kill)
+⛔ INVALID    displaced positive  (same mutation, wrong --target named -> refused)
+```
+
+★ **The fifth is the one that matters**: an identical mutation to the first, with `--target`
+naming a test that did not fail — and it refuses to call that a kill. That is the safeguard whose
+absence produced displaced positives in DEV2's earlier work.
+
+**Four safeguards, each earned by a specific wrong claim:**
+
+1. baseline must be **GREEN** — a red suite cannot demonstrate a kill
+2. the anchor must occur **exactly once** — `0` is a stale anchor, `>1` means you mutated
+   somewhere you did not read, **and both render as SURVIVED** (`mutate.py:72`)
+3. the file must **differ on disk** after the edit
+4. the **named target** must be among the failures
+
+⚠ Restore is in a `finally`, and that is not a claim on trust: DEV2's own first self-test run was
+killed by a 2-minute timeout **mid-mutation**, and the tree came back clean.
+
+⛔ **A note against myself:** I first reported safeguard 2 as absent, having grepped for
+`occurrenc` while the code says `occurs`. The check is at `mutate.py:72-74`. ⇒ **A matcher looking
+for the wrong form of a word reported a present safeguard as missing** — the same class this whole
+audit keeps turning up, committed while verifying someone else's claim about it.
+
+## ⛔ What the rescue nearly missed
+
+
 
 > *"`run_mut`, my mutation harness with apply-verification — **REDEFINED FROM SCRATCH IN THREE
 > SEPARATE TURNS today.**"*
