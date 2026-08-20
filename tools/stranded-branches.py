@@ -91,21 +91,42 @@ def sh(*args):
     return (r.returncode, r.stdout.strip(), r.stderr.strip())
 
 
-def merged_refs():
-    """Branch names of merged PRs. Returns None on ANY failure — never [].
+DEFAULT_LIMIT = 1000
+
+
+def merged_refs(limit=DEFAULT_LIMIT):
+    """Branch names of merged PRs. Returns (rows, err, truncated) — never bare [].
 
     ⚠ [] and "the query failed" must not share a representation. A caller that
     cannot tell them apart will report a clean fleet when gh is broken.
+
+    ⛔ AND NEITHER MUST "complete" AND "TRUNCATED", which is the state this function
+    was missing. It asked for `--limit 100`, and `gh` answers a request for more
+    than exists with everything, and a request for less with a silent prefix.
+    Measured 2026-08-20:
+
+        nForma-AI/nForma-NEXT       69 merged   ->  69 seen
+        Digital-Frontier-LDA/df-wiki 178 merged  -> 100 seen
+        Borduas-Holdings/Blazing-Back 775 merged -> 100 seen
+
+    ⇒ On the repository with the actual branch churn the sweep inspected **13% of
+    the population** and reported `0 stranded, exit 0` about the rest. That is the
+    failure this file's own docstring says exit 2 exists to prevent — absence read
+    as success, inside a check written to catch absence read as success. It guarded
+    the ERROR path and left the TRUNCATION path open.
+
+    ⚠ The truncation test is `len(rows) == limit`, deliberately local: it needs no
+    second API call and cannot itself be rate-limited or return a stale count.
     """
-    rc, out, err = sh("gh", "pr", "list", "--state", "merged", "--limit", "100",
+    rc, out, err = sh("gh", "pr", "list", "--state", "merged", "--limit", str(limit),
                       "--json", "number,headRefName")
     if rc != 0 or not out:
-        return None, err or "gh returned nothing"
+        return None, err or "gh returned nothing", False
     try:
         rows = json.loads(out)
     except ValueError as exc:
-        return None, f"unparseable gh output: {exc}"
-    return rows, None
+        return None, f"unparseable gh output: {exc}", False
+    return rows, None, len(rows) >= limit
 
 
 def stranded(rows):
@@ -192,11 +213,36 @@ def self_test():
     return 0 if ok else 2
 
 
+def verdict_exit(n_unmatched, truncated):
+    """0 clean · 1 findings · 2 established nothing.
+
+    ⛔ THE ASYMMETRY, applied to the POPULATION as well as to the states. A positive
+    finding survives a partial sweep — a ref found stranded in the prefix is still
+    stranded. A negative does not: "none found" over 13% of the population
+    establishes nothing about the other 87%, and exiting 0 there is exactly the
+    reading this tool exists to refuse.
+
+    Extracted so it can be tested without a repository. The branch that matters —
+    truncated AND nothing found — is the one hardest to produce against a live
+    remote, which is how it shipped unwritten.
+    """
+    if n_unmatched:
+        return 1
+    return 2 if truncated else 0
+
+
 def main():
     if "--self-test" in sys.argv:
         return self_test()
     sh("git", "fetch", "-q", "--prune", "origin")
-    rows, err = merged_refs()
+    limit = DEFAULT_LIMIT
+    if "--limit" in sys.argv:
+        i = sys.argv.index("--limit")
+        if i + 1 >= len(sys.argv) or not sys.argv[i + 1].isdigit():
+            print("⛔ --limit needs a positive integer", file=sys.stderr)
+            return 2
+        limit = int(sys.argv[i + 1])
+    rows, err, truncated = merged_refs(limit)
     if rows is None:
         print(f"⛔ could not enumerate merged PRs ({err}) — ESTABLISHED NOTHING, not clean.\n"
               "   ADDABLE — FIXABLE HERE: `gh auth status`, then re-run. A gh failure and\n"
@@ -208,6 +254,11 @@ def main():
               "A repo with merged PRs returning an empty list is a broken query, "
               "not a tidy history.", file=sys.stderr)
         return 2
+    if truncated:
+        print(f"⛔ TRUNCATED SWEEP — `gh pr list` returned exactly {len(rows)} rows, the limit "
+              f"asked for. There are almost certainly more merged PRs than that, and the ones "
+              f"beyond it were NOT examined. Raise --limit. Every count below describes the "
+              f"prefix, not the repository.", file=sys.stderr)
     found, checked, deleted, unfetched = stranded(rows)
     if unfetched:
         print(f"⛔ {len(unfetched)} merged-PR ref(s) exist on origin but not in this clone: "
@@ -254,7 +305,12 @@ def main():
           "three observers of one ref disagreed within an hour, none of them wrong. A count "
           "without its sha is not comparable to the same count from another run.",
           file=sys.stderr)
-    return 1 if unmatched_refs else 0
+    code = verdict_exit(len(unmatched_refs), truncated)
+    if code == 2:
+        print("⛔ no unmatched refs IN THE PREFIX EXAMINED — and the sweep was truncated, so "
+              "this ESTABLISHED NOTHING about the repository. Not clean. Raise --limit and "
+              "re-run.", file=sys.stderr)
+    return code
 
 
 if __name__ == "__main__":
