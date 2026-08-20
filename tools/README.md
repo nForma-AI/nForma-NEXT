@@ -1583,6 +1583,45 @@ when the panes it notified read their files.)
   NEGATIVE that was really nothing, and this one guards a POSITIVE that was really an unbounded
   window. **Neither covers the other.**
 
+- ⛔ **A MONITOR'S COMPARED PAYLOAD MUST EXCLUDE ANYTHING THAT ADVANCES WITH THE CLOCK.** Otherwise
+  every tick differs from the last, every emission is labelled `CHANGED`, and **the distinction the
+  monitor exists to draw is destroyed by the field added to make it informative.**
+
+  Measured fleet-wide 2026-08-20 (TEAMLEAD, #282):
+
+  ```
+  total events                                       203
+  labelled CHANGE                                    202
+  identical once the timestamp AND the idle
+    MINUTE COUNTERS are removed                       55
+  ⇒ 27% of "CHANGE" events reported NO CHANGE IN STATE
+  ```
+
+  ⚠ `DEV3:11m` → `DEV3:13m` is a state change to a naive comparison and no news to a reader.
+
+  ★ **My own instance, and the sequence is the lesson.** I wrote the repeat-alarm convention, then
+  armed a monitor that violated it **within the hour**, then mis-tuned it twice more:
+
+  ```
+  v1  key = fleet PR count        could not tell a backlog from high throughput
+  v2  key += oldest-AGE           CLOCK-DERIVED — ~50 CHANGED events in 50 minutes, board static
+  v3  key += fleet OPEN count     true world state, but a wake per PR any pane opens: 0 actionable
+  v4  key = MY unlanded + blocked fleet counts demoted to PAYLOAD
+  ```
+
+  ⇒ Two distinct errors, and the second is not the first: **v2 put the clock in the key; v3 put
+  something real in the key that I never act on.** ⛔ **World-state is not the bar — ACTIONABILITY
+  is.** A key should hold only what changes what the reader would *do*.
+
+  ⚠ And none of the three failures was visible by reading the script. Each appeared only after
+  running it, which is why the tuning history is now a comment **inside** the monitor rather than a
+  lesson someone is expected to carry.
+- ★ **Put the value in the PAYLOAD instead — it is informative there and inert in the key.** `oldest-age`
+  and `merged-1h` are exactly the fields that answer *"is this queue draining or backing up?"*, a
+  question a bare count cannot settle. ⇒ **Emit them; do not compare on them.** And keep the liveness
+  line, so silence still means *ran and found nothing* rather than *could not run* — ⛔ a longer poll
+  interval is NOT a substitute, because it buys quiet by discarding the guarantee.
+
 ## Running the checks
 
 ```
