@@ -473,6 +473,29 @@ does not move — a design property, not agent behaviour.
 
    ⇒ **5b is what the falsifier asks for and it remains at zero.** `[NOT-YET-MEASURED]`
 
+   ### ⇒ Applied to a CONTROL, the population leg is DEVOPS's rule (#164 item 1)
+
+   > **Name a caller whose INPUTS YOU DID NOT CHOOSE.**
+
+   ⛔ *"Has a control"* is satisfiable by a control that re-runs the author's model of the world. **A
+   self-test's population is drawn by the author; a live run's is not** — so a `--self-test` over
+   chosen fixtures satisfies criteria 3 and 4 and **fails the population leg of 5.**
+
+   **Measured on `tools/architect-sweeps/known-negative.py`, which carries both:**
+
+   ```
+   --self-test, two SYNTHETIC tools the author wrote      all checks passed, 0 findings
+   the same code over 24 REAL tool/control pairs          3 DECORATIVE · 3 VOID · 18 CONTROL
+   ```
+
+   ★ **Same analyser, same day. Every finding came from the population the author did not draw.**
+   *(DEVOPS reached this from the other direction: a caller that passed its own fixtures would have
+   found nothing, and #89 would have been counted satisfied.)*
+
+   ⚠ **This is not a sixth criterion and must not become one** — it is criterion 5's population leg
+   with *control* substituted for *finding*. **Recorded here so it is not invented a fourth time**,
+   which is Class B's remedy stated at the boundary rather than at the instance.
+
    ### ⛔ Criterion 5 exists because 1–4 check the INSTRUMENT and never its BINDING to the claim
 
    Six instances in one day, across four roles, of **a correct reading of the wrong proposition** —
