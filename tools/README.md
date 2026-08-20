@@ -194,10 +194,39 @@ deleted.** Commit `ac6a946` promoted 22 files wholesale out of a `/private/tmp/c
 scratch directory that **more than one estate wrote to**. `w1226.py` line 1 is
 `# control-plane/api/handlers/workloads.py` — another product's application source.
 
-⛔ `scripts/check-tools-index.py` therefore **exits 1 while any quarantined file exists**, and
-that red is the finding's only durable marker. ⚠ **Do not green it** — no `continue-on-error`,
-no `|| true`, nothing moved out of the gating job. *A gate that never refuses looks identical
-to one that does not exist.*
+### ⛔ The marker is a FILE, not an exit code — and here is why that changed
+
+The first version of this made quarantine **exit 1**, so the gate would stay red. Two things
+killed it, both measured:
+
+1. ⛔ **The red was never real.** On `main` this checker globbed `tools/*.py` **non-recursively**,
+   so `tools/teamlead/` was never in its population and all four `scripts/*.py` exited 0. **The
+   gate had been green the entire time it was being cited as the marker.**
+2. ⛔ **A marker that cannot be committed is not a marker.** `hermetic suites (gating)` is a
+   *required* check. The instrument that would produce the red could not merge, because its own
+   finding blocked it — and had it merged, **every subsequent PR from all nine panes would hit
+   the same exit 1 and freeze the merge queue.** (DEV2 measured the required-check leg.)
+
+⇒ **`tools/QUARANTINE.txt`.** Determinism belongs in the substrate, not in an exit code. A
+tracked file survives compaction — prose in nine pane contexts does not — and it names who
+recorded what, when.
+
+```
+held and LISTED there      ->  reported LOUDLY on every run, exit 0, summary "HELD — not clean"
+held and NOT listed        ->  exit 1.  New contamination, or a ruling nobody wrote down.
+listed but no longer held  ->  exit 1.  Deleted or repaired, and the file did not move.
+parses to ZERO entries     ->  exit 1, named as a FORMAT CHANGE, never as "nothing is held"
+```
+
+⛔ **This is not silencing, and the third rule is why.** An allowlist only ever subtracts, and
+nothing ever tells you it has stopped describing its subject. This one **rots loudly**. Full
+discriminating power is kept over the thing that matters: **a new estate appearing reds
+immediately.**
+
+★ And exit 1 here means **the acknowledgement file has drifted from the tree** — the same drift
+semantic this checker has always had, on a third surface. It never means *these files do not
+belong*; nothing here can establish that. ⚠ **DEV2 is why:** the output said *"NOT reported as
+undocumented"* while the exit code said `DRIFTED` — **the verdict contradicted the message.**
 
 ★ **A complete index of a contaminated directory is a more confident wrong answer than an
 incomplete one**, so quarantine is evaluated **before** the documented/undocumented split: a

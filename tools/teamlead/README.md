@@ -43,8 +43,9 @@ That was checked before anything was copied, not after.
 **The operator has ruled quarantine on this directory.** These files came out of a scratch
 directory that **more than one estate wrote to**; 10 of the 19 instruments name another estate
 in **executable** position, and `w1226.py` is another product's application source. ⇒
-`scripts/check-tools-index.py` exits **1** while that is true, and the red is the finding's only
-durable marker. ⚠ **Naming a file below does not assert it belongs here** — the manifest exists
+`scripts/check-tools-index.py` reports every one of them **by name on every run** and records
+their disposition in `tools/QUARANTINE.txt`, which is the marker — a tracked file, because prose
+dies at the next compaction and the exit code it used to rely on was green all along. ⚠ **Naming a file below does not assert it belongs here** — the manifest exists
 so a reader can see what is being held, and the disposition is the operator's.
 
 ⛔ Do not index into `tools/README.md`'s table · do not delete · do not rewrite history.

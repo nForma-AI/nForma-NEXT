@@ -1,0 +1,43 @@
+# QUARANTINE — paths this repository HOLDS, and what is recorded about each
+#
+# ⛔ LISTING A PATH HERE IS NOT A CLAIM THAT IT BELONGS IN THIS REPOSITORY.
+# It is a claim that the finding is KNOWN and its disposition is written down. The states are
+# docs/ESTATE-BOUNDARY.md's: FOREIGN (provenance evidence places it elsewhere) · UNCLAIMED (no
+# evidence either way — and UNCLAIMED IS NOT LOCAL) · plus two this file records:
+# DETECTOR (a tool that carries the vocabulary because it detects it) and ESCALATED (found,
+# reported, disposition not yet ruled).
+#
+# ⛔ THIS IS NOT AN ALLOWLIST, and the third rule is why. scripts/check-tools-index.py checks it
+# in BOTH directions:
+#     held and listed here      -> reported LOUDLY on every run, does not fail
+#     held and NOT listed       -> exit 1. New contamination, or a ruling nobody wrote down.
+#     listed but no longer held -> exit 1. Deleted, or repaired, and this file did not move.
+# An allowlist only ever subtracts. This one rots loudly, which is the only thing keeping it
+# honest — and a format change that parses to zero entries is exit 2, never a pass.
+#
+# ⛔ Do not index these into tools/README.md's table · do not delete · do not rewrite history.
+# The disposition is the operator's. (Ruled 2026-08-20; the operator elected quarantine.)
+#
+# path | state | recorded | ruling
+
+tools/estate-provenance.py | DETECTOR | 2026-08-20 | holds the foreign vocabulary BECAUSE IT DETECTS IT. use-not-mention, at the third level.
+tools/memory-index-check.py | ESCALATED | 2026-08-20 | default path reads another estate's transcript dir. OUTSIDE the ruled directory; TEAMLEAD escalating 2026-08-20, disposition PENDING.
+tools/teamlead/boxwatch.py | UNCLAIMED | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. No marker; held because the DIRECTORY's provenance is the open question.
+tools/teamlead/boxwatch.sh | UNCLAIMED | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. No marker; held because the DIRECTORY's provenance is the open question.
+tools/teamlead/classify_fleet.py | UNCLAIMED | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. No marker; held because the DIRECTORY's provenance is the open question.
+tools/teamlead/ctxwatch.py | FOREIGN | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. Marker: '/private/tmp/claude-501/-Users-jonathanborduas-code-DigitalFrontier-infr'.
+tools/teamlead/dt.sh | UNCLAIMED | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. No marker; held because the DIRECTORY's provenance is the open question.
+tools/teamlead/exec_checks.py | FOREIGN | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. Marker: '/Users/jonathanborduas/code/DigitalFrontier-infra'.
+tools/teamlead/exec_exact.py | FOREIGN | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. Marker: '/Users/jonathanborduas/code/DigitalFrontier-infra'.
+tools/teamlead/fleetwatch.sh | FOREIGN | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. Marker: 'TL=/private/tmp/claude-501/-Users-jonathanborduas-code-DigitalFrontier-i'.
+tools/teamlead/guard.py | UNCLAIMED | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. No marker; held because the DIRECTORY's provenance is the open question.
+tools/teamlead/mergeready.py | UNCLAIMED | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. No marker; held because the DIRECTORY's provenance is the open question.
+tools/teamlead/poll_sweep.py | FOREIGN | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. Marker: '/Users/jonathanborduas/code/DigitalFrontier-infra'.
+tools/teamlead/repowatch.py | FOREIGN | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. Marker: 'Borduas-Holdings/Blazing-Back'.
+tools/teamlead/sweep.py | FOREIGN | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. Marker: '/Users/jonathanborduas/code/DigitalFrontier-infra'.
+tools/teamlead/sweep2.py | FOREIGN | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. Marker: '/Users/jonathanborduas/code/DigitalFrontier-infra'.
+tools/teamlead/t_500.py | UNCLAIMED | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. No marker; held because the DIRECTORY's provenance is the open question.
+tools/teamlead/t_sentinel.py | FOREIGN | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. Marker: 'akash'.
+tools/teamlead/t_skip.py | UNCLAIMED | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. No marker; held because the DIRECTORY's provenance is the open question.
+tools/teamlead/w1226.py | FOREIGN | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. Marker: 'akash'.
+tools/teamlead/waker.py | UNCLAIMED | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. No marker; held because the DIRECTORY's provenance is the open question.

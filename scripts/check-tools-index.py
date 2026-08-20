@@ -189,6 +189,57 @@ def code_strings(path):
             if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs]
 
 
+ACK_NAME = "QUARANTINE.txt"
+ACK_ENTRY = re.compile(r"^\s*([A-Za-z0-9_./-]+\.(?:py|sh))\s*\|", re.M)
+
+
+def read_ack(tools_dir):
+    """Paths acknowledged as held. (set, None) or (None, why-it-established-nothing).
+
+    ⛔ WHY A FILE AND NOT AN EXIT CODE — and this is the whole argument, so it is here rather
+    than in a PR body that nobody will read again.
+    #
+    # The quarantine ruling was carried as PROSE in nine pane contexts and one merged doc, and
+    # was ENFORCED by "the gate is red." Both legs failed at once. Prose dies at the next
+    # compaction. And the red was not real: on `main` this checker globbed `tools/*.py`
+    # non-recursively, so `tools/teamlead/` was never in its population and all four
+    # `scripts/*.py` exited 0 — **the gate had been green the entire time it was being cited as
+    # the marker.** Meanwhile the instrument that WOULD have reddened it could not merge,
+    # because its own finding blocked it: a marker that cannot be committed is not a marker.
+    #
+    # ⇒ Determinism belongs in the substrate. A tracked file is a committed artifact: it
+    # survives compaction, it is diffable, and it names who ruled what and when.
+
+    ⛔ AND IT IS NOT AN ALLOWLIST, because acknowledgement is checked in BOTH directions. An
+    entry for a path that is no longer held — deleted, or repaired — reds the gate. An allowlist
+    only ever subtracts; this one rots loudly, which is the only thing that keeps it honest.
+
+    ⚠ Listing a path here is NOT a claim that it belongs in this repository. It is a claim that
+    the finding is KNOWN and its disposition is recorded.
+    """
+    ack = tools_dir / ACK_NAME
+    if not ack.is_file():
+        return None, f"tools/{ACK_NAME} is absent"
+    try:
+        text = ack.read_text(encoding="utf-8")
+    except OSError:
+        return None, f"tools/{ACK_NAME} is unreadable"
+    # ⚠ NORMALISED TO tools/-RELATIVE, and both spellings are accepted. Written first with the
+    # file holding `tools/teamlead/w1226.py` and the checker holding `teamlead/w1226.py`, which
+    # produced the WORST possible output: 21 paths reported as unacknowledged AND 21 reported as
+    # stale, in the same run, describing the same 21 files. Two loud, opposite, simultaneously
+    # wrong findings — and each is individually plausible, so a reader could act on either.
+    entries = {e[len("tools/"):] if e.startswith("tools/") else e
+               for e in ACK_ENTRY.findall(text)}
+    if not entries:
+        # ⛔ Zero extractions is the load-bearing case here too: a format change would parse to
+        # an empty set, every held path would read as UNACKNOWLEDGED, and the gate would red for
+        # the wrong reason — or, with the comparison written the other way, go green over
+        # everything. Neither is a reading; it is a parser failure wearing a verdict.
+        return None, f"tools/{ACK_NAME} exists but no entry matched — the format changed"
+    return entries, None
+
+
 def adding_commits(root, directory):
     """How many distinct commits ADDED files under this directory? None if unmeasurable.
 
@@ -291,9 +342,10 @@ def check(root):
     failed = False
     unchecked = []          # legs that established NOTHING, so the summary cannot claim them
 
-    held = set()            # quarantined or unclaimed — OUT of the naming population
+    held = set()            # names impounded at the TOP level (for the `extra` leg only)
+    held_paths = set()      # every impounded path, tools/-relative — the ack file's population
 
-    def impound(label, directory, names):
+    def impound(label, directory, names, rel=""):
         """Report quarantined files and REMOVE them from the naming population.
 
         ⛔ Removed, not merely flagged. If they stayed in, the very next leg would report them
@@ -304,7 +356,14 @@ def check(root):
         quar = quarantined(directory, names)
         if not quar:
             return names
-        failed = True
+        # ⛔ QUARANTINE ALONE DOES NOT FAIL, and DEV2 is why. Their argument: the output says
+        # "NOT reported as undocumented" and the exit code said DRIFTED — THE VERDICT
+        # CONTRADICTED THE MESSAGE. Quarantine is not drift; it is precisely ESTABLISHED
+        # NOTHING about whether these files belong, and this file's own vocabulary already has
+        # a place for that. ⇒ The verdict now belongs to the ACKNOWLEDGEMENT legs below, and
+        # exit 1 there means THE ACK FILE HAS DRIFTED FROM THE TREE — the same drift semantic
+        # this checker has always had, applied to a third surface. It never means "these files
+        # do not belong"; nothing here can establish that.
         out.append(f"  QUARANTINED  {label} — {len(quar)} of {len(names)} instrument(s) name"
                    f" another estate in EXECUTABLE position (not in a docstring):")
         for n, lit in quar:
@@ -312,7 +371,7 @@ def check(root):
         out.append("               ⛔ NOT reported as undocumented: presence in tools/ is not"
                    " evidence of belonging, and an index row would ASSERT that it is.")
         out.append("               ⛔ Do not index, do not delete, do not rewrite history —"
-                   " the disposition is the operator's. This red is the finding's only marker.")
+                   f" the disposition is the operator's, and it is recorded in tools/{ACK_NAME}.")
         # ⛔ WHOLESALE IMPORT ⇒ THE DIRECTORY IS THE UNIT, NOT THE FILE.
         survivors = [n for n in names if n not in {q for q, _ in quar}]
         adds = adding_commits(root, directory)
@@ -326,8 +385,16 @@ def check(root):
             out.append(f"               UNCLAIMED ({len(survivors)}): {', '.join(survivors)}")
             out.append("               ⚠ No estate marker — and NO evidence they are ours either."
                        " UNCLAIMED is not LOCAL, and the index must not assert that it is.")
+            # ⚠ BOTH SETS. Written first as `survivors` alone — the ten FOREIGN files were
+            # already reported above, so they LOOKED accounted for, and the acknowledgement
+            # population silently became 11 instead of 21. A count that is short by exactly the
+            # files everyone is looking at is the easiest kind to read past.
+            held_paths.update(f"{rel}/{n}" if rel else n
+                              for n in survivors + [q for q, _ in quar])
             held.update(survivors)
+            held.update(q for q, _ in quar)
             return []
+        held_paths.update(f"{rel}/{n}" if rel else n for n, _ in quar)
         held.update(n for n, _ in quar)
         return [n for n in names if n not in held]
 
@@ -421,7 +488,7 @@ def check(root):
                    f"  ({', '.join(sub_actual) if sub_actual else 'none'})")
         if sub_excluded:
             out.append(f"  ----  excluded there as tests: {', '.join(sub_excluded)}")
-        sub_actual = impound(f"tools/{d.name}/", d, sub_actual)
+        sub_actual = impound(f"tools/{d.name}/", d, sub_actual, rel=d.name)
         if not sub_actual:
             # ⚠ EVERY instrument impounded. The directory is still NAMED — a reader must be
             # able to find out it exists and why it is held — but there is nothing left to
@@ -456,6 +523,42 @@ def check(root):
     out.append("  ----  excluded as fixture directories: "
                + (", ".join(fixtures) if fixtures else "none")
                + "  (an input a tool reads is not a tool)")
+
+    # ⛔ ACKNOWLEDGEMENT — three rules, and the third is what makes this a guard.
+    if held_paths:
+        acked, why = read_ack(tools_dir)
+        if acked is None:
+            unchecked.append("acknowledgement")
+            failed = True
+            out.append(f"  FAIL  {len(held_paths)} path(s) are held and {why} — the ruling is not"
+                       f" a committed artifact, so nothing records that these are known")
+        else:
+            new = sorted(held_paths - acked)
+            stale = sorted(acked - held_paths)
+            known = sorted(held_paths & acked)
+            if known:
+                out.append(f"  HELD  {len(known)} acknowledged in tools/{ACK_NAME} — reported on"
+                           f" every run, never silent, and NOT a claim that they belong here:")
+                for n in known:
+                    out.append(f"          {n}")
+            if new:
+                failed = True
+                out.append(f"  FAIL  NOT acknowledged — this is NEW contamination, or a ruling"
+                           f" that was never written down: {', '.join(new)}")
+            if stale:
+                failed = True
+                out.append(f"  FAIL  tools/{ACK_NAME} acknowledges {len(stale)} path(s) that are"
+                           f" no longer held — deleted, or repaired, and the file did not move:"
+                           f" {', '.join(stale)}")
+                out.append("        ⚠ A stale acknowledgement is how an allowlist quietly stops"
+                           " describing its subject. It reds the gate on purpose.")
+    else:
+        # ⚠ An ack file with nothing to acknowledge is also stale.
+        acked, _ = read_ack(tools_dir)
+        if acked:
+            failed = True
+            out.append(f"  FAIL  nothing is held, but tools/{ACK_NAME} still acknowledges"
+                       f" {len(acked)} path(s): {', '.join(sorted(acked))}")
 
     # Every tool prints what its numbers do NOT establish, on every run.
     out.append("  note  this checks PRESENCE of a row, never whether the row is ACCURATE —"
@@ -743,6 +846,69 @@ def selftest():
         shutil.rmtree(fx)
         (t / "README.md").write_text(good)
 
+        # ⛔ ACKNOWLEDGEMENT — all three transitions, plus the parser's own failure.
+        # If it cannot produce all of these it is an allowlist, not a guard: an allowlist only
+        # ever subtracts, and nothing ever tells you it has stopped describing its subject.
+        #
+        # ⚠ TWO planted files, not one, and that is not incidental. Written with one, cases 1
+        # and 3 both returned exit 1 for the RIGHT-LOOKING reason and the WRONG one — with no
+        # ack file the "absent" branch fires, and with an empty held set the "nothing is held"
+        # branch does. Both are rc 1, so a control asserting only on the exit code would have
+        # passed while testing neither leg it names.
+        (t / "README.md").write_text(good)
+        ack = t / ACK_NAME
+        one, two = t / "tainted.py", t / "tainted2.py"
+        for f in (one, two):
+            f.write_text('#\nR = "Borduas-Holdings/Blazing-Back"\n')
+        HDR = "# path | state | recorded | ruling\n"
+        row = lambda n: f"{n} | FOREIGN | 2026-08-20 | planted by the self-test\n"
+
+        ack.write_text(HDR + row("tainted.py"))
+        rc, lines, _ = check(root)
+        hit = rc == 1 and any("NOT acknowledged" in l and "tainted2.py" in l for l in lines) \
+              and not any("no longer held" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  ack 1/5: a held path that is NOT listed exits 1 — "
+              f"new contamination, or a ruling nobody wrote down (got {rc})")
+
+        ack.write_text(HDR + row("tainted.py") + row("tainted2.py"))
+        rc, lines, _ = check(root)
+        hit = rc == 0 and any(l.startswith("  HELD") for l in lines) \
+              and any(l.strip() == "tainted2.py" for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  ack 2/5: LISTED paths exit 0 and are still reported "
+              f"BY NAME — acknowledged, never silent (got {rc})")
+
+        # ⛔ THE LEG THAT MAKES IT A GUARD. Delete a listed path; touch nothing else.
+        two.unlink()
+        rc, lines, _ = check(root)
+        hit = rc == 1 and any("no longer held" in l and "tainted2.py" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  ack 3/5: a listed path gone from the tree exits 1 "
+              f"— the acknowledgement must not rot (got {rc})")
+
+        # ⛔ ZERO EXTRACTIONS, one level down. A format change parses to an empty set, and the
+        # comparison would then report every held path as unacknowledged — a real-looking
+        # finding produced entirely by a parser failure.
+        two.write_text('#\nR = "Borduas-Holdings/Blazing-Back"\n')
+        ack.write_text("# the table moved to another format\n- tainted.py (FOREIGN, 2026-08-20)\n")
+        rc, lines, _ = check(root)
+        hit = rc == 1 and any("format changed" in l for l in lines) \
+              and not any("NOT acknowledged" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  ack 4/5: an ack file parsing to ZERO entries says "
+              f"the FORMAT CHANGED, not 'nothing is acknowledged' (got {rc})")
+
+        # ...and an ack file with nothing left to acknowledge is stale in the other direction
+        one.unlink(); two.unlink()
+        ack.write_text(HDR + row("tainted.py"))
+        rc, lines, _ = check(root)
+        hit = rc == 1 and any("still acknowledges" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  ack 5/5: an ack file over an EMPTY held set is "
+              f"stale too, not vacuously satisfied (got {rc})")
+        ack.unlink()
+
         # instrument failure must not read as a pass
         (t / "README.md").write_text("# Fleet instruments\n\nnothing here\n")
         rc, _, _ = check(root)
@@ -769,7 +935,11 @@ def main(argv):
     print("\ntools/README.md vs tools/")
     for l in lines:
         print(l)
-    print({0: "  clean" if not partial else "  clean-so-far (see PARTIAL)",
+    # ⛔ THE SUMMARY WORD MUST NOT SAY CLEAN OVER A HELD QUARANTINE. Exit 0 here means "no
+    # UNKNOWN finding", never "no finding" — and a reader takes the summary, not the body.
+    held_now = any(l.startswith("  HELD") for l in lines)
+    print({0: ("  HELD (acknowledged quarantine — not clean)" if held_now else
+               "  clean" if not partial else "  clean-so-far (see PARTIAL)"),
            1: "  DRIFTED", 2: "  VOID"}[rc])
     return rc
 
