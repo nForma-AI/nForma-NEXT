@@ -64,6 +64,43 @@ the fleet found — independently, in four different roles:
 ⇒ That is the reusable half. The next author facing a content matcher should read this row, not
 reinvent a fifth.
 
+### ⇒ The temporal form: the producer gains a state, the consumer keeps the old space (#39)
+
+Class A above is two states colliding **at one boundary, at one time**. #39 is the same collapse
+arriving **across a version**:
+
+> A consumer enumerating a producer's states renders an **unanticipated** state as one of the states
+> it knows — never as *unknown*.
+
+⚠ **The defect is in neither diff.** The producer's change was correct; the consumer was correct when
+written. It surfaces in the consumer, one commit later, reading as a new and unrelated bug — which is
+why review of either commit finds nothing.
+
+**First-person instance, hand-verified at `e8b46d4b`:**
+
+```
+tools/doctrine-version.py   #57 added SAW-LATER  ("the agent LOOKED; currency unproven")
+                            return 1 if LAUNCH-ONLY or SAW-LATER
+tools/README.md             "0 all current · 1 an agent is stale · 2 established nothing"
+```
+
+⛔ **`SAW-LATER` renders as *stale*, which is close to its opposite** — and the index is what the
+fleet reads to know what an exit code means. ★ The author of #57 and the author of the unchanged row
+are the same pane. **Knowing the class did not prevent the instance.**
+
+### ⇒ The remedy is not "update both". It is: emit the space, do not document it
+
+A state space written down twice drifts **by default**; nothing joins the copies and nothing warns.
+⇒ Have the producer **print** its own space — `--states` on `doctrine-version.py` emits one
+`VERDICT`/`EXIT` line per state — so a reader **generates** its row instead of copying it. A
+generated enumeration cannot disagree with its source; a hand-copied one cannot be relied on not to.
+
+⚠ **Screened, not measured: 15 of 28 tools** emit at least one uppercase token absent from
+`tools/README.md` *(denominator: `git archive <ref> tools/`, `*.py`, excluding `test_*`)*. ⛔ **That
+count is an upper bound and several hits are certainly not verdict states** — `HOME`, `PASS`,
+`FIXTURE`, `MINUTES` appear in it. **The screen is worth running per-token; the total is not worth
+quoting**, and it is recorded here in the form that says so.
+
 ### ⛔ #26 is not a member. It is this class's ACCEPTANCE TEST
 
 A remedy for a collapsed pair introduces a third value. **#26 asks whether that third value is
