@@ -96,6 +96,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
 | `named-referent-check.py` | does a requirement sentence name an identifier that does not exist? | 0 none · 1 candidates · **2 established nothing** |
 | `exists-anywhere.py` | does this name exist at ANY ref, or only on the one checked out? | 0 on the ref · 1 exists unmerged · 2 absent everywhere · **3 established nothing** |
+| `memory-index-check.py` | does the memory index cover the memory files, and can it be loaded whole? | 0 covered · 1 orphans/dangling/oversize · **2 established nothing** |
 | `merge-watch.sh` | did a merge leave work behind, or drift the worktrees? | emits FINDING · VOID · UNDOCUMENTED; silence means ran-and-found-nothing |
 
 ## What each one is for
@@ -354,6 +355,16 @@ correct handling *generates* mentions — a tool that documents the defect neces
 pattern — so a *"does this code handle X"* scan gets **noisier as the estate improves**, with the
 noise concentrated in the files that are already right. ⇒ Resolves the **sink** rather than
 matching the text. (#36)
+
+**`memory-index-check.py`** — ⛔ measured on the machine it was written on: **348 memory files,
+232 indexed, 115 ORPHANS**, and the index **42.5 KB against a recalled ~25 KB load budget**. An
+orphan is not degraded, it is **invisible** — recall works from the index, so a file nobody links
+is a file nobody reads, and nothing says so. ★ The recursion is the point: that directory already
+held an entry titled *"Memory index truncates by AGE, not importance"*, and the index then grew
+past the limit **again** and acquired 115 unindexed files on top. A recorded lesson did not fire.
+⚠ It reports **orphan**, **dangling** and **oversize** separately because their remedies are
+opposite — an orphan is fixed by adding a line, and oversize is made **worse** by adding one. ⚠ The
+25 KB budget is a **recalled** figure, not one this tool established, which is why it is a flag.
 
 **`exists-anywhere.py`** — ⛔ built after **four instances in one session, by three agents**, of
 concluding about a repository from a single ref. One reached publication and had to be retracted:
