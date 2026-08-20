@@ -11,6 +11,12 @@
     "selftest": "NO-SELF-TEST",
     "state": "ESTABLISHED-NOTHING"
   },
+  "close-condition-scan.py": {
+    "blob": "5619d64ad2a522387142771e221dac3426674338",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
   "daintree-control.py": {
     "blob": "f4279e20616d8227625ab7ea0a993c36a57fe3b4",
     "ever_verdict": true,

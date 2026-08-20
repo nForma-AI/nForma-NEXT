@@ -353,15 +353,18 @@ flip while the blob holds. `ESTABLISHED-NOTHING` · `NO-VERDICT-IN-TIME` · `NEV
 all**: `gh-complete.py` exits 2 while `gh` is unauthenticated, `stranded-branches.py` exceeds a 90s bound and
 concludes under a longer one. Only the environmental kind is re-measured unconditionally.
 
-⚠ **And the saving was measured, not predicted — the prediction was wrong.** Cold refresh **4m20s**, warm
-**3m05s**: **29%, not a collapse.** ★ **The skip is anti-correlated with the cost.** An instrument that
-concluded is fast *because* it concluded; the expensive rows are the ones that timed out or refused, and
-those are exactly what a refresh must re-run. ⇒ Three minutes is still past a reader's attention, so the
+⚠ **And the saving was measured, not predicted — the prediction was wrong, and the correct number is
+sharper than the first one.** A warm refresh **skipped 23 of 32 instruments — 72% of the population — and
+still took 3m16s against a 4m20s cold run.** ★ **Skipping 72% of the work bought 25% of the time.** The cost
+is not spread across the population; it is concentrated entirely in the rows the design refuses to skip. An
+instrument that concluded is fast *because* it concluded; the expensive rows are the ones that timed out or
+refused, and those are exactly what a refresh must re-run. ⇒ **The skip is anti-correlated with the cost,
+and no amount of further skipping fixes that.** ⇒ Three minutes is still past a reader's attention, so the
 affordable mode is not a cheaper refresh but `--stale-check`, which **runs nothing** and reports in
 **0.085s** whether a refresh could say anything new. ⛔ Its exit code tracks **staleness only**: eight
 standing environmental negatives are true *continuously*, and letting them drive the code would pin it to
 `1` forever and destroy the trigger. They are printed on every run, including on `0`, so a `0` cannot be
-read as *every instrument produces verdicts*. **Measured 2026-08-20 at `280ac70`: 15 of 31 indexed
+read as *every instrument produces verdicts*. **Measured 2026-08-20 at `2fcd8e1`: 16 of 32 indexed
 instruments have ever produced a verdict.** Re-measure before relying on it.
 
 **`wake-yield.py`** — pairs an interruption's cost with its yield. Cost alone is

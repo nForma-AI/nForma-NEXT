@@ -43,10 +43,14 @@ not the first, and the third is not a verdict about anything.
     --ledger        THE RECORD #2 ASKS FOR. Same question restricted to "has this instrument EVER
                     produced a verdict" — a monotone predicate, so a confirmed verdict from
                     unchanged bytes is taken from `tools/verdict-ledger.json` rather than re-run.
-                    ⚠ Measured 3m05s warm against 4m20s cold: a 29% saving, NOT a collapse. ★ The
-                    skip is ANTI-CORRELATED WITH THE COST — an instrument that concluded is fast
-                    *because* it concluded, while the expensive rows are the ones that timed out
-                    or refused, and those are re-run every time by design.
+                    ⛔ MEASURED, AND IT IS THE OPPOSITE OF WHAT I PREDICTED: a warm refresh
+                    SKIPPED 23 OF 32 INSTRUMENTS — 72% of the population — AND STILL TOOK 3m16s
+                    against a 4m20s cold run. ★ Skipping 72% of the WORK bought 25% of the TIME:
+                    the cost is not spread across the population, it is concentrated entirely in
+                    the rows the design refuses to skip. An instrument that concluded is fast
+                    *because* it concluded; the expensive rows are the ones that timed out or
+                    refused. ⇒ THE SKIP IS ANTI-CORRELATED WITH THE COST, and no amount of
+                    further skipping fixes that.
     --stale-check   Does the record still cover the index? RUNS NOTHING. Measured 0.085s.
                     ⇒ This is the mode that is affordable on a merge cadence. It exists because
                     a 3-minute refresh is past the attention a reader has, and an instrument
