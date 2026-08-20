@@ -1,4 +1,10 @@
 {
+  "api-budget.py": {
+    "blob": "fc9a0beef3596dfb9a0ecfd90a1707728ebf1dc9",
+    "ever_verdict": false,
+    "selftest": "NO-SELF-TEST",
+    "state": "NO-VERDICT-VOCAB"
+  },
   "bootstrap-audit.py": {
     "blob": "b18725bf9dc5fa232340b0bd1f1afe61f368b3e9",
     "ever_verdict": true,
@@ -37,6 +43,12 @@
   },
   "doctrine-watch.py": {
     "blob": "18e0a55a5efb5494b52459298b91d6ed171143ea",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
+  "estate-provenance.py": {
+    "blob": "e1340f920060295994b5e6b8d78c5546aa522fa4",
     "ever_verdict": true,
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
@@ -88,6 +100,12 @@
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "NO-VERDICT-VOCAB"
+  },
+  "label-exists.py": {
+    "blob": "52019034b5ede21dd41262359acbdc31ba6e2594",
+    "ever_verdict": false,
+    "selftest": "SELFTEST-PASS",
+    "state": "ESTABLISHED-NOTHING"
   },
   "marker-reachability.py": {
     "blob": "dea45f2392a4c7c6cddb9950e841fbb0fdf51cff",

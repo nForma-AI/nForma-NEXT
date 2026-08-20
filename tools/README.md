@@ -364,8 +364,14 @@ affordable mode is not a cheaper refresh but `--stale-check`, which **runs nothi
 **0.085s** whether a refresh could say anything new. ⛔ Its exit code tracks **staleness only**: eight
 standing environmental negatives are true *continuously*, and letting them drive the code would pin it to
 `1` forever and destroy the trigger. They are printed on every run, including on `0`, so a `0` cannot be
-read as *every instrument produces verdicts*. **Measured 2026-08-20 at `2fcd8e1`: 16 of 32 indexed
+read as *every instrument produces verdicts*. **Measured 2026-08-20 at `af6a4e2`: 17 of 35 indexed
 instruments have ever produced a verdict.** Re-measure before relying on it.
+
+⚠ **And a live instance of why `⛔ NEVER` is not `broken`, from an author who knows.** `label-exists.py`
+records `ESTABLISHED-NOTHING` — a bare run names no label, and refusing is the correct answer to *"is
+nothing a label?"*. ★ The row is **right**, the tool is **healthy**, and reading the column as a defect list
+would condemn it. Every instrument here is run with **no arguments**; the `NEVER` set is a statement about
+what a bare invocation establishes, which is #2's premise made measurable — not a verdict on anyone's tool.
 
 **`wake-yield.py`** — pairs an interruption's cost with its yield. Cost alone is
 uninterpretable: an agent woken into useful work and one woken into churn consume context
