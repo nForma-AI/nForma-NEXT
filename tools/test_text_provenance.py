@@ -247,5 +247,37 @@ check("a quotation of the allowlist is not an invocation of it",
 check("git log is reading",
       tp.classify_use({"name": "Bash", "input": {"command": "git log --oneline -5"}}), tp.INSTRUMENT)
 
+
+# ── the audit's ✅ must not be vacuous, and its detector must be shown to fire ──
+# ⛔ The first version printed "every tool present is classified" and exited 0
+# against a root matching NO FILES. A broken enumerator and a fully-classified
+# fleet produced the identical line.
+#
+# ★ And this is where a peer's asymmetry applies: for a KILL row an unapplied
+# mutation is self-detecting, because one that did not land cannot kill. For a
+# CONTROL row — the one that certifies the others — "worked and found nothing"
+# and "never ran" are the SAME observation. So the ✅ leg gets a positive control:
+# a corpus containing a deliberately unknown tool must come back 4.
+check("an empty corpus is ESTABLISHED NOTHING, not ✅",
+      tp.audit_verdict(0, {}, [])[0], 2)
+check("...and files>0 with no tools is too (the reader ran, the parse did not)",
+      tp.audit_verdict(9, {}, [])[0], 2)
+check("CONTROL FOR THE CONTROL: an unknown tool in the corpus comes back 4",
+      tp.audit_verdict(3, {"Bash": 5, "SomeNewSender": 1}, ["SomeNewSender"])[0], 4)
+check("...and only then does a real ✅ mean anything",
+      tp.audit_verdict(3, {"Bash": 5, "Read": 2}, [])[0], 0)
+
+with tempfile.TemporaryDirectory() as tmp:
+    d = os.path.join(tmp, "proj"); os.makedirs(d)
+    with open(os.path.join(d, "aaaaaaaa-x.jsonl"), "w") as f:
+        f.write(json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "tool_use", "name": "SomeNewSender", "input": {"t": "x"}}]}}) + "\n")
+        f.write(json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "tool_use", "name": "Read", "input": {"t": "x"}}]}}) + "\n")
+    files, seen, unknown = tp.audit(os.path.join(d, "*.jsonl"), 3600)
+    check("end-to-end: the audit READS a corpus and finds the planted unknown",
+          (files, unknown), (1, ["SomeNewSender"]))
+    check("...and the known one is not reported", "Read" in seen and "Read" not in unknown, True)
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)

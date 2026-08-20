@@ -309,6 +309,26 @@ def audit(root, within_s):
     return files, seen, unknown
 
 
+def audit_verdict(files, seen, unknown):
+    """0 all classified · 2 established nothing · 4 something needs deciding.
+
+    ⛔ "Every tool present is classified" is VACUOUSLY TRUE over an empty set. The
+    first version of this printed ✅ and exited 0 against a root that matched no
+    files -- a clean zero reading as a clean result, in the tool whose whole
+    purpose is refusing that. A broken enumerator and a fully-classified fleet
+    produced the identical line.
+    """
+    if not files or not seen:
+        return 2, ("⛔ ESTABLISHED NOTHING — the enumeration found "
+                   f"{files} transcript(s) and {len(seen)} tool(s). An empty corpus "
+                   "satisfies 'every tool is classified' vacuously; it is not a pass.")
+    if unknown:
+        return 4, (f"⛔ {len(unknown)} tool(s) nothing classifies: " + ", ".join(unknown)
+                   + "\n   Each is a DECISION. Until made, a needle carried through one "
+                     "is UNCLASSIFIED — not silently INSTRUMENT.")
+    return 0, f"✅ every one of the {len(seen)} tool(s) present is classified"
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -337,13 +357,9 @@ def main():
                     "reads    " if n in READING_TOOLS else
                     "by verb  " if n == "Bash" else "⛔ UNCLASSIFIED")
             print(f"  {seen[n]:7d}  {mark}  {n}")
-        if unknown:
-            print(f"\n⛔ {len(unknown)} tool(s) nothing classifies: " + ", ".join(unknown))
-            print("   Each is a DECISION. Until made, a needle carried through one is "
-                  "UNCLASSIFIED — not silently INSTRUMENT.")
-            return 4
-        print("\n✅ every tool present is classified")
-        return 0
+        code, why = audit_verdict(files, seen, unknown)
+        print("\n" + why)
+        return code
 
     if not a.needle:
         ap.error("give at least one needle (or --audit to enumerate the tool table)")
