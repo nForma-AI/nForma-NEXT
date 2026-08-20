@@ -795,6 +795,24 @@ when the panes it notified read their files.)
   **noticing that a segment has a shape you do not resolve is not.**
 - **A mention is a third state, not a negative.** `MENTIONED-ONLY` means *no execution evidence*,
   which is not *evidence of no execution*. It counts as unknown and never as a pass.
+- ⛔ **`git --work-tree=X checkout <ref> -- .` writes files to X and REWRITES THE CURRENT INDEX.**
+  The flag redirects *where files land*, not *which index updates* — so the command reads as
+  "operate over there" and half of it operates here. ⚠ No error, no warning, silent on success.
+  Measured: it was discovered only when an unrelated `git rebase` refused with *"you have unstaged
+  changes"* and ten files showed `MM`/`AD` that the author had never touched. ⇒ Use
+  `git worktree add --detach <sha>` — a real second checkout with its own index. ★ And the reason
+  it was recoverable is worth more than the rule: every commit had been pushed, so
+  `git rev-parse HEAD` equalled the remote tip and `reset --hard` was provably free. **Before any
+  destructive cleanup, establish what it would cost; the cheapest way to make that answerable is
+  to have already pushed.**
+- **Run an instrument at a NAMED REVISION, never from the shared tree.** `git worktree add --detach
+  <sha>`, and read the revision back from the tool's own output. ⛔ The shared tree runs 40–70
+  commits behind and `git fetch` moves `origin/main` without moving it, so running from it
+  *silently executes an older tool*. Measured: a checker run from the shared tree reported the
+  pre-fix behaviour and nearly produced a false *"the fix did not land"*. ⚠ Pinning the read is
+  necessary and not sufficient — see #291: a single-file pin of any tool that imports a sibling
+  fails with `ImportError`, and "fixing" that with `PYTHONPATH` pointed at the working tree
+  silently unpins the sibling. Pin the **directory**.
 - **No secrets in source.** Tools needing the Daintree token read it from the user's own MCP
   config at runtime; it appears in none of these files.
 - **A detector needs both controls, and they are not interchangeable.** `fleet-context.py`'s
