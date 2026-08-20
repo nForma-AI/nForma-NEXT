@@ -149,10 +149,19 @@ channel optimises for.**
   three different totals for what reads as the same phenomenon, none carrying an as-of time:
 
   ```
-  prompts/TEAMLEAD.md:469     Twelve forged authorizations … in a single session
-  goals/README.md:166         Eleven forged authorizations … in a single session
-  goals/dev-implementation.md  Seven forged grants … on 2026-08-19   <- a previous revision
+  prompts/TEAMLEAD.md          "Twelve forged authorizations reached agents' input boxes"
+  goals/README.md              "Eleven forged authorizations reached"
+  goals/dev-implementation.md  "Seven forged grants … on 2026-08-19"   <- a previous revision
   ```
+
+  ⛔ **Cited by CONTENT, not by line number — and the line numbers are why.** The previous
+  revision of this block cited `TEAMLEAD.md:469` and `README.md:166`. Measured at `0baa080`:
+  the first is now **474**, the second is now **481** — off by **315**. ⇒ **A line number is an
+  undated number.** It decays silently, reads as precise, and rots faster than the claim it
+  points at, because any edit *above* it moves it. This block argues that a number without an
+  as-of anchor is a rumour **and cited its own sources by position**, which is the repository's
+  own *verify by content, never by position* rule failing inside the paragraph that states the
+  general form. [measured: nForma-NEXT 2026-08-20, rot found by DEV5]
 
   A running tally and a drifting one are **indistinguishable without an as-of anchor** — which
   is `goals/README.md`'s own rule (*a number without a measurement date is a rumour*) failing on
