@@ -94,6 +94,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
 | `use-not-mention.py` | does this file CALL `<pattern>`, or merely TALK ABOUT calling it? | 0 no call · 1 at least one CALL · **2 established nothing** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
+| `named-referent-check.py` | does a requirement sentence name an identifier that does not exist? | 0 none · 1 candidates · **2 established nothing** |
 | `merge-watch.sh` | did a merge leave work behind, or drift the worktrees? | emits FINDING · VOID · UNDOCUMENTED; silence means ran-and-found-nothing |
 
 ## What each one is for
@@ -352,6 +353,19 @@ correct handling *generates* mentions — a tool that documents the defect neces
 pattern — so a *"does this code handle X"* scan gets **noisier as the estate improves**, with the
 noise concentrated in the files that are already right. ⇒ Resolves the **sink** rather than
 matching the text. (#36)
+
+**`named-referent-check.py`** — converted from a **convergence**, not from one report: two
+agents, different subsystems, no contact, within one hour found a named enforcement mechanism
+with no referent (`iter_console_backends`, asserted in capitals as mandatory, defined nowhere;
+`EXEC_REQUIRE_EVIDENCE`, three exec sites "held behind a flag" that does not exist). ★ Neither
+is a stale reference to something removed — both describe machinery **never built**, in prose
+confident enough that the author stopped checking. ⛔ Its narrowing history is the point: **126
+candidates → 8 → 1** on the same 1,559-file repo, and only hand-verification forced each step —
+at 8 it was **7/8 false**, calling real config keys phantoms because string literals and kwargs
+were missing from its universe. ⚠ It is deliberately narrow and says so: a convention naming
+*nothing* is invisible here, an identifier that exists but is never called passes, and one of
+its own two founding cases is undetectable by it. A clean run means *no requirement sentence
+names an undefined identifier* — **not** that stated and enforced conventions agree.
 
 **`pretooluse-guard.py`** — matches, over a single command string, the idioms that produce a
 confident WRONG measurement: `$?` read after a pipeline, `${PIPESTATUS[n]}` under zsh, and a
