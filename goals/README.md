@@ -437,8 +437,72 @@ does not move — a design property, not agent behaviour.
    closure, `scripts/fleet-worktree.sh check` exited 1 with two roles holding two trees each, and
    the not-closable finding was recorded **on the issue** rather than passed over.
 
-   ⚠ Where an issue has a tool, the tool's exit code supplies the bar. **Where it has none, nothing
-   does** — and that gap is unclosed. [NOT-YET-MEASURED — no bar exists for a toolless issue]
+   ⚠ Where an issue has a tool, the tool's exit code supplies the bar.
+
+   ### ⛔ Where it has none — the toolless bar (#187)
+
+   **First, decide which kind it is. A test, not a list:**
+
+   > **Name the command whose output changes when this is fixed. If the change is in the
+   > REPOSITORY, it is instrumentable. If the change is in what an agent would DO next time,
+   > it is not.**
+
+   ⚠ If you can name a command but its output differs only **while the defect persists**, that is
+   #26 — the instrument is decorative and the issue is **not** instrumentable after all. The test
+   asks about the **repaired** state.
+
+   **For the toolless kind, criteria 3 and 4 are TRANSLATED, not dropped:**
+
+   ```
+   1. the artifact LANDED ON MAIN                                    unchanged
+   2. the CLASS is retired, not the instance                         unchanged
+   3. APPLIED to a case it was NOT DERIVED FROM, verdict recorded    <- replaces "reports absent"
+   4. produced at least one REFUSAL — a case it declined or ruled     <- replaces "shown to FAIL"
+      outside itself
+   ```
+
+   ⛔ **This is not a lighter bar, and it must not become one.** Neither 3 nor 4 can be satisfied by
+   writing a sentence: **3 requires a case that postdates the artifact** — you must point at one and
+   the timestamps are checkable — and **4 requires naming what the artifact turned away.** Both
+   require an artifact you did not write, which is what makes work cheaper than assertion here. It is
+   *a control that has only ever passed is not a control*, in prose.
+
+   ### ⚠ Criteria are a PROXY, and meeting a proxy is not meeting the thing
+
+   > **At closure, name what would still be true if every criterion were met and the desired state
+   > were not. If you can name it, the criteria are a proxy and the gap is the finding. If you
+   > cannot, they are complete.**
+
+   Measured on #50: three criteria met, and the population went **86 → 120 refs in under three
+   hours** with a fourth instance appearing while the first three were fixed. *"New instances keep
+   arriving"* is nameable ⇒ the criteria were a proxy ⇒ it does not close. (DEV5.)
+
+   ### ⛔ `delivered` — criteria met, closure bar unmet — and when it does NOT apply
+
+   > **Is there an owner whose completed work would close this?**
+   >
+   > **YES** → `delivered`. **Name the blocker AND the owner.**
+   > **NO** → ⛔ not a state at all. The desired state is **unsatisfiable as written**; the issue is
+   > **MIS-SPECIFIED** and the response is to re-specify it — work with an owner, not a resting place.
+
+   ⚠ **`delivered` is ratified provisionally, and its falsifier is measurable:** if no item ever
+   *exits* it, it is not a state but a parking convention and should be **abolished rather than
+   tuned**. *A terminal state nothing exits is a backlog with better labelling.* (DEV3.)
+   [NOT-YET-MEASURED — nothing has been in it long enough]
+
+   ### ★ And ask criterion 4 at AUTHORING time, of any method — not only of instruments
+
+   > **Could this method have produced the other answer?**
+
+   ⛔ *"Is the answer right?"* is often unanswerable in the moment. **This one is answerable before
+   the result exists**, and it applies to the one-off probe nobody calls an instrument — which #209
+   measured as the dangerous population, because everything built to be handed over got checked and
+   the inline query never did. (DX, #214.)
+
+   Four measured instances where the answer was right or wrong **for reasons the method could not
+   have detected**: a bullet-list extractor over files where 3 of 4 shared one format; a literal
+   clause-count against a file that had converted to a pointer; an example heading carried by 2 of 5
+   files illustrating a rule matching 4 of 5; and a `git ls-tree` over **one ref**.
 
    ⛔ This rung is missing from the obvious version and it
    is the one the numbers demand: **36 opened, 0 closed.** Adding priority to *finding* does
