@@ -14,6 +14,16 @@ Run: python3 tools/test_text_provenance.py
 """
 import importlib.util, json, os, sys, tempfile
 
+# ⛔ A STALE __pycache__ SILENTLY SERVES THE PRE-MUTATION MODULE. Measured with a
+# 4-cell table: {clean,mutant} x {cache cleared,stale} -> the mutant PASSED on a stale
+# cache and failed 3 checks once cleared. Every suite here loads its tool through
+# spec_from_file_location, so a false SURVIVED sends you rewriting a correct test.
+# CI is safe (fresh checkout, no cache); local mutation testing was not.
+sys.dont_write_bytecode = True
+# ⚠ and the env var too: a SUBPROCESS does not inherit sys.dont_write_bytecode,
+# which is why three suites still produced a cache after the first fix.
+os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+
 _here = os.path.dirname(os.path.abspath(__file__))
 _spec = importlib.util.spec_from_file_location("tp", os.path.join(_here, "text-provenance.py"))
 tp = importlib.util.module_from_spec(_spec)
@@ -187,6 +197,34 @@ both = uncl + [("2026-08-20T11:00:00Z", "eeeeeeee", 3, tp.AUTHORED)] + mine
 code, why = tp.verdict(both, "aaaaaaaa")
 check("a real author still attributes, with the gap flagged",
       (code, "eeeeeeee" in why, "UNCLASSIFIED" in why), (0, True, True))
+
+
+# ── flag ORDER is unbounded, so it must not be enumerated ────────────────────
+# ⛔ The first version listed "commit -m", "commit -F", "commit -q -F" and fell
+# through on -a -F, --amend -m and -am. Same drift as the tool-level allowlist,
+# one level down, found while a peer was correcting its own count of these forms.
+for cmd, want in [
+    ("git commit -q -F /tmp/m.txt",        tp.AUTHORED),
+    ("git commit -a -F /tmp/m",            tp.AUTHORED),
+    ("git commit -am 'x'",                 tp.AUTHORED),
+    ("git commit --amend -m x",            tp.AUTHORED),
+    ("git commit --message=x",             tp.AUTHORED),
+    ("git -c user.name=X commit -F /tmp/m", tp.AUTHORED),
+]:
+    check(f"commit form: {cmd[:34]}", tp.classify_use({"name": "Bash", "input": {"command": cmd}}), want)
+
+# ⚠ NEGATIVE CONTROLS. `git` is required before `commit` for two reasons, and the
+# second was only found by measuring: grep's `-m` is max-count, and — measured on
+# a peer's transcript — ALL 10 bare `commit -m` occurrences were QUOTATIONS of the
+# allowlist itself, in messages and commit bodies discussing it. Requiring `git`
+# excludes mention and keeps use.
+check("grep's -m is max-count, not a message", 
+      tp.classify_use({"name": "Bash", "input": {"command": "grep commit -m 3 f.txt"}}), tp.INSTRUMENT)
+check("a quotation of the allowlist is not an invocation of it",
+      tp.classify_use({"name": "Bash", "input": {"command": "echo \"listed: commit -m and gh pr comment\""}}),
+      tp.INSTRUMENT)
+check("git log is reading",
+      tp.classify_use({"name": "Bash", "input": {"command": "git log --oneline -5"}}), tp.INSTRUMENT)
 
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)

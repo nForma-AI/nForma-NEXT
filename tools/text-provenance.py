@@ -52,7 +52,7 @@ it, and the spread looks like distribution while being your own footprints.
   Such sessions are excluded from the authorship candidates and labelled, because
   after a round of asking they are the majority of the hits.
 """
-import argparse, glob, json, os, sys
+import argparse, glob, json, os, re, sys
 
 ROOT = "~/.claude/projects/*/*.jsonl"
 AUTHORED, FETCHED, RECEIVED, OTHER = "AUTHORED", "FETCHED", "RECEIVED", "OTHER"
@@ -102,20 +102,42 @@ READING_TOOLS = {
     "mcp__plugin_vercel_vercel__authenticate",
 }
 
-PUBLISHING_BASH = (
-    "gh issue create", "gh issue comment", "gh issue edit", "gh issue close",
-    "gh pr create", "gh pr comment", "gh pr edit", "gh pr review", "gh pr close",
-    "gh release create", "gh gist create",
-    "commit -m", "commit -F", "commit --file", "commit --message", "commit -q -F",
-    "tag -m", "git notes",
-    ">>", " > ", "| tee",          # a heredoc landing in a file IS authoring
-)
+# ⛔ ANCHORED AT A COMMAND POSITION, not matched as a bare substring. The literal
+# form classified `echo "listed: commit -m and gh pr comment"` as AUTHORED --
+# a QUOTATION of the allowlist read as an invocation of it. That is use-vs-mention,
+# which this repo already has a tool for, and it was found by this suite's own
+# negative control rather than in the field.
+_CMD_START = r"(?:^|[;|&]\s*|\$\(\s*|\n\s*|`)"
+GH_PUBLISH = re.compile(
+    _CMD_START + r"gh\s+(?:issue|pr)\s+(?:create|comment|edit|close|review)\b|"
+    + _CMD_START + r"gh\s+(?:release|gist)\s+create\b")
+GH_READ = re.compile(
+    _CMD_START + r"gh\s+(?:pr|issue|run)\s+(?:view|list|checks|diff|status)\b|"
+    + _CMD_START + r"gh\s+api\b")
+# ⚠ A heredoc landing in a file IS authoring -- but a bare `>` appears in prose
+# constantly, so only the redirect-into-a-path forms count.
+HEREDOC_WRITE = re.compile(r">>?\s*[\w./~-]+\s*<<|\|\s*tee\s+[\w./~-]+")
+
+PUBLISHING_BASH = ("git notes", "git tag -m", "git tag -a")
 READING_BASH = (
-    "gh pr view", "gh issue view", "gh pr list", "gh issue list", "gh run view",
-    "gh pr checks", "gh api", "gh pr diff", "gh run list",
     "grep", "rg ", "ugrep", "python3 -", "cat ", "sed -n", "awk ", "git log",
-    "git show", "git rev-list", "git diff",
+    "git show", "git rev-list", "git diff", "git status",
+    # ⇒ A DECISION, recorded rather than assumed: `echo` writes to a terminal, and
+    # terminal output is not publication. It surfaced as UNCLASSIFIED first, which
+    # is the tool working — an unrecognised path asked, and this is the answer.
+    "echo ",
 )
+
+
+# ⛔ NOT a literal list of commit forms. The first attempt enumerated `commit -m`,
+# `commit -F`, `commit -q -F` -- which is an enumeration of FLAG ORDERS, and those
+# are unbounded: `commit -a -F`, `commit --amend -m` and `commit -am` all fell
+# through it. That is the SAME drift the tool-level allowlist just failed at, one
+# level down, and it was found by a peer correcting its own count of these very
+# forms. ⚠ `git` is required before `commit` so that `grep commit -m file` -- where
+# `-m` is grep's max-count -- cannot read as authorship.
+COMMIT_PUBLISH = re.compile(
+    r"\bgit\b[^\n;|&]*?\bcommit\b[^\n;|&]*?(?:\s-[a-zA-Z]*[mF]\b|\s--(?:message|file)\b)")
 
 
 def classify_use(block):
@@ -134,9 +156,10 @@ def classify_use(block):
     cmd = (block.get("input") or {}).get("command", "")
     # ⚠ PUBLISH is tested first: one command can both read and write, and the
     # write is the part that makes it authorship.
-    if any(m in cmd for m in PUBLISHING_BASH):
+    if (COMMIT_PUBLISH.search(cmd) or GH_PUBLISH.search(cmd)
+            or HEREDOC_WRITE.search(cmd) or any(m in cmd for m in PUBLISHING_BASH)):
         return AUTHORED
-    if any(m in cmd for m in READING_BASH):
+    if GH_READ.search(cmd) or any(m in cmd for m in READING_BASH):
         return INSTRUMENT
     return UNCLASSIFIED
 
