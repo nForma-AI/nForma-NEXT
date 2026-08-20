@@ -204,13 +204,25 @@ def main(argv):
 
 
 def self_test():
-    """Hermetic: no git, no network, no fleet. Drives classify() over synthetic content."""
+    """Hermetic: no git, no network, no fleet. Drives classify() over synthetic content.
+
+    ⚠ The identity is CONSTRUCTED, not derived, precisely so this stays hermetic —
+    local_identity() shells out to git. The names below are the fixture's own.
+    """
+    ID = estatenames.Identity("nForma-NEXT", "-Users-o-code-nForma-NEXT", "nForma-NEXT")
     lo, hi = 1, 400
     cases = [
         ("in-range citation only",        "see #319 and #291",                  "LOCAL"),
         ("out-of-range citation",         "fixes #1226 in the handler",         "FOREIGN"),
         ("foreign vocabulary only",       "deploy to Akash provider",           "FOREIGN"),
-        ("foreign path marker",           "# control-plane/api/handlers/x.py",  "FOREIGN"),
+        # ⇒ Was `# control-plane/api/handlers/x.py`, matching a LIST ENTRY. That entry is
+        # dropped (DEVOPS measured zero unique detections for it), and the specimen now
+        # exercises the DERIVED leg instead: an estate name never typed in this file.
+        ("foreign path, derived",         "p = '/Users/o/code/Fabrikam-Ledger/x.py'", "FOREIGN"),
+        # ⛔ THE KNOWN-NEGATIVE, and the whole flood control in one row. Our OWN path is
+        # the same shape as the row above. A predicate that reds here matches every path
+        # in the tree and is worthless; without this row nothing would say so.
+        ("our own path is NOT foreign",   "p = '/Users/o/code/nForma-NEXT/tools/x.py'", "UNCLAIMED"),
         ("no evidence either way",        "def main():\n    return 0\n",        "UNCLAIMED"),
         ("in-range AND foreign vocab",    "#319 for Borduas-Holdings",          "FOREIGN"),
         ("boundary: exactly hi",          "see #400",                           "LOCAL"),
@@ -218,7 +230,7 @@ def self_test():
     ]
     ok = True
     for name, text, want in cases:
-        got, _ = classify(text, lo, hi)
+        got, _ = classify(text, lo, hi, ID)
         flag = "PASS" if got == want else "FAIL"
         if got != want:
             ok = False
