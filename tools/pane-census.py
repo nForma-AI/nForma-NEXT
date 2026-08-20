@@ -154,10 +154,15 @@ def census(rows, transcripts):
     if n_tr != len(ids):
         diverged = True
         out.append(f"  ⛔ SOURCE DISAGREEMENT  terminal.list={len(ids)} · live transcripts="
-                   f"{n_tr} (<{STALE_MIN}m). A pane can be alive and write no transcript; a "
-                   "census keyed on transcripts returns the smaller number and says nothing.")
-        out.append("  ⇒ COUNT UNESTABLISHED. The gap is not resolved by preferring a source: "
-                   "either could be the wrong population for a given question.")
+                   f"{n_tr} (<{STALE_MIN}m).")
+        out.append("  ⇒ COUNT UNESTABLISHED — and NOT because one source lags the other.")
+        out.append("     Measured: the transcript set is a DIFFERENT POPULATION, wrong in both")
+        out.append("     directions at once. It INCLUDES sessions that are not panes (worktree-")
+        out.append("     scoped agents under .claude-worktrees-*) and OMITS at least one pane")
+        out.append("     that is (a live pane writing no transcript to the project dir).")
+        out.append("     ⚠ The two errors partially cancel, which is why the total looked")
+        out.append("     plausible at 8 and again at 9. A near-right total over the wrong set is")
+        out.append("     harder to catch than an obviously wrong one.")
     else:
         out.append(f"  ok    transcripts agree at {n_tr}")
 
@@ -229,6 +234,29 @@ def main():
     print("pane census — identity key is the pane id, never the display name")
     for l in lines:
         print(l)
+
+    # ⛔ #353, and it is TWO-SIDED: a probe must demonstrate, ON THIS RUN, that it can
+    # return the answer it did NOT return. ARCHITECT ruled this CLASS A (#357).
+    #
+    # ⚠ The half that is easy to miss is the one DEV2 found: a probe that always says
+    # PRESENT is exactly as broken as one that wrongly says ABSENT, and HARDER to notice,
+    # because its answer looks like a finding. tools/discriminates.py is the prior art —
+    # it shipped with a known-DIFFERENT control and no known-SAME one, and
+    # `--a 'date +%N' --b 'date +%N'` returned ✅ DISCRIMINATED. exit 4 exists because
+    # of that. So both directions are exercised here, on real rows, every run.
+    probe = [dict(r) for r in rows]
+    probe[0] = dict(probe[0], title=probe[1]["title"])       # force a title collision
+    neg_rc, _ = census(probe, live_transcripts())
+    pos_rc, _ = census(rows, [f"s{i}" for i in range(len(rows))])
+    print("\n  ⚠ this run's own controls, on these same rows:")
+    print(f"       can report a GAP   : {'yes' if neg_rc == 1 else 'NO'} "
+          f"(duplicated a title -> exit {neg_rc})")
+    print(f"       can report AGREEMENT: {'yes' if pos_rc == 0 else 'NO'} "
+          f"(sources forced to match -> exit {pos_rc})")
+    if neg_rc != 1 or pos_rc != 0:
+        print("  ⛔ VOID — this instrument did not demonstrate BOTH answers on this run, so "
+              "the verdict above establishes nothing.", file=sys.stderr)
+        return 2
     return rc
 
 
