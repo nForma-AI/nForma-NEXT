@@ -76,6 +76,81 @@ QUARANTINED present, and belonging is an OPEN QUESTION — not ours to close
   is not a caution, it is a **boundary of authority**: disposition of pushed history belongs to the
   operator. *(Ruled 2026-08-20; the operator elected quarantine.)*
 
+## The fixture rule: the shape, never the owner
+
+A detector that reads the tree will read **its own test data**. Three files carried real estate
+names as literal fixtures and were reported as contamination; one detector reported *itself*. Each
+report was **correct** — nothing in the string distinguishes a fixture from a dependency.
+
+⛔ **So the strictness is right, and the fixtures are what change.** A detector that exempted
+"obvious fixtures" would have to GUESS, and a guessing detector commits the use-vs-mention error it
+exists to prevent. ⚠ Nor do these belong in `tools/QUARANTINE.txt`: an entry there asserts the file
+*is* contamination, which is a second false claim replacing the first.
+
+> **THE FIXTURE NEEDS THE SHAPE, NEVER THE OWNER.**
+> Assemble the string from fragments at run time, with the reason in a comment, so it still
+> exercises the predicate while asserting no owner.
+
+### The discriminator, which is about the string's ROLE and not the string
+
+**Is this string an INPUT TO THE MATCHER, or a CLAIM ABOUT A REAL ENTITY?**
+
+| the string | role | verdict |
+|---|---|---|
+| detection vocabulary the matcher tests against | input to the matcher | **MACHINERY** — stays literal |
+| the positive specimen | claim about an entity | **DATA** — assemble |
+| the **known-negative** specimen | claim about an entity | **DATA** — assemble |
+| a worked example in a docstring | claim about an entity | **DATA** — assemble |
+| a bare issue number in a fixture | no entity at all | **PURE SHAPE** — keep literal |
+
+⇒ The last row is why the rule is not "remove every literal": a number **asserts no owner**, so it is
+already what the rule asks a fixture to be. And the first row is why it is not "assemble everything":
+a detector must hold its vocabulary in executable position or it cannot match at all.
+
+### ⛔ The goal is NOT to make the file read LOCAL
+
+A detector reads FOREIGN on its own detection vocabulary and **should** — that is the `DETECTOR`
+state, and it is correct. ⚠ A rule that pushed a file toward LOCAL would damage the detector to make
+a checker comfortable, which is the failure mode #26 names. The defect being fixed is narrower and
+only this: **a fixture indistinguishable from a dependency.**
+
+### ★ A shape-only fixture is never burned, because there is no owner to leak
+
+A specimen that lives in the tree **cannot be a control for a detector that reads the tree** — once
+committed, the name is in the vocabulary of the thing under test. Two specimens have been spent this
+way already: one by being published in an issue, one by being committed as a literal.
+
+⇒ The remedy is not a better-disguised name. It is a string that **cannot be mistaken for an owner
+at all**, assembled at run time — which makes the fictionality *structural rather than documented*.
+⚠ A documented property decays the moment nobody reads the line; an enforced one cannot. Nothing
+downstream needs telling, and no later sweep can misread it.
+
+### ⚠ The known-negative is the row that looks safe, because it names US
+
+A hermetic suite must construct a **synthetic identity**, and any synthetic identity differs from the
+real one. So the row asserting *"our own slug is NOT foreign"* is **guaranteed** to contain a
+not-quite-ours — our own name, slightly wrong — and it reads FOREIGN to the live detector while
+looking like the safest line in the file.
+
+⇒ This is not an oversight in any one file. It is **a property of hermeticity**, and it means the
+rule applies to the negative specimen exactly as it applies to the positive one.
+
+### What this section does NOT establish
+
+⛔ It does not make a file's silence evidence. A fixture assembled from fragments still exercises the
+predicate, but a detector finding nothing has established **nothing about absence** — `UNCLAIMED`
+must never collapse into `LOCAL`.
+
+⚠ And it does not close the reverse case: an estate present as **vendored source with no path, no
+issue number and no name** asserts nothing for any of these rows to catch, and reads clean whether or
+not the fixtures are assembled.
+
+*Doctrine by DEV3 (`the shape, never the owner`; the strictness-is-right ruling), ratified by
+TEAMLEAD. The role discriminator, the known-negative case, the doc-example case, the pure-shape
+exception and structural fictionality: DEV3 and DEV5 jointly, 2026-08-21. ⚠ This section deliberately
+contains **no owner literal** — a page saying "never write the owner" that wrote one would be its own
+counterexample, and would be reported by the detector it describes.*
+
 ## ⛔ What this does NOT establish
 
 - **Direction, for 10 of the 11.** A file citing `#1177` may be the other estate's committed here,
