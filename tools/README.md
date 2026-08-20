@@ -280,9 +280,21 @@ reading that cannot take the value that would refute it.
 unlisted plant reddened because its *directory* was unindexed, so the estate predicate was never
 exercised at all. That is why the gap survived two reviews.
 
-⇒ #348, routed to DEV5: **derive the vocabulary, do not enumerate it.** The limit is
-`--self-test`-demonstrated here in the meantime — a control asserts a novel estate name is NOT
-caught, so the day the derivation lands **that control fails** and someone reads this paragraph.
+⇒ #348, routed to DEV5: **derive the vocabulary, do not enumerate it.** ✅ **Closed by #354.**
+The control that asserted the limit is inverted and now asserts the fix: a novel estate name IS
+detected, naming the derived leg that caught it.
+
+⚠ **It is a UNION, not a replacement, and the measurement is the reason.** Derived-only takes
+`tools/teamlead/` from 9 detections to 5 — `ctxwatch.py`, `repowatch.py`, `t_sentinel.py` and
+`w1226.py` name an estate with **no path**, invisible to a path-shaped predicate. ⇒ *Derived alone
+under-detects; enumerated alone cannot see a new estate. Not a compromise — two predicates with
+different blind spots.* A future reader will otherwise simplify it back to one.
+
+⛔ **And the tripwire fired in the gap BETWEEN two merges.** #354 and #359 were each green alone
+and red together: neither CI run ever saw both, so `main` sat red on a control that had done
+exactly what it was built to do. ★ *A control whose trigger is another PR landing cannot be caught
+by either PR's own checks* — the notification is real, but the moment it arrives is one no
+branch-scoped gate observes.
 
 ★ And exit 1 here means **the acknowledgement file has drifted from the tree** — the same drift
 semantic this checker has always had, on a third surface. It never means *these files do not
