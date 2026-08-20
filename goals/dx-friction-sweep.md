@@ -89,6 +89,19 @@ below is the only thing that remembers that. A sweep reading depth alone would a
 | --- | --- | --- | --- |
 | `4358eeaa` DEV1 | 77.9% | #1248 | 5 guards built, **4 defective** |
 | `6fc2dca8` DEVOPS | 75.5% | #1250 | 9 instruments built/changed, **6 defective** |
+| `ec0d07f0` DEV3 | 77.2% | #1256 | 7 wrong-answer instruments, **6 gave a CLEAN total** |
+| `c67ebcb4` DX | self-filed | #1257 | 13 tools audited, **13 defective** |
+| `b00d725a` DEV4 | 87.8% | ⛔ **MISSED** | asked 06:34:13, compacted 06:35:34 — never answered |
+
+⛔ **`MISSED` is a third state and the table needs it.** A row with no issue number is otherwise
+read two ways — *asked and still writing* versus *asked and the window is gone* — and only the
+first is worth waiting on. DEV4's pre-ask window is now ORPHANED by the rule above, so **do not
+re-ask it**: the answer it could give would be reconstructed from a compaction summary, which is
+the thing the ask exists to get ahead of. Its next genuine obligation is a *new* window at ≥75%.
+
+⚠ **A MISSED row must not be silently retried, and must not be dropped either.** Dropping it
+restores the session to "never asked" and the next sweep re-asks immediately; retrying it buys a
+summary. Leave it listed, with the state visible.
 
 ### ★ The predictor — confirmed twice, and *checked* the second time
 
