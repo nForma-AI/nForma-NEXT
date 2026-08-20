@@ -334,11 +334,28 @@ def main():
         if not sessions:
             unknown.append((r, paths))
             continue
-        cutoff = changed_at_ts(base_sha, head, paths, root)
-        if any(has_read(s, paths, cutoff) for s in sessions):
-            told.append((r, paths))
-        else:
-            behind.append((r, paths))
+        # ⛔ PER PATH, not per path-SET. Both helpers already take a list; calling them with
+        # the whole set is what produced two collapses in four lines:
+        #   1. cutoff was max(change time) ACROSS paths, so a file read the moment it changed
+        #      did not count if a DIFFERENT file changed later.
+        #   2. one boolean decided all paths — read ONE of four and you were marked read-since
+        #      on ALL FOUR, and told rows print no delta, so the three you never opened were
+        #      reported current with no signal of any kind.
+        # ⚠ The safe direction was visible (BEHIND next to a +0/-0 targeted delta, which is how
+        # this was found). The dangerous direction was SILENT. (DEV1, #183.)
+        # ⇒ A role may now appear in BOTH lists — behind on some paths, read-since on others.
+        # That is the point: the verdict is a property of the (role, path) pair, never of the role.
+        behind_paths, told_paths = [], []
+        for p in paths:
+            cutoff = changed_at_ts(base_sha, head, [p], root)
+            if any(has_read(s, [p], cutoff) for s in sessions):
+                told_paths.append(p)
+            else:
+                behind_paths.append(p)
+        if behind_paths:
+            behind.append((r, behind_paths))
+        if told_paths:
+            told.append((r, told_paths))
 
     deltas = {}
     for p in changed:
@@ -379,8 +396,19 @@ def main():
     for r, paths in unknown:
         print(f"  UNKNOWN    {r:<10} no transcript found — never 'current'")
 
-    print(f"\n{len(behind)} behind · {len(told)} read-since · {len(unknown)} UNKNOWN"
+    # ⚠ UNITS. The verdict is now per (role, path), so a role can appear in BOTH lists and a
+    # bare count is ambiguous between roles and pairs. Both are printed, labelled.
+    behind_pairs = sum(len(ps) for _, ps in behind)
+    told_pairs = sum(len(ps) for _, ps in told)
+    behind_roles = len({r for r, _ in behind})
+    print(f"\n{behind_pairs} behind · {told_pairs} read-since · {len(unknown)} UNKNOWN"
           f" · {len(changed)} doctrine file(s) changed")
+    print(f"  counted as (role, path) PAIRS, not roles. {behind_roles} distinct role(s) are"
+          f" behind on at least one path; a role behind on one file and current on another now"
+          f" appears in BOTH lines.")
+    print("⚠ NOT comparable to a run before the per-path change (#183). Both directions move:"
+          " falsely-BEHIND paths drop out, and paths that were falsely read-since APPEAR."
+          " A rise or a fall are both consistent with the fix.")
     print("⛔ 'read-since' proves the agent OPENED the file. It does not prove the agent is")
     print("   OBEYING it — a read is not a load, and compaction can drop text that was read.")
     print("⚠ UNKNOWN is not a pass. It is the count this instrument did not establish.")
@@ -402,6 +430,7 @@ def synthetic_case(check):
     # and the fixture accommodates it rather than the fixture weakening the guard.
     root = os.path.join(base_dir, REPO_MARK)
     doc = "goals/RESERVED-ACTIONS.md"
+    doc2 = "goals/dev-implementation.md"   # also BINDS DEV1 — needed for the per-path control
     slug = root.replace("/", "-")
     tdir = os.path.expanduser(f"~/.claude/projects/{slug}")
     try:
@@ -412,10 +441,13 @@ def synthetic_case(check):
         g("config", "user.email", "synth@localhost")
         g("config", "user.name", "synth")
         target = os.path.join(root, doc)
+        target2 = os.path.join(root, doc2)
         open(target, "w").write("original\n")
+        open(target2, "w").write("original\n")
         g("add", "-A"); g("commit", "-q", "-m", "base")
         base_sha = g("rev-parse", "HEAD").stdout.strip()
         open(target, "w").write("amended\n")
+        open(target2, "w").write("amended\n")
         g("add", "-A"); g("commit", "-q", "-m", "move the doctrine")
         head_sha = g("rev-parse", "HEAD").stdout.strip()
 
@@ -433,15 +465,43 @@ def synthetic_case(check):
                                    "--since", base_sha, "--head", head_sha, *a],
                                   capture_output=True, text=True).returncode
 
+        def run_out(*a):
+            return subprocess.run([sys.executable, me, "--root", root,
+                                   "--since", base_sha, "--head", head_sha, *a],
+                                  capture_output=True, text=True).stdout
+
         # POSITIVE: bootstrapped, never read the changed file -> BEHIND -> exit 1
         open(tpath, "w").write(boot + "\n")
         pos = run_on()
         check("synthetic: doctrine moved, role has NOT read it -> 1", pos, 1)
-        # NEGATIVE: same tree, same range, one read AFTER the change -> exit 0
-        open(tpath, "w").write(boot + "\n" + read + "\n")
+        # NEGATIVE: same tree, same range, BOTH changed files read AFTER the change -> exit 0.
+        # ⚠ This used to write ONE read and pass, because the per-set verdict credited a single
+        # read to every path. Adding doc2 to the fixture changed what "current" MEANS for this
+        # control, and it failed until both reads were written. ⇒ A fixture shared across
+        # controls couples them: extending it for a new case silently restated an old one.
+        read2_neg = json.dumps({"type": "assistant", "timestamp": later, "message": {"content": [
+            {"type": "tool_use", "input": {"file_path": doc2}}]}})
+        open(tpath, "w").write(boot + "\n" + read + "\n" + read2_neg + "\n")
         neg = run_on()
         check("synthetic: same tree, role HAS read it since -> 0", neg, 0)
-        return pos == 1 and neg == 0
+
+        # ⛔ PER-PATH CONTROL. TWO watched files changed; the role reads exactly ONE.
+        # Before the per-path change this was the SILENT failure: `any(has_read(...))` over the
+        # set marked the role read-since on BOTH, and told rows print no delta, so the unread
+        # file was reported current with no signal of any kind. (DEV1, #183.)
+        read2 = json.dumps({"type": "assistant", "timestamp": later, "message": {"content": [
+            {"type": "tool_use", "input": {"file_path": doc2}}]}})
+        open(tpath, "w").write(boot + "\n" + read2 + "\n")
+        out = run_out()
+        split_behind = any(l.startswith("  BEHIND") and doc in l and doc2 not in l
+                           for l in out.splitlines())
+        split_told = any(l.startswith("  read-since") and doc2 in l and doc not in l
+                         for l in out.splitlines())
+        check("per-path: reading ONE of two changed files leaves the other BEHIND",
+              split_behind, True)
+        check("per-path: ...and marks only the file actually read as read-since",
+              split_told, True)
+        return pos == 1 and neg == 0 and split_behind and split_told
     except Exception as exc:
         print(f"  ----  synthetic fixture could not be built ({exc}) — NOT exercised")
         return False
@@ -465,6 +525,7 @@ def derived_delta_case(check):
     base_dir = tempfile.mkdtemp(prefix="dw-derive-")
     root = os.path.join(base_dir, REPO_MARK)
     doc = "goals/RESERVED-ACTIONS.md"
+    doc2 = "goals/dev-implementation.md"   # also BINDS DEV1 — needed for the per-path control
     try:
         os.makedirs(os.path.join(root, "goals"))
         def g(*a):
