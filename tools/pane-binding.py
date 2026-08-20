@@ -94,6 +94,9 @@ import glob
 import json
 import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from runmarker import guard, result  # noqa: E402
 import tempfile
 
 DAINTREE = os.path.expanduser("~/Library/Application Support/Daintree/projects")
@@ -274,6 +277,16 @@ def cmd_self_test():
     return 0
 
 
+
+def _mark(rc):
+    """Map the tool's own exit code to a terminal marker. ⛔ Every controlled path
+    goes through here — a path returning without a marker is indistinguishable from
+    a crash, and that reading is only correct if it actually crashed."""
+    result({0: "OK", 1: "FINDING", 2: "ESTABLISHED-NOTHING",
+            3: "SELF-TEST-FAILED"}.get(rc, f"EXIT-{rc}"))
+    return rc
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--role", help="only the pane with this title")
@@ -283,13 +296,14 @@ def main():
     args = ap.parse_args()
     try:
         if args.self_test:
-            return cmd_self_test()
-        return report(args.daintree, args.sessions, args.role)
+            return _mark(cmd_self_test())
+        return _mark(report(args.daintree, args.sessions, args.role))
     except Void as exc:
         print(f"VOID: {exc}", file=sys.stderr)
         print("⛔ established nothing — this is NOT 'no pane is bound'.", file=sys.stderr)
+        result("ESTABLISHED-NOTHING")
         return 2
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(guard("pane-binding", main))

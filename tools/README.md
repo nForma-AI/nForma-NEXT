@@ -21,28 +21,52 @@ code for "cannot open". So an exit 2 read alone cannot separate *this tool estab
 from *this tool was never here*. Measured: a role ran `grant-check.py` against a ref where it had
 not yet merged, got `2`, and nearly recorded "VOIDs correctly per convention".
 
-⇒ **Stopgap, and it is bounded — measured 6/6, nonzero exits only.** The *first line of stderr*
-separates runtime from convention:
+⇒ ⛔ **THE REMEDY: two stderr markers, and they survive a pipe.** `tools/runmarker.py`. The exit
+code stays as it is; it stops being the sole carrier.
 
 ```
-2  python3: can't open file '…'      runtime — never ran
-2  usage: <tool> [-h] …              runtime — rejected its arguments
-2  VOID: …                           the convention
-1  Traceback (most recent call last) runtime — started and DIED PART-WAY
-1  (stderr empty)                    the convention — a real finding
+NFORMA-RUN <tool>          emitted BEFORE argument parsing, as the first action
+NFORMA-RESULT <state>      emitted on every path the tool controls
 ```
 
-⛔ **Note the `1` row, which is the dangerous one:** the crash path is loud and the legitimate
-path is **silent**, so a caller reading only the code logs a crash as a finding.
-`doctrine-version.py` did exactly this on a missing `import re`.
+★ **Why stderr is the whole design.** `cmd | head` consumes **stdout** — stderr is not piped and
+arrives intact, so it survives exactly the construct that destroys the exit code. It also keeps
+data-producing tools honest: `ci-log-clean.py` emits a cleaned log on stdout, and a marker
+injected there would corrupt the artifact it exists to produce.
 
-⚠ **This is a stopgap, not the remedy, and three things bound it.** It relies on every tool
-honouring a stderr convention on every path, with nothing enforcing it; it requires reading a
-stream the caller demonstrably does not read (the incident above had the stderr right there);
-and no stream distinguishes *started and died part-way* from *never started*. ⇒ **#58 carries
-the ruling** — the discriminator must be positive evidence of execution, not an exit code — and
-a start line plus a terminal `RESULT:` line is the accepted form. **Establish the tool exists
-before believing what its exit code means.** ⚠ This is a property of every tool in this table,
+⇒ **Three states from two markers, and the three producers of `2` finally separate.** Measured by
+execution — `tools/test_runmarker.py`:
+
+```
+exit 2   RUN + RESULT: ESTABLISHED-NOTHING   the convention
+exit 2   RUN + RESULT: BAD-ARGS              argparse rejected the arguments
+exit 2   (no markers at all)                 the runtime refused the file
+exit 1   RUN, no RESULT                      started and DIED PART-WAY
+exit 0   RUN + RESULT: OK                    a controlled conclusion
+```
+
+⛔ **Emitting `RUN` before argument parsing is the load-bearing detail** — it is what separates *the
+runtime refused the file* from *the tool rejected your flags*, two things byte-identical at exit 2
+until now. And `RUN` without `RESULT` expresses **started and died**, a state the exit code cannot
+carry at all.
+
+⚠ **Two bounds, both asserted in the test rather than promised here.** A crash during **import**
+emits nothing — identical to a refused file, because `begin()` has not run yet; both are correctly
+*never reached our code*, and stderr's first line (`Traceback` vs `can't open file`) is what
+separates them. And this **does not make the exit code correct**: a caller who reads neither the
+code nor stderr is unchanged. It removes the exit code's monopoly; it does not remove the need to
+look.
+
+⇒ **Reference implementations:** `grant-check.py`, `pane-binding.py`. ⚠ Rollout across the rest is
+DEVOPS's, per #58 — a convention demonstrated on two tools by its proposer is worth less than one
+landed across the set.
+
+⚠ **The older stopgap still holds where markers are absent:** the *first line of stderr* separates
+runtime from convention on nonzero exits, measured 6/6. ⛔ Note the `1` row — the crash path is
+loud and the legitimate path is **silent**, so a caller reading only the code logs a crash as a
+finding; `doctrine-version.py` did exactly that on a missing `import re`. **Establish the tool
+exists before believing what its exit code means.** ⚠ This is a property of every tool in this table,
+
 not of any one
 of them, which is why it is stated here rather than in a docstring.
 
@@ -62,6 +86,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `index-watch.py` | did the tools index drift when `main` last moved? | 0 quiet · 1 finding · **2 established nothing** |
 | `stranded-branches.py` | has any merged PR's branch got commits with no equivalent change upstream? | 0 none · 1 unmatched commits · **2 established nothing** |
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
+| `runmarker.py` | ⚠ **a module, not an instrument** — the two stderr markers every tool emits | n/a, it is imported |
 | `ci-log-clean.py` | is this CI log's text OUTPUT, or the echoed script? | 0 cleaned · **2 established nothing** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
 
@@ -114,6 +139,17 @@ the `##[group]Run `…`##[endgroup]` envelope (survives an ANSI strip, but `--lo
 fetch paths omit group markers). ⛔ **With neither present it refuses — exit 2 — rather than passing
 the log through**, because handing back an uncleaned log unchanged is exactly how a count of the
 script becomes a count of the output.
+
+**`runmarker.py`** — ⚠ **not an instrument; a module.** It is imported, never run, and has no
+exit codes of its own. It is indexed here only because `check-tools-index.py`'s population is
+`tools/*.py` minus `test_*` — a shared module is not excluded, so leaving it out would read as
+drift. ⇒ Reported to that checker's owner rather than worked around: **the same reasoning that
+excludes tests (*"tests are not instruments and must not be indexed as ones"*) applies to a
+library module**, and the population rule has no clause for one.
+
+It provides `begin()` / `result()` / `guard()` — the `NFORMA-RUN` and `NFORMA-RESULT` markers
+described in the exit-code convention above. See #58 for why the exit code could not carry this
+alone, and `test_runmarker.py` for the three-producer demonstration.
 
 **`grant-check.py`** — answers *"is `<role>` authorized to do `<capability>` here, right now?"*
 from a record in `grants/`, never from the message that asked. Built after seven forged
