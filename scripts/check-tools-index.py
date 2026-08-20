@@ -1016,8 +1016,17 @@ def selftest():
         # drawn FROM the list. A control built out of an enumeration cannot test whether the
         # enumeration is complete — the same shape as a discriminator that reports N of N.
         #
-        # ⇒ When #348's derived predicate lands, THIS CONTROL FAILS. That is the point: the
-        # failure is the notification, and whoever sees it reads the paragraph above.
+        # ⇒ INVERTED. #348's derived predicate landed in #354, this control failed on main as
+        # designed, and the assertion now states the FIX rather than the limit. ⚠ The failure
+        # fired in the GAP BETWEEN TWO MERGES, not on a branch: #354 and #359 were each green
+        # alone and red together, because neither CI run ever saw both. A control whose
+        # trigger is another PR landing cannot be caught by either PR's own checks.
+        # ⛔ AND IT PASSED FOR THE WRONG REASON FIRST. Test-merged before either landed, this
+        # read `ok` on a branch where the fix was live: `quarantined()` derived its comparand
+        # from the DIRECTORY UNDER TEST — a temp dir, not a git repo — so the derived leg
+        # silently did nothing, and `not quarantined_it` was satisfied by absence-of-leg rather
+        # than absence-of-detection. Fixed in #354 by deriving identity from the CHECKER's own
+        # repo. That is why this asserts a PRESENCE, naming the file and the arrow.
         # ⚠ CLEAN STATE FIRST. A stated-limit control asserting an ABSENCE is worthless if some
         # earlier case is already reddening the run — "not quarantined" and "not reached" print
         # the same. So the assertion is POSITIVE: the novel file must land in the NAMING
@@ -1029,13 +1038,15 @@ def selftest():
         novel = t / "novel_estate.py"
         novel.write_text('#\nR = "/Users/someone/code/Contoso-Widgets/state"\n')
         rc, lines, _ = check(root)
-        quarantined_it = any("novel_estate.py" in l and "->" in l for l in lines)
-        in_population = any("no table row for" in l and "novel_estate.py" in l for l in lines)
-        hit = rc == 1 and in_population and not quarantined_it
+        # ⛔ NAMES THE LEG, not just the detection. The predicate is a UNION — closed list OR
+        # derived shapes — so "novel_estate.py was quarantined" cannot tell you WHICH half
+        # fired, and the derived half is the entire subject of #348. Asserting the printed
+        # literal carries `[derived ` means the closed list cannot silently cover for a
+        # derived leg that has stopped working. (DEVOPS's stronger form.)
+        hit = rc == 1 and any("novel_estate.py" in l and "[derived " in l for l in lines)
         ok &= hit
-        print(f"  {'ok  ' if hit else 'FAIL'}  STATED LIMIT: a NOVEL estate name is NOT detected "
-              f"and lands in the NAMING population — the vocabulary is a closed list (#348). "
-              f"⚠ THIS CONTROL FAILS WHEN THAT IS FIXED, by design (got {rc})")
+        print(f"  {'ok  ' if hit else 'FAIL'}  DERIVED leg: a NOVEL estate name — one no closed "
+              f"list contains — is caught BY THE DERIVED LEG (#348, closed by #354) (got {rc})")
         novel.unlink()
         # ⚠ RESTORE BOTH. The next case unlinks `one` AND `two`; recreating only `one` made it
         # raise on a file I had already removed — the same shared-fixture bite recorded above the
