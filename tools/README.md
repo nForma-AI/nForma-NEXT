@@ -195,7 +195,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
 | `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
 | `use-not-mention.py` | does this file CALL `<pattern>`, or merely TALK ABOUT calling it? | 0 no call · 1 at least one CALL · **2 established nothing** |
-| `population-leg.py` | does each `--self-test` consult anything outside the repository? | 0 all do · 1 a NO-REPO-INPUT control · **2 established nothing** · ⚠ NO-REPO-INPUT is a CANDIDATE for criterion 5, not a verdict |
+| `population-leg.py` | does each `--self-test` consult anything outside the repository — or the forge? | 0 all do · 1 a NO-REPO-INPUT control · **2 established nothing** · ⚠ NO-REPO-INPUT is a CANDIDATE for criterion 5, not a verdict |
 | `pointer-verified.py` | did this pane READ the artifact a pointer NAMED, before acting? | 0 all read · 1 at least one not · **2 established nothing** · **3 control failed** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
 | `named-referent-check.py` | does a requirement sentence name an identifier that does not exist? | 0 none · 1 candidates · **2 established nothing** |
@@ -546,7 +546,25 @@ the hour:** `label-exists.py` reads the forge's **27 real labels** in its self-t
 by any reading — and still scored the positive state, because `gh label list` does not care what directory
 it runs in. ⇒ Renamed **`NO-REPO-INPUT`**: a finding about **repository dependence**, which is real and
 checkable, and a **candidate** for criterion 5 — never a verdict that a control drew its own population.
-The blind spot is now *demonstrated* by a control rather than claimed in a comment. ⚠ `UNDRAWN`
+The blind spot is now *demonstrated* by a control rather than claimed in a comment.
+
+★ **And a SECOND AXIS, because a named blind spot that nothing probes is just a disclaimer.** A stub `gh`
+is placed first on `PATH` and made to fail; a control whose output changes consults the **forge** — undrawn,
+and invisible to relocation. ⚠ It cuts `gh` **only**: the clock, the environment and the filesystem outside
+the repository still show nothing, so a row with no forge dependence remains a **candidate**.
+
+⛔ **And the measurement CONSTRAINS the caveat rather than leaving it open — which matters, because a
+caveat with no size inflates doubt without bound.** Measured 2026-08-21 across **39 indexed instruments**:
+
+```
+NO-REPO-INPUT 21 · UNDRAWN 6 · UNDRAWN-VIA-FORGE 1 · NON-DETERMINISTIC 1 · NO-SELF-TEST 10
+```
+
+⇒ **Exactly ONE of the 22 was a false accusation, and it was the author's own** (`label-exists.py`). The
+other 21 consult neither the repository nor the forge. The finding survives its own correction nearly
+intact. ★ `index-watch.py` now scores `NON-DETERMINISTIC` — the population leg it gained reads a subject
+whose output moves with `main`, so the method **refuses** instead of guessing, which is the state working
+as designed. ⚠ `UNDRAWN`
 means a population leg **exists**, not that it is a good one; `DRAWN` is a statement about a tool's
 **control**, not a defect in the tool, and where an undrawn population is genuinely unaffordable the answer
 is a **stated exception with a reason**. ★ Its own control is DRAWN, and it reports itself as such — a tool
