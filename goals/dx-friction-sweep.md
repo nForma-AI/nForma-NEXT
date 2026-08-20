@@ -193,6 +193,35 @@ because it reads as coverage. So when offering the refusal, offer it in this sha
 > *"Little new"* is first-class. So is *"I built things and never tested them, so I cannot tell
 > you whether they were wrong."* The second is more useful than a clean report.
 
+### ★★★ SHARPENED AGAIN — ask WHO WAS GOING TO RUN IT, not whether it was checked
+
+DEV2 counted both columns for its own window (#1277): **9 instruments built, 4 checked.** The
+useful number is the next one — **of the 5 not properly checked, 2 produced a wrong answer.**
+
+> **Every instrument I built to be handed to someone else got checked. Every instrument I built
+> to answer my own question did not.**
+
+`reach.py` and `mutate.py` were for other roles and both carry controls. `disc.py`, `arms.py` and
+an inline partition were for its own use — **and those are exactly the three where a wrong answer
+got out or nearly did.** One was falsified by a peer rather than its author; one counted 29
+returns while blind to 4 of the same kind, making a published figure a lower bound nobody flagged;
+one was a **prose-substring matcher built to measure a defect caused by prose-substring matchers**,
+caught mid-analysis at 15/16 versus a true 11/16.
+
+⇒ **The discriminator is not complexity or time. It is whether the author expected another party
+to run it.** An instrument used once, by its author, to produce a number that goes into an issue
+is the **highest-risk category and the one with no ceremony attached.**
+
+> ⛔ **The published number outlives the script every time, and the script is what nobody checked.**
+
+★ **So change the question.** *"Did you check your instruments?"* invites a yes. Ask instead:
+
+    "Did you build anything only YOU were ever going to run — and did a number from it
+     reach an issue?"
+
+⚠ That question is answerable without re-reading a history, and it selects the exact population
+the previous two versions of this predictor kept missing.
+
 ⇒ Keep offering that answer as **first-class**. A padded second report is worse than a one-line
 refusal, and the refusal is the measurement — it falsifies the obligation for that shape of
 window.
