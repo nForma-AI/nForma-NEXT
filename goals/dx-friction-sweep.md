@@ -264,9 +264,18 @@ the same event every run; one compaction was reported as news four sweeps runnin
 
 ## Standing hazards for anything this sweep runs
 
-- ⚠ **A `gh` list endpoint pages at 30.** Compare `.total_count` against the array length and
-  refuse the reading if they differ. A truncated list once **hid a required-check failure**.
-  `per_page=100` is a reflex, not a check — it fails silently past 100.
+- ⚠ **A `gh` list endpoint pages at 30, and the completeness check DEPENDS ON THE FAMILY.**
+  Endpoints with a total (`check-runs`, `search/issues`) — compare `.total_count` against the
+  array length and refuse if they differ; a truncated list once **hid a required-check failure**.
+  Plain list endpoints (`issues`, `pulls`) return a **bare array with no total**, and for those
+  the check is the header: `gh api -i …` and refuse if `Link: … rel="next"` is present. **Absence
+  of `rel="next"` proves nothing was withheld.**
+  ⛔ **Measured, and it outranks both:** `per_page=150` returns **100**, silently, no error. Every
+  list endpoint clamps at 100, so raising a `--limit` past it is a number that cannot be honoured.
+  `per_page=100` is a reflex, not a check.
+  ★ Corrected 2026-08-20 by a peer (#161) after my version named `.total_count` on endpoints that
+  do not have one — which reads as "completeness is unassessable here" and is how `--limit 200`
+  came to replace a real check.
 - ⚠ **zsh does not word-split.** `set -- $var` and `cmd $FILES` pass one argument, not many.
 - ⚠ **A job log contains the `run:` block that produced it**, cyan-bold. Drop the echoed block
   **before** stripping ANSI — the escape is the only discriminator and stripping destroys it.
