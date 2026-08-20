@@ -353,10 +353,18 @@ def main():
             for sess in seen.get(r, []):
                 rbase = derived_base(p, head, last_read_ts(sess, [p]), root) or rbase
             d = delta_for(rbase, head, p, root) if rbase else deltas.get(p)
-            if rbase and deltas.get(p) and d and d[:2] != deltas[p][:2]:
-                cum = deltas[p]
+            # ⛔ ALWAYS print the cumulative line, even when it equals the targeted one.
+            # Suppressing it when identical made a 4-file row print 3 cumulative against 4
+            # targeted, so the pairs no longer aligned by position and a reader mis-attributed
+            # numbers by one file. ⇒ "suppressed because identical" and "missing" arrived as
+            # the same value — Class A, in the presentation of the fix built to remove it.
+            cum = deltas.get(p)
+            if rbase and cum and d:
+                same = d[:2] == cum[:2]
                 print(f"             ⚠ cumulative since the watermark: +{cum[0]}/-{cum[1]}"
-                      f" — the targeted delta below is what YOU have not seen")
+                      + ("  — SAME as targeted; you have seen none of it"
+                         if same else
+                         " — the targeted delta below is what YOU have not seen"))
             if d is None:
                 print(f"             ⚠ delta for {p} ESTABLISHED NOTHING — size unknown, not small")
                 continue
