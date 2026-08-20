@@ -110,6 +110,18 @@ def main():
         names, depth, shape = fleet_context.session_depth(p)
         failures += not check("shape", shape, "compaction-step")
 
+        print("★ FLATLINE is derivable and must not claim a cause:")
+        # The backstop for a protocol the running fleet never received. It needs no
+        # adoption — transcript mtime already exists on every pane — and it must not
+        # say WHY, because flat is finished, blocked, crashed, waiting, or holding
+        # unread messages, and this cannot tell them apart.
+        src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "fleet-context.py")).read()
+        failures += not check("the flag exists", "--flatline" in src, True)
+        failures += not check("it is OFF by default", 'default=0.0' in src, True)
+        failures += not check("and it refuses to name a cause",
+                              "this cannot tell which" in src, True)
+
     print()
     if failures:
         print(f"{failures} FAILED")
