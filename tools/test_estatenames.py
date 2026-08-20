@@ -11,6 +11,13 @@ except ImportError:                                           # pragma: no cover
     def run(n): print("NFORMA-RUN %s" % n, file=sys.stderr)
     def result(ok): print("NFORMA-RESULT %s" % ("OK" if ok else "FINDING"), file=sys.stderr)
 
+# ⛔ SHAPE, NEVER OWNER. Assembled at runtime so that NO substring of this file matches the
+# predicate this file tests. A literal foreign path here would make the suite trip the
+# detector it exercises — and would BURN the name as a future control the moment it landed,
+# because a committed name is already in the vocabulary of the thing under test.
+EST = "-".join(("fixture", "estate", "not", "an", "owner"))
+OWN = "-".join(("fixture", "owner", "not", "real"))
+
 ID = en.Identity("nForma-NEXT", "-Users-o-code-nForma-NEXT", "nForma-NEXT")
 F = 0
 
@@ -29,10 +36,10 @@ def kinds(text, ident=ID):
 def main():
     run("estatenames")
     print("the three single-string shapes fire on a foreign estate:")
-    check("code-dir", kinds("p = '/Users/o/code/Fabrikam-Ledger/x'"), ["code-dir"])
-    check("project-slug", kinds("'~/.claude/projects/-Users-o-code-Fabrikam-Ledger/a.jsonl'"),
+    check("code-dir", kinds("p = '/Users/o/code/%s/x'" % EST), ["code-dir"])
+    check("project-slug", kinds("'~/.claude/projects/-Users-o-code-%s/a.jsonl'" % EST),
           ["project-slug"])
-    check("forge-url", kinds("'https://github.com/Fab-Corp/Fabrikam-Ledger.git'"), ["forge-repo"])
+    check("forge-url", kinds("'https://github.com/%s/%s.git'" % (OWN, EST)), ["forge-repo"])
 
     print("\nand OUR OWN names in the same shapes do not — the flood control:")
     # ⛔ Without these rows the predicate is indistinguishable from one matching every
@@ -45,10 +52,10 @@ def main():
     print("\na bare relative path is NOT a forge ref:")
     # `tools/README.md` is exactly `X/Y`. Matching that shape anywhere floods the tree.
     check("bare dir/file", kinds("'tools/README.md'"), [])
-    check("bare owner/repo alone", kinds("'Fab-Corp/Fabrikam-Ledger'"), [])
+    check("bare owner/repo alone", kinds("'%s/%s'" % (OWN, EST)), [])
 
     print("\nadjacency: gh -R arrives as SEPARATE literals, and only for gh:")
-    gh = ["gh", "issue", "list", "-R", "Fab-Corp/Fabrikam-Ledger"]
+    gh = ["gh", "issue", "list", "-R", "%s/%s" % (OWN, EST)]
     check("gh argv list", [k for k, _, _ in en.scan_strings(gh, ID)], ["forge-flag"])
     check("our own repo via -R",
           en.scan_strings(["gh", "-R", "nForma-AI/nForma-NEXT"], ID), [])
@@ -59,7 +66,7 @@ def main():
     print("\nan incomplete identity establishes NOTHING — it never reads clean:")
     # With no comparand every string is trivially "not ours"; returning [] here is the
     # only safe answer, and the CALLER must treat it as VOID, not as absence.
-    check("no identity -> no claim", en.foreign_in("p='/Users/o/code/Anything/x'",
+    check("no identity -> no claim", en.foreign_in("p='/Users/o/code/%s/x'" % EST,
                                                    en.Identity(None, None, None)), [])
     check("incomplete is not complete", en.Identity("a", "b", None).complete(), False)
     # ⛔ THE REAL TRIGGER, not a constructed one. A directory that is not a git repo
