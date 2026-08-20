@@ -194,6 +194,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
 | `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
 | `use-not-mention.py` | does this file CALL `<pattern>`, or merely TALK ABOUT calling it? | 0 no call · 1 at least one CALL · **2 established nothing** |
+| `population-leg.py` | does each `--self-test` consult anything its author did not write? | 0 all consult something outside · 1 a DRAWN control · **2 established nothing** |
 | `pointer-verified.py` | did this pane READ the artifact a pointer NAMED, before acting? | 0 all read · 1 at least one not · **2 established nothing** · **3 control failed** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
 | `named-referent-check.py` | does a requirement sentence name an identifier that does not exist? | 0 none · 1 candidates · **2 established nothing** |
@@ -460,6 +461,30 @@ revision, which is the condition being reported).
 continuing on the copy it loaded. That is the difference between a trigger and a guarantee.
 
 ⚠ **2026-08-20: `role_of` promised the one thing it did not deliver.** *"The role a session was BOOTSTRAPPED as — a name can be changed; this cannot"* — and it scanned the **whole file** for `You are X.`, taking the first hit anywhere. Measured over nine live transcripts: **3 resolved, 2 of the 3 wrong.** One came from a **correction sent a day later** (*"your identity was wrong … You are DEV2"*, record 17155, against a bootstrap reading MAINTAINER); one from a **quotation** of someone else's prompt; and a session bootstrapped as `DX` was reported `DEV2` because it had spent the day discussing DEV2. ⇒ It returned **the mutable thing it promised immunity from**, and a **mention** rather than a use. ★ Now anchored to the bootstrap record, with three outcomes — `None` unreadable or no launch prompt, `""` read and names no role, a role otherwise. **6 of 9 after, all from bootstraps.** ⚠ The two accepted phrasings are a **measured snapshot**, not a closed set.
+
+**`population-leg.py`** — ARCHITECT's ruling on #164 item 1 made checkable: *"name a caller whose inputs
+you did not choose"* is `goals/README.md` criterion 5's population leg applied to a **control**. ⛔ **#26 and
+criterion 5 are different demands and satisfying one does nothing for the other** — #26 asks *can this
+control be silenced by a repair?* (stay **outside** the population); criterion 5 asks *can it be blind to an
+input nobody imagined?* (do not **draw** the population). ★ A synthetic fixture satisfies #26 perfectly and
+fails 5 completely, and several tools here cite #26 as evidence of rigour: the credit is real and it is
+**partial**. ★ Measured **differentially, on behaviour, never by reading source** — every instrument here
+derives its root from `__file__`, so copying one into a barren tree makes the repository unreachable
+**without editing a byte of it**; identical exit code and identical output means the control consulted
+nothing but itself. ⚠ **The masking is the method**: both runs print their own absolute paths, so an
+unmasked diff calls every tool `UNDRAWN` and the instrument becomes a machine for agreeing with itself —
+and both symlink forms of each root must be masked, because macOS hands out `/var/…` while a tool resolving
+its own `__file__` reports `/private/var/…`. ⛔ **Its first live run was WRONG in the direction that
+credits**, which is why the correction is recorded here: 7 of 35 tools came back `UNDRAWN-BY-CRASH` on one
+shared cause — a sibling import broken by relocation, an artifact of the method — and every one of those
+**credited a tool with a population leg it may not have had**. Sibling *source* is now copied on demand;
+repository *content* still is not, and the seven moved into the finding. **Measured 2026-08-20 at
+`bb7e6fe`: of 37 indexed instruments, 28 carry a `--self-test` — 22 DRAWN, 6 UNDRAWN; the other 9 have
+no self-test at all.** ⚠ `UNDRAWN`
+means a population leg **exists**, not that it is a good one; `DRAWN` is a statement about a tool's
+**control**, not a defect in the tool, and where an undrawn population is genuinely unaffordable the answer
+is a **stated exception with a reason**. ★ Its own control is DRAWN, and it reports itself as such — a tool
+that measured this property and exempted itself would be the joke version of itself.
 
 **`label-exists.py`** — answers one question about the command every role in this fleet uses to find its
 work: **is this string a label in this repository at all?** ⛔ Measured 2026-08-20: `gh issue list --label`
