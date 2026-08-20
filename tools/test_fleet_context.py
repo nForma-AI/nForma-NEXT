@@ -76,13 +76,13 @@ def main():
         print("known-positive — two panes in one file MUST stay flagged:")
         p = os.path.join(d, "interleaved.jsonl")
         write_transcript([v * 1000 for v in INTERLEAVED_K], p)
-        names, depth, shape = fleet_context.session_depth(p)
+        names, depth, shape, _bands = fleet_context.session_depth(p)
         failures += not check("shape", shape, "interleaved")
 
         print("known-negative — a compaction is ONE agent, depth stands:")
         p = os.path.join(d, "compacted.jsonl")
         write_transcript([v * 1000 for v in COMPACTED_K], p)
-        names, depth, shape = fleet_context.session_depth(p)
+        names, depth, shape, _bands = fleet_context.session_depth(p)
         failures += not check("shape", shape, "compaction-step")
         # The point of not suppressing: the reported depth is the post-compaction
         # figure, which is the correct one and the one supervision acts on.
@@ -91,13 +91,13 @@ def main():
         print("a steady session is neither:")
         p = os.path.join(d, "steady.jsonl")
         write_transcript([100_000 + 1_000 * i for i in range(40)], p)
-        names, depth, shape = fleet_context.session_depth(p)
+        names, depth, shape, _bands = fleet_context.session_depth(p)
         failures += not check("shape", shape, "single")
 
         print("an all-zero usage record is not a depth of zero:")
         p = os.path.join(d, "zeroes.jsonl")
         write_transcript([0], p)
-        names, depth, shape = fleet_context.session_depth(p)
+        names, depth, shape, _bands = fleet_context.session_depth(p)
         failures += not check("depth", depth, None)
         failures += not check("shape", shape, "no-reading")
 
@@ -107,7 +107,7 @@ def main():
         p = os.path.join(d, "zero_mixed.jsonl")
         series = [v * 1000 for v in COMPACTED_K[:25]] + [0] + [v * 1000 for v in COMPACTED_K[25:]]
         write_transcript(series, p)
-        names, depth, shape = fleet_context.session_depth(p)
+        names, depth, shape, _bands = fleet_context.session_depth(p)
         failures += not check("shape", shape, "compaction-step")
 
         print("★ FLATLINE is derivable and must not claim a cause:")
@@ -122,7 +122,11 @@ def main():
         failures += not check("and it refuses to name a cause",
                               "this cannot tell which" in src, True)
 
+    failures += _bands_checks()
+
+
     print()
+
     if failures:
         print(f"{failures} FAILED")
         return 1
@@ -130,5 +134,57 @@ def main():
     return 0
 
 
+# ── depth_bands: the SET of depths on a shared file, and the refuted attribution ──────
+# ⛔ The obvious repair for a shared transcript was to pair each usage reading with the
+# nearest preceding NAME record and attribute it. Measured on e4a7769d, last 60 readings:
+#
+#     D423 D423 D423 D847 D847 D847 T425 T848 T426 T854 T854 T854 ...
+#
+# Cleanly bimodal — 423-444k and 847-884k, no overlap — and BOTH NAMES APPEAR IN BOTH
+# BANDS. So nearest-name attribution assigns at chance. The bands are recoverable; the
+# assignment is not, and the tool must report the first without claiming the second.
+def _bands_checks():
+    f = 0
+    H, L = 880_000, 435_000
+    interleaved = [H, L, H, H, L, L, H, L, H, L, H, H, L, L, H, L]
+    b = fleet_context.depth_bands(interleaved, recent=60)
+    f += not check("two bands recovered from an interleaved series", len(b), 2)
+    f += not check("low band", (b[0][0], b[0][1]), (L, L))
+    f += not check("high band", (b[1][0], b[1][1]), (H, H))
+
+    # ⚠ A unimodal series must yield NO bands. Inventing a split on one agent's file
+    # would put "ASK BOTH" on a session with one writer.
+    flat = [700_000 + i * 900 for i in range(20)]
+    f += not check("unimodal series yields no bands", fleet_context.depth_bands(flat), [])
+
+    # ⚠ A lone outlier is not a band — otherwise one stray reading manufactures a second
+    # agent. Two low values against fourteen high ones must not split.
+    outlier = [880_000] * 14 + [200_000, 201_000]
+    f += not check("a lone pair is not a band", fleet_context.depth_bands(outlier), [])
+
+    # ⚠ Too few readings establishes nothing.
+    f += not check("too few readings", fleet_context.depth_bands([H, L, H]), [])
+
+    # ⛔ min_gap WAS PRESENT AND UNTESTED, and a mutation exposed it: disabling the check
+    # left every assertion green. The `flat` case above is rejected by the OUTLIER guard,
+    # not by min_gap — with equal gaps `max()` returns the first, so `lo` has one element
+    # and the length test fires first. A rule no test can reach is the vacuous-guard class,
+    # in the suite for a tool about instruments that do not fire.
+    #
+    # This series has a 60k gap with SIX readings either side: the outlier guard admits it,
+    # so only min_gap can reject it. Two agents 60k apart is noise in one series, not a
+    # second writer.
+    near = [700_000, 701_000, 702_000, 703_000, 704_000, 705_000,
+            765_000, 766_000, 767_000, 768_000, 769_000, 770_000]
+    f += not check("a gap below min_gap is not a band boundary",
+                   fleet_context.depth_bands(near), [])
+    # …and the same shape with a real separation MUST still split, or the guard is just off.
+    far = [430_000, 431_000, 432_000, 433_000, 434_000, 435_000,
+           870_000, 871_000, 872_000, 873_000, 874_000, 875_000]
+    f += not check("a gap above min_gap still splits",
+                   len(fleet_context.depth_bands(far)), 2)
+    return f
+
 if __name__ == "__main__":
     sys.exit(main())
+
