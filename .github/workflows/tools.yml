@@ -69,7 +69,7 @@ jobs:
             test_marker_reachability test_memory_index_check \
             test_named_referent_check test_pane_binding test_pipe_exit_scan \
             test_pointer_verified test_pretooluse_guard test_transition_report \
-            test_use_not_mention test_wake_yield ; do
+            test_use_not_mention test_wake_yield test_prompt_delivery test_pretooluse_guard test_transition_report ; do
             echo "── $t"
             python3 "tools/$t.py" || { echo "  ⛔ $t FAILED"; fail=1; }
           done
@@ -97,7 +97,7 @@ jobs:
             test_marker_reachability test_memory_index_check
             test_named_referent_check test_pane_binding test_pipe_exit_scan
             test_pointer_verified test_pretooluse_guard test_transition_report
-            test_use_not_mention test_wake_yield
+            test_use_not_mention test_wake_yield test_prompt_delivery test_pretooluse_guard test_transition_report
             test_bootstrap_audit test_grant_check test_reference_check
             test_runmarker test_stranded_branches"
           # ⛔ COLLAPSE THE NEWLINES FIRST. The list above is written multi-line for

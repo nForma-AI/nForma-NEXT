@@ -108,6 +108,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
 | `issue-coverage.py` | which open issues has NOBODY opened? | 0 all covered · 1 untouched found · **2 established nothing (empty board, failed query, or no transcripts)** |
+| `prompt-delivery.py` | did a role prompt REACH a pane — and by which channel? | 0 measured · **2 no transcript held a launch prompt** |
 | `transition-report.py` | did the fleet ANNOUNCE its transitions, or only declare them? | 0 audited · **2 the control failed** |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |
@@ -333,6 +334,17 @@ the text, because a keyword scan is tripped by any turn *discussing* blockage an
 produced five such instances in one session. A quoted example is never the last line.
 
 **`issue-coverage.py`** — ⛔ built because **92 of 241 open issues had been opened by nobody**, 34 of them older than a month, **measured while a pane sat idle waiting to be assigned something**. ⚠ **It cannot be asked and GitHub cannot answer it.** The credential is shared, so `author` and `assignee` are one login for every issue in every state — GitHub knows *what* happened, never *who*. And an agent's memory is worse: asked whether they had read their own role prompt, **three of four roles said "never" while their transcripts held 14, 11 and 9 reads from that morning**; the one that grepped its transcript before answering was the one that got it right. ⇒ So it reads what a pane **actually opened**, in a `tool_use`. ★ **Contact is not review** — `OPENED` means a pane fetched it, and the two are never collapsed. ⚠ Three ways to print a clean zero are three exits: an empty board, a `gh` query that failed, and a transcript glob that matched nothing are all **exit 2**, never "fully covered". ⚠⚠ **The bound cuts one way**: transcripts on THIS MACHINE only, so a pane working from a transcript held elsewhere reads as having opened nothing — the untouched count is an **upper** bound and per-pane counts are **lower** bounds.
+**`prompt-delivery.py`** — did a role prompt **reach** a pane, and by which channel? ⛔ It exists
+because `9 of 9` was true of the **files** and false of the **sessions**, and both populations had
+nine members: nine goal files carry a pointer at `prompts/<ROLE>.md`, and nine sessions were active
+when that was measured. **The installed count is a property of the filesystem; the delivered count
+is a property of a transcript**, and nothing in either number says which one it is. ⇒ So it never
+prints one number, and it splits delivery by channel because they are not equal evidence: `LAUNCH`
+(the pane started with it), `RECEIVED` (a peer had to say it), `PULLED` (the session fetched or
+wrote it **itself**). ⚠ **`PULLED` is not delivery** — the session with the most hits on this fleet
+was the one that wrote the pointer into the goal files. ★ And a transcript whose head holds a wake
+rather than a launch prompt **establishes nothing** about how that pane was launched; that is its
+own verdict, never a `no`.
 
 **`transition-report.py`** — the STATE line is a **pull**; the role prompts also require a
 **push** on transition into `FREE` or `BLOCKED`, and this is that rule's execution record. Built
