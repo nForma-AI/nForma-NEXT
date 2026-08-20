@@ -103,6 +103,21 @@ seen=""      # rows already reported. ⛔ Without this every merge re-reports th
              # standing backlog, and "an alarm that fires forever on one event
              # trains its reader to ignore it" — tools/README.md, violated by this
              # file three minutes after that line was indexed.
+             #
+             # ⛔ AND IT WAS INERT UNTIL 2026-08-20, MEASURED IN PRODUCTION. The two
+             # loops below read from a PIPE, and in bash the last stage of a pipeline
+             # runs in a SUBSHELL — so `seen="$seen|$row"` mutated a copy that was
+             # discarded at the `done`. The guard ran, matched nothing, and re-emitted
+             # the entire backlog on every merge. Armed on a pane at 15:32Z, it
+             # re-reported all 7 standing rows at the first merge six minutes later.
+             #
+             # ★ AND THE TEST THAT WOULD HAVE CAUGHT IT PASSES IN THE WRONG SHELL:
+             #     bash -c 'seen=""; printf "a\n" | while read x; do seen=$x; done; echo "[$seen]"'  -> []
+             #     zsh  -c 'seen=""; printf "a\n" | while read x; do seen=$x; done; echo "[$seen]"'  -> [a]
+             #   zsh runs the last pipeline stage in the CURRENT shell. This repo's
+             #   interactive shell is zsh and this script's shebang is bash, so a
+             #   developer verifying the dedupe by hand sees it work. ⇒ Fixed with
+             #   `done < <(...)`, which keeps the loop in the parent under bash.
 first=1
 while true; do
   # ⛔ At the TOP, so it covers every path below — the quiet `continue`, the
@@ -149,9 +164,9 @@ while true; do
   if [ "$sb_ok" = 1 ]; then out=$(python3 tools/stranded-branches.py 2>&1); rc=$?; fi
   case "$([ "$sb_ok" = 1 ] && echo "$rc" || echo skip)" in
     skip|0) : ;;
-    1) printf '%s\n' "$out" | grep '^NO-UPSTREAM-MATCH' | while read -r _ ref rest; do
+    1) while read -r _ ref rest; do
          row="stranded:$ref"; case "$seen" in *"$row"*) ;; *) emit "$tag: $ref has commits with no upstream patch-match. NOT proof of loss — recovery-by-recommit reads identically."; seen="$seen|$row" ;; esac
-       done ;;
+       done < <(printf '%s\n' "$out" | grep '^NO-UPSTREAM-MATCH') ;;
     2) emit "VOID merge-watch: stranded-branches ESTABLISHED NOTHING at ${sha:0:7} (exit 2) — not clean." ;;
     *) emit "UNDOCUMENTED merge-watch: stranded-branches exit $rc at ${sha:0:7}, which it does not document. Treat as established-nothing." ;;
   esac
@@ -159,9 +174,9 @@ while true; do
   wt=$(bash scripts/fleet-worktree.sh check 2>&1); wrc=$?
   case "$wrc" in
     0) : ;;
-    1) printf '%s\n' "$wt" | grep -E '^  (DUP|OUTSIDE|MISSING)' | while read -r st role path; do
+    1) while read -r st role path; do
          row="wt:$st:$role"; case "$seen" in *"$row"*) ;; *) emit "$tag: worktree $st for $role — $path"; seen="$seen|$row" ;; esac
-       done ;;
+       done < <(printf '%s\n' "$wt" | grep -E '^  (DUP|OUTSIDE|MISSING)') ;;
     2) emit "VOID merge-watch: fleet-worktree ESTABLISHED NOTHING at ${sha:0:7} (exit 2) — not clean." ;;
     *) emit "UNDOCUMENTED merge-watch: fleet-worktree exit $wrc at ${sha:0:7}. Treat as established-nothing." ;;
   esac
