@@ -52,75 +52,47 @@ jobs:
         with:
           python-version: '3.12'
 
-      # ⛔ Enumerated, not globbed. A glob would silently absorb a new machine-dependent
-      # suite and turn this gate red for a reason that is not a defect — and the fleet has
-      # measured that a guard which cries wolf is one people route around. Adding a suite
-      # here is a deliberate act, and the cost is that a new hermetic suite is ungated
-      # until someone adds it. `unlisted` below makes that visible rather than silent.
+      # ⇒ GLOBBED, and each suite DECLARES its own dependency. The literal list this
+      # replaces was the single largest source of merge conflicts in this repository:
+      # measured 2026-08-20 over the open PRs, 11 of 21 pairs conflicted and
+      # `.github/workflows/tools.yml` caused 11 of 11 — every PR that adds a tool edited
+      # the same two lines. That is "enforce over the POPULATION, not a literal list",
+      # which this repo already had as a rule and not as a practice.
+      #
+      # ⛔ The old comment's objection was real and is answered, not ignored: a glob would
+      # silently absorb a machine-dependent suite and red the gate for a non-defect. So a
+      # suite that needs a fleet, a network or a live registry says so IN ITS OWN FILE:
+      #     # SUITE-DEPENDS: <the specific reason>
+      # A suite declaring nothing is HERMETIC AND GATING. That default is fail-closed in
+      # the right direction — the old arrangement's cost was a new suite silently UNGATED
+      # until someone remembered to list it, and silence is the worse failure. A
+      # mis-defaulted suite fails loudly once and is fixed by one line in the author's own
+      # file, touching nothing anyone else edits.
       - name: hermetic test suites
         run: |
-          set -euo pipefail
-          fail=0
-          for t in \
-            test_ci_log_clean test_corpus_fixture test_daintree_control \
-            test_discriminates test_doctrine_watch test_exists_anywhere test_fleet_context \
-            test_fleet_identity \
-            test_fleet_identity_exact test_fleet_state test_gh_complete test_issue_coverage \
-            test_marker_reachability test_memory_index_check \
-            test_named_referent_check test_pane_binding test_pipe_exit_scan \
-            test_pointer_verified test_pretooluse_guard test_transition_report \
-            test_use_not_mention test_wake_yield test_prompt_delivery test_pretooluse_guard test_transition_report test_text_provenance ; do
-            echo "── $t"
-            python3 "tools/$t.py" || { echo "  ⛔ $t FAILED"; fail=1; }
+          set -uo pipefail
+          fail=0; ran=0
+          for f in tools/test_*.py; do
+            grep -q "^# SUITE-DEPENDS:" "$f" && continue
+            ran=$((ran+1)); echo "── $(basename "$f" .py)"
+            python3 "$f" || { echo "  ⛔ $(basename "$f") FAILED"; fail=1; }
           done
+          # ⛔ A glob that matches nothing runs zero suites and exits 0. "All green" and
+          # "the loop never executed" are the same output, so the count is the discriminator.
+          if [ "$ran" -eq 0 ]; then
+            echo "⛔ ESTABLISHED NOTHING — zero hermetic suites matched. Not a pass."
+            exit 1
+          fi
+          echo "ran $ran hermetic suite(s)"
           exit $fail
 
       - name: repo scripts
         run: |
           set -euo pipefail
-          for s in scripts/check-tools-index.py scripts/validate-recipe.py \
-                   scripts/check-goal-conformance.py scripts/check-orientation.py ; do
+          for s in scripts/*.py ; do
             echo "── $s"
             python3 "$s"
           done
-
-      # ⚠ A suite that exists and is listed nowhere is the defect this file is about,
-      # committed inside the fix for it. This step names them; it does not fail the build,
-      # because a new suite arriving is not itself a regression.
-      - name: unlisted suites (report only)
-        if: always()
-        run: |
-          listed="test_ci_log_clean test_corpus_fixture test_daintree_control
-            test_discriminates test_doctrine_watch test_exists_anywhere test_fleet_context
-            test_fleet_identity
-            test_fleet_identity_exact test_fleet_state test_gh_complete test_issue_coverage
-            test_marker_reachability test_memory_index_check
-            test_named_referent_check test_pane_binding test_pipe_exit_scan
-            test_pointer_verified test_pretooluse_guard test_transition_report
-            test_use_not_mention test_wake_yield test_prompt_delivery test_pretooluse_guard test_transition_report
-            test_use_not_mention test_wake_yield
-            test_prompt_delivery test_pretooluse_guard test_transition_report test_wake_yield
-            test_pretooluse_guard test_text_provenance test_transition_report test_wake_yield
-            test_bootstrap_audit test_grant_check test_reference_check
-            test_runmarker test_stranded_branches"
-          # ⛔ COLLAPSE THE NEWLINES FIRST. The list above is written multi-line for
-          # readability, so a name at a line end is followed by "\n  ", not " ", and a
-          # `case " $listed " in *" $n "*` match misses it. Measured before this fix: it
-          # flagged 6 of 19 suites that WERE listed — a guard crying wolf on a third of its
-          # population, in the very file arguing that such a guard gets routed around.
-          listed=$(echo $listed | tr -s "[:space:]" " ")
-          missing=0
-          for f in tools/test_*.py; do
-            n=$(basename "$f" .py)
-            case " $listed " in
-              *" $n "*) ;;
-              *) echo "⚠ UNLISTED, therefore UNRUN: $n"; missing=1 ;;
-            esac
-          done
-          # ⚠ Only claim completeness when it holds. Printing the reassurance
-          # unconditionally, after the warnings, is how a skimmed log reads as clean.
-          [ "$missing" -eq 0 ] && echo "✓ every suite in tools/ is accounted for"
-
   fleet-dependent:
     name: fleet-dependent suites (reported, NOT gating)
     runs-on: ubuntu-latest
@@ -140,26 +112,21 @@ jobs:
       # here as an open, unowned gap so the sentence is true.
       - name: fleet-dependent suites
         run: |
-          # ⛔ A REASON PER SUITE, because the blanket line this replaced said "expected
-          # without a fleet corpus" for `test_grant_check`, which then PASSED — and for two
-          # others whose dependency is the NETWORK, not the corpus. A guard that explains
-          # every failure with one sentence is a guard that has stopped distinguishing.
-          reason_bootstrap="needs a live Daintree pane registry; a fake would make its control pass without the thing it controls for"
-          reason_runmarker="injects a crash into pane-binding, which exits 2 on an empty registry BEFORE reaching the injection"
-          reason_reference="resolves a git blob sha — network"
-          reason_stranded="queries the gh API — network plus auth"
-          reason_grant="git fetch origin — MEASURED PASSING on a runner (run 32345860216); listed here only because a network-dependent gate is a flake source"
-          for t in test_bootstrap_audit test_grant_check test_reference_check \
-                   test_runmarker test_stranded_branches ; do
-            case "$t" in
-              test_bootstrap_audit)   why="$reason_bootstrap" ;;
-              test_runmarker)         why="$reason_runmarker" ;;
-              test_reference_check)   why="$reason_reference" ;;
-              test_stranded_branches) why="$reason_stranded" ;;
-              test_grant_check)       why="$reason_grant" ;;
-            esac
-            echo "── $t"
-            python3 "tools/$t.py" && echo "  ok" || echo "  ⚠ failed — $why"
+          # ⇒ A REASON PER SUITE, read from the suite itself. The five reasons used to live
+          # in a `case` in this file; a blanket sentence before that said "expected without
+          # a fleet corpus" for a suite that then PASSED, and for two whose dependency is
+          # the NETWORK. A guard that explains every failure with one sentence has stopped
+          # distinguishing — so the reason travels with the thing it describes.
+          ran=0
+          for f in tools/test_*.py; do
+            why=$(sed -n 's/^# SUITE-DEPENDS: //p' "$f" | head -1)
+            [ -z "$why" ] && continue
+            ran=$((ran+1)); echo "── $(basename "$f" .py)"
+            python3 "$f" && echo "  ok" || echo "  ⚠ failed — $why"
           done
           echo
+          if [ "$ran" -eq 0 ]; then
+            echo "⛔ ESTABLISHED NOTHING — no suite declares a dependency. Either none does,"
+            echo "   or the marker moved. Both print this line; neither is a pass."
+          fi
           echo "⛔ This job is continue-on-error. Its green is NOT evidence."

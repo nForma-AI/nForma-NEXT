@@ -6,6 +6,8 @@ on the exit code passes whatever the markers say -- which is the defect (#58), n
 a test of it. Every assertion here is on the MARKERS, and the exit code is recorded
 only to show it does NOT discriminate.
 """
+# SUITE-DEPENDS: injects a crash into pane-binding, which exits 2 on an empty registry BEFORE reaching the injection
+
 import os
 import subprocess
 import sys

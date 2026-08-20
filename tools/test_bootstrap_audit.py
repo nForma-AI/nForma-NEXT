@@ -28,6 +28,8 @@ broader (`starts with a slash`).
 
 Run: python3 tools/test_bootstrap_audit.py
 """
+# SUITE-DEPENDS: needs a live Daintree pane registry; a fake would make its control pass without the thing it controls for
+
 import importlib.util
 import os
 import subprocess

@@ -112,6 +112,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `text-provenance.py` | which session first PRODUCED this text — or is every hit my own reading? | 0 attributed · 1 present, unauthored here · **2 established nothing** · **3 own-reading only, verdict refused** |
 | `text-provenance.py` | which session first PRODUCED this text — or is every hit my own reading, or my own probe? | 0 attributed · 1 present, unauthored here · **2 established nothing** · **3 own-reading only, verdict refused** |
 | `text-provenance.py` | which session first PRODUCED this text — or is every hit my own reading, or my own probe? | 0 attributed · 1 present, unauthored here · **2 established nothing** · **3 own-reading only, verdict refused** · **4 an unclassified path — decide** · `--audit` |
+| `pr-stack.py` | which open PRs must be stacked, and which are stale against main? | 0 independent · 1 conflicts, stale, or unresolved heads · **2 established nothing** |
 | `transition-report.py` | did the fleet ANNOUNCE its transitions, or only declare them? | 0 audited · **2 the control failed** |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 every resolvable transcript current · 1 currency **UNPROVEN** for at least one (`LAUNCH-ONLY` or `SAW-LATER`) — ⚠ **not "stale"** · **2 established nothing** · ⇒ `--states` emits the list |
@@ -361,6 +362,7 @@ not an absence**: a session that authored the text on another machine and one th
 produce an identical empty result here, which is not hypothetical — a peer was reported `FLATLINE`
 for six hours while merging two PRs from a transcript this machine does not hold. Zero hits is
 **exit 2**, never "nobody wrote it".
+**`pr-stack.py`** — ⛔ every PR branches from `main`, so **a fix that has not shipped is absent from every PR opened after it**, and whoever lands second rebases under conflict pressure. Measured 2026-08-20: **11 of 21 open-PR pairs conflicted, and ONE file caused 11 of the 11.** ★ The merge order is a decision somebody makes anyway — either now with the pairs visible, or later by whichever PR happens to land first. ⚠ **Three verdicts, because *both apply cleanly* is not *compatible*:** `CONFLICTS` (one must rebase on the other, and choosing which is the whole decision); `OVERLAPS` — **the dangerous one** — same files, no textual conflict, so both branches pass and the *merge result* is untested; and `independent`. ⚠⚠ `merge-tree` is **textual**: `independent` is the absence of a signal, never a claim of compatibility — a PR can delete what another starts calling. ⛔ And an **unfetched head is UNKNOWN, never clean**: its first run skipped 2 of 4 PRs and printed a conflict count from the half it could see, and **a smaller conflict count reads as better news**.
 
 **`transition-report.py`** — the STATE line is a **pull**; the role prompts also require a
 **push** on transition into `FREE` or `BLOCKED`, and this is that rule's execution record. Built

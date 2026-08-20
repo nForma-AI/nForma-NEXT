@@ -14,6 +14,8 @@ judgement), **MISSING** (established nothing — a repo not on this machine is n
 
 Run: python3 tools/test_reference_check.py
 """
+# SUITE-DEPENDS: resolves a git blob sha — network
+
 import importlib.util
 import os
 import subprocess
