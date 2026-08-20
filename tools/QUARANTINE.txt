@@ -20,6 +20,15 @@
 # ⛔ Do not index these into tools/README.md's table · do not delete · do not rewrite history.
 # The disposition is the operator's. (Ruled 2026-08-20; the operator elected quarantine.)
 #
+# ⛔ THE POPULATION IS THE DIRECTORY, NOT THE PREDICATE (#382). This record covered 19 of the
+# 23 files in tools/teamlead/ — the four missing were its own README.md and three test files.
+# CAUSE: the operator ruled on a DIRECTORY; the record was derived from a gate whose population
+# is INSTRUMENTS, which correctly excludes tests and non-`.py`. Container versus contents, and
+# NEITHER LAYER WAS WRONG ABOUT ITS OWN QUESTION — which is why it stayed invisible.
+# ⇒ Scoping the record to the ruling is NOT a new disposition and needed nothing further from
+# the operator. Nothing deleted, nothing indexed, nothing silenced; four files gain a record.
+# (Measured by DEV3, who correctly added nothing; ruled by TEAMLEAD; re-measured here 23/19/4.)
+#
 # path | state | recorded | ruling
 
 tools/estate-provenance.py | DETECTOR | 2026-08-20 | holds the foreign vocabulary BECAUSE IT DETECTS IT. use-not-mention, at the third level.
@@ -43,3 +52,7 @@ tools/teamlead/t_sentinel.py | FOREIGN | 2026-08-20 | operator ruled QUARANTINE 
 tools/teamlead/t_skip.py | UNCLAIMED | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. No marker; held because the DIRECTORY's provenance is the open question.
 tools/teamlead/w1226.py | FOREIGN | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. Marker: 'akash'.
 tools/teamlead/waker.py | UNCLAIMED | 2026-08-20 | operator ruled QUARANTINE 2026-08-20. Arrived in ONE commit (ac6a946) from a scratch dir more than one estate wrote to. No marker; held because the DIRECTORY's provenance is the open question.
+tools/teamlead/README.md | DIRECTORY-SCOPE | 2026-08-21 | the directory's own index, held with the directory it indexes. Names DigitalFrontier-infra, Borduas-Holdings, Blazing-Back and control-plane/api as PROSE describing the snapshot, not in executable position.
+tools/teamlead/test_exec_sentinel_stderr_discriminator.py | FOREIGN | 2026-08-21 | test for another estate's exec sentinel; cites #1211 and #1177, and this repo is in the 300s. Excluded from the INSTRUMENT population as a test; held under the DIRECTORY ruling.
+tools/teamlead/test_kill_never_ran_sentinel.py | FOREIGN | 2026-08-21 | carries an AKASH DEPLOYMENT LOG LINE as test data, plus control-plane/workers and #1177. Excluded as a test; held under the DIRECTORY ruling.
+tools/teamlead/test_kill_unknown_does_not_narrate_a_timeout.py | FOREIGN | 2026-08-21 | embeds a literal akash1... deployment address as test data; cites #1203 and #1177. Excluded as a test; held under the DIRECTORY ruling.
