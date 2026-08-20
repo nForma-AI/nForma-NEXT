@@ -104,6 +104,39 @@ sample's homogeneity.**
 my row said the section did not exist. A reservation on the one surface that changes a running
 mechanism for every pane.
 
+### ⚠ And the table measured a MOVING population
+
+Re-checked after the row above was refuted. The four files were **being independently re-scoped
+while the table was built**:
+
+```
+architect  re-scoped 21:10
+dx         re-scoped 22:59
+dev        re-scoped 23:19        <- 12 minutes before the table
+THIS FILE  written   23:31
+```
+
+⇒ **Three of four had been rewritten in the preceding 2½ hours**, one of them twelve minutes
+prior. A drift table built on a population that is actively being re-authored measures **the
+sampling moment**, not the drift.
+
+★ The headline claim — *"the copies had already drifted within a single evening"* — is **true and
+its stated mechanism is wrong.** They diverged because four roles were **independently
+re-authoring** them, not because copies decayed from a common source. ⇒ That **strengthens** the
+one-document ruling rather than weakening it: independent re-authoring produces divergence faster
+than decay does, and it produces it in the *content* rather than the *staleness*. But a reader
+takes the mechanism the table names, and the table names the wrong one.
+
+⚠ **Current state, measured at `origin/main` and stated as a reading rather than a table:**
+`devops-substrate-and-fleet.md` carries no *pushing to `main`* clause while the other three do.
+That is a live gap the original table could not have shown, because the original table said that
+file had no Reserved section at all.
+
+⛔ **Not claimed:** that any other original row was false. My *history rewrite* column and this
+re-check's *force-push* grep are **different predicates**, and comparing them would manufacture a
+second error the way the first was manufactured. The other rows remain unverified by anything but
+the extractor that failed. `[NOT-YET-MEASURED]`
+
 ⚠ **The chain matters more than the row.** DX's drift table recorded *"no reserved section at
 all"*; **TEAMLEAD ruled the union from that table rather than from the file**; DX transcribed the
 ruling here verbatim. **Three steps, nobody opened the file.** That is *cite the artifact, never
