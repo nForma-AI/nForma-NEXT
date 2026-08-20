@@ -16,8 +16,29 @@ arrive only in a written TEAMLEAD message, and no line here may be read as confe
 ## 1. Read the fleet
 
 ```sh
-python3 tools/fleet-context.py --threshold 80 --fleet-only
+python3 tools/fleet-context.py --threshold 80
 ```
+
+⛔ **DO NOT pass `--fleet-only`, and this procedure did for its whole life.** The DX goal file
+forbids it explicitly, with a measured rationale: it excludes rows the tool cannot name, and
+**worktree panes appear unnamed**. Over-inclusion costs a false alarm; under-inclusion misses a
+compaction. Asymmetric — *a loud break outranks a red*.
+
+Measured 2026-08-20, the rows the flag was hiding on every single sweep:
+
+    734,421  73.4%  A          2edf7339   another project
+    104,928  10.5%  (unnamed)  a7152a8d   worktree: 1038-live-idp-alert-coverage  ↻compacted
+    103,341  10.3%  (unnamed)  2776dc7b   worktree: fix-1037-sentry-k8s-clients   ↻compacted
+     97,074   9.7%  (unnamed)  ef380451   worktree: fix-1037-sentry-k8s-clients   ↻compacted
+     59,648   6.0%  (unnamed)  a18b7702   another session
+
+⇒ Three of the five are **worktree panes doing real issue work, and all three have compacted** —
+unseen, never asked for a report, their friction gone. No compaction was missed *at a depth that
+mattered*, which is luck rather than method: the excluded rows happened to be low.
+
+★ And the cost lands on the headline metric. The friction-report coverage figure — *8 reports, 0
+observed misses* — is measured over a population narrowed by a flag this goal file forbids. It
+was already caveated for one ambiguous session; the scan around it was scoped the whole time.
 
 Take the **exit code without a pipe**. `0` nobody crossed the threshold · `1` somebody did ·
 `2` the scan **established nothing** — never "all clear".
@@ -28,6 +49,10 @@ answered an hour ago. Measured: DEV1 sat at 80.5% for two consecutive sweeps *af
 
 ⚠ Names are **self-reported**. `SHARED FILE` can appear on a session that lacked it before — a
 second writer can join a transcript mid-session. **Re-read the flag; do not remember it.**
+
+⚠ Unscoped output includes sessions that are not this fleet's. That is the intended cost: an
+unnamed worktree pane and a stranger's session are indistinguishable to the scan, and only one
+of those is safe to drop. Read the project column and judge; do not re-introduce a filter.
 
 ## 2. Decide whether anyone owes a report
 
@@ -126,7 +151,7 @@ pgrep -f ctx_reported
 ## 7. MISS check, then roll the baseline
 
 ```sh
-python3 tools/fleet-context.py --since "$SP/fleet.snap" --threshold 200 --fleet-only
+python3 tools/fleet-context.py --since "$SP/fleet.snap" --threshold 200
 python3 tools/fleet-context.py --snapshot "$SP/fleet.snap" --threshold 200 --quiet
 ```
 
