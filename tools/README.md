@@ -103,6 +103,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `doctrine-watch.py` | which roles' doctrine moved under them, and who has not read it? | 0 nothing to tell · 1 a role is behind · **2 established nothing** |
+| `label-exists.py` | does the label you are about to query actually exist? | 0 all exist · 1 one is absent · **2 established nothing** |
 | `verdict-census.py` | has each indexed instrument ever produced a verdict? | 0 all classified · 1 a never-run, slow, or undocumented instrument · **2 established nothing** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
@@ -267,6 +268,28 @@ revision, which is the condition being reported).
 continuing on the copy it loaded. That is the difference between a trigger and a guarantee.
 
 ⚠ **2026-08-20: `role_of` promised the one thing it did not deliver.** *"The role a session was BOOTSTRAPPED as — a name can be changed; this cannot"* — and it scanned the **whole file** for `You are X.`, taking the first hit anywhere. Measured over nine live transcripts: **3 resolved, 2 of the 3 wrong.** One came from a **correction sent a day later** (*"your identity was wrong … You are DEV2"*, record 17155, against a bootstrap reading MAINTAINER); one from a **quotation** of someone else's prompt; and a session bootstrapped as `DX` was reported `DEV2` because it had spent the day discussing DEV2. ⇒ It returned **the mutable thing it promised immunity from**, and a **mention** rather than a use. ★ Now anchored to the bootstrap record, with three outcomes — `None` unreadable or no launch prompt, `""` read and names no role, a role otherwise. **6 of 9 after, all from bootstraps.** ⚠ The two accepted phrasings are a **measured snapshot**, not a closed set.
+
+**`label-exists.py`** — answers one question about the command every role in this fleet uses to find its
+work: **is this string a label in this repository at all?** ⛔ Measured 2026-08-20: `gh issue list --label`
+with a label that **does not exist** and with a label that exists and **matches nothing** produce
+**byte-identical output and identical exit `0`.** Both print nothing. ★ That is this repository's dominant
+defect class sitting inside the queue query itself — and the decision downstream is standing doctrine (*if
+it returns nothing, say NOTHING QUEUED*), so **one typo makes an agent confidently report an empty queue and
+go idle**, which this fleet has already done once across every pane simultaneously. ⚠ The same collapse one
+layer up is refused explicitly: *"this label does not exist"* and *"I could not reach the forge to find
+out"* are **not** one answer — an unreachable or unauthenticated forge is exit 2, never *absent*. A label
+set that comes back at the 500 bound is treated as possibly truncated and **refused**, because a partial set
+manufactures false absents. ★ Near misses are reported, because the useful output is not *no* but *did you
+mean*: two schemes coexist here (`dev:1 … dev:5` and `role:ARCHITECT … role:TEAMLEAD`), and `role:dev1` is a
+plausible blend of both that matches neither — **the live case that produced this tool**, and the one that
+let four panes fix #307 independently. ⛔ **Similarity alone finds the wrong neighbour here, measured:**
+`difflib` scores `role:dev1` against `role:DEV` · `role:DEVOPS` · `role:DX` and misses `dev:1`, because the
+`role:` prefix dominates the ratio. ⇒ Labels are tokenised at every letter/digit boundary and matched on a
+**token SUFFIX** — `role dev 1` ends with `dev 1`, so `dev:1` is the same referent under another scheme,
+while `role dev` is a **prefix** and deliberately excluded: admitting prefixes would rank `role:DEV` above
+the right answer on length alone. Similarity survives only as a labelled fallback for a genuine typo. ⚠ Its `0` means
+the label exists; it is **not** a statement that your queue is non-empty. Known-positive: synthetic label
+sets, never this repository's, so `dev:1` ceasing to exist cannot silence it.
 
 **`verdict-census.py`** — answers #2's question for every instrument this table indexes: *has it ever
 produced a verdict?* ⛔ **By running them**, never by reading the index — an index entry is a claim that a
