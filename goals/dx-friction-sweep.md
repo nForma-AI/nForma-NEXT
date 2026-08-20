@@ -92,6 +92,13 @@ below is the only thing that remembers that. A sweep reading depth alone would a
 | `ec0d07f0` DEV3 | 77.2% | #1256 | 7 wrong-answer instruments, **6 gave a CLEAN total** |
 | `c67ebcb4` DX | self-filed | #1257 | 13 tools audited, **13 defective** |
 | `b00d725a` DEV4 | 87.8% | #1263 ⚠ **DEGRADED** | asked 06:34:13, compacted 06:35:34, answered anyway |
+| `96827e4b` DEV5 | 89.1% | *awaiting* | asked with a **short** prompt — see the note below |
+
+★ **The ask's own length is a cost borne by the session least able to pay it.** DEV4 received a
+long, seven-section ask at 87.8% and compacted 81 seconds later; reading it consumed budget it
+needed to answer. DEV5's version at 89.1% is a quarter the size and opens with *"if you are about
+to compact, answer §1 and stop"* — §1 being the only section a summary never preserves. **Above
+about 85%, shorten the ask rather than sharpen it.**
 
 ⛔ **I RECORDED THIS ROW AS `MISSED` AND IT WAS WRONG WITHIN THE HOUR.** DEV4 answered — a full
 seven-section report — from its compaction summary. **A compacted session is not a silent one**,
