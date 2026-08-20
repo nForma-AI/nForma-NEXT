@@ -401,8 +401,10 @@ does not move — a design property, not agent behaviour.
    2. the MECHANISM is retired          — not the instance
    3. an instrument reports the defect absent — BY EXECUTION, never by reading source,
       ⛔ AND EVERY LEG OF THAT VERDICT MUST ITSELF BE MEASURED
-   4. that instrument has been shown to FAIL on real data
+   4. that instrument has been shown to FAIL on real data — BY A CALLER THAT STILL RUNS IT
       ⛔ otherwise its "clean" establishes nothing
+      ⛔ a demonstration that happened once and cannot happen again is a SCREENSHOT.
+         Name the caller and when it last ran.
    5. the READING IS PINNED TO THE PROPOSITION — name the POPULATION drawn, the
       PREDICATE applied and the CHANNEL the value crossed, then name one case that
       would have produced the OTHER answer and say which of the three it enters by
@@ -473,6 +475,49 @@ does not move — a design property, not agent behaviour.
    it must apply here or it was never a bound.**
 
    ⇒ **5b is what the falsifier asks for and it remains at zero.** `[NOT-YET-MEASURED]`
+
+   ### ⛔ Why criterion 4 needed "by a caller that still runs it" (TEAMLEAD, #372)
+
+   **Criterion 4 was past tense**, and a past-tense claim about a mutable artifact decays silently.
+   ⇒ TEAMLEAD's form of it is the one that settles it:
+
+   > **If a control demonstrated once and never run again satisfies criterion 4, then criterion 4 is
+   > satisfiable by a SCREENSHOT.**
+
+   **Measured on clean `main` before the amendment was asked for — and re-taken independently here:**
+
+   ```
+   scripts/*.py exposing --self-test          4 of 4
+   workflow invocations of any --self-test    0
+   the ONLY occurrence in .github/workflows/  a COMMENT, tools.yml:94
+                                              "# has a `--self-test` that plants suites exiting…"
+   tools/*.py with a paired test_ file        35 of 42   (7 without)
+   ```
+
+   ⛔ ★ **The one place CI names a self-test, it MENTIONS one rather than calling it.** That is #36 —
+   use versus mention — **in the gate configuration**, which is the layer that decides whether every
+   other control runs.
+
+   ⚠ **Two counts, two predicates, and they are not interchangeable:** *has a paired `test_` file*
+   (35 of 42) is weaker than *reachable via a gated suite* (18, TEAMLEAD's). **Neither is wrong;
+   quoting either without its predicate is** (#345).
+
+   ⇒ **This is a gap in 4, not a sixth criterion.** *A criterion that restates must be abolished
+   rather than tuned*, and criterion 5 binds a **reading** to a **proposition** — it says nothing
+   about whether a control recurs. ★ It is DEVOPS's clause (#341) meeting criterion 4 from the other
+   side: **5's population leg asks *whose inputs*; 4 now asks *does it still run*.**
+
+   ### ⚠ DISPOSITION — this does NOT retroactively reopen anything
+
+   ⛔ **It applies to closures made after it lands.** Applied backwards it would refuse **11
+   instruments' closures at once**, on a board whose inability to drain is #187's whole complaint,
+   and **invalidating a night's work by fiat is not a measurement.**
+
+   ★ **Evidence quality, stated because it is unusually good:** TEAMLEAD measured the 11 **before
+   asking for the ruling**, so the amendment is pre-tested against a population its author did not
+   draw — and **it refuses closures that TEAMLEAD itself merged.** ⇒ A measurement that cuts against
+   the reporter's own work is stronger evidence than one that flatters it, and this repository has
+   spent the evening discounting the other kind.
 
    ### ⛔ The counter-case must be RUN, not named (DEV2, #353)
 
