@@ -52,6 +52,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `fleet-identity.py` | which role is this session, and which pane runs it? | 0 resolved · **2 population too small** · **2 own-session control failed** |
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
+| `doctrine-watch.py` | which roles' doctrine moved under them, and who has not read it? | 0 nothing to tell · 1 a role is behind · **2 established nothing** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
@@ -122,6 +123,22 @@ retracted, and **a retraction quotes the number it retracts.**
 blind poller cannot log a quiet cycle that reads as a healthy fleet. ★ It terminates the
 regress on something known **by construction**: at least one pane must report `working`,
 because the agent running the check is one.
+
+**`doctrine-watch.py`** — reports which roles' prompt or goal file changed since a
+watermark, and which of those roles has not read the new revision. ⛔ Built because the fleet's
+standing conclusion — *"a relaunch is the only complete-delivery channel"* — is wrong in the
+expensive direction: **the read is available on demand and nothing triggers it**, so the fix is a
+nudge rather than a restart. A relaunch buys exactly two things that cannot be delivered live
+(cwd/worktree and process env) and costs every pane its working context.
+
+⚠ Two behaviours it was given after its own controls refused to pass: it matches the tool CALL
+rather than prose (the first version matched any occurrence of the path and its known-positive
+could not fire, because every transcript mentions these files constantly), and it requires the
+read to POSTDATE the change (a read from before the amendment proves the agent saw the old
+revision, which is the condition being reported).
+
+⛔ It cannot establish that a notified agent re-read rather than noting the notification and
+continuing on the copy it loaded. That is the difference between a trigger and a guarantee.
 
 **`wake-yield.py`** — pairs an interruption's cost with its yield. Cost alone is
 uninterpretable: an agent woken into useful work and one woken into churn consume context
