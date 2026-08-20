@@ -399,8 +399,8 @@ does not move — a design property, not agent behaviour.
    ```
    1. the fix LANDED ON MAIN            — not merged-on-a-branch, landed
    2. the MECHANISM is retired          — not the instance
-   3. an instrument reports the defect absent — BY EXECUTION, never by reading,
-      ⛔ AND EVERY LEG OF THAT VERDICT MUST ITSELF BE A READING
+   3. an instrument reports the defect absent — BY EXECUTION, never by reading source,
+      ⛔ AND EVERY LEG OF THAT VERDICT MUST ITSELF BE MEASURED
    4. that instrument has been shown to FAIL on real data
       ⛔ otherwise its "clean" establishes nothing
    5. the READING IS PINNED TO THE PROPOSITION — name the POPULATION drawn, the
