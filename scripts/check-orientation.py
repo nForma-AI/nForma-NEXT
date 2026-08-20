@@ -90,13 +90,14 @@ def main():
           "CLAUDE.md says is there.")
 
     decayed = check_no_ci_claim()
+    unpinned = check_pin_doctrine()
 
     if missing:
         print("\nCLAUDE.md points at paths that do not exist:", file=sys.stderr)
         for p in missing:
             print(f"  {p}", file=sys.stderr)
         return 1
-    return 1 if decayed else 0
+    return 1 if (decayed or unpinned) else 0
 
 
 # ⛔ A DATED CLAIM NEEDS A RE-MEASURING CALLER, NOT A WARNING TO THE READER (#272).
@@ -160,6 +161,62 @@ def check_no_ci_claim():
         print("  ⇒ claim and world agree: workflows exist, no un-struck claim")
     else:
         print("  ⚠ no workflows and no claim — nothing asserted, nothing to check")
+    return False
+
+
+def check_pin_doctrine():
+    """True if tools/README.md has LOST the correct directory-pin form (#291).
+
+    ⛔ THIS KEYS ON THE PRESENCE OF THE CORRECT FORM, NEVER ON THE ABSENCE OF THE
+    BROKEN ONE, and that choice is the whole point of the check.
+
+    The obvious control — grep for `git show <ref>:tools/x.py > /tmp/x.py` and fail
+    if found — is VOID. Naming a broken command requires writing it down, so after
+    the fix the document that FORBIDS the form is the top hit for it. Measured
+    2026-08-20 at origin/main: a sweep for the broken string returned 2 hits and
+    BOTH were mentions — tools/README.md's own counter-example, and a quoted
+    pointer message in tools/pointer-verified.py. The author of that sweep (DEV2)
+    began drafting a fix for the counter-example inside the block forbidding it.
+    ⇒ The population of false positives is created by the remedy (#36), which is
+    the same trap check_no_ci_claim() above documents hitting, hours earlier.
+
+    ★ The rule this generalises to: PREFER THE CONTROL WHOSE FAILURE MODE IS A
+    FALSE PASS OVER ONE THAT IS GUARANTEED TO FIRE ON THE REPAIRED STATE. An
+    absence-check gets LOUDER the better the documentation gets; a presence-check
+    degrades quietly and only ever under-reports.
+
+    ⚠ STATED WEAKNESS, not a defect to fix: presence can also be satisfied by a
+    MENTION — a future counter-example containing `git archive` would pass this.
+    That is strictly weaker than a semantic check and cannot be repaired at this
+    layer; markdown has no call graph, so tools/use-not-mention.py has nothing to
+    resolve. The ⛔/✅ glyphs carry the polarity instead, which is why they are
+    load-bearing content rather than formatting.
+    """
+    doc = ROOT / "tools" / "README.md"
+    try:
+        text = doc.read_text(errors="replace")
+    except OSError:
+        print("\n⛔ tools/README.md unreadable — the pin doctrine is UNCHECKED, "
+              "not absent.", file=sys.stderr)
+        return False
+
+    required = [
+        ("the ✅ directory-pin form", re.compile(r"git\s+archive\s+\S+\s+tools/[^\n]*\|\s*tar")),
+        ("why it is needed (runmarker)", re.compile(r"import\s+runmarker")),
+    ]
+    absent = [label for label, pat in required if not pat.search(text)]
+
+    print("\n  pin doctrine in tools/README.md (#291):")
+    for label, pat in required:
+        print(f"  {'ok  ' if pat.search(text) else 'GONE'}  {label}")
+    if absent:
+        print("\n⛔ tools/README.md no longer states how to pin a marker-carrying "
+              "tool. Every pane that pins a single file gets ImportError, exit 1 "
+              "and ZERO markers — a failure that surfaces as NOTHING MEASURED "
+              "rather than as nothing found (#291):", file=sys.stderr)
+        for label in absent:
+            print(f"    missing: {label}", file=sys.stderr)
+        return True
     return False
 
 
