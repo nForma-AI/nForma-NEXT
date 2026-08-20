@@ -40,6 +40,48 @@ have returned a clean scan for the exact case it exists to catch -- the tool's o
 subject, in its own foundation. So this walks: for each file, replay its history and
 record every 1->0 transition per line.
 
+⛔ SCOPE: PROSE, NOT CODE — MEASURED, AND THE THRESHOLD IS WHY
+
+Swept across tools/ and scripts/ (58 files) it reported 20 re-additions. Every one
+checked was TRUE by this tool's definition -- the exact line was removed by that
+commit relative to its first parent, and is present at main again -- and NONE was
+an instance of the ADDITION failure mode:
+
+    capture_output=True, text=True)
+    lo, hi = min(window), max(window)
+    "-H", "Content-Type: application/json", "-X", "POST", url,
+
+★ MIN_LEN = 24 makes a PROSE line very nearly unique. It does not make a CODE line
+unique: `capture_output=True, text=True)` is 30 characters and occurs in every
+subprocess call in this repository. So a refactor that moves a block reads as a
+removal, and the next function containing the same idiom reads as a re-addition.
+
+⇒ THE PROXY FAILS ON CODE, AND THAT IS THE REAL STATEMENT. This tool asks
+
+    "was this line removed, and is it back?"
+
+as a proxy for
+
+    "is a DECISION being reversed?"
+
+⛔ In prose those coincide, because a sentence carries the decision. In code they
+do not, because a line carries no decision -- so every finding can be true and
+none of them the thing being looked for. That is goals/README.md's own proxy test
+applied here: NAME WHAT WOULD STILL BE TRUE IF EVERY CRITERION WERE MET AND THE
+DESIRED STATE WERE NOT. "Twenty true re-additions, zero reversed decisions" is
+nameable ⇒ the criteria are a proxy ⇒ the gap is the finding.
+
+⚠ Same shape as the two fixture errors above: the threshold was validated on
+DOCTRINE FILES and then pointed at code. A predicate validated on a homogeneous
+sample has been validated on the sample's homogeneity -- third instance in this
+tool, and this one is about its POPULATION rather than its history.
+
+⇒ Run it on goals/, prompts/ and docs/. On tools/ and scripts/ it is not wrong,
+it is answering a different question than the one it was built for. NOT fixed with
+a bigger MIN_LEN: no threshold separates a recurring code idiom from a restored
+decision, and picking one would be the calibration-wearing-the-grammar-of-a-rule
+defect. The honest boundary is the population, not the number.
+
 Exit: 0 no re-additions · 1 re-additions found · 2 established nothing
 """
 import argparse

@@ -66,12 +66,31 @@ told every reader a question was OPEN that had been measured. The paragraph belo
 tells every reader a question is CLOSED that this tool's own runtime output says is
 open -- introduced by the fix for the first one, in the same file, one day later.
 
-⚠ Candidate explanations I cannot separate from here: a different machine or
-Daintree state location; a fleet relaunch since the reading, which would drop the
-bindings; or an error. ⇒ Whoever took the 58-pane reading should re-run it and
-strike whichever of us is wrong. Until then treat BOTH numbers as stamped and
-neither as current -- and RUN THE TOOL, which is the only thing here that reports
-the present tense.
+⚠ THE RELAUNCH HYPOTHESIS WAS TESTED AND IS REFUTED. I proposed "a fleet relaunch
+since the reading" as the explanation -- two correct measurements of two different
+fleets. Measured 2026-08-20 15:2xZ, after the pids changed:
+
+    every role kept its session id across the restart
+      DEV3 5acc9d9e  DEV4 a10daa24  DEVOPS ac436615  DX 741d2cb1
+      DEV1 d9ce506d  ARCHITECT c83ecf77  DEV5 9b64bb35  DEV2 bd19196d
+
+⇒ The processes restarted and RESUMED THE SAME SESSIONS. So no "different DEV3"
+took the 58-pane reading, and the relaunch does not explain the disagreement.
+
+⛔ AND ec0d07f0 -- the DEV3 binding the 58-pane reading claims -- corresponds to NO
+SESSION ON THIS MACHINE: 0 registry rows, 0 transcript files, before or after the
+restart. It is not a stale id; it is not an id this registry has ever held.
+
+⚠ SO THE DISAGREEMENT IS STILL UNEXPLAINED, and it is recorded as unexplained
+rather than closed with the first plausible cause. What IS established now:
+
+    TEAMLEAD                        0 registry rows, no socket -- the role is gone
+    two DEV4 PROCESSES              pids 3471 and 3482 share ONE session a10daa24
+                                    9 registry rows, 8 distinct sessions
+
+★ That last row is this tool's own subject arriving live: TWO PANES, ONE SESSION.
+The verdict vocabulary here is per-pane and cannot express it -- BOUND says a pane
+resolves to a session, and says nothing about a session resolving to two panes.
 
 ★ THE CONTROL FIRED POSITIVE AND NOBODY READ IT. This file's own stated purpose is
 "the known-positive control for the launcher fix: run it before and after adding

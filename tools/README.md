@@ -15,6 +15,32 @@ measurement is the justification, not the description.
 established nothing*. A run that establishes nothing exits **2** and must never be read as
 "all clear". This is the single convention worth carrying to any other tool here.
 
+⛔ **A MARKER-CARRYING TOOL CANNOT BE PINNED AS A SINGLE FILE**, and the fleet's pinning practice
+does exactly that. Measured 2026-08-20: **8 of 26 instruments** `import runmarker`, so
+
+```
+git show <ref>:tools/x.py > /tmp/x.py && python3 /tmp/x.py
+    -> exit 1, ImportError, ZERO markers        <- the tool never ran
+```
+
+⚠ The pin idiom exists for a real reason — the shared tree runs dozens of commits behind and nine
+panes share it, so reading a tool from it reads someone else's branch. ⇒ The fix is to pin the
+**directory**, not the file:
+
+```
+git archive <ref> tools/ | tar -x -C /tmp/pin   &&  python3 /tmp/pin/tools/x.py     ✅ markers emit
+git show <ref>:tools/x.py + tools/runmarker.py  &&  python3 /tmp/pin2/x.py          ✅ markers emit
+```
+
+★ **The convention diagnoses its own pin.** A pinned tool that emits no `NFORMA-RUN` line was
+pinned wrong — the absent marker means *never reached our code*, which is exactly what an
+ImportError is. ⇒ You do not need to know about this rule to catch it; you need to read stderr.
+
+⚠ Adoption is spreading beyond the tools that introduced it — `pipe-exit-scan`, `pretooluse-guard`,
+`stranded-branches` and `transition-report` all import it now, none of them written by the author of
+the markers. **The breakage grows with adoption**, which is the argument for stating it here rather
+than in the two docstrings that started it.
+
 ⛔ **The convention collides with the interpreter, and you must check for it before trusting a
 `2`.** `python3 tools/<x>.py` exits **2** when the file **does not exist** — that is Python's own
 code for "cannot open". So an exit 2 read alone cannot separate *this tool established nothing*
