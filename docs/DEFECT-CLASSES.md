@@ -540,6 +540,20 @@ which is exactly how `QUARANTINED` arrived with nowhere to go.
   proposition. ★ Its own output carried the refutation: **`13 of 13` means the discriminator
   discriminated nothing.** ⇒ *A discriminator returning N of N has not discriminated* — one line to
   check, and it belongs beside the count, not in a document.
+  ⚠ **A second instance the same hour, mirrored.** *"The CI job ran 17 seconds — too fast to have
+  executed 28 suites, therefore infrastructure."* DEVOPS pulled the runs that **passed**: `16s · 14s
+  · 15s`, against the failure's `17s`. **The failing run was the longest of the four.** The reading
+  takes the same value in both states, so it was never evidence for either — the runner is simply
+  faster than a laptop under nine panes. ⛔ The control was one query away, in data already fetched
+  for a *different* question.
+
+  ⇒ ★ **One statement covers both, and it is the cheaper form of Class C's remedy: A READING USED AS
+  EVIDENCE MUST FIRST BE SHOWN TO VARY WITH THE THING IT IS EVIDENCE FOR.** `13 of 13` is a
+  discriminator whose states never *differ*; `17s vs 15s` is a reading whose states never *separate*.
+  ⚠ `tools/discriminates.py` already asks exactly this question. **The gap is that nobody asks it of
+  an AD-HOC reading**, because a number read off a dashboard does not feel like an instrument — and
+  both instances above were published by the author of the count, in the same hour, in messages that
+  also carried correctly-run controls for other questions.
 - ⚠ **One measured instance.** This is filed as a class because its remedy generalises and is
   mechanisable, **not** because recurrence has been shown. If a second instance does not appear, it
   is a finding about one file and should be demoted rather than defended.
