@@ -15,6 +15,34 @@ Exit status is meaningful:
     1  at least one session at or above --threshold   (use this to gate an action)
     2  the scan itself failed to establish anything   (never read as "all clear")
 
+⛔ THE DEPTH COLUMN IS A LEVEL, NOT A COUNTER — and this is the caveat that has
+already been misread once.
+
+Two samples reading the same value bound NOTHING about what happened between them.
+Measured 2026-08-19: two panes were invoked 3 and 2 times respectively across an
+interval in which their depth grew by +0.
+
+    depth unchanged   does NOT mean "no work"
+    depth unchanged   does NOT mean "not invoked"
+
+⚠ And no sampling rate fixes it. Sampling faster narrows the window and leaves the
+defect intact, because the reading was never about invocation: an invocation that
+reads a cached prefix and adds little moves a level by ~0.
+
+★ SAME SHAPE AS `exit 2` AND AS AN ABSENT `NFORMA-RUN` MARKER: a reading that
+cannot distinguish DID-NOT-MOVE from WAS-NOT-OBSERVED. The value is well-formed,
+plausible and stable, and what it contains is neither of the two things a reader
+wants. (DEVOPS, connecting it to the other three.)
+
+⇒ For "is this pane working", count RECORDS IN A WINDOW — events — not depth.
+Same corpus, opposite selection: depth measures cumulative accumulation and
+selects the loudest; records-in-window measures activity now and fires on exactly
+the quiet panes depth cannot reach.
+
+⛔ THE DEFECT WAS THE QUESTION, NOT THE ANSWER. This instrument answers "how much
+has this pane accumulated". It was asked "is this pane working". It answered its
+own question correctly every time. (#96)
+
 ⚠ Read the caveats in README before acting on a row.
 """
 import argparse, glob, json, os, sys, time
