@@ -121,7 +121,45 @@ this way, after the `@me` claiming convention.
 
 ⇒ **REPLACED BY, and this one is readable:**
 
-> **Do not close an issue that is ASSIGNED to someone else.**
+> ~~**Do not close an issue that is ASSIGNED to someone else.**~~ ⛔ **ALSO WITHDRAWN — it
+> inherits the defect it was written to fix.**
+
+⛔ **Measured at `b460040`:**
+
+```
+gh api user                        ->  jobordu
+issues with an assignee            ->  #49 jobordu, #16 jobordu
+gh issue list --assignee @me       ->  49, 16   ← claimed by NEITHER of them
+```
+
+⇒ *Assigned to me* and *assigned to someone else* **are the same value.** The field is readable
+and **not discriminating** — readability was never the defect. ⚠ TEAMLEAD replaced an unevaluable
+reservation with an undecidable one and called the difference a fix.
+
+⛔ **And it composes with the claiming convention into a deadlock.** `goals/README.md` says *claim
+before working, `--add-assignee @me`*:
+
+```
+claim the item  ->  assignee := jobordu
+close it        ->  "assigned to someone else?"  ->  UNDECIDABLE
+```
+
+⇒ **Claiming an issue is what makes it uncloseable by the agent that claimed it.** There is no
+correct reading, only two wrong ones: *safe* (field non-empty ⇒ someone holds it) locks the
+claimer out of its own work; *permissive* (`jobordu` is me ⇒ mine) makes the rule a no-op. Both
+panes comply and which failure occurs depends on which way each reads it.
+
+⚠ **It looks harmless only because compliance is low.** 2 of 31 assigned today — and the ratio
+**worsens as claiming is adopted.** Every correctly-claimed issue enters the undecidable set.
+The withdrawal unlocked 29 unassigned issues and quietly locked the ones an agent is actually
+working on.
+
+> ⇒ **REQUIREMENT, not a remedy:** a rule keyed on ownership needs a field carrying the **PANE**,
+> not the account. Until one exists, **no ownership-keyed reservation on issues is enforceable**,
+> and one should not be written. Third convention defeated this way, after `@me` claiming and the
+> row above.
+
+
 
 Keyed on the assignee field, which is a fact a caller can read in one call — not an ownership it
 must infer from prose. It preserves the real concern (do not close work someone is holding) and
