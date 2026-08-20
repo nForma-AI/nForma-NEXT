@@ -135,5 +135,18 @@ for label, args in (("floored", (0, 0, 111, 111)),
     check(f"KNOWN-BAD control: naive before-after still yields a number ({label})",
           isinstance(args[0] - args[1], int), True)
 
+# ── ⛔⛔ third axis: observed calls are demand AND availability ────────────────
+check("a healthy pool means the counts CAN be read as demand",
+      ab.observed_is_demand({"core": (4000, 5000, 1), "graphql": (5000, 5000, 1)})[0], True)
+check("an exhausted bucket means they CANNOT",
+      ab.observed_is_demand({"core": (0, 5000, 1), "graphql": (5000, 5000, 1)})[0], False)
+check("...and it names which bucket",
+      "core" in ab.observed_is_demand({"core": (0, 5000, 1)})[1], True)
+check("an unreadable meter also refuses — not a healthy default",
+      ab.observed_is_demand(None)[0], False)
+# KNOWN-BAD control: the count itself is identical in both worlds
+check("KNOWN-BAD control: a zero count is produced by BOTH restraint and refusal",
+      (0 == 0), True)
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)

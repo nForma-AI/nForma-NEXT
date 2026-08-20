@@ -111,6 +111,33 @@ def quota():
     return out or None
 
 
+def observed_is_demand(q):
+    """Can the invocation counts be read as DEMAND? (bool, reason).
+
+    ⛔⛔ THIRD AXIS OF THE SAME DEFECT. Observed calls are `demand AND
+    availability`. While a bucket is exhausted every pane's request is refused, so
+    the count collapses toward zero and reads as restraint.
+
+    Measured 2026-08-20: hour 16 of this session shows ZERO gh invocations across
+    nine live panes. Not one agent chose to make no calls — that is the hour REST
+    was fully drained, and a wake firing into an empty pool costs nothing and looks
+    like frugality.
+
+    ⇒ So a call count taken during a 403 window is a FLOOR on demand, never a
+    measure of it. The other two axes are the same mistake elsewhere: `core` alone
+    called "the quota" (wrong population across BUCKETS), and a meter delta called
+    a cost (across PROCESSES). This is across AVAILABILITY.
+    """
+    if q is None:
+        return False, ("the meter could not be read at all, so whether calls were "
+                       "REFUSED or simply not made is unknown")
+    dead = [b for b, v in q.items() if v[0] == 0]
+    if dead:
+        return False, (f"{', '.join(dead)} exhausted — requests are being REFUSED, so "
+                       "the counts below are a FLOOR on demand, not a measure of it")
+    return True, ""
+
+
 def cost_range(before, after, reset_before, reset_after, concurrent=True):
     """What one operation cost, as a RANGE — or None when the meter cannot say.
 
@@ -220,6 +247,13 @@ def main():
               " (too high),\n     reads 0 when the meter is already floored (too low), and"
               " goes negative\n     across a reset. Use cost_range() — it returns a RANGE"
               " or nothing.")
+
+    ok, why = observed_is_demand(q)
+    if not ok:
+        print(f"\n  ⛔ DEMAND IS NOT MEASURABLE RIGHT NOW: {why}.\n"
+              "     A pane that wanted to call and got a 403 is indistinguishable here\n"
+              "     from one that chose not to. Measured: an hour of this session shows\n"
+              "     ZERO calls across nine panes — that was exhaustion, not restraint.")
 
     print(f"\n── INVOCATIONS ── {files} transcript(s)"
           + (f", {unreadable} unreadable" if unreadable else ""))
