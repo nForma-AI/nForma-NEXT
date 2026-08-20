@@ -56,26 +56,89 @@ import argparse, glob, json, os, sys
 
 ROOT = "~/.claude/projects/*/*.jsonl"
 AUTHORED, FETCHED, RECEIVED, OTHER = "AUTHORED", "FETCHED", "RECEIVED", "OTHER"
-INSTRUMENT = "INSTRUMENT"
+INSTRUMENT, UNCLASSIFIED = "INSTRUMENT", "UNCLASSIFIED"
 
 # ⚠ An ALLOWLIST, not a denylist of search verbs. Keying on `grep`/`rg` misses a
 # python heredoc doing `if needle in line` -- which is exactly how both of this
-# tool's own false positives were produced. So: a needle in a tool_use input is
-# INSTRUMENT unless the tool PUBLISHES, and the cost of being wrong is a missed
-# attribution (exit 1, honest) rather than a false one (exit 0, confident).
-PUBLISHING_TOOLS = {"SendMessage", "Write", "Edit", "NotebookEdit"}
-PUBLISHING_BASH = ("gh pr comment", "gh pr create", "gh issue create",
-                   "gh issue comment", "gh pr edit", "--body", "commit -m")
+# tool's own false positives were produced.
+#
+# ⛔ AND AN ALLOWLIST DRIFTS, WHICH A PEER MEASURED ON THE FIRST VERSION OF IT.
+# That version listed `commit -m` and not `commit -F -`. Counted in one peer's
+# transcript: `commit -F` 61, `commit -m` 13; `gh issue create` 24, `gh pr create`
+# 19, `gh issue comment` 55 -- every one of them publishing, none of them listed.
+# It would have reported a session that published four PR/issue bodies in three
+# hours as having authored nothing. That is the fail-safe direction, so it is not
+# dangerous -- it is SILENTLY DEGRADING: quieter over time, equally confident.
+#
+# ⇒ So an unrecognised path is UNCLASSIFIED, never a silent INSTRUMENT. A new
+# publishing route -- a new `gh` subcommand, an MCP send -- forces a decision the
+# FIRST time it appears instead of quietly shrinking the numerator. `--audit`
+# enumerates the tools actually present and names the ones nothing classifies.
+#
+# ⚠ `gh` is not one tool. `create`/`comment`/`edit`/`close` publish; `view`/`list`/
+# `api` read. Keying on `gh` alone is wrong in one direction or the other.
+# ⇒ Populated by running `--audit` on this machine, which named 17 unclassified
+# tools on its first run -- the staleness test failing on its own author, which is
+# the only evidence that it works. ⚠ This list is a SNAPSHOT of one machine's 12h
+# window, not a closed set; `--audit` is what keeps it honest as new paths appear.
+PUBLISHING_TOOLS = {
+    # text this session composed and sent onward, to a person, a peer, or a queue
+    "SendMessage", "Write", "Edit", "NotebookEdit", "Artifact",
+    "SendUserFile", "PushNotification", "AskUserQuestion",
+    "TaskCreate", "TaskUpdate",
+    "Agent",                      # the prompt is authored text handed to a peer
+    "CronCreate", "ScheduleWakeup",   # authored text, delivered later
+    "mcp__claude-1__claude", "mcp__codex-1__codex",
+    "mcp__antigravity-1__antigravity", "mcp__claude-kimi__claude",
+    "mcp__claude-minimax__claude", "mcp__claude-z-ai__claude",
+    "mcp__copilot-1__copilot",
+}
+READING_TOOLS = {
+    "Read", "Grep", "Glob", "WebFetch", "WebSearch", "ListAgents",
+    "ToolSearch", "TaskOutput", "Monitor", "CronList",
+    "Skill", "TaskStop", "CronDelete",       # carry ids and args, not prose
+    "mcp__claude-1__health_check", "mcp__codex-1__health_check",
+    "mcp__claude-1__ping", "mcp__codex-1__ping",
+    "mcp__plugin_vercel_vercel__authenticate",
+}
+
+PUBLISHING_BASH = (
+    "gh issue create", "gh issue comment", "gh issue edit", "gh issue close",
+    "gh pr create", "gh pr comment", "gh pr edit", "gh pr review", "gh pr close",
+    "gh release create", "gh gist create",
+    "commit -m", "commit -F", "commit --file", "commit --message", "commit -q -F",
+    "tag -m", "git notes",
+    ">>", " > ", "| tee",          # a heredoc landing in a file IS authoring
+)
+READING_BASH = (
+    "gh pr view", "gh issue view", "gh pr list", "gh issue list", "gh run view",
+    "gh pr checks", "gh api", "gh pr diff", "gh run list",
+    "grep", "rg ", "ugrep", "python3 -", "cat ", "sed -n", "awk ", "git log",
+    "git show", "git rev-list", "git diff",
+)
 
 
-def _publishes(block):
+def classify_use(block):
+    """AUTHORED · INSTRUMENT · UNCLASSIFIED for a tool_use carrying the needle.
+
+    ⛔ Returns UNCLASSIFIED rather than guessing. An allowlist that silently
+    absorbs what it does not recognise stops being an allowlist.
+    """
     name = block.get("name") or ""
     if name in PUBLISHING_TOOLS:
-        return True
-    if name == "Bash":
-        cmd = (block.get("input") or {}).get("command", "")
-        return any(m in cmd for m in PUBLISHING_BASH)
-    return False
+        return AUTHORED
+    if name in READING_TOOLS:
+        return INSTRUMENT
+    if name != "Bash":
+        return UNCLASSIFIED
+    cmd = (block.get("input") or {}).get("command", "")
+    # ⚠ PUBLISH is tested first: one command can both read and write, and the
+    # write is the part that makes it authorship.
+    if any(m in cmd for m in PUBLISHING_BASH):
+        return AUTHORED
+    if any(m in cmd for m in READING_BASH):
+        return INSTRUMENT
+    return UNCLASSIFIED
 
 
 def channel(rec, needles=()):
@@ -96,7 +159,7 @@ def channel(rec, needles=()):
                 if b.get("type") == "tool_use":
                     inp = json.dumps(b.get("input", {}))
                     if any(n in inp for n in needles):
-                        return AUTHORED if _publishes(b) else INSTRUMENT
+                        return classify_use(b)
         return AUTHORED
     if t == "user":
         if isinstance(c, list) and any(isinstance(b, dict) and b.get("type") == "tool_result"
@@ -163,6 +226,13 @@ def verdict(hits, self_sid):
     late = postdates(hits, self_sid) or set()
     authors = sorted({s for _, s, _, ch in hits
                       if ch == AUTHORED and s != self_sid and s not in late})
+    undecided = sorted({s for _, s, _, ch in hits
+                        if ch == UNCLASSIFIED and s != self_sid and s not in late})
+    if not authors and undecided:
+        return 4, ("⛔ UNCLASSIFIED — " + ", ".join(undecided) + " carry the text through a "
+                   "path nothing in the table classifies. That is a DECISION, not an answer: "
+                   "run --audit and classify it. Absorbing it silently as INSTRUMENT is how an "
+                   "allowlist goes quiet while staying confident.")
     if not authors:
         why = ("⚠ present, but no session other than the asker AUTHORED it — every other "
                "hit was fetched, received, or an INSTRUMENT (a command with the string as "
@@ -172,13 +242,54 @@ def verdict(hits, self_sid):
                     f"({', '.join(sorted(late))}) — they cannot be its origin, and after a "
                     "round of asking peers they are your own probe's residue.")
         return 1, why
-    return 0, "authored by: " + ", ".join(authors)
+    why = "authored by: " + ", ".join(authors)
+    if undecided:
+        why += (f"\n⚠ and {len(undecided)} session(s) carry it through an UNCLASSIFIED path "
+                f"({', '.join(undecided)}) — the author list may be short.")
+    return 0, why
+
+
+def audit(root, within_s):
+    """Tool names actually present, and which the table does not classify.
+
+    ⛔ A staleness test for the allowlist itself. The first version of this table
+    listed `commit -m` and not `commit -F -`; a peer used the second form 61 times
+    and the first 13. Nothing failed -- the numerator just quietly shrank. This
+    fails loudly on its own author instead.
+    """
+    import time
+    now = time.time()
+    seen, files = {}, 0
+    for p in glob.glob(os.path.expanduser(root)):
+        try:
+            if now - os.path.getmtime(p) > within_s:
+                continue
+            files += 1
+            with open(p, errors="replace") as f:
+                for line in f:
+                    if '"tool_use"' not in line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except ValueError:
+                        continue
+                    c = (rec.get("message") or {}).get("content")
+                    if not isinstance(c, list):
+                        continue
+                    for b in c:
+                        if isinstance(b, dict) and b.get("type") == "tool_use":
+                            seen[b.get("name") or "?"] = seen.get(b.get("name") or "?", 0) + 1
+        except OSError:
+            continue
+    known = PUBLISHING_TOOLS | READING_TOOLS | {"Bash"}
+    unknown = sorted((n for n in seen if n not in known), key=lambda n: -seen[n])
+    return files, seen, unknown
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("needle", nargs="+", help="literal string(s); a hit on ANY counts")
+    ap.add_argument("needle", nargs="*", help="literal string(s); a hit on ANY counts")
     ap.add_argument("--self", dest="self_sid", default=None,
                     help="your own 8-char session id. ⚠ Do NOT guess it — a session "
                          "identifying itself from memory is the defect fleet-identity.py "
@@ -189,8 +300,30 @@ def main():
                          "and the run is labelled NOT RUN rather than clean.")
     ap.add_argument("--root", default=ROOT)
     ap.add_argument("--limit", type=int, default=30)
+    ap.add_argument("--audit", action="store_true",
+                    help="enumerate the tools present and name the ones nothing classifies")
+    ap.add_argument("--audit-hours", type=float, default=12.0)
     a = ap.parse_args()
 
+    if a.audit:
+        files, seen, unknown = audit(a.root, a.audit_hours * 3600)
+        print(f"── AUDIT ── {files} transcript(s) touched in {a.audit_hours:g}h, "
+              f"{len(seen)} distinct tool(s)")
+        for n in sorted(seen, key=lambda n: -seen[n]):
+            mark = ("PUBLISHES" if n in PUBLISHING_TOOLS else
+                    "reads    " if n in READING_TOOLS else
+                    "by verb  " if n == "Bash" else "⛔ UNCLASSIFIED")
+            print(f"  {seen[n]:7d}  {mark}  {n}")
+        if unknown:
+            print(f"\n⛔ {len(unknown)} tool(s) nothing classifies: " + ", ".join(unknown))
+            print("   Each is a DECISION. Until made, a needle carried through one is "
+                  "UNCLASSIFIED — not silently INSTRUMENT.")
+            return 4
+        print("\n✅ every tool present is classified")
+        return 0
+
+    if not a.needle:
+        ap.error("give at least one needle (or --audit to enumerate the tool table)")
     if not a.self_sid and not a.no_self:
         ap.error("--self is required (or --no-self to run without the own-reading "
                  "control). Every hit being your own is this tool's most common result.")

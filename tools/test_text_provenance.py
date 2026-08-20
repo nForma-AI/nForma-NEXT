@@ -149,5 +149,44 @@ r = subprocess.run([sys.executable, tool, "x"], capture_output=True, text=True)
 check("omitting --self is an ERROR, not a quiet unchecked run", r.returncode != 0, True)
 check("...and the error names the escape hatch", "--no-self" in r.stderr, True)
 
+
+# ── the allowlist drifts, and that is measurable ─────────────────────────────
+# ⛔ A peer measured the FIRST version of this table on its own transcript:
+# `commit -F` 61 uses, `commit -m` 13; `gh issue create` 24; `gh issue comment` 55.
+# Only `commit -m` and `gh pr comment` were listed. Nothing failed — the numerator
+# just quietly shrank. These pin the forms that were missing.
+for cmd, want, why in [
+    ("git commit -q -F /tmp/msg.txt", tp.AUTHORED, "commit -F is how heredoc messages are written"),
+    ("git commit -m 'x'",             tp.AUTHORED, "commit -m still publishes"),
+    ("gh issue create --body-file b",  tp.AUTHORED, "gh issue create publishes"),
+    ("gh issue comment 1 --body x",    tp.AUTHORED, "gh issue comment publishes"),
+    ("gh pr view 1 --json body",       tp.INSTRUMENT, "gh pr view READS — gh is not one tool"),
+    ("gh api repos/x/y",               tp.INSTRUMENT, "gh api reads"),
+    ("cat > tools/new.py <<'EOF'",     tp.AUTHORED, "a heredoc landing in a file IS authoring"),
+]:
+    check(f"bash: {why}", tp.classify_use({"name": "Bash", "input": {"command": cmd}}), want)
+
+check("an unknown tool is UNCLASSIFIED, never silently INSTRUMENT",
+      tp.classify_use({"name": "SomeNewSender", "input": {"x": 1}}), tp.UNCLASSIFIED)
+check("an unrecognised bash path is UNCLASSIFIED too",
+      tp.classify_use({"name": "Bash", "input": {"command": "newpublisher --send x"}}),
+      tp.UNCLASSIFIED)
+check("KNOWN-BAD control: the old rule would have called that INSTRUMENT",
+      tp.classify_use({"name": "Bash", "input": {"command": "newpublisher --send x"}})
+      != tp.INSTRUMENT, True)
+
+# an UNCLASSIFIED hit blocks a verdict rather than being absorbed
+mine = [("2026-08-20T13:00:00Z", "aaaaaaaa", 1, tp.FETCHED)]
+uncl = [("2026-08-20T12:00:00Z", "dddddddd", 2, tp.UNCLASSIFIED)]
+code, why = tp.verdict(mine + uncl, "aaaaaaaa")
+check("an UNCLASSIFIED path is a DECISION (exit 4), not an answer", code, 4)
+check("...and the undecided session is named", "dddddddd" in why, True)
+
+# ⚠ but it must not mask a real author
+both = uncl + [("2026-08-20T11:00:00Z", "eeeeeeee", 3, tp.AUTHORED)] + mine
+code, why = tp.verdict(both, "aaaaaaaa")
+check("a real author still attributes, with the gap flagged",
+      (code, "eeeeeeee" in why, "UNCLASSIFIED" in why), (0, True, True))
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)
