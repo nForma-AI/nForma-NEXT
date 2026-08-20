@@ -14,8 +14,12 @@ install something that loads cleanly and does not do what it says.
 > root. It does **not** read `~/.daintree` — that holds only `cli.sock` and `cli-control.json`.
 > Create `.daintree/recipes/` here; do not install anything into the home directory.
 >
-> **2. Copy `nforma-fleet.json` from `nForma-AI/nForma-NEXT`** and adapt it to this repo: the role
-> names, the `NFORMA_ROLE_PROMPT` paths, and the pane count. Keep the shape.
+> **2. Copy TWO files from `nForma-AI/nForma-NEXT`, not one:**
+> - `.daintree/recipes/nforma-fleet.json` — adapt the role names, the `NFORMA_ROLE_PROMPT` paths
+>   and the pane count to this repo. **Keep the shape.**
+> - `scripts/validate-recipe.py` — ⛔ **step 4 runs this. Without it that step silently does
+>   nothing and you proceed on an unvalidated recipe.** If you cannot bring it across, say so
+>   explicitly and treat step 5 as the minimum bar rather than skipping validation quietly.
 >
 > **3. ⛔ `args` MUST be a JSON string, never a list.** `"args": "-n DEV1"` is correct.
 > `"args": ["-n", "DEV1"]` is schema-valid, loads without an error, and **silently discards the
@@ -24,6 +28,7 @@ install something that loads cleanly and does not do what it says.
 >
 > **4. Run the validator and require exit 0:**
 > ```
+> test -f scripts/validate-recipe.py || echo "⛔ VALIDATOR ABSENT — step 4 established nothing"
 > python3 scripts/validate-recipe.py .daintree/recipes/*.json ; echo "exit=$?"
 > ```
 > ⚠ Read the exit code **without a pipe**. `| tail` returns tail's status, not the validator's.
