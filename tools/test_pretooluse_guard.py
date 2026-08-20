@@ -43,9 +43,24 @@ def sevs(cmd):
     return sorted(s for _, s in guard.check(cmd))
 
 
+
+# ⛔ HERMETIC CORPUS. This suite used to read the developer's real ~/.claude/projects, so
+# its assertions ("names its scope", "warns when unscoped") passed or failed according to
+# what this machine happened to hold — and failed on a clean runner, where they were
+# classified as "fleet-dependent". They are not: they are assertions about OUTPUT SHAPE,
+# and a fixture states the input they were always implicitly assuming.
+import importlib.util as _ilu
+_fx_spec = _ilu.spec_from_file_location(
+    "corpus_fixture", os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   "test_corpus_fixture.py"))
+_fx = _ilu.module_from_spec(_fx_spec)
+_fx_spec.loader.exec_module(_fx)
+FIXTURE_ENV = _fx.env()
+
+
 def run(*args, stdin=""):
     p = subprocess.run([sys.executable, TOOL, *args], input=stdin,
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, env=FIXTURE_ENV)
     return p.returncode, p.stdout + p.stderr
 
 

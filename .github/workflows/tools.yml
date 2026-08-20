@@ -11,12 +11,26 @@
 #   #1268 the cluster-spec guard, in-tree and wired into no workflow
 #   #1269 "a gate that never refuses looks identical to one that does not exist"
 #
-# ⚠ THE SPLIT BELOW IS LOAD-BEARING, NOT TIDINESS. 7 of the 19 suites pass on a developer
-# machine and FAIL in CI, because they assert on output that only exists when
-# ~/.claude/projects holds a real fleet — "names its scope", "prints project dir count".
-# The tools are right; those tests conflate *the tool works* with *this machine has a
-# fleet*. Verified by re-running every suite under an empty HOME, which is what a runner
-# is. Gating on all 19 would ship a born-red guard: exactly the finding in #1268.
+# ⚠ THE SPLIT BELOW IS LOAD-BEARING, NOT TIDINESS. Some suites pass on a developer machine
+# and FAIL on a runner, because they assert on output that only exists when a real corpus
+# is present — "names its scope", "prints project dir count". The tools are right; those
+# tests conflated *the tool works* with *this machine has a fleet*. Gating on all of them
+# would ship a born-red guard: exactly the finding in #1268.
+#
+# ⛔ AND THE FIRST VERSION OF THIS FILE GOT THE SPLIT WRONG, MEASURED BY ITS OWN FIRST RUN.
+# It said "7 of 19 fail on a runner", derived from re-running under an empty HOME. Run
+# 32345860216 reported **6**: `test_grant_check` PASSED. Its local failure was
+# `git fetch origin` finding no credentials — and a runner with actions/checkout HAS them.
+#
+# ⇒ An empty HOME is a proxy for a runner, and it conflates TWO causes: no fleet corpus
+# and no network. One of the seven was network. **A real number attached to the wrong
+# population**, the defect this repository has catalogued all week, committed in the
+# classification of the fix for it. The counts below are now from the CI run, not the proxy.
+#
+# ★ THREE OF THE SEVEN ARE NOW GATED, by giving them a fixture instead of the developer's
+# corpus (`tools/test_corpus_fixture.py`). Their assertions were about OUTPUT SHAPE all
+# along; reading the live corpus meant they passed according to what this machine happened
+# to hold, which is a green tick over "a working set is not a sample".
 
 name: tools
 
@@ -48,10 +62,11 @@ jobs:
           set -euo pipefail
           fail=0
           for t in \
-            test_ci_log_clean test_daintree_control test_discriminates \
-            test_fleet_context test_fleet_identity test_fleet_identity_exact \
-            test_fleet_state test_gh_complete test_named_referent_check \
-            test_pane_binding test_transition_report test_wake_yield ; do
+            test_ci_log_clean test_corpus_fixture test_daintree_control \
+            test_discriminates test_fleet_context test_fleet_identity \
+            test_fleet_identity_exact test_fleet_state test_gh_complete \
+            test_named_referent_check test_pane_binding test_pipe_exit_scan \
+            test_pretooluse_guard test_transition_report test_wake_yield ; do
             echo "── $t"
             python3 "tools/$t.py" || { echo "  ⛔ $t FAILED"; fail=1; }
           done
@@ -72,13 +87,13 @@ jobs:
       - name: unlisted suites (report only)
         if: always()
         run: |
-          listed="test_ci_log_clean test_daintree_control test_discriminates
-            test_fleet_context test_fleet_identity test_fleet_identity_exact
-            test_fleet_state test_gh_complete test_named_referent_check
-            test_pane_binding test_transition_report test_wake_yield
-            test_bootstrap_audit test_grant_check test_pipe_exit_scan
-            test_pretooluse_guard test_reference_check test_runmarker
-            test_stranded_branches"
+          listed="test_ci_log_clean test_corpus_fixture test_daintree_control
+            test_discriminates test_fleet_context test_fleet_identity
+            test_fleet_identity_exact test_fleet_state test_gh_complete
+            test_named_referent_check test_pane_binding test_pipe_exit_scan
+            test_pretooluse_guard test_transition_report test_wake_yield
+            test_bootstrap_audit test_grant_check test_reference_check
+            test_runmarker test_stranded_branches"
           # ⛔ COLLAPSE THE NEWLINES FIRST. The list above is written multi-line for
           # readability, so a name at a line end is followed by "\n  ", not " ", and a
           # `case " $listed " in *" $n "*` match misses it. Measured before this fix: it
@@ -116,11 +131,26 @@ jobs:
       # here as an open, unowned gap so the sentence is true.
       - name: fleet-dependent suites
         run: |
-          for t in test_bootstrap_audit test_grant_check test_pipe_exit_scan \
-                   test_pretooluse_guard test_reference_check test_runmarker \
-                   test_stranded_branches ; do
+          # ⛔ A REASON PER SUITE, because the blanket line this replaced said "expected
+          # without a fleet corpus" for `test_grant_check`, which then PASSED — and for two
+          # others whose dependency is the NETWORK, not the corpus. A guard that explains
+          # every failure with one sentence is a guard that has stopped distinguishing.
+          reason_bootstrap="needs a live Daintree pane registry; a fake would make its control pass without the thing it controls for"
+          reason_runmarker="injects a crash into pane-binding, which exits 2 on an empty registry BEFORE reaching the injection"
+          reason_reference="resolves a git blob sha — network"
+          reason_stranded="queries the gh API — network plus auth"
+          reason_grant="git fetch origin — MEASURED PASSING on a runner (run 32345860216); listed here only because a network-dependent gate is a flake source"
+          for t in test_bootstrap_audit test_grant_check test_reference_check \
+                   test_runmarker test_stranded_branches ; do
+            case "$t" in
+              test_bootstrap_audit)   why="$reason_bootstrap" ;;
+              test_runmarker)         why="$reason_runmarker" ;;
+              test_reference_check)   why="$reason_reference" ;;
+              test_stranded_branches) why="$reason_stranded" ;;
+              test_grant_check)       why="$reason_grant" ;;
+            esac
             echo "── $t"
-            python3 "tools/$t.py" && echo "  ok" || echo "  ⚠ failed — expected without a fleet corpus"
+            python3 "tools/$t.py" && echo "  ok" || echo "  ⚠ failed — $why"
           done
           echo
           echo "⛔ This job is continue-on-error. Its green is NOT evidence."
