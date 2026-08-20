@@ -134,19 +134,88 @@ def transcripts_for(root):
     slug = root.replace("/", "-")
     return glob.glob(os.path.expanduser(f"~/.claude/projects/{slug}/*.jsonl"))
 
-def role_of(path):
-    """The role a session was BOOTSTRAPPED as. A name can be changed; this cannot."""
+# ⚠ A `<system-reminder>` precedes the bootstrap in some transcripts and not
+# others, so "the first user record" is not "the launch prompt" -- taking it
+# verbatim reads a reminder as the bootstrap for a subset of panes.
+_REMINDER = re.compile(r"<system-reminder>.*?</system-reminder>", re.S)
+# ⛔ NOT `You are X\.` -- a period matched 0 of 9 live bootstraps, which all read
+# "You are DX, an IMPLEMENTER ...". A trailing comma is the norm, not the edge.
+# ⚠ TWO forms, both MEASURED in this fleet's live bootstraps, not imagined:
+#   "You are DX, an IMPLEMENTER ..."         5 of 9
+#   "You are taking over as MAINTAINER ..."  1 of 9
+# ⇒ This is a SNAPSHOT of observed phrasing, not a closed set. A bootstrap whose
+# wording is not here yields "" -- read it, recognised no role -- which is why ""
+# and None are different values.
+_ROLE = re.compile(r"You are (?:taking over as )?([A-Z][A-Z0-9]*)\b")
+
+BOOTSTRAP_WINDOW = 40
+
+
+def _bootstrap_text(path):
+    """The launch prompt's text, or None if this file does not contain one.
+
+    ⛔ Bounded to the first records ON PURPOSE. Scanning the whole file is what
+    made the previous version wrong: see role_of.
+    """
     try:
         with open(path, errors="replace") as fh:
-            for line in fh:
+            for i, line in enumerate(fh):
+                if i > BOOTSTRAP_WINDOW:
+                    return None
                 if '"type":"user"' not in line and '"type": "user"' not in line:
                     continue
-                m = re.search(r"You are ([A-Z]+[0-9]*)\.", line)
-                if m:
-                    return m.group(1)
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                c = (rec.get("message") or {}).get("content")
+                if isinstance(c, list) and any(
+                        isinstance(b, dict) and b.get("type") == "tool_result" for b in c):
+                    continue
+                if isinstance(c, str):
+                    t = c
+                elif isinstance(c, list):
+                    t = "".join(b.get("text", "") for b in c
+                                if isinstance(b, dict) and b.get("type") == "text")
+                else:
+                    t = ""
+                t = _REMINDER.sub("", t).strip()
+                if t:
+                    return t
     except OSError:
         return None
     return None
+
+
+def role_of(path):
+    """The role a session was BOOTSTRAPPED as. A name can be changed; this cannot.
+
+    ⛔ THE PROMISE ABOVE WAS FALSE IN EVERY LIVE CASE. The previous version scanned
+    the WHOLE FILE for `You are X.` and took the first hit anywhere. Measured over
+    the nine active fleet transcripts: it resolved 2, and NEITHER came from a
+    bootstrap.
+
+      e4a7769d -> "DEV2"   from record 17155, a CORRECTION sent a day later:
+                           "your identity was wrong ... You are DEV2". Its actual
+                           bootstrap reads "You are taking over as MAINTAINER".
+      6fc2dca8 -> "DEVOPS" from record 3132, inside a QUOTATION:
+                           `3. "TEAMLEAD — ROLE ESTABLISHED. You are DEVOPS..."`
+
+    ⇒ So it returned the mutable thing it promised immunity from, and a MENTION
+    rather than a USE. The other seven returned None, which the code also uses for
+    "could not read the file" -- one value for two states.
+
+    ⚠ Three outcomes now, never two:
+      None  the file could not be read, OR holds no launch prompt at all (a wake
+            at the head means the launch is in another file) -- ESTABLISHED NOTHING
+      ""    a launch prompt was read and names no role
+      "DX"  a role, taken from the bootstrap record and nowhere else
+    """
+    t = _bootstrap_text(path)
+    if t is None:
+        return None                     # ⛔ unreadable or no launch prompt here
+    m = _ROLE.search(t)
+    return m.group(1) if m else ""      # read it; no role in it
 
 def last_read_ts(path, blob_paths):
     """The NEWEST timestamp at which this session read any of these files, or None.

@@ -63,7 +63,7 @@ jobs:
           fail=0
           for t in \
             test_ci_log_clean test_corpus_fixture test_daintree_control \
-            test_discriminates test_exists_anywhere test_fleet_context \
+            test_discriminates test_doctrine_watch test_exists_anywhere test_fleet_context \
             test_fleet_identity \
             test_fleet_identity_exact test_fleet_state test_gh_complete \
             test_memory_index_check \
@@ -90,7 +90,7 @@ jobs:
         if: always()
         run: |
           listed="test_ci_log_clean test_corpus_fixture test_daintree_control
-            test_discriminates test_exists_anywhere test_fleet_context
+            test_discriminates test_doctrine_watch test_exists_anywhere test_fleet_context
             test_fleet_identity
             test_fleet_identity_exact test_fleet_state test_gh_complete
             test_memory_index_check
