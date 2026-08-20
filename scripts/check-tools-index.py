@@ -29,6 +29,38 @@ numeral, or check it. If a future edit drops it, that is the other valid remedy 
 so a missing numeral is reported as NOT CHECKED rather than as a failure. The row and prose legs
 are unconditional and are what actually carries this check.
 
+⛔ THE POPULATION WAS A GLOB, AND THE GLOB DID NOT RECURSE. Measured 2026-08-20 (#307):
+`tools/*.py` saw 32 instruments; `tools/**/*.py` holds 84 files. Every file in `tools/teamlead/`
+— including `waker.py`, the process that decides when panes get woken — was invisible to the
+index that exists to surface it, and three successive TEAMLEADs did the work those instruments
+already did. ⇒ **A checker whose population is narrower than its subject reports clean about the
+part it can see, and the part it cannot see is exactly where the drift accumulates.**
+
+⚠ WIDENING THE GLOB ALONE WOULD HAVE BEEN WORSE THAN THE BLINDNESS. `tools/**/*.py` demands a
+fleet-instrument row for `w1226.py` (a verbatim copy of another repository's request handler) and
+for six tests written against issue numbers this repository has never had. That is this file's own
+NOT_AN_INSTRUMENT warning at directory scale: an index made complete by admitting things that are
+not instruments is true about a subject it has damaged. And `tools/architect-sweeps/README.md`
+states in writing that it sits **outside this population by construction** — a blanket recursion
+silently overrules another role's documented decision.
+
+⇒ SO THE POPULATION IS PER-DIRECTORY, AND EACH DIRECTORY DECLARES ITS OWN INDEX.
+      tools/*.py|*.sh          the fleet instruments — table row + prose entry + non-empty
+      tools/<sub>/*.py|*.sh    NAMED in tools/<sub>/README.md, and `<sub>/` NAMED in tools/README.md
+      tools/testdata/          fixtures — excluded by directory, and PRINTED on every run
+
+⚠ THE SUBDIRECTORY LEG IS DELIBERATELY WEAKER and saying so is load-bearing: it asks whether a
+file is *named*, never whether the naming is *true*. A directory can pass this check with a
+README that describes its contents wrongly. It is the floor that makes a file findable, not a
+claim that anyone has read it — and the top-level three-surface contract is not being extended
+downward, because these subdirectories hold snapshots of other people's toolkits, not instruments
+this fleet built and measured.
+
+⚠ NON-`.py` INSTRUMENTS ARE NOW IN THE POPULATION (`.sh`). Before this, `merge-watch.sh` had a
+row and a prose entry that nothing checked, and `boxwatch.sh`/`dt.sh`/`fleetwatch.sh` were
+uncounted. The old output said so on every run — "a shell or non-.py instrument is invisible
+here" — which made it a **stated and unfixed** gap for a day rather than an unknown one.
+
 Exit: 0 every surface agrees with the directory
       1 at least one surface disagrees
       2 established nothing (no tools found, no rows found, or the index is unreadable)
@@ -50,11 +82,18 @@ WORDS = {w: i for i, w in enumerate(
 # see is how a checker's population quietly stops matching its subject, which is the defect this
 # file exists against — and a real instrument mis-named `test_*.py` would be silently dropped
 # unless a reader can see what was removed. (Found by TEAMLEAD, running it by hand after a merge.)
-NOT_AN_INSTRUMENT = re.compile(r"^(?:test_.+|.+_test)\.py$")
+NOT_AN_INSTRUMENT = re.compile(r"^(?:test_.+|.+_test)\.(?:py|sh)$")
 
-ROW = re.compile(r"^\|\s*`([A-Za-z0-9_.-]+\.py)`\s*\|", re.M)
+# ⛔ Fixtures are excluded BY DIRECTORY and the exclusion is printed, for the same reason
+# NOT_AN_INSTRUMENT is printed. `tools/testdata/` holds `pipe-exit-positive.sh` — an input a
+# tool reads, not a tool. Demanding a README for it would push a maintainer to write one, which
+# is how a fixture directory becomes indistinguishable from an instrument directory.
+FIXTURE_DIRS = {"testdata", "__pycache__"}
+INSTRUMENT_SUFFIX = re.compile(r"\.(?:py|sh)$")
+
+ROW = re.compile(r"^\|\s*`([A-Za-z0-9_.-]+\.(?:py|sh))`\s*\|", re.M)
 # `**`name.py`** — …` — a prose entry opening the "what each one is for" paragraph.
-PROSE = re.compile(r"^\*\*`([A-Za-z0-9_.-]+\.py)`\*\*", re.M)
+PROSE = re.compile(r"^\*\*`([A-Za-z0-9_.-]+\.(?:py|sh))`\*\*", re.M)
 # The hand-maintained count in the opening sentence: "Six tools, each built because …"
 # ⛔ The alternation is built from WORDS, never from `[A-Za-z]+`. A permissive word match makes
 # this leg conditional on deleting the NOUN rather than the COUNT: "The tools, …" would match,
@@ -76,6 +115,24 @@ LOOSE = re.compile(r"\b(?:(" + "|".join(list(WORDS)[1:]) + r")|(\d+))\b[^.\n]{0,
                    re.I)
 
 
+def names_dir(text, name):
+    """Does an index REFER to a subdirectory, in code voice?
+
+    ⚠ Backticks are required on purpose. `teamlead` appears in ordinary prose all over this
+    repository — it is a role name — so a bare substring test would report every index as
+    naming a directory it has never mentioned. The check must not be satisfiable by the word.
+    """
+    return re.search(r"`(?:tools/)?" + re.escape(name) + r"/?`", text) is not None
+
+
+def instruments_in(d):
+    """(instruments, excluded-as-tests) for one directory, non-recursive."""
+    every = sorted(p.name for p in d.iterdir()
+                   if p.is_file() and INSTRUMENT_SUFFIX.search(p.name))
+    return ([n for n in every if not NOT_AN_INSTRUMENT.match(n)],
+            [n for n in every if NOT_AN_INSTRUMENT.match(n)])
+
+
 def parse_count(tok):
     if tok.isdigit():
         return int(tok)
@@ -93,9 +150,8 @@ def check(root):
     if not index.is_file():
         return 2, [f"  VOID  {index} is not readable — established nothing"], True
 
-    every = sorted(p.name for p in tools_dir.glob("*.py"))
-    actual = [n for n in every if not NOT_AN_INSTRUMENT.match(n)]
-    excluded = [n for n in every if NOT_AN_INSTRUMENT.match(n)]
+    actual, excluded = instruments_in(tools_dir)
+    every = actual + excluded
     text = index.read_text(encoding="utf-8")
     rows = ROW.findall(text)
     prose = PROSE.findall(text)
@@ -176,10 +232,55 @@ def check(root):
         else:
             out.append(f"  ok    header count agrees ({stated})")
 
+    # ⛔ SUBDIRECTORIES — the #307 leg. A directory the top index never names is a directory
+    # a reader is told by omission does not exist, which is the same failure as a missing row
+    # one level up. Both halves are required: the top index must NAME the directory, and the
+    # directory must NAME its own contents. Either alone leaves instruments unfindable.
+    fixtures = []
+    for d in sorted(p for p in tools_dir.iterdir() if p.is_dir()):
+        if d.name in FIXTURE_DIRS or d.name.startswith("."):
+            fixtures.append(d.name)
+            continue
+        sub_actual, sub_excluded = instruments_in(d)
+        if not sub_actual and not sub_excluded:
+            continue
+        out.append(f"  tools/{d.name}/: {len(sub_actual)} instrument(s)"
+                   f"  ({', '.join(sub_actual) if sub_actual else 'none'})")
+        if sub_excluded:
+            out.append(f"  ----  excluded there as tests: {', '.join(sub_excluded)}")
+        if not sub_actual:
+            continue
+        if not names_dir(text, d.name):
+            failed = True
+            out.append(f"  FAIL  tools/README.md never names `{d.name}/` — the top index tells a"
+                       f" reader by omission that its {len(sub_actual)} instrument(s) do not exist")
+        sub_index = d / "README.md"
+        if not sub_index.is_file():
+            failed = True
+            out.append(f"  FAIL  tools/{d.name}/ holds instruments and has NO README.md —"
+                       f" nothing indexes them at any level")
+            continue
+        sub_text = sub_index.read_text(encoding="utf-8")
+        sub_missing = [n for n in sub_actual if f"`{n}`" not in sub_text]
+        sub_empty = [n for n in sub_actual if (d / n).stat().st_size == 0]
+        if sub_missing:
+            failed = True
+            out.append(f"  FAIL  tools/{d.name}/README.md never names: {', '.join(sub_missing)}")
+        if sub_empty:
+            failed = True
+            out.append(f"  FAIL  named but EMPTY (0 bytes): "
+                       + ", ".join(f"{d.name}/{n}" for n in sub_empty))
+        if not sub_missing and not sub_empty:
+            out.append(f"  ok    tools/{d.name}/README.md names all {len(sub_actual)}, none empty")
+    out.append("  ----  excluded as fixture directories: "
+               + (", ".join(fixtures) if fixtures else "none")
+               + "  (an input a tool reads is not a tool)")
+
     # Every tool prints what its numbers do NOT establish, on every run.
     out.append("  note  this checks PRESENCE of a row, never whether the row is ACCURATE —"
                " a wrong description passes")
-    out.append("  note  only tools/*.py is indexed; a shell or non-.py instrument is invisible here")
+    out.append("  note  a SUBDIRECTORY instrument is held to a WEAKER contract than a top-level"
+               " one: NAMED in its own README, not row + prose + count. Findable, not reviewed.")
     # ⛔ The SUMMARY WORD must not assert more than the run measured. `clean` folds VERIFIED
     # together with ESTABLISHED-NOTHING, which is criterion 3's defect in goals/README.md — and
     # printing the unchecked leg above does not fix it, because a reader takes the summary.
@@ -289,6 +390,82 @@ def selftest():
         print(f"  {'ok  ' if hit else 'FAIL'}  an unchecked leg reports PARTIAL, not clean "
               f"(got rc={rc} partial={partial})")
 
+        # ⛔ #307's KNOWN-NEGATIVE, and the condition TEAMLEAD gated the fix on: a tool planted
+        # in a NEW SUBDIRECTORY must be REPORTED, not silently outside the population. Under the
+        # old `tools/*.py` glob every assertion in this block passes at rc == 0 — which is what
+        # made the blindness survive 84 files and three role-holders. A fix to a POPULATION is
+        # unverified until the check has been shown to fail on something the old population
+        # could not see; agreeing with `ls` again proves only that `ls` did not move.
+        (t / "README.md").write_text(good)
+        sub = t / "newdir"
+        sub.mkdir()
+        (sub / "planted.py").write_text("#\n")
+        rc, lines, _ = check(root)
+        hit = rc == 1 and any("newdir" in l and "never names" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  planted subdir: a directory the top index never "
+              f"names exits 1 and names it (got {rc})")
+
+        # ⚠ naming the directory is not indexing its contents — the second half must still fire
+        (t / "README.md").write_text(good + "\nSee `newdir/` for more.\n")
+        rc, lines, _ = check(root)
+        hit = rc == 1 and any("NO README.md" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a NAMED subdir with no index of its own still "
+              f"exits 1 (got {rc})")
+
+        # ...and an index that exists but omits the tool is #27's drift, one level down
+        (sub / "README.md").write_text("# newdir\n\nSome instruments live here.\n")
+        rc, lines, _ = check(root)
+        hit = rc == 1 and any("never names: planted.py" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a subdir README that omits its own tool exits 1 "
+              f"and names it (got {rc})")
+
+        # ...and the repaired state PASSES, so the leg is not merely always-red
+        (sub / "README.md").write_text("# newdir\n\n`planted.py` — a planted instrument.\n")
+        rc, lines, _ = check(root)
+        hit = rc == 0 and any("names all 1" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  known-positive: a fully indexed subdir exits 0 "
+              f"(got {rc})")
+
+        # ⛔ THE WORD ALONE MUST NOT SATISFY IT. Every subdirectory here is named after a role,
+        # and role names are the most common nouns in this repository — a bare substring test
+        # would report the index as naming a directory it has never referred to.
+        (t / "README.md").write_text(good + "\nThe newdir experiment is over.\n")
+        rc, lines, _ = check(root)
+        hit = rc == 1 and any("never names `newdir/`" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  an unbackticked mention does not count as naming "
+              f"the directory (got {rc})")
+        (t / "README.md").write_text(good + "\nSee `newdir/` for more.\n")
+
+        # a FIXTURE directory is excluded by name, and the exclusion is VISIBLE
+        fx = t / "testdata"
+        fx.mkdir()
+        (fx / "positive.sh").write_text("#\n")
+        rc, lines, _ = check(root)
+        hit = rc == 0 and any("fixture directories: testdata" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  testdata/ is excluded AND named in the output "
+              f"(got {rc})")
+
+        # ⛔ the `.sh` widening's own known-negative. Before this, a top-level shell instrument
+        # had no row requirement at all: the run PRINTED that it was invisible and exited 0.
+        (t / "delta.sh").write_text("#\n")
+        rc, lines, _ = check(root)
+        hit = rc == 1 and any("delta.sh" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a top-level .sh with no row exits 1 and names it "
+              f"(got {rc})")
+        (t / "delta.sh").unlink()
+
+        import shutil
+        shutil.rmtree(sub)
+        shutil.rmtree(fx)
+        (t / "README.md").write_text(good)
+
         # instrument failure must not read as a pass
         (t / "README.md").write_text("# Fleet instruments\n\nnothing here\n")
         rc, _, _ = check(root)
@@ -300,7 +477,11 @@ def selftest():
 def main(argv):
     root = Path(__file__).resolve().parent.parent
     args = argv[1:]
-    if args == ["--selftest"]:
+    # ⚠ BOTH SPELLINGS. Most instruments here take `--self-test`; this one took `--selftest`,
+    # and a reviewer reaching for the majority spelling got the VOID path — an unrecognised
+    # argument — which is indistinguishable from a clean refusal unless you read stderr.
+    # `tools/index-watch.py` calls `--selftest`, so it stays; the alias is added, not swapped.
+    if args in (["--selftest"], ["--self-test"]):
         return selftest()
     # ⚠ An unrecognised argument must not be silently ignored into a pass (ARCHITECT, PR #47).
     if args:

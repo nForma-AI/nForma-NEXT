@@ -167,6 +167,37 @@ of them, which is why it is stated here rather than in a docstring.
 | `close-condition-scan.py` | which open issues carry no close condition — and which hide one in a comment? | 0 every open issue has one **in its body** · 1 `NONE` or `BURIED` found · **2 established nothing (failed query, empty board, or a truncated reading)** · **3 known-positive failed** · `--self-test` `--states` |
 | `merge-watch.sh` | did a merge leave work behind, or drift the worktrees? | emits FINDING · VOID · UNDOCUMENTED; silence means ran-and-found-nothing |
 
+## Subdirectories — findable, and deliberately unadopted
+
+⛔ **`tools/*.py` did not recurse, and 22 instruments sat in the blind spot.** #307: the index
+that exists to make instruments findable saw **32** files while **84** were on disk, and three
+successive TEAMLEADs hand-rolled work `teamlead/waker.py` had already measured and committed —
+including *"a literal `/compact` executes; text in a pane is not an action taken"*, which was
+re-derived from scratch an hour after being merged. ⇒ `scripts/check-tools-index.py` now
+enumerates `tools/**/*.py` **and `*.sh`**; nothing under `tools/` is outside its population.
+
+⚠ **These directories are held to a WEAKER contract than the table above, on purpose.** A
+subdirectory instrument must be **named in its own directory's `README.md`**, and the directory
+must be named here. That is *findable*. It is **not** a row, **not** a prose entry, and **not a
+claim that anyone has run the file.** The three-surface contract is not extended downward,
+because widening a population is not the same as adopting its contents.
+
+| directory | what it holds |
+|---|---|
+| `teamlead/` | 22 scripts lifted **byte-identical** from a TEAMLEAD scratchpad (#138) — the fleet monitors that had been running untracked. Load-bearing: `waker.py`, `guard.py`, `classify_fleet.py`; running continuously at copy time: `fleetwatch.sh`, `mergeready.py`, `repowatch.py`. |
+| `architect-sweeps/` | 3 one-shot ARCHITECT measurements, made reproducible after their inline heredocs died with the pane. ⚠ **Sweeps, not instruments** — none is a control, none has a known-negative. |
+
+⛔ **DO NOT PROMOTE EITHER INTO THE TABLE ABOVE.** Measured 2026-08-20 at `280ac70`: **11 of the
+22 files in `teamlead/` name another repository in their own source** — `DigitalFrontier-infra`,
+`Borduas-Holdings/Blazing-Back`, or a `control-plane/` path — and `w1226.py` is a verbatim copy
+of another service's request handler, not a tool at all. Giving those fleet-instrument rows would
+make the index complete **by damaging the thing the index describes**, which is exactly what
+`NOT_AN_INSTRUMENT` exists against one directory up. ⇒ Findable here, and unadopted.
+
+⚠ `testdata/` is excluded **by directory**, and the exclusion is printed on every run. An input a
+tool reads is not a tool — and demanding a README for a fixture directory is how a fixture
+directory stops being distinguishable from an instrument one.
+
 ## What each one is for
 
 **`fleet-context.py`** — reports per-session context depth so "compact this agent" and
