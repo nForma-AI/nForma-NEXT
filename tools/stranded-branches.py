@@ -133,6 +133,46 @@ def merged_refs(limit=DEFAULT_LIMIT):
     return rows, None, len(rows) >= limit
 
 
+def blob_at(rev, path):
+    """Blob oid of `path` at `rev`, or None when the path is absent there.
+
+    ⚠ None is a real value here, not a failure: absent-at-both-ends is EQUAL, which
+    is how a landed DELETION reads. Collapsing None into "unreadable" would make
+    every merged deletion look unlanded forever.
+    """
+    rc, out, _ = sh("git", "rev-parse", f"{rev}:{path}")
+    return out if rc == 0 else None
+
+
+def touched_paths(shas):
+    """Union of paths the given commits changed. Empty set means ESTABLISHED NOTHING."""
+    paths = set()
+    for sha in shas:
+        rc, out, _ = sh("git", "diff-tree", "--no-commit-id", "--name-only", "-r", sha)
+        if rc != 0:
+            return set()            # one unreadable commit voids the whole union
+        paths.update(ln for ln in out.splitlines() if ln)
+    return paths
+
+
+def content_upstream(remote, shas):
+    """True when every path those commits touched is byte-identical at BASE.
+
+    ⇒ This establishes LANDEDNESS, never AUTHORSHIP. If BASE and the branch hold the
+    same bytes the work is not lost, whoever put them there. Direction stays outside
+    what this tool can claim, exactly as the report footer says.
+
+    ⛔ The empty path set must return False, not True. "Every element of {} matches"
+    is vacuously true, and a state that reports CONTENT-UPSTREAM after examining zero
+    paths is the empty-population false pass this repository keeps re-learning: a
+    control whose silence is indistinguishable from its success.
+    """
+    paths = touched_paths(shas)
+    if not paths:
+        return False
+    return all(blob_at(remote, q) == blob_at(BASE, q) for q in paths)
+
+
 def stranded(rows):
     """(ref, sha, count, prs) for every merged-PR ref that still has unmerged commits.
 
@@ -164,13 +204,19 @@ def stranded(rows):
         # and marks "-" when an equivalent change is already upstream.
         rc, out, _ = sh("git", "cherry", BASE, remote)
         if rc != 0:
-            found.append((ref, sha, None, None, prs))   # unreadable is not zero
+            found.append((ref, sha, None, None, prs, False))  # unreadable is not zero
             continue
         marks = [ln[:1] for ln in out.splitlines() if ln[:1] in "+-"]
         if not marks:
             continue                                    # nothing ahead: the good case
         unmatched = marks.count("+")
-        found.append((ref, sha, len(marks), unmatched, prs))
+        # ⇒ Patch id answered "no equivalent commit". That is not the same question as
+        # "is this work upstream". Two branch commits squash-merged into ONE upstream
+        # commit can never match by patch id — the diffs are different sizes — yet the
+        # bytes are all there. Ask the content question before reporting an absence.
+        plus = [ln[2:].strip() for ln in out.splitlines() if ln[:1] == "+"]
+        landed = content_upstream(remote, plus) if unmatched else False
+        found.append((ref, sha, len(marks), unmatched, prs, landed))
     return found, checked, deleted, unfetched
 
 
@@ -275,9 +321,12 @@ def main():
               "ESTABLISHED NOTHING. Expected at least one surviving ref; a fetch or prune "
               "failure looks exactly like a tidy repository.", file=sys.stderr)
         return 2
-    for ref, sha, cnt, unmatched, prs in found:
+    for ref, sha, cnt, unmatched, prs, landed in found:
         if cnt is None:
             state, n = "UNREADABLE", "-"
+        elif unmatched and landed:
+            # Patch ids diverged but every touched path is byte-identical at BASE.
+            state, n = "CONTENT-UPSTREAM", f"{unmatched} of {cnt} commit(s), content landed"
         elif unmatched == 0:
             # Every commit has a patch-equivalent upstream. The sha is unreachable
             # and the WORK landed. Reported, never called stranded.
@@ -288,11 +337,18 @@ def main():
               f"{'s' if len(prs) > 1 else ''} {', '.join('#%d' % p for p in prs)})")
     # ⚠ Every ref accounted for, in named buckets. A denominator that silently
     # excludes part of its population is how "0 stranded" gets believed.
-    unmatched_refs = [f for f in found if f[3] not in (0,) ]
+    # ⚠ CONTENT-UPSTREAM leaves the unmatched bucket ON PURPOSE. The footer names this
+    # tool's preferred error direction — a false "lost" makes a reader re-do work that
+    # already exists — and byte equality is evidence, not a guess.
+    unmatched_refs = [f for f in found if f[3] not in (0,) and not f[5]]
     print(f"\n{len(unmatched_refs)} ref(s) with no upstream patch-match, of {checked} examined; "
           f"{len(deleted)} ref(s) deleted on merge (nothing to examine); "
           f"{checked + len(deleted)} of {len(by_ref_count(rows))} merged-PR refs accounted for.",
           file=sys.stderr)
+    print("⇒ CONTENT-UPSTREAM: patch ids diverged, but every path those commits touched is "
+          f"byte-identical at {BASE}, so the WORK is upstream even though the OBJECTS are not. "
+          "It is what a squash-merge of two commits into one looks like. ⛔ It establishes "
+          "LANDEDNESS ONLY — never authorship, never direction.", file=sys.stderr)
     print("⛔ THE STATES ARE ASYMMETRIC: EQUIVALENT-UPSTREAM proves the work landed; "
           "NO-UPSTREAM-MATCH proves NOTHING either way. This tool's own row "
           "(devops/stranded-branches) is the standing example — it reads NO-UPSTREAM-MATCH "
