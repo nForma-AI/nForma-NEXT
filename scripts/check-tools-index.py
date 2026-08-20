@@ -958,6 +958,43 @@ def selftest():
         print(f"  {'ok  ' if hit else 'FAIL'}  ack 4/5: an ack file parsing to ZERO entries says "
               f"the FORMAT CHANGED, not 'nothing is acknowledged' (got {rc})")
 
+        # ⛔ THE STATED LIMIT, DEMONSTRATED RATHER THAN CLAIMED — and this control asserts the
+        # tool gets it WRONG, on purpose. `ESTATE` is a CLOSED LIST of five names, so a novel
+        # estate is not detected. TEAMLEAD refuted the opposite claim by execution: a plant of
+        # "/Users/…/Contoso-Widgets/state" in executable position exited 0 (#348).
+        #
+        # ⚠ AND NO OTHER CONTROL HERE COULD HAVE FOUND THAT, because every one plants a name
+        # drawn FROM the list. A control built out of an enumeration cannot test whether the
+        # enumeration is complete — the same shape as a discriminator that reports N of N.
+        #
+        # ⇒ When #348's derived predicate lands, THIS CONTROL FAILS. That is the point: the
+        # failure is the notification, and whoever sees it reads the paragraph above.
+        # ⚠ CLEAN STATE FIRST. A stated-limit control asserting an ABSENCE is worthless if some
+        # earlier case is already reddening the run — "not quarantined" and "not reached" print
+        # the same. So the assertion is POSITIVE: the novel file must land in the NAMING
+        # population and be reported as missing a row, which can only happen if quarantine
+        # declined it.
+        one.unlink(); two.unlink()
+        ack.unlink()
+        (t / "README.md").write_text(good)
+        novel = t / "novel_estate.py"
+        novel.write_text('#\nR = "/Users/someone/code/Contoso-Widgets/state"\n')
+        rc, lines, _ = check(root)
+        quarantined_it = any("novel_estate.py" in l and "->" in l for l in lines)
+        in_population = any("no table row for" in l and "novel_estate.py" in l for l in lines)
+        hit = rc == 1 and in_population and not quarantined_it
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  STATED LIMIT: a NOVEL estate name is NOT detected "
+              f"and lands in the NAMING population — the vocabulary is a closed list (#348). "
+              f"⚠ THIS CONTROL FAILS WHEN THAT IS FIXED, by design (got {rc})")
+        novel.unlink()
+        # ⚠ RESTORE BOTH. The next case unlinks `one` AND `two`; recreating only `one` made it
+        # raise on a file I had already removed — the same shared-fixture bite recorded above the
+        # gamma restore. A fixture is shared state and my insertion is not its last reader.
+        ack.write_text(HDR + row("tainted.py"))
+        for f in (one, two):
+            f.write_text('#\nR = "Borduas-Holdings/Blazing-Back"\n')
+
         # ...and an ack file with nothing left to acknowledge is stale in the other direction
         one.unlink(); two.unlink()
         ack.write_text(HDR + row("tainted.py"))
