@@ -235,8 +235,17 @@ def main():
     for l in lines:
         print(l)
 
-    # ⛔ #353, and it is TWO-SIDED: a probe must demonstrate, ON THIS RUN, that it can
-    # return the answer it did NOT return. ARCHITECT ruled this CLASS A (#357).
+    # ⛔ THE RULE (#353, docs/DEFECT-CLASSES.md): a probe must demonstrate, ON THIS RUN,
+    # that it can return the answer it did NOT return.
+    #
+    # ⚠ It has NO class letter, and that is deliberate. An earlier revision of this comment
+    # cited "CLASS A (#357)" — I relayed that from a PR TITLE without reading the merged
+    # body, which WITHDRAWS it: "⛔ WITHDRAWN: I ruled this 'Class A' and DEV3 refuted it
+    # before it merged." ⇒ A PR title states an intent; only the merged body is a record of
+    # what landed. ★ ARCHITECT's reason for withdrawing is the part to carry: a class you
+    # can only apply by being ALERT is worth less than a test you can RUN — which is why
+    # DEV2 and DEV3 wrote it as a rule and claimed no letter, and why the withdrawal cost
+    # nothing. tools/probe-validity.py (#371) is that test for corpus probes.
     #
     # ⚠ The half that is easy to miss is the one DEV2 found: a probe that always says
     # PRESENT is exactly as broken as one that wrongly says ABSENT, and HARDER to notice,
