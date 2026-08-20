@@ -133,8 +133,13 @@ def main():
     # anything else, so `--zzz` was silently dropped and this tool went on to run a full
     # NETWORK sweep — answering a question nobody asked, at real cost. A control whose
     # invocation cannot fail is not being invoked. (#321's shape.)
-    rc, _ = run("--zzz-not-a-flag")
-    f += not check("unknown flag exits 2", rc, 2)
+    # ⛔ NAME THE FLAG IN THE ASSERTION, not just the exit code. Mutation-testing the
+    # sibling suite showed exit 2 is reachable by a SECOND cause — a tool that ignores the
+    # bad flag can exit 2 as VOID from an empty population — so a code-only check passes
+    # while the defect is live.
+    rc, out = run("--zzz-not-a-flag")
+    f += not check("unknown flag refused, by name",
+                   (rc, "unrecognised flag" in out and "--zzz-not-a-flag" in out), (2, True))
     rc, _ = run("--self-test", "--zzz-not-a-flag")
     # ⚠ The combination is the nasty one: a REAL flag plus a typo used to exit 0, so the
     # caller got a clean control result that had silently ignored half its invocation.
