@@ -78,12 +78,22 @@ def session_depth(path):
                     names.append(n)
             msg = rec.get("message")
             if isinstance(msg, dict) and msg.get("role") == "assistant" and msg.get("usage"):
-                last = msg["usage"]
                 u = msg["usage"]
-                recent.append(u.get("input_tokens", 0) + u.get("cache_read_input_tokens", 0)
-                              + u.get("cache_creation_input_tokens", 0) + u.get("output_tokens", 0))
+                total = (u.get("input_tokens", 0) + u.get("cache_read_input_tokens", 0)
+                         + u.get("cache_creation_input_tokens", 0) + u.get("output_tokens", 0))
+                # ⛔ A zero is not a measurement of zero. Assistant records exist whose
+                # usage block is present but entirely zero (an errored or cancelled turn).
+                # Measured: one such record was a session's ONLY reading, and the session
+                # rendered as "0 tokens, 0.0%" — the safest-looking row in the table, for
+                # a session whose depth is in fact UNKNOWN. A second dragged a window's
+                # minimum to 0, which moved the cluster midpoint by 46k and split one
+                # compaction into what looked like two.
+                if total <= 0:
+                    continue
+                last = total
+                recent.append(total)
     if last is None:
-        return names, None, False
+        return names, None, "no-reading"
 
     # ⛔ One transcript file is NOT one agent. Measured: two panes wrote to a single
     # .jsonl under one consistent sessionId, producing two interleaved depth series —
@@ -92,23 +102,37 @@ def session_depth(path):
     # for that file was unattributable. Nothing in the file declares the split; the
     # sessionId field is present, stable, and wrong to use as an identity.
     #
-    # Detect it: if recent readings fall into two clusters separated by a large gap and
-    # BOTH recur, the file is shared and no single number describes it.
+    # ⛔ THE TEST MUST BE TIME-AWARE. The previous rule was "both clusters hold >=3
+    # readings", and its own comment claimed that excluded a compaction. It does not:
+    # a compaction leaves the pre-compaction tail and the post-compaction head in the
+    # same window, both populated, and the file is flagged. Measured on the live fleet:
+    # 5 of 5 raised flags were compactions and 0 were shared files — a 100% false
+    # positive rate, on the one event every long session eventually has. It fired on
+    # ARCHITECT and on this tool's own session within minutes of each compacting.
+    #
+    # The two shapes are separable by ORDER, which the count throws away:
+    #   compaction  H H H H l l l l l l      one crossing, and never back
+    #   interleaved H H l H l l H H l H      many crossings, both series still live
+    # Measured control, real and from this same population: e4a7769d carries a window
+    # with 14 crossings between a ~350k and an ~850k series. Any replacement must keep
+    # flagging that one — silencing a false positive by creating a false negative is
+    # the worse trade, because an unattributable depth then reports as a fact.
     window = recent[-40:]
-    ambiguous = False
+    shape = "single"
     if len(window) >= 8:
         lo, hi = min(window), max(window)
         if hi - lo > 100_000:
             mid = (lo + hi) / 2
-            below = [v for v in window if v < mid]
-            above = [v for v in window if v >= mid]
-            # both sides populated and recurring => interleaved, not a compaction
-            ambiguous = len(below) >= 3 and len(above) >= 3
+            side = [v >= mid for v in window]
+            if side.count(True) >= 3 and side.count(False) >= 3:
+                crossings = sum(1 for i in range(1, len(side)) if side[i] != side[i - 1])
+                # A step down, taken once, is a compaction: the last reading is then the
+                # CORRECT post-compaction depth and must be reported, not suppressed.
+                # Returning to the high cluster after leaving it is what no single
+                # session does.
+                shape = "interleaved" if crossings >= 3 else "compaction-step"
 
-    return names, (last.get("input_tokens", 0)
-                   + last.get("cache_read_input_tokens", 0)
-                   + last.get("cache_creation_input_tokens", 0)
-                   + last.get("output_tokens", 0)), ambiguous
+    return names, last, shape
 
 
 def scan(active_within_s, limit):
@@ -118,7 +142,7 @@ def scan(active_within_s, limit):
     directory, and a single-directory scan silently omits it. Measured — a pane at
     97.7% was missed exactly this way.
     """
-    rows, unreadable = [], 0
+    rows, unreadable, no_reading = [], 0, 0
     roots = glob.glob(os.path.expanduser("~/.claude/projects/*"))
     if not roots:
         return None, 0, 0                      # nothing to scan is not "all clear"
@@ -128,13 +152,16 @@ def scan(active_within_s, limit):
                 idle_s = time.time() - os.path.getmtime(path)
                 if idle_s > active_within_s:
                     continue
-                names, depth, shared = session_depth(path)
+                names, depth, shape = session_depth(path)
             except Exception:
                 unreadable += 1
                 continue
             if depth is None:
+                # Active file, no usable reading. Not zero, not idle, not readable-and-low.
+                no_reading += 1
                 continue
-            rows.append({"shared_file": shared,
+            rows.append({"shared_file": shape == "interleaved",
+                         "shape": shape,
                          "name": (names[-1] if names else "(unnamed)"),
                          "names": names,
                          "ambiguous": len(names) > 1,
@@ -143,7 +170,7 @@ def scan(active_within_s, limit):
                          "pct": 100.0 * depth / limit,
                          "idle_min": int(idle_s // 60),
                          "project": os.path.basename(root)[-28:]})
-    return sorted(rows, key=lambda r: -r["depth"]), unreadable, len(roots)
+    return sorted(rows, key=lambda r: -r["depth"]), unreadable, len(roots), no_reading
 
 
 def main():
@@ -167,7 +194,7 @@ def main():
                          "is not free, and nothing else measures it.")
     args = ap.parse_args()
 
-    rows, unreadable, roots = scan(args.active_hours * 3600, args.limit)
+    rows, unreadable, roots, no_reading = scan(args.active_hours * 3600, args.limit)
     if rows is None:
         print("SCAN FAILED: no project directories found — this is not 'all clear'.\n"
               "   ADDABLE — FIXABLE HERE: ~/.claude/projects is created by the CLI on first\n"
@@ -264,6 +291,8 @@ def main():
             warn = f"  ⚠name-ambiguous({'/'.join(r['names'])})" if r["ambiguous"] else ""
             if r.get("shared_file"):
                 warn += "  ⛔SHARED FILE — two agents, depth UNATTRIBUTABLE"
+            elif r.get("shape") == "compaction-step":
+                warn += "  ↻compacted in-window — depth is the POST-compaction figure"
             print(f"{r['depth']:>9,} {r['pct']:>6.1f}%  {r['name']:<14} {r['session']}  "
                   f"{r['idle_min']:>4}m  {r['project']}{mark}{warn}")
         if not args.quiet:
@@ -271,12 +300,18 @@ def main():
             print(f"\n{len(rows)} active session(s) across {roots} project dir(s); "
                   f"{len(due)} at/over {args.threshold:.0f}%", file=sys.stderr)
             shared = sum(1 for r in rows if r.get("shared_file"))
+            stepped = sum(1 for r in rows if r.get("shape") == "compaction-step")
             print("⚠ names are SELF-REPORTED, not identities, and cannot be joined to a "
                   "Daintree pane. ⛔ Depth is per-FILE, and a file is not an agent: "
                   f"{shared} file(s) carry two interleaved agents, where no single depth "
                   "describes either."
-                  + (f" {amb} session(s) answered to more than one name." if amb else ""),
+                  + (f" {amb} session(s) answered to more than one name." if amb else "")
+                  + (f" {stepped} compacted mid-window (NOT shared: a step down, taken "
+                     "once, is one agent — their depth stands)." if stepped else ""),
                   file=sys.stderr)
+        if no_reading:
+            print(f"⚠ {no_reading} active session(s) produced no usable reading — their "
+                  "depth is UNKNOWN, and UNKNOWN is not 0%", file=sys.stderr)
 
     # An unreadable transcript is not a low-context transcript. Say so loudly.
     if unreadable:

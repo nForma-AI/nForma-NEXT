@@ -1,0 +1,3 @@
+# Bytecode from the regression suite, which imports fleet-context.py by path.
+__pycache__/
+*.pyc
