@@ -37,6 +37,36 @@ the flag, so it is null for all of them.
 ⇒ The join has never been observed working because no pane has yet held both at
 once. That is a different problem from a missing primitive, and a much cheaper one.
 
+⛔⛔ THAT SENTENCE IS NOW FALSE, AND THIS TOOL IS THE THING THAT FALSIFIED IT.
+Re-measured 2026-08-20, 58 panes: **13 BOUND**, 15 PARTIAL-A, 30 UNBOUND. Every
+fleet role is among the BOUND:
+
+    DX        c67ebcb4 -> DX          DEV3   ec0d07f0 -> DEV3
+    DEVOPS    6fc2dca8 -> DEVOPS      DEV4   b00d725a -> DEV4
+    ARCHITECT 6150ffb2 -> ARCHITECT   DEV5   96827e4b -> DEV5
+    TEAMLEAD  e4a7769d -> DEV2        <- see below
+
+★ THE CONTROL FIRED POSITIVE AND NOBODY READ IT. This file's own stated purpose is
+"the known-positive control for the launcher fix: run it before and after adding
+--session-id, and BOUND rows appearing is the evidence the fix worked." The rows
+appeared. The docstring around them still described the pre-fix world, and so did
+the self-test's rationale ("today the live population contains no BOUND").
+
+⇒ A control that detects the thing it was built for, and whose surrounding prose is
+never updated, reports a solved problem as open for as long as anyone reads the prose
+instead of running it.
+
+★★ AND THE EXACT JOIN ANSWERS A QUESTION ANOTHER TOOL HAS BEEN REPORTING AS
+UNANSWERABLE. `fleet-context.py` prints on every sweep:
+
+    ⛔ TEAMLEAD and DEV2 are BOTH satisfied by session e4a7769d ... one of them is
+       UNVERIFIED
+
+The binding above resolves it: the pane TITLED `TEAMLEAD` holds session `e4a7769d`,
+whose REGISTRY name is `DEV2`. That is a title-versus-registry disagreement on one
+exactly-bound pane, not an unresolvable identity — and the answer was in Daintree's
+state file the whole time, while the roster check fell back to self-reported names.
+
 ★ WHY THIS TOOL EXISTS RATHER THAN A REGISTER
 
 A pane->session register built today would have ZERO exact joins fleet-wide: its
@@ -168,14 +198,25 @@ def report(root_d, root_s, role=None):
         print(f"\n  {len(orphan)} registry session(s) claimed by no pane: "
               + ", ".join(sorted(str(r.get('name')) for r in orphan)[:12]))
 
-    return 0 if counts.get("BOUND", 0) == len(rows) and rows else 1
+    # ⛔ EXIT 0 WAS UNREACHABLE. Requiring every pane to be BOUND means one closed
+    # pane from a past session — of which the state files hold 30 — makes a clean
+    # verdict impossible forever. A success state that cannot occur is the mirror of
+    # a falsifier that cannot fire, and it trains its reader to ignore the exit code.
+    #
+    # PARTIAL is the actionable state: the join was ATTEMPTED and half-landed.
+    # UNBOUND means no leg at all — a pane nobody tried to bind, which is the
+    # expected condition of every pane launched before the fix, not a failure.
+    if not rows:
+        return 1
+    return 1 if counts.get("PARTIAL-A", 0) or counts.get("PARTIAL-B", 0) else 0
 
 
 def cmd_self_test():
     """⛔ Proves BOUND / PARTIAL-A / UNBOUND are all reachable, against a synthetic
     population built here rather than against the live fleet.
 
-    ★ Why synthetic and not the real panes: today the live population contains no BOUND
+    ★ Why synthetic and not the real panes — ⚠ THE PREMISE HAS EXPIRED, the practice
+    has not. It read: today the live population contains no BOUND
     pane at all, so a self-test anchored to it could not exercise the positive branch --
     and once the launcher fix lands it would contain no UNBOUND fleet pane, losing the
     negative. Either way a live-anchored control goes half-blind, which is #26's sharp

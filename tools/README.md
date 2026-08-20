@@ -644,6 +644,24 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
 - ⛔ **A break that stops early under-reports — the quieter cousin of one that prints nothing.**
   This suite's first break aborted on a `TypeError` from an older signature and showed 2 of the
   5 real failures. Guard every call that a previous version cannot satisfy.
+- ⛔ **A success state that cannot occur trains its reader to ignore the exit code.**
+  `pane-binding.py` exited 0 only when *every* pane was BOUND — and the Daintree state files
+  hold 30 closed panes from past sessions, so a clean verdict was impossible forever. It is the
+  mirror of a falsifier that cannot fire. `PARTIAL` is the actionable state (the join was
+  **attempted** and half-landed); `UNBOUND` means no leg at all, which is the expected condition
+  of every pane launched before the fix.
+- ★★★ **A control fired positive and nobody read it.** That file's stated purpose is *"the
+  known-positive control for the launcher fix: run it before and after adding `--session-id`,
+  and BOUND rows appearing is the evidence the fix worked."* The rows appeared — **13 BOUND**,
+  including every fleet role — while its docstring still said *"the join has never been observed
+  working"* and its self-test rationale still said *"today the live population contains no
+  BOUND."* ⇒ **Run the control; do not read the prose beside it.**
+- ★★ **And the exact join answers a question another tool reports as unanswerable.**
+  `fleet-context.py` prints *"TEAMLEAD and DEV2 are BOTH satisfied by session e4a7769d … one of
+  them is UNVERIFIED"* on every sweep. The binding resolves it: the pane **titled** `TEAMLEAD`
+  holds `e4a7769d`, whose **registry name** is `DEV2` — a title-versus-registry disagreement on
+  one exactly-bound pane, not an unresolvable identity. The answer was in Daintree's state file
+  while the roster check fell back to self-reported names.
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
@@ -661,6 +679,7 @@ python3 tools/test_pretooluse_guard.py
 python3 tools/test_grant_check.py
 python3 tools/test_pipe_exit_scan.py
 python3 tools/test_stranded_branches.py
+python3 tools/test_pane_binding.py
 ```
 
 ⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only
