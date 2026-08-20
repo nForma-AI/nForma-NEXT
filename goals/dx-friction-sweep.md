@@ -124,12 +124,37 @@ reasons, neither filing it. **The convergence is the finding; either alone reads
   together in one sweep.
 - ⚠ **75 is measured, and the margin it buys is now measured too — from both ends.**
 
-  | asked at | sweeps of runway after answering | outcome |
+  | asked at | runway after the ask | outcome |
   | --- | --- | --- |
-  | **85.4%** | **1** | answered, then compacted the next cycle. Made it by one. |
-  | **75.5%** | **5** | answered, worked five more sweeps, compacted at 87.4% with the report already filed |
+  | **75.5%** | **5 sweeps** | answered, worked five more sweeps, compacted at 87.4% with the report already filed |
+  | **85.4%** | **1 sweep** | answered, then compacted the next cycle. Made it by one. |
+  | **87.8%** | **81 SECONDS** | ⛔ the ask landed at 06:34:13, the compaction step at 06:35:34 |
 
-  ⇒ The second case settles it. DEVOPS filed `#1250` at 75.5%, was asked once, and went over the
+  ⛔ **THE THIRD ROW BREAKS THE MODEL, AND IT IS THE ONLY ONE MEASURED IN SECONDS.** DEV4's ask
+  arrived 81 seconds before its context stepped 878,363 → 73,193. The window the report was
+  *about* was compacted before a reply was possible; anything it sends now is reconstructed from
+  a summary, which is not what the ask is for.
+
+  ⚠ **Depth does not predict remaining time near the top, and the error is not small.** At the
+  fleet's measured burn — DEV5 consumed 156,610 tokens in 46 minutes, **20.6 points/hour** — a
+  linear model gives a session at 87.8% about **36 minutes**. DEV4 got **1.4**. That is a **25×
+  overestimate**, because compaction does not fire at a depth; it fires on the next request that
+  would not fit, and one large request is enough.
+
+  ⇒ ★ **So "buy margin, not precision" is right for a stronger reason than it was written for.**
+  Above roughly 85% the runway is not merely short — it is **unpredictable per session**, so
+  asking early is not a preference for a tidier report. It is the only setting under which the
+  answer arrives at all.
+
+  ⛔ **And the one-ask-per-sweep cap is now the binding constraint, not the trigger.** Three
+  sessions were at/over 80% this sweep. At 20.6 points/hour a session crosses 75% → compaction in
+  about 73 minutes, so a fleet of eight cannot be covered one-per-sweep at any sweep cadence this
+  cron runs. **The cap was set to avoid synchronising the fleet, not to ration coverage**, and it
+  is now doing the second thing. Whether to raise it is a judgement about interrupt cost, and it
+  belongs to whoever owns that cost — but the next sweep should not treat "one per sweep" as
+  free.
+
+  ⇒ The 75.5% case still settles the lower bound. DEVOPS filed `#1250` at 75.5%, was asked once, and went over the
   edge five sweeps later **with its report in hand** — the obligation working end to end rather
   than surviving by a cycle.
 
@@ -166,6 +191,42 @@ Read it as a delivery gap, not disobedience.
 
 ⛔ **Consequence, measured:** DEV1 sat BLOCKED on one push decision for ~15 wakes and nothing
 surfaced it, because the instrument built for that job depends on a signal no pane emits.
+
+## 5b. The Option-1 conjunction check — report the first non-DX hit
+
+TEAMLEAD ruled Option 1 (each role goal points at its canonical `prompts/<ROLE>.md`) and wants the
+result reported **when the first pane that did not make the edit opens a role prompt**. Baseline
+2026-08-20: **NONE YET**, which is the correct reading minutes after deployment.
+
+```sh
+python3 - <<'EOF'
+import glob, json, os
+hits = {}
+for p in glob.glob(os.path.expanduser("~/.claude/projects/*/*.jsonl")):
+    for line in open(p, errors="replace"):
+        if "nForma-NEXT/prompts/" not in line and "nForma-NEXT:prompts/" not in line:
+            continue
+        try:
+            rec = json.loads(line)
+        except Exception:
+            continue
+        c = (rec.get("message") or {}).get("content")
+        kinds = {b.get("type") for b in c if isinstance(b, dict)} if isinstance(c, list) else set()
+        if kinds & {"tool_use", "tool_result"}:
+            k = os.path.basename(p)[:8]
+            hits[k] = hits.get(k, 0) + 1
+hits.pop("c67ebcb4", None)          # the session that made the edit
+print(hits or "NONE YET")
+EOF
+```
+
+⛔ **`c67ebcb4` must stay excluded.** It is the session that wrote the pointer, and counting it
+reproduces the void control in `docs/prompt-delivery-gap.md` exactly: *the reader must not be the
+auditor.* A hit there measures this sweep, not the fleet.
+
+⚠ A hit is half the test. The other half is that the pane's own goal file carries the pointer —
+present ⇒ delivered, opened ⇒ consumed, and only both together mean anything. `DEV1` can never
+satisfy it: it reads no goal file at all, and TEAMLEAD has taken that gap by another route.
 
 ## 6. Monitor liveness
 

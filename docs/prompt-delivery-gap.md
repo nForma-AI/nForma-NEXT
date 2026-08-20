@@ -64,7 +64,27 @@ session's own `grep`s of `prompts/DEV.md`, run minutes earlier while writing thi
 proved that a session which reads the file contains the file's text. It could not have fired for
 any other reason, in any session, ever.
 
-> A control drawn from a population the bug cannot reach measures the drawing, not the bug.
+## ★ The rule: the reader must not be the auditor
+
+> **THE READER MUST NOT BE THE AUDITOR.**
+>
+> Evidence that a subject received something is void when the only subject that shows it is the
+> one doing the counting. Ask *who read it, and why* — never *what kind of record it is*.
+
+⛔ **The tempting shorthand — "tool records don't count" — is wrong, and this document contains a
+measurement that refutes it.** Probing whether panes receive their `~/.claude/goals/*.md` returned
+**5 of 5 present, 0 as given records, 1–3 as tool records**: panes are never handed their goal,
+every one of them goes and reads it. Those tool records are valid evidence of a working channel.
+
+⇒ **Same evidence type, opposite verdicts, for a stated reason.** Above, the sole reader was the
+auditor and the measurement was of its own auditing. There, the readers are five independent panes
+performing routine startup and the auditor is not among the subjects. The record type is identical
+in both. The standing is not.
+
+⚠ It also subsumes the older rule it sharpens — *a control must come from a population the failure
+cannot reach.* An auditor counting itself is a population of one that the failure reaches by
+construction. Prefer the new form: it is checkable by asking a single question, and it does not
+require knowing the failure mode in advance.
 
 The finding survives because the *other* three readings do not share that defect — `NFORMA_ROLE`,
 `ROLE-READY`, and the bootstrap-text comparison are each properties of what the pane was **given**
@@ -152,11 +172,10 @@ five panes with the longest prose line unique to each one's own goal file:
 ⇒ **Panes are never handed their goal; every one of them goes and reads it.** The channel is a
 pull, and it works — which is exactly what a pointer needs.
 
-⚠ **This is the reading discarded earlier in this document, and here it is valid.** The rule is not
-*"tool records don't count"*; it is **"the reader must not be the auditor."** Above, the sole
-positive was my own grep, so the control measured my auditing. Here the readers are five
-independent panes performing their own routine startup, and I am not among the subjects being
-counted. Same record type, opposite standing.
+⚠ **This is the reading discarded earlier in this document, and here it is valid** — by the rule
+stated there: *the reader must not be the auditor.* Above, the sole positive was my own grep. Here
+the readers are five independent panes performing their own routine startup and I am not among the
+subjects counted.
 
 ## What changed, verbatim
 
