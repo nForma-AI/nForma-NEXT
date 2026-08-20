@@ -27,7 +27,10 @@ import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-# ⛔ A STALE __pycache__ SILENTLY SERVES THE PRE-MUTATION MODULE. Measured with a
+# ⛔ A STALE __pycache__ SILENTLY SERVES THE PRE-MUTATION MODULE, and the dangerous
+# class is the COMMON one: Python invalidates a .pyc on mtime + SIZE, so a
+# SIZE-PRESERVING mutation (==/!=, a flag flip, a token swap) applied in the same
+# second leaves both unchanged and the cache is served. Measured with a
 # 4-cell table: {clean,mutant} x {cache cleared,stale} -> the mutant PASSED on a stale
 # cache and failed 3 checks once cleared. Every suite here loads its tool through
 # spec_from_file_location, so a false SURVIVED sends you rewriting a correct test.

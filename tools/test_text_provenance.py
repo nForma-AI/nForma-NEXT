@@ -12,7 +12,7 @@ pins the right answer cannot show the wrong one was ever available.
 
 Run: python3 tools/test_text_provenance.py
 """
-import importlib.util, json, os, sys, tempfile
+import json, os, sys, tempfile, types
 
 # ⛔ A STALE __pycache__ SILENTLY SERVES THE PRE-MUTATION MODULE. Measured with a
 # 4-cell table: {clean,mutant} x {cache cleared,stale} -> the mutant PASSED on a stale
@@ -25,9 +25,30 @@ sys.dont_write_bytecode = True
 os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_spec = importlib.util.spec_from_file_location("tp", os.path.join(_here, "text-provenance.py"))
-tp = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(tp)
+
+
+def load(path, name):
+    """Execute the source text READ NOW — a positive reload proof.
+
+    ⛔ `spec_from_file_location` consults `__pycache__`, and Python invalidates a
+    `.pyc` on mtime + size. A SIZE-PRESERVING mutation applied within the same
+    second leaves both unchanged, so the cached module is served and the mutation
+    SURVIVES. Measured: `GH_PUBLISH.search(cmd)` -> `"gh pr comment" in cmd` is
+    60 bytes either way, file 18764 either way, and it survived with all three of
+    the usual safeguards passing.
+
+    ⚠ `sys.dont_write_bytecode` prevents the cache; that is an ABSENCE of the
+    mechanism, not evidence of the load. Compiling the bytes we just read is the
+    evidence — there is no cache in the path to consult.
+    """
+    src = open(path).read()
+    mod = types.ModuleType(name)
+    mod.__file__ = path
+    exec(compile(src, path, "exec"), mod.__dict__)
+    return mod
+
+
+tp = load(os.path.join(_here, "text-provenance.py"), "tp")
 
 NEEDLE = "9 of 9, not 1 of 8"
 fails = []
