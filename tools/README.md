@@ -530,6 +530,24 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
   --control-b 'echo 2'` satisfies it while the real check is pure noise. Nothing in the tool can
   enforce that, so the ✅ line now prints the control commands and states what it did **not**
   establish — an unenforceable requirement should be visible, not implied.
+- **A classifier that misses half of one kind of action does not report a smaller number —
+  it reports a different verdict.** `wake-yield.py` counted `git commit` and `gh issue comment`
+  but not `gh pr merge` or `gh api graphql … mutation`. Measured over a window whose contents
+  were known by construction: **28 counted, 16 forge writes missed, a 36% undercount.** ⚠ The
+  bias had a sign — the REST porcelain scored WORK, the same work through graphql scored churn.
+  **The instrument was rewarding a calling convention, not an action.**
+- **Name the coverage gap; do not fold it into the innocent bucket.** A shell mutates in
+  unbounded ways, so the mutating list cannot be complete. What the classifier cannot see is now
+  counted as `UNCLASSIFIED` and printed, and a session with unclassified actions gets **no
+  verdict** instead of *"looked, did not act"*. Folding the gap into reads manufactured exactly
+  the churn finding the tool exists to make trustworthy.
+- ⚠ **Order matters in a classifier, and the test must pin the order.** `gh api` is on the
+  read-only list only because the mutating tests run first. Moving the read test ahead of them
+  turns every forge write into a read — two checks catch it.
+- ⛔ **A break that crashes is not a break that was measured.** Running this suite against the
+  shipped file printed **nothing**: the old version had no separable classifier, so it died on
+  an AttributeError, and an empty result reads like a clean run. The faithful break grafts the
+  old regex and branch **verbatim** and fails 7 checks.
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
@@ -541,6 +559,7 @@ python3 tools/test_fleet_context.py     # exit 0 = pass, 1 = a control failed
 python3 tools/test_fleet_state.py
 python3 tools/test_fleet_identity.py
 python3 tools/test_discriminates.py
+python3 tools/test_wake_yield.py
 ```
 
 ⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only
