@@ -171,6 +171,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `verdict-census.py` | has each indexed instrument ever produced a verdict? (`--ledger` keeps the record · `--stale-check` asks in 0.1s whether it is current) | 0 no finding · 1 a finding · **2 established nothing** · ⚠ `--stale-check`'s 0 means *the record is current*, NOT *they all produce verdicts* |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `estate-provenance.py` | does the evidence place this file in THIS estate? | 0 no FOREIGN rows · 1 FOREIGN found · **2 established nothing** |
+| `branch-census.py` | which remote branches are finished, live, or work that died quietly? | 0 discriminated · **2 no refs, or every branch in one bucket** |
 | `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
 | `issue-coverage.py` | which open issues has NOBODY opened? | 0 all covered · 1 untouched found · **2 established nothing (empty board, failed query, or no transcripts)** |
@@ -532,6 +533,17 @@ records `ESTABLISHED-NOTHING` — a bare run names no label, and refusing is the
 nothing a label?"*. ★ The row is **right**, the tool is **healthy**, and reading the column as a defect list
 would condemn it. Every instrument here is run with **no arguments**; the `NEVER` set is a statement about
 what a bare invocation establishes, which is #2's premise made measurable — not a verdict on anyone's tool.
+
+**`branch-census.py`** — classifies every remote branch as MERGED, SQUASH-MERGED, LIVE or
+STRANDED. Built because 89 branches carried no signal of which were finished, and four panes
+independently opened a fix for the same defect (#307) — one defect, four branches, three
+wasted. ⛔ Ancestry alone cannot do this: a squash lands the content and never makes the tip
+an ancestor, so **12 of 89 branches that had shipped read as STRANDED** — and STRANDED is the
+flattering default, reading as abandoned work when the truth is that it landed. `git cherry`
+does not close it either; it patch-id-matches commits individually, so a three-commit branch
+squashed into one matches nothing. The cumulative diff is the unit that survives a squash.
+⚠ It cannot tell ABANDONED from PAUSED, and reads only this checkout's worktrees — LIVE is a
+lower bound and STRANDED an upper one. It proposes no deletions.
 
 **`wake-yield.py`** — pairs an interruption's cost with its yield. Cost alone is
 uninterpretable: an agent woken into useful work and one woken into churn consume context
