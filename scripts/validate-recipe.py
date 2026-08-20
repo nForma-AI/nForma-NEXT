@@ -16,6 +16,7 @@ Rules transcribed from Daintree's bundled loader/normalizer, not from docs.
 Usage:  python3 scripts/validate-recipe.py [path ...]
 Exit:   0 clean, 1 errors found
 """
+import os
 import glob
 import json
 import re
@@ -125,8 +126,50 @@ def report(path):
     return len(errs)
 
 
+def self_test():
+    """⛔ This was one of the last two instruments here with NO CONTROL OF ANY KIND.
+
+    A sweep for controls drawn from the population they measure — the defect that hit
+    three instruments tonight, two of them mine — found zero remaining on main. The
+    residue was smaller and worse: files with no control at all, where #26's *"can
+    this control fail?"* is not even askable.
+
+    ⚠ The sweep that found it first asked the NEIGHBOURING QUESTION — it counted files
+    lacking `--self-test`, which is not the same as untested, because `test_*.py` files
+    now exist. The corrected predicate (no `--self-test` AND no matching test file)
+    took the list from eight to two.
+
+    ★ The pair below is the hazard this file exists for, and it is measured, not
+    invented: an `args` ARRAY is rejected by Daintree's normalizer along with THE WHOLE
+    PANE, silently. A recipe stays schema-valid and launches nothing, and the failure
+    presents as panes nobody opened.
+    """
+    import tempfile
+    ok = True
+    for label, args, want_err in (("string args", "-n T", False),
+                                  ("ARRAY args ", ["-n", "T"], True)):
+        rec = {"id": "t", "name": "t", "terminals": [
+            {"type": "claude", "title": "T", "args": args,
+             "initialPrompt": "x", "exitBehavior": "keep"}]}
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
+            json.dump(rec, fh); path = fh.name
+        errs, _, _ = validate(path)
+        os.unlink(path)
+        got = bool(errs)
+        good = got == want_err
+        ok = ok and good
+        print(f"  {'ok  ' if good else 'FAIL'} {label} -> "
+              f"{'rejected' if got else 'accepted'} (want {'rejected' if want_err else 'accepted'})")
+    print("  ⇒ the ARRAY case is the one that matters: it drops the whole pane, silently.",
+          file=sys.stderr)
+    print("\nselftest PASS" if ok else "\nselftest FAIL")
+    return 0 if ok else 2
+
+
 def main(argv):
-    paths = argv[1:] or sorted(glob.glob(".daintree/recipes/*.json"))
+    if "--self-test" in argv:
+        return self_test()
+    paths = [a for a in argv[1:] if not a.startswith("-")] or sorted(glob.glob(".daintree/recipes/*.json"))
     if not paths:
         print("no recipes found under .daintree/recipes/", file=sys.stderr)
         return 1
