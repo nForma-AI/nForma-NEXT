@@ -187,8 +187,19 @@ def _bands_checks():
     outlier = [880_000] * 14 + [200_000, 201_000]
     f += not check("a lone pair is not a band", fleet_context.depth_bands(outlier), [])
 
-    # ⚠ Too few readings establishes nothing.
-    f += not check("too few readings", fleet_context.depth_bands([H, L, H]), [])
+    # ⛔ THREE OUTCOMES, NOT TWO. The previous version of this assertion expected `[]` here,
+    # which pinned the very collapse this tool exists to prevent: "I cannot tell" and "I
+    # looked, there is one writer" rendered identically, so a barely-started session read as
+    # a confirmed single-writer one.
+    f += not check("too few readings establishes NOTHING (None, not [])",
+                   fleet_context.depth_bands([H, L, H]), None)
+    f += not check("unimodal LOOKED and found one ([], not None)",
+                   fleet_context.depth_bands([700_000 + i * 900 for i in range(20)]), [])
+    # ⚠ The two must stay distinguishable by identity, not just by truthiness — both are
+    # falsy, and `or []` at a call site silently merges them again.
+    f += not check("the two negatives are not the same object",
+                   fleet_context.depth_bands([H, L, H])
+                   is fleet_context.depth_bands([700_000 + i * 900 for i in range(20)]), False)
 
     # ⛔ min_gap WAS PRESENT AND UNTESTED, and a mutation exposed it: disabling the check
     # left every assertion green. The `flat` case above is rejected by the OUTLIER guard,

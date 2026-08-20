@@ -97,12 +97,24 @@ def depth_bands(series, recent=60, min_gap=150_000):
     and one near 88%"* and refuse to say which. That is strictly better than one number
     that is wrong for somebody, and strictly more honest than a coin-flip attribution.
 
-    ⚠ Returns [] when the recent readings do not separate — a unimodal shared file gets no
-    band claim rather than an invented one.
+    ⛔ THREE OUTCOMES, NOT TWO — and the first version of this function had only two.
+
+        None   CANNOT TELL. Fewer than `recent` readings to work with. No claim is possible.
+        []     LOOKED, AND THERE IS ONE. Unimodal, or the split is a lone outlier.
+        [lo,hi] two bands.
+
+    ⇒ The first version returned `[]` for all three, so **a barely-started session rendered
+    identically to a confirmed single-writer one** — and this function exists precisely because
+    one depth number described two agents. **The instrument built to detect a two-states-one-output
+    collapse contained one**, and its docstring mentioned only the unimodal case.
+
+    ★ `None` vs `[]` is the same convention `exists-anywhere.py` uses for a failed search versus
+    a genuine absence. One convention across the tools, so a caller that gets `None` anywhere
+    knows it means *the question was not answered* rather than *the answer is nothing*.
     """
     vals = sorted(series[-recent:])
     if len(vals) < 8:
-        return []
+        return None                     # ⛔ cannot tell — NOT "one writer"
     gaps = [(vals[i + 1] - vals[i], i) for i in range(len(vals) - 1)]
     gap, at = max(gaps)
     if gap < min_gap:
@@ -483,7 +495,13 @@ def main():
                 # ★ The assignment is unrecoverable; the SET is not. Printing both bands
                 # turns "this number is wrong for somebody" into "one of these two agents
                 # is deep, ask both" — which is an action a reader can take.
-                b = r.get("bands") or []
+                b = r.get("bands")
+                if b is None:
+                    # ⛔ Not silence. Silence here would read as "one writer", which is the
+                    # collapse this whole row exists to prevent.
+                    warn += (" — and the depth series is TOO SHORT to separate: "
+                             "ESTABLISHED NOTHING about how many agents, not 'one'.")
+                    b = []
                 if len(b) == 2:
                     warn += (f" — but the readings SEPARATE: one agent near "
                              f"{b[0][1] / 10000:.0f}%, one near {b[1][1] / 10000:.0f}%. "
