@@ -150,7 +150,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 every resolvable transcript current · 1 currency **UNPROVEN** for at least one (`LAUNCH-ONLY` or `SAW-LATER`) — ⚠ **not "stale"** · **2 established nothing** · ⇒ `--states` emits the list |
 | `pane-binding.py` | which panes join to a session, and which leg is missing? | 0 reported · **2 established nothing** |
 | `index-watch.py` | did the tools index drift when `main` last moved? | 0 quiet · 1 finding · **2 established nothing** |
-| `stranded-branches.py` | has any merged PR's branch got commits with no equivalent change upstream? | 0 none · 1 unmatched commits · **2 established nothing** |
+| `stranded-branches.py` | has any merged PR's branch got commits with no equivalent change upstream — and if so, are its bytes upstream anyway? | 0 none · 1 unmatched commits · **2 established nothing** |
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
 | `readd-scan.py` | is this diff RESTORING a line a commit deliberately removed? | 0 none · 1 re-additions · **2 established nothing** |
 | `runmarker.py` | ⚠ **a module, not an instrument** — the two stderr markers every tool emits | n/a, it is imported |
@@ -642,6 +642,28 @@ diagnosing that class. A count without its sha is not comparable to the same cou
 known-positive and **both went to zero within the hour** as their follow-up PRs merged — #26
 instance 3, realised rather than hypothetical: a control propped up by a defect queued for repair
 stops being a control the moment the defect is fixed.
+
+⇒ **A fourth state, because patch id was answering a different question.** `git cherry` asks *is
+there an equivalent COMMIT upstream*; the thing worth knowing is *is this WORK upstream*. Two branch
+commits squash-merged into one upstream commit can never match by patch id — the diffs are different
+sizes — so the branch reads NO-UPSTREAM-MATCH forever while its bytes sit on `main`. `CONTENT-UPSTREAM`
+answers the second question directly: every path those unmatched commits touched is byte-identical at
+`origin/main`. It establishes **landedness only, never authorship** — if the content is there the work
+is not lost, whoever put it there.
+
+⛔ **The empty path set must not read as landed.** `all(...)` over zero paths is true, so a
+forgotten guard reports work as recovered having compared nothing. The decision therefore lives in a
+pure `content_state(unmatched, same, tot)` that takes counts and needs no repository, and the
+`(2, 0, 0) -> UNRESOLVED` row is asserted in both `--self-test` and the suite. Deleting the guard
+makes `--self-test` exit 2 — verified by mutation 2026-08-20, not by assertion.
+
+⚠ **The path ratio is the number worth reading, and the reason the state is rare here.** The
+predicate is all-or-nothing across paths, so a single shared index file that every pane edits vetoes
+the whole ref even when the branch's own deliverables are byte-identical upstream. *Measured
+2026-08-20 at `6faec9a` across the 4 refs then carrying unmatched commits: 1 read CONTENT-UPSTREAM,
+and 2 of the remaining 3 were vetoed by `tools/README.md` alone* — this file. A row reading n-1 of n
+is near-certainly landed; 0 of n is a different animal, and collapsing both to one verdict threw away
+the only signal separating them. The ratio is now printed on negative rows too.
 
 **`gh-complete.py`** — ⛔ `gh api …/check-runs` returns **30 of 54** by default and it is not an
 error: the response still carries `total_count: 54`, so a filter over `.check_runs[]` evaluates the
