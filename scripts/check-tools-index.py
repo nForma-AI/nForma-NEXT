@@ -65,6 +65,7 @@ Exit: 0 every surface agrees with the directory
       1 at least one surface disagrees
       2 established nothing (no tools found, no rows found, or the index is unreadable)
 """
+import ast
 import re
 import sys
 from pathlib import Path
@@ -113,6 +114,90 @@ COUNT = re.compile(r"^(?:(" + "|".join(WORDS) + r")|(\d+))\s+tools\b", re.M | re
 # bolded form is the LIKELIEST reintroduction here. (Found by DEV2, closing #27.)
 LOOSE = re.compile(r"\b(?:(" + "|".join(list(WORDS)[1:]) + r")|(\d+))\b[^.\n]{0,24}?\b(?:tools|instruments)\b",
                    re.I)
+
+
+# ⛔ QUARANTINE — a fourth state, and it is NOT a kind of drift.
+#
+# Measured 2026-08-20 (#307, TEAMLEAD + DEV2 + DEV4 independently): commit ac6a946 promoted
+# `tools/teamlead/` wholesale out of a `/private/tmp/claude-501/…` scratch directory that MORE
+# THAN ONE ESTATE wrote to. `w1226.py` line 1 is `# control-plane/api/handlers/workloads.py` —
+# another product's application source, sitting in this fleet's instrument tree.
+#
+# ⛔ THE OPERATOR HAS RULED: QUARANTINE. Not indexed, not silenced, not deleted.
+#
+# ⇒ SO IT IS EVALUATED BEFORE THE DOCUMENTED/UNDOCUMENTED SPLIT, because *documented* is the
+# wrong question about a file that may not belong. Reporting `w1226.py` as "missing a row"
+# invites the repair that ADDS the row — and an index row is an ASSERTION THAT THE FILE
+# BELONGS HERE. The complete index of a contaminated directory is a more confident wrong
+# answer than the incomplete one. (DEV4, standing down #313 in favour of this; the framing
+# is theirs and it is right.)
+#
+# ⚠ AND THE OBVIOUS PREDICATE DOES NOT WORK. A content grep for the estate's vocabulary —
+# `akash|blazing|Blazing-Back|#1[0-2]\d\d` — matches **8 of 63 files in `tools/` itself**,
+# measured: `reference-check.py`, `fleet-context.py`, `marker-reachability.py`,
+# `named-referent-check.py` and others. Those instruments EXIST BECAUSE OF those incidents and
+# cite them in their docstrings. ⇒ A grep cannot separate a tool that MENTIONS another estate
+# from a tool that BELONGS to one — which is `tools/use-not-mention.py`'s question, asked
+# about estates instead of commands. A quarantine built on vocabulary would impound a third of
+# this fleet's own instruments and call it an estate finding.
+#
+# ⇒ SO THE PREDICATE IS ABOUT POSITION, NOT VOCABULARY: an estate identifier appearing in an
+# executable STRING LITERAL — a path a tool opens, a repo a tool queries — never in a
+# docstring or a comment. Measured across the four populations, instruments only:
+#
+#       tools/ top-level          1 of 33     (memory-index-check.py, a default path)
+#       tools/teamlead/          10 of 19
+#       tools/architect-sweeps/   0 of  3     <- the control: the predicate is not matching everything
+#
+# ⚠ WHAT IT STILL CANNOT DO. It is not a verdict about ownership and no exemption list is
+# offered, because an exemption list is the silencing mechanism this whole ruling refuses.
+# Each hit is A QUESTION FOR A HUMAN. The one top-level hit is real — that file's default path
+# does point into another project's transcript directory — and it is NAMED rather than tuned
+# away, because a threshold that clears it is a number chosen to make the output comfortable.
+ESTATE = re.compile(
+    r"DigitalFrontier-infra|Borduas-Holdings|Blazing-Back|worker-blazing|akash|control-plane/",
+    re.I)
+
+
+def code_strings(path):
+    """String literals in EXECUTABLE position — not docstrings, not comments.
+
+    ⚠ A SyntaxError yields no strings, which reads as CLEAN. That is stated rather than
+    guarded: this checker's job is the index, and a file that will not parse is a defect the
+    test suites own. It does mean quarantine cannot see inside an unparseable file.
+    """
+    try:
+        src = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    if path.suffix != ".py":
+        # ⚠ Shell has no AST here. Strip whole-line and trailing comments — coarser than the
+        # Python path, and it is the weaker leg of the two.
+        return [re.sub(r"#.*$", "", line) for line in src.splitlines()]
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:
+        return []
+    docs = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            if node.body and isinstance(node.body[0], ast.Expr) \
+                    and ast.get_docstring(node, clean=False) is not None:
+                docs.add(id(node.body[0].value))
+    return [n.value for n in ast.walk(tree)
+            if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs]
+
+
+def quarantined(directory, names):
+    """[(name, the literal that triggered it)] for instruments referencing another estate."""
+    out = []
+    for n in names:
+        for lit in code_strings(directory / n):
+            m = ESTATE.search(lit)
+            if m:
+                out.append((n, lit.strip()[:72]))
+                break
+    return out
 
 
 def names_dir(text, name):
@@ -166,6 +251,36 @@ def check(root):
 
     failed = False
     unchecked = []          # legs that established NOTHING, so the summary cannot claim them
+
+    held = set()            # quarantined, and therefore OUT of the naming population
+
+    def impound(label, directory, names):
+        """Report quarantined files and REMOVE them from the naming population.
+
+        ⛔ Removed, not merely flagged. If they stayed in, the very next leg would report them
+        as missing a row, and the obvious repair for THAT is to add one — an assertion that the
+        file belongs here, made by a maintainer clearing a red.
+        """
+        nonlocal failed
+        quar = quarantined(directory, names)
+        if not quar:
+            return names
+        failed = True
+        out.append(f"  QUARANTINED  {label} — {len(quar)} of {len(names)} instrument(s) name"
+                   f" another estate in EXECUTABLE position (not in a docstring):")
+        for n, lit in quar:
+            out.append(f"                 {n}  ->  {lit!r}")
+        out.append("               ⛔ NOT reported as undocumented: presence in tools/ is not"
+                   " evidence of belonging, and an index row would ASSERT that it is.")
+        out.append("               ⛔ Do not index, do not delete, do not rewrite history —"
+                   " the disposition is the operator's. This red is the finding's only marker.")
+        held.update(n for n, _ in quar)
+        return [n for n in names if n not in held]
+
+    actual = impound("tools/", tools_dir, actual)
+    if not actual:
+        return 2, out + ["  VOID  every top-level instrument is quarantined — the index leg"
+                         " established nothing"], True
     out.append(f"  instruments on disk: {len(actual)}  ({', '.join(actual)})")
     # Named, never merely counted — see NOT_AN_INSTRUMENT.
     out.append("  ----  excluded from the population as tests: "
@@ -174,7 +289,11 @@ def check(root):
 
     for label, found in (("table row", rows), ("prose entry", prose)):
         missing = [t for t in actual if t not in found]
-        extra = [t for t in found if t not in actual]
+        # ⚠ A QUARANTINED FILE'S EXISTING ROW IS NOT AN ERROR AND IS LEFT ALONE. It is on
+        # disk; only the naming REQUIREMENT was lifted. Reporting it as "names a file that is
+        # not there" would be false, and the obvious repair — deleting the row — is a
+        # disposition decision this check has no standing to prompt.
+        extra = [t for t in found if t not in actual and t not in held]
         if missing:
             failed = True
             out.append(f"  FAIL  no {label} for: {', '.join(missing)}")
@@ -248,7 +367,15 @@ def check(root):
                    f"  ({', '.join(sub_actual) if sub_actual else 'none'})")
         if sub_excluded:
             out.append(f"  ----  excluded there as tests: {', '.join(sub_excluded)}")
+        sub_actual = impound(f"tools/{d.name}/", d, sub_actual)
         if not sub_actual:
+            # ⚠ EVERY instrument impounded. The directory is still NAMED — a reader must be
+            # able to find out it exists and why it is held — but there is nothing left to
+            # index, and demanding rows for quarantined files is the repair this refuses.
+            if not names_dir(text, d.name):
+                failed = True
+                out.append(f"  FAIL  tools/README.md never names `{d.name}/` — a QUARANTINED"
+                           f" directory a reader cannot discover is the worst of both states")
             continue
         if not names_dir(text, d.name):
             failed = True
@@ -429,6 +556,55 @@ def selftest():
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  known-positive: a fully indexed subdir exits 0 "
               f"(got {rc})")
+
+        # ⛔ QUARANTINE, BOTH DIRECTIONS — and the negative is the leg that carries it.
+        (sub / "tainted.py").write_text('#\nREPO = "/x/code/DigitalFrontier-infra"\n')
+        (sub / "README.md").write_text("# newdir\n\n`planted.py` — a.\n`tainted.py` — b.\n")
+        rc, lines, _ = check(root)
+        hit = (rc == 1
+               and any("QUARANTINED" in l and "newdir" in l for l in lines)
+               and any("tainted.py" in l and "DigitalFrontier" in l for l in lines))
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  quarantine: an estate literal in EXECUTABLE "
+              f"position exits 1, names the file AND the literal (got {rc})")
+
+        # ⛔ ...and it must NOT be reported as undocumented, even with its name removed from
+        # the index — because the repair for "undocumented" is to ADD A ROW, and a row is an
+        # assertion that the file belongs here.
+        (sub / "README.md").write_text("# newdir\n\n`planted.py` — a.\n")
+        rc, lines, _ = check(root)
+        hit = rc == 1 and not any("never names: tainted.py" in l for l in lines) \
+              and any("QUARANTINED" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a quarantined file is NEVER reported as missing "
+              f"from its index (got {rc})")
+
+        # ⛔⛔ THE KNOWN-NEGATIVE THAT DECIDES WHETHER THIS IS A PREDICATE OR A GREP.
+        # A tool that MENTIONS another estate in its docstring — which is what a third of this
+        # fleet's own instruments do, because they exist BECAUSE of those incidents — must not
+        # be impounded. Measured before this control was written: the vocabulary grep matches
+        # 8 of 63 files in `tools/` itself. Without this case, "everything is quarantined" and
+        # "my regex works" are the same reading.
+        (sub / "tainted.py").write_text(
+            '#\n"""Built after the akash / Borduas-Holdings/Blazing-Back incident."""\n'
+            '# see control-plane/api for the original\nX = 1\n')
+        (sub / "README.md").write_text("# newdir\n\n`planted.py` — a.\n`tainted.py` — b.\n")
+        rc, lines, _ = check(root)
+        hit = rc == 0 and not any("QUARANTINED" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  quarantine KNOWN-NEGATIVE: a docstring/comment "
+              f"MENTION of the same estate is NOT quarantined (got {rc})")
+        (sub / "tainted.py").unlink()
+
+        # ⛔ the TOP-LEVEL branch is separate code and needs its own case
+        (t / "tainted.py").write_text('#\nR = "Borduas-Holdings/Blazing-Back"\n')
+        rc, lines, _ = check(root)
+        hit = (rc == 1 and any("QUARANTINED" in l and "tools/" in l for l in lines)
+               and not any("no table row for: tainted.py" in l for l in lines))
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  top-level quarantine fires and does not also "
+              f"demand a row (got {rc})")
+        (t / "tainted.py").unlink()
 
         # ⛔ THE WORD ALONE MUST NOT SATISFY IT. Every subdirectory here is named after a role,
         # and role names are the most common nouns in this repository — a bare substring test

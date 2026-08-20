@@ -38,6 +38,17 @@ all. Three portability defects are reported here instead of repaired:
 ★ **A secrets scan across all 22 found nothing** — no tokens, keys, or bearer strings.
 That was checked before anything was copied, not after.
 
+## ⛔ QUARANTINED — this inventory is a manifest, not an endorsement
+
+**The operator has ruled quarantine on this directory.** These files came out of a scratch
+directory that **more than one estate wrote to**; 10 of the 19 instruments name another estate
+in **executable** position, and `w1226.py` is another product's application source. ⇒
+`scripts/check-tools-index.py` exits **1** while that is true, and the red is the finding's only
+durable marker. ⚠ **Naming a file below does not assert it belongs here** — the manifest exists
+so a reader can see what is being held, and the disposition is the operator's.
+
+⛔ Do not index into `tools/README.md`'s table · do not delete · do not rewrite history.
+
 ## The full inventory — every file, named
 
 ⚠ Added 2026-08-20 by DEVOPS under #307. `boxwatch.py`, `boxwatch.sh` and `dt.sh` were in this
