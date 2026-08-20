@@ -118,6 +118,30 @@ def main():
     check("...while the TITLE collision is still reported",
           any("DISPLAY-NAME COLLISION" in l for l in lines), True)
 
+    # 4b. ⛔ SET COMPARISON, where the namespaces agree. `is X in the set?` is a MATCHER
+    #     and fails in two directions; `does A equal B?` presupposes no matcher. Four
+    #     content probes failed across the fleet the same night and a multiset comparison
+    #     survived all four. terminal.list `id` and terminal.getStatus `terminalId` share
+    #     a namespace, so this leg can name WHICH pane is unaccounted for — a count can
+    #     only say that one is.
+    same = [r["id"] for r in nine]
+    rc, lines = pc.census(nine, tr9, same)
+    check("set comparison: identical id-sets -> agree", rc, 0)
+    check("...and says the symmetric difference is empty",
+          any("symmetric difference empty" in l for l in lines), True)
+
+    missing = same[:-1]                      # getStatus cannot see the last pane
+    rc, lines = pc.census(nine, tr9, missing)
+    check("set comparison: a pane in list and not status -> refuses", rc, 1)
+    check("...and NAMES the id, not just a count",
+          any("NOT in getStatus : terminal-8" in l for l in lines), True)
+
+    extra = same + ["terminal-ghost"]        # getStatus sees one that list does not
+    rc, lines = pc.census(nine, tr9, extra)
+    check("set comparison: divergence in the OTHER direction also refuses", rc, 1)
+    check("...and names the ghost",
+          any("terminal-ghost" in l for l in lines), True)
+
     # 5. The identity key itself.
     rc, lines = pc.census(nine[:1] + nine[:1], tr9[:2])
     check("duplicate pane id -> the key is unsound", rc == 1

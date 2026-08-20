@@ -103,7 +103,34 @@ def panes_from_daintree():
         body = body.get("terminals") or body.get("entries") or []
     if not isinstance(body, list):
         return None, f"terminal.list returned {type(body).__name__}, not a list"
+    sids, serr = panes_from_status(m, url, auth, sid)
+    panes_from_daintree._status_ids = None if serr else sids
     return [{"id": t.get("id"), "title": t.get("title")} for t in body], None
+
+
+def panes_from_status(m, url, auth, sid):
+    """A SECOND source in the SAME namespace as terminal.list — `terminalId`.
+
+    ⛔ Why this matters more than a second count. `is pane X in the set?` is a MATCHER
+    and can be wrong in two directions. `does population A equal population B?` is a SET
+    COMPARISON and presupposes no matcher at all. Measured across the fleet the same
+    night: four content probes failed — a phrase wrapping across lines, a blockquote
+    marker inside it, ancestry defeated by a squash merge, bold breaking a normalised
+    match — and a multiset comparison survived all four.
+
+    ⇒ So where two sources share a namespace, DIFF THE SETS and name the symmetric
+    difference. That names WHICH pane is unaccounted for; a count can only say that one is.
+    """
+    try:
+        st = m.payload(m.rpc(url, auth, "tools/call",
+                             {"name": "terminal.getStatus", "arguments": {}}, sid))
+    except Exception as exc:
+        return None, f"terminal.getStatus: {exc}"
+    if isinstance(st, dict):
+        st = st.get("terminals") or st.get("entries") or [st]
+    if not isinstance(st, list):
+        return None, f"terminal.getStatus returned {type(st).__name__}, not a list"
+    return [r.get("terminalId") for r in st], None
 
 
 def live_transcripts(stale_min=STALE_MIN, base=None):
@@ -116,7 +143,7 @@ def live_transcripts(stale_min=STALE_MIN, base=None):
     return sorted(out)
 
 
-def census(rows, transcripts):
+def census(rows, transcripts, status_ids=None):
     """(exit_code, lines). Pure, so the controls can drive it with fixtures."""
     out, diverged = [], False
 
@@ -129,6 +156,23 @@ def census(rows, transcripts):
     ids = [r["id"] for r in rows]
     titles = [r["title"] for r in rows]
     out.append(f"  panes (by id, the identity key): {len(ids)}")
+
+    # ⛔ SET comparison, not a count, wherever the namespaces agree.
+    if status_ids is not None:
+        a, b = set(ids), set(status_ids)
+        only_list, only_status = sorted(a - b), sorted(b - a)
+        if only_list or only_status:
+            diverged = True
+            out.append("  ⛔ POPULATION MISMATCH between two sources in the SAME namespace:")
+            for i in only_list:
+                out.append(f"       in terminal.list, NOT in getStatus : {i}")
+            for i in only_status:
+                out.append(f"       in getStatus, NOT in terminal.list : {i}")
+            out.append("  ⇒ named, not counted. A count says one is missing; the symmetric "
+                       "difference says WHICH.")
+        else:
+            out.append(f"  ok    terminal.list and getStatus agree as SETS "
+                       f"({len(a)} ids, symmetric difference empty)")
 
     # ⛔ Distinct-id is the real count. A duplicated TITLE does not reduce it — but any
     # consumer keyed on the name WILL collapse them, so it is named loudly here.
@@ -155,6 +199,11 @@ def census(rows, transcripts):
         diverged = True
         out.append(f"  ⛔ SOURCE DISAGREEMENT  terminal.list={len(ids)} · live transcripts="
                    f"{n_tr} (<{STALE_MIN}m).")
+        out.append("     ⚠ COUNTS ONLY. Transcript ids are session uuids and pane ids are")
+        out.append("       terminal uuids — DIFFERENT NAMESPACES, so no set difference is")
+        out.append("       available here and this leg CANNOT name which pane is missing.")
+        out.append("       Stated rather than left implicit: it is weaker evidence than the")
+        out.append("       set comparison above, not equal evidence expressed differently.")
         out.append("  ⇒ COUNT UNESTABLISHED — and NOT because one source lags the other.")
         out.append("     Measured: the transcript set is a DIFFERENT POPULATION, wrong in both")
         out.append("     directions at once. It INCLUDES sessions that are not panes (worktree-")
@@ -227,10 +276,11 @@ def main():
     if "--self-test" in sys.argv or "--selftest" in sys.argv:
         return self_test()
     rows, err = panes_from_daintree()
+    status_ids = getattr(panes_from_daintree, "_status_ids", None)
     if err:
         print(f"  VOID  {err} — established nothing about the fleet", file=sys.stderr)
         return 2
-    rc, lines = census(rows, live_transcripts())
+    rc, lines = census(rows, live_transcripts(), status_ids)
     print("pane census — identity key is the pane id, never the display name")
     for l in lines:
         print(l)
