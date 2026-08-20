@@ -107,6 +107,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
+| `issue-coverage.py` | which open issues has NOBODY opened? | 0 all covered · 1 untouched found · **2 established nothing (empty board, failed query, or no transcripts)** |
 | `transition-report.py` | did the fleet ANNOUNCE its transitions, or only declare them? | 0 audited · **2 the control failed** |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |
@@ -330,6 +331,8 @@ wake that cannot hear its own answer is a drain, not a nudge.* ★ Parsed **posi
 final non-empty line of the last assistant turn — never by searching for the token anywhere in
 the text, because a keyword scan is tripped by any turn *discussing* blockage and this fleet
 produced five such instances in one session. A quoted example is never the last line.
+
+**`issue-coverage.py`** — ⛔ built because **92 of 241 open issues had been opened by nobody**, 34 of them older than a month, **measured while a pane sat idle waiting to be assigned something**. ⚠ **It cannot be asked and GitHub cannot answer it.** The credential is shared, so `author` and `assignee` are one login for every issue in every state — GitHub knows *what* happened, never *who*. And an agent's memory is worse: asked whether they had read their own role prompt, **three of four roles said "never" while their transcripts held 14, 11 and 9 reads from that morning**; the one that grepped its transcript before answering was the one that got it right. ⇒ So it reads what a pane **actually opened**, in a `tool_use`. ★ **Contact is not review** — `OPENED` means a pane fetched it, and the two are never collapsed. ⚠ Three ways to print a clean zero are three exits: an empty board, a `gh` query that failed, and a transcript glob that matched nothing are all **exit 2**, never "fully covered". ⚠⚠ **The bound cuts one way**: transcripts on THIS MACHINE only, so a pane working from a transcript held elsewhere reads as having opened nothing — the untouched count is an **upper** bound and per-pane counts are **lower** bounds.
 
 **`transition-report.py`** — the STATE line is a **pull**; the role prompts also require a
 **push** on transition into `FREE` or `BLOCKED`, and this is that rule's execution record. Built
