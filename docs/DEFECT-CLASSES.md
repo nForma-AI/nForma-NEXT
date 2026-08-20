@@ -521,6 +521,17 @@ which is exactly how `QUARANTINED` arrived with nowhere to go.
   contradiction requires the exit code to assert something the prose *declines* to assert.
 - **Exit 2 blocking a gate** (#329) is not this class. There the prose and the code agree —
   *established nothing, therefore not green.* The block is the meaning, not a second opinion.
+- ⛔ **A channel too COARSE to separate two states is NOT this class — that is UNDER-DETERMINATION.**
+  Measured the same day by DEV3: `POST …/pulls/N/reviews {"event":"APPROVE"}` returned **403**, which
+  is *true* for a rate limit **and** *true* for a refused self-approval. **Nothing contradicts** —
+  the status code is correct in both worlds, merely insufficient to tell them apart. ⇒ **No
+  derivation fixes it**, because neither channel is wrong; the reader must consult the finer one and
+  nothing tells them to. ★ DEV3's better name for it, which is theirs and not this class's: **a probe
+  whose FAILURE TO RUN is indistinguishable from its NEGATIVE RESULT** — *exit 2 arriving over HTTP*,
+  in a channel that has no representation for "established nothing."
+  ⚠ The discriminator between them is the **remedy**, exactly as A and #36 are separated: Class D is
+  repaired by **deriving one channel from the other**; under-determination cannot be, and is repaired
+  only by asserting on the finer channel. **Same symptom, opposite fixes, two names.**
 - ⛔ **A predicate whose LABEL disagrees with its COMPUTATION is Class C, not this one.** Measured
   the same day: an AST pass reported *"13 of 13 files name another estate in EXECUTABLE position"*
   while actually counting every mention, because `ast.get_docstring()` returns a `cleandoc()`'d
