@@ -96,6 +96,7 @@ TIMEOUT = 60
 # ⇒ NO-REPO-INPUT is a FINDING ABOUT REPOSITORY DEPENDENCE, which is real and checkable, and a
 #   CANDIDATE for criterion 5 — never a verdict that criterion 5 is unmet. Calling it DRAWN
 #   asserted the second, which is the use/mention slip this repository files defects about.
+FORGE = "UNDRAWN-VIA-FORGE"
 DRAWN, UNDRAWN, NOST, SLOW, CRASH = ("NO-REPO-INPUT", "UNDRAWN", "NO-SELF-TEST",
                                      "NO-VERDICT-IN-TIME", "UNDRAWN-BY-CRASH")
 # ⛔ THE STATE THAT MAKES THE WHOLE METHOD HONEST. A differential compares two runs and attributes
@@ -191,9 +192,13 @@ def classify(tool, tmp_parent, timeout=TIMEOUT):
     roots = [tool.resolve().parent.parent, tool.parent.parent, ROOT, tmp, tmp.resolve()]
     a, b = _mask(here_out, *roots), _mask(away_out, *roots)
     if here_rc == away_rc and a == b:
+        forge = forge_probe(tool, here_rc, here_out, timeout)
+        if forge:
+            return FORGE, (f"no repository input ({here_rc} both ways), {forge}")
         return DRAWN, (f"exit {here_rc} and byte-identical output with the repository unreachable"
-                       f" — it consulted no REPOSITORY input. ⚠ Network, clock and"
-                       f" environment survive relocation; this is a candidate, not a verdict.")
+                       f" — it consulted no REPOSITORY input and no FORGE. ⚠ The clock, the"
+                       f" environment and the filesystem outside the repo still survive"
+                       f" relocation; this is a candidate, not a verdict.")
     if "Traceback (most recent call last)" in away_out:
         last = [l for l in away_out.strip().splitlines() if l.strip()][-1][:80]
         return CRASH, (f"in place {here_rc}; CRASHED when relocated ({last}). ⚠ Weak: this may be"
@@ -201,6 +206,42 @@ def classify(tool, tmp_parent, timeout=TIMEOUT):
     n = sum(1 for x, y in zip(a.splitlines(), b.splitlines()) if x != y)
     return UNDRAWN, (f"in place {here_rc}, relocated {away_rc}; {n} line(s) differ after masking"
                      f" — it consulted something it did not create")
+
+
+def forge_probe(tool, here_rc, here_out, timeout):
+    """Second axis: does this control consult the FORGE? Returns a detail string, or None.
+
+    ⛔ WHY A SECOND AXIS EXISTS AT ALL. Relocation removes the repository and nothing else, so
+    `NO-REPO-INPUT` was accusing controls that DO consult an undrawn population by another route.
+    Measured on my own tool: `label-exists.py` reads the forge's 27 real labels in its self-test
+    and landed in that column, because `gh` does not care what directory it runs in.
+
+    ★ So this cuts ONE named alternative route rather than pretending relocation cut them all: a
+    stub `gh` is placed first on PATH and made to fail. If the control's output changes, its
+    population includes the forge — undrawn, and invisible to the relocation axis.
+
+    ⚠ IT CUTS `gh` ONLY. A control reading the clock, the filesystem outside the repo, or any
+    other environment still shows nothing here. ⇒ This narrows the blind spot; it does not close
+    it, and a row with no forge dependence is still only a CANDIDATE.
+    """
+    import os
+    with tempfile.TemporaryDirectory() as bindir:
+        stub = Path(bindir) / "gh"
+        stub.write_text("#!/bin/sh" + chr(10) + "exit 70" + chr(10))
+        stub.chmod(0o755)
+        env = dict(os.environ, PATH=f"{bindir}:{os.environ.get('PATH', '')}")
+        try:
+            r = subprocess.run([sys.executable, str(tool), "--self-test"], capture_output=True,
+                               text=True, timeout=timeout, cwd=str(ROOT), env=env)
+        except (subprocess.TimeoutExpired, OSError):
+            return None
+        roots = [tool.resolve().parent.parent, tool.parent.parent, ROOT]
+        if r.returncode == here_rc and _mask(r.stdout + r.stderr, *roots) == _mask(here_out,
+                                                                                  *roots):
+            return None
+        return (f"but its output CHANGES when `gh` is made to fail (exit {r.returncode} vs"
+                f" {here_rc}) — it consults the FORGE, an undrawn population the relocation axis"
+                f" cannot see")
 
 
 def census(index=None, tools_dir=None, timeout=TIMEOUT):
@@ -265,6 +306,9 @@ def census(index=None, tools_dir=None, timeout=TIMEOUT):
     # ⚠ NON-DETERMINISTIC is not folded into either side. It is not a finding (nothing was
     # established) and it is not clean (the question is unanswered) — the same reason exit 2
     # exists in this repository at all.
+    # ⚠ UNDRAWN-VIA-FORGE is NOT a finding: the control DOES consult an undrawn population,
+    # it simply does so by a route relocation cannot cut. Counting it would re-commit the false
+    # accusation this axis exists to correct.
     rc = 1 if tally.get(DRAWN) or tally.get("ABSENT") else 0
     return rc, out
 
@@ -356,6 +400,17 @@ def self_test():
             print(f"  {'ok  ' if got == DRAWN else 'FAIL'}  a control reading an UNDRAWN input"
                   f" that survives relocation still lands in NO-REPO-INPUT ({got}) — the method's"
                   f" blind spot, demonstrated rather than merely claimed")
+
+            # ⛔ THE CONTROL FOR THE FORGE AXIS. Without it, "UNDRAWN-VIA-FORGE" is a state
+            # nothing can be shown to reach — and a state with no reachable instance is a claim,
+            # not a measurement. This fixture consults `gh` and nothing else, so relocation
+            # cannot see it and only the stubbed-PATH probe can.
+            NL = chr(10)
+            (td / "forgey.py").write_text("import subprocess,sys" + NL + "if '--self-test' in sys.argv:" + NL + "    r=subprocess.run(['gh','--version'],capture_output=True,text=True)" + NL + "    print('  ok  gh rc=%d' % r.returncode)" + NL + "    raise SystemExit(0)" + NL + "raise SystemExit(0)" + NL)
+            got, _ = classify(td / "forgey.py", parent, timeout=30)
+            ok &= got == FORGE
+            print(f"  {'ok  ' if got == FORGE else 'FAIL'}  a control that consults the FORGE and"
+                  f" nothing else is UNDRAWN-VIA-FORGE, not NO-REPO-INPUT (got {got})")
 
         idx = d / "R.md"
         idx.write_text("# no table\n")
