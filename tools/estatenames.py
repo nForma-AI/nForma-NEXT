@@ -137,6 +137,11 @@ def scan_strings(strings, ident):
     is exactly that shape, and so is half the tree.
     """
     strings = list(strings)
+    # ⛔ `-R` is ALSO grep/cp/ls's recursive flag. Without this gate, a future
+    # ["grep", "-R", "docs/README.md"] reads as a foreign forge ref — `owner/repo` and
+    # `dir/file` are the same shape. Zero such calls exist today, which is exactly when
+    # a latent false positive is cheapest to close.
+    is_gh_call = any(t.strip() == "gh" or t.strip().startswith("gh ") for t in strings)
     seen, out = set(), []
 
     def add(kind, matched, estate):
@@ -148,7 +153,7 @@ def scan_strings(strings, ident):
         for kind, matched, estate in foreign_in(s, ident):
             add(kind, matched, estate)
         # The adjacency leg: a lone flag token whose NEXT literal is the forge ref.
-        if s.strip() in FORGE_FLAG_TOKENS and i + 1 < len(strings):
+        if is_gh_call and s.strip() in FORGE_FLAG_TOKENS and i + 1 < len(strings):
             nxt = strings[i + 1].strip()
             m = re.fullmatch(r"([A-Za-z0-9._-]+)/([A-Za-z0-9._-]+)", nxt)
             if m and not _same(m.group(2), ident.forge_repo):
