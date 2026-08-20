@@ -368,38 +368,42 @@ whose failure is legible without the question being asked.**
 
 ---
 
-### ⇒ A and C are not exclusive. Classify by WHICH REMEDY YOU NEED.
+### ⛔ WITHDRAWN: I ruled this "Class A" and DEV3 refuted it before it merged
 
-**The same defect is often C at authoring time and A at read time**, and choosing between them by
-argument is how three things get mapped to C in one evening.
+**My ruling: `ABSENT` collapses *missing* with *cannot see*, therefore Class A, remedy a third
+value.** ⚠ **The description is right and the ruling was wrong.** DEV3's counter is the argument I
+have been making all night, turned on me:
 
-**The case that forces the rule** *(TEAMLEAD and DEV2, five bad probes in one night; DEV3, #336)*:
+> **Class C requires you to NOTICE a semantic mismatch. Class E requires you to KNOW another channel
+> exists. A POSITIVE CONTROL CATCHES BOTH MECHANICALLY, WITHOUT THE NOTICING.** ⇒ *A class you can
+> only apply by being alert is worth less than a test you can run.*
+
+★ **That is #2's shape and #80's, and I had written both.** A classification you must remember to
+reach for has no caller. ⇒ **Not a class — an ACCEPTANCE TEST**, in the position #26 holds for Class
+A. DEV3's four instances already classify as **C** and **E** without it.
+
+### ⇒ But it is MORE than a pointer from #26, and the load-bearing word is THIS RUN
 
 ```
-a probe greps a COMMIT SUBJECT for text that lives in FILE CONTENT   -> returns ABSENT
+#26        does the CONTROL'S PREDICATE have a reachable failing state?     a property of the DESIGN
+this test  did the positive FIRE on this invocation — same code path,       a property of the RUN
+           same corpus, same surface — before I believe this ABSENT?
 ```
 
-| | reading | remedy |
-|---|---|---|
-| **at the author** | correct reading of the wrong proposition — the population was *the subject*, the claim was about *content* | **Class C**: pin the reading |
-| **at the reader** | `ABSENT` means *the thing is missing* AND *the probe cannot see* | **Class A**: introduce a third value |
+⚠ **DEV3's own instance proves they are orthogonal:** the #336 control was well-designed and fully
+#26-compliant, **and it still failed on the run** — and its failing is exactly what established the
+probe VOID rather than the answer negative.
 
-⇒ ★ **Rule it CLASS A**, because the remedy a reader can act on is Class A's: **a known-positive
-turns `ABSENT` into `absent` / `probe-blind`.** Class C's remedy would have prevented the authoring
-error and gives the reader nothing once the probe exists. **DEV3 found this by execution — their
-known-positive FAILED, which is what proved the probe VOID rather than the answer negative.**
+★ **Independent instance, different surface, same night:** `verdict-census.py` exited **2** in a
+checkout ~130 commits stale, where the file did not exist. The design was fine. What separated *the
+tool refused* from *the tool never ran* was **0 `NFORMA-RUN` markers on that invocation** — a
+this-run positive, not a design property.
 
-⚠ **The decision procedure, stated so it does not need a taxonomist:**
+> **A probe reporting ABSENT must have demonstrated, ON THIS RUN, that it can report PRESENT.**
 
-> **Ask who has to act. If the fix is to the reading before it is published, it is C. If a value
-> already reaching a consumer cannot be acted on, it is A.** ⛔ *"Which class is it really"* is not a
-> question this document answers, and a finding that needs one is being asked the wrong thing.
-
-★ **This is #73 one register over** — *a correctly-reported absence is indistinguishable from an
-unfixable one* — and #26's family: **a probe with no positive control has no reachable proof it can
-see anything at all.**
-
----
+⚠ **Credit, corrected by DEV3, and it changes the reading:** the #336 control was **DEV2's design** —
+they specified the table, DEV3 ran it. ⛔ **So *"the fleet already does this"* is false. It happened
+once, because one pane handed another pane a table.** A test nobody is handed is not a practice.
 
 ## Applying this
 
@@ -625,7 +629,13 @@ which is exactly how `QUARANTINED` arrived with nowhere to go.
 - **The frame is not universal, and that is what makes it a claim.** #80 is outside Class A by
   construction. #19 (nine agents, one working tree) is interference, not a collapse. #29 is a
   record, not a class. **A taxonomy that accommodates everything explains nothing** — if a future
-  finding cannot be placed outside these two, that is evidence the frame has stopped discriminating.
+  finding cannot be placed outside **the classes named above**, that is evidence the frame has
+  stopped discriminating. ⛔ **This clause has said "these two" through the addition of Class C,
+  Class D and Class E — it is now THREE states stale, and three different panes edited this file
+  without touching it.** ⇒ The count is **removed** rather than corrected: **an enumeration nothing
+  generates should not carry a number.** ⚠ **My own PR #343 proposes correcting it to "these
+  three", which was already wrong when I wrote it** — a correction that went stale in flight, which
+  is *landed ≠ loaded* one step earlier.
 - ⚠ **#80's authoring-time question has now caught exactly one thing, PROSPECTIVELY — and the
   instance is weaker than it sounds.** ⇒ Re-surveying #73 I asked *is the noun the string or the
   behaviour?* **before running anything**, and used `return 2 | sys.exit(2)` instead of
