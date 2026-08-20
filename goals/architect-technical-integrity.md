@@ -128,12 +128,25 @@ one.
 The previous revision reserved *CI runs*, with `⚠ Opening a PR is itself the spend — this was
 learned by spending a run unauthorized`. [measured: Blazing-Back 2026-08-19]
 
-Measured here: **zero workflow files and zero `*.yml`/`*.yaml` on any ref** — `git ls-tree -r`
-per ref, first at `c465e8e` across 9 refs, re-run at `b95c469` across 19 refs as the fleet pushed
-branches. Still 0. Checks arrive from GitHub Apps, which draw no lease on a metered pool.
-⚠ Anchored to two fixed origins rather than a rolling one, because the ref set doubled between
-the two runs and a count quoted without its denominator would have decayed silently.
-[measured: nForma-NEXT 2026-08-19]
+⛔ **DECAYED — this reading was true when taken and is now FALSE.** Kept rather than replaced,
+because the pair carries the decay rate and neither reading does.
+
+```
+2026-08-19  c465e8e,  9 refs   0 workflow files          the reading this section was built on
+2026-08-19  b95c469, 19 refs   0 workflow files          re-run as the fleet pushed branches
+2026-08-20  origin/main        1 — .github/workflows/tools.yml   ⛔ FALSIFIED
+```
+
+⇒ CI now exists here. `tools.yml` runs the instrument suites, and its own header records that
+`gh run list` had returned **zero runs, ever** — every green board before it was CodeRabbit and
+Socket Security, neither of which runs a test. [measured: nForma-NEXT 2026-08-20]
+
+★ **And the reservation above survives the falsification, which is the point of having re-based
+it.** This section retired the *justification* (`gh pr create` draws a lease) and re-based the
+reservation on a **local** ground — *reserved because TEAMLEAD admits work*. That ground does not
+depend on whether CI exists, **so CI arriving does not reopen the question.** ⇒ A reservation
+re-based on a local basis survives the decay of the imported one; one left resting on the imported
+premise would have flipped twice in two days.
 
 ⇒ The **justification** does not transfer. ⛔ **The reservation is not thereby lifted** — that
 inference is the one I flagged on #16 and it is the expensive direction. TEAMLEAD owns admission
