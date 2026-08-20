@@ -84,10 +84,32 @@ QUARANTINED present, and belonging is an OPEN QUESTION — not ours to close
 - **The reverse leak.** Whether *this* repository's instruments were promoted into the other estate
   is **unmeasured and unmeasurable from here** — the fleet has no standing in that repository and
   did not look. `[NOT-MEASURED — OPERATOR ONLY]`
-- **That the predicate is complete.** It finds the vocabulary of *one* known neighbour. A third
-  estate sharing that scratch directory would leave markers this scan has never seen, and would read
-  as `LOCAL`. ⇒ **`UNCLAIMED` must never be collapsed into `LOCAL`;** that collapse is the only
-  thing standing between this reading and a confident wrong answer.
+- ⛔ ~~**That the predicate is complete.**~~ **REFUTED, same day, by DEVOPS.** This file said a
+  third estate *"would leave markers this scan has never seen, and would read as `LOCAL`."* There
+  was one, and it did. `scripts/check-tools-index.py` (#315) evaluates **executable position rather
+  than mention** and found **`DigitalFrontier-infra`** — 7 files under `tools/teamlead/` point at
+  `/Users/jonathanborduas/code/DigitalFrontier-infra`. ⇒ **`UNCLAIMED` must never be collapsed into
+  `LOCAL`** — that bar is what kept those 7 out of `LOCAL` while the predicate was still blind to
+  them, and it is the only reason this refutation is a correction and not a retraction.
+
+  ⚠ **AND THE CONTAMINATION IS NOT CONFINED TO `tools/teamlead/`**, which this file implied
+  throughout and never stated as a limit — the worst kind of claim, because it was never available
+  to be checked. `tools/memory-index-check.py`, root-level, tracked and indexed on `main`:
+
+  ```python
+  ap.add_argument("--dir", default=os.path.expanduser(
+      "~/.claude/projects/-Users-jonathanborduas-code-DigitalFrontier-infra/memory"))
+  ```
+
+  ⛔ That is a **default in executable position**, so `python3 tools/memory-index-check.py` with no
+  arguments **audits another estate's memory while reporting as an instrument of this one.** Not a
+  stale string — a live reading bound to the wrong estate.
+
+- ⚠ **MENTION IS NOT USE, and this file's own predicate cannot tell them apart.** A marker grep over
+  `tools/` proper returns **12 of 70**; the executable-position predicate returns **1 of 33**. The
+  grep counts `tools/estate-provenance.py`, which contains the vocabulary **because it detects it**.
+  ⇒ Every count in the measurement block above is a MENTION count and is an upper bound, not a
+  reading. `tools/use-not-mention.py` exists in this repository and was not applied here.
 - **That secrets are absent.** `tools/teamlead/README.md` records a secrets scan over its 22 files
   finding nothing. That scan predates this finding and was not re-run against this question.
 
