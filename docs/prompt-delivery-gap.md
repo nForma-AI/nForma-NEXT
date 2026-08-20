@@ -274,3 +274,56 @@ PY
 
 ⚠ **Exclude `c67ebcb4`** when reading the result — that is the session that made the change, and
 counting it repeats the discarded control at the top of this document.
+
+---
+
+## RE-MEASURED 2026-08-20, after this document's conclusion was ruled inverted
+
+**#192 was closed on a measurement that reversed the finding above** — *"bootstrap POINTS AT a
+committed prompt: 9 of 9 … delivery works, by reference"* — and the ruling turned on it: the launch
+path works, and the gap is re-delivery after amendment.
+
+⇒ **I could not reproduce it, and `tools/prompt-delivery.py` is the attempt.** Same machine, the
+same nine sessions, predicate stated in the tool:
+
+```
+INSTALLED   9 of 47 goal file(s) carry a prompt pointer
+LAUNCH      0   started with the pointer
+RECEIVED    2   a peer had to say it
+PULLED      7   ⚠ the session's own reading — NOT delivery
+none        7   read, carried no pointer
+unknown     2   no launch prompt in the file
+```
+
+⛔ **NINE IS THE NUMBER ON BOTH SIDES OF THE IDENTITY.** Nine goal files carry the pointer; nine
+sessions were active when that was measured. **`9 of 9` is the most plausible-looking wrong answer
+this measurement can produce**, and nothing in the number itself says which population it counted.
+
+★ **And the pointer is one I installed this morning.** If a count of the files I edited is read as a
+count of the panes that received them, the remedy becomes the evidence that no remedy was needed.
+⚠ I am not asserting that is what happened — **I am asserting the two numbers are indistinguishable
+once written down, and that this document is the wrong place to leave that unresolved.**
+
+### What I got wrong, independent of the ruling
+
+**The first extractor took the first `user` record verbatim and got a `<system-reminder>`.** The
+reminder precedes the bootstrap in some transcripts and not others, so **four of nine panes were
+read as "no pointer" from an off-by-one-record** — and the result was a clean zero, which is this
+board's signature for a broken instrument rather than a finding. The fixture in
+`testdata/transcript-head-real-shape.jsonl` is generated from a real transcript head for that
+reason: the defect **is** the record order, and a fixture typed from memory drops it and passes.
+
+### ⚠ What this does NOT establish
+
+- **Not that the ruling is wrong.** *"A committed prompt"* is undefined here. `CLAUDE.md` is
+  committed and is injected into every one of these panes; under that reading `9 of 9` is true and
+  is about a different artifact. **The predicate is the disagreement, not the fleet.**
+- **Not that `prompts/*.md` is unread.** `PULLED 7` says sessions do reach it — **by going and
+  getting it**, which is exactly the evidence a reader cannot count as their own delivery.
+- **Nothing about the two sessions with no launch prompt in their file.** A wake at the head means
+  the launch is in another file or in none. That is `unknown`, and it is not a `no`.
+
+⇒ **The claim above — that the committed prompts are not on the launch path — survives a better
+instrument than the one that produced it.** The *remedy* it argued for may still be wrong: `LAUNCH 0`
+with `PULLED 7` is consistent with a fleet that reaches its prompts reliably by another route.
+**That is TEAMLEAD's call and I am not making it here.**
