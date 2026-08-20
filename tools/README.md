@@ -196,6 +196,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
 | `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
 | `use-not-mention.py` | does this file CALL `<pattern>`, or merely TALK ABOUT calling it? | 0 no call · 1 at least one CALL · **2 established nothing** |
+| `gated-caller.py` | whose `--self-test` does CI actually invoke? | 0 all have a gated caller · 1 one does not · **2 established nothing** |
 | `population-leg.py` | does each `--self-test` consult anything outside the repository — or the forge? | 0 all do · 1 a NO-REPO-INPUT control · **2 established nothing** · ⚠ NO-REPO-INPUT is a CANDIDATE for criterion 5, not a verdict |
 | `pointer-verified.py` | did this pane READ the artifact a pointer NAMED, before acting? | 0 all read · 1 at least one not · **2 established nothing** · **3 control failed** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
@@ -532,6 +533,25 @@ revision, which is the condition being reported).
 continuing on the copy it loaded. That is the difference between a trigger and a guarantee.
 
 ⚠ **2026-08-20: `role_of` promised the one thing it did not deliver.** *"The role a session was BOOTSTRAPPED as — a name can be changed; this cannot"* — and it scanned the **whole file** for `You are X.`, taking the first hit anywhere. Measured over nine live transcripts: **3 resolved, 2 of the 3 wrong.** One came from a **correction sent a day later** (*"your identity was wrong … You are DEV2"*, record 17155, against a bootstrap reading MAINTAINER); one from a **quotation** of someone else's prompt; and a session bootstrapped as `DX` was reported `DEV2` because it had spent the day discussing DEV2. ⇒ It returned **the mutable thing it promised immunity from**, and a **mention** rather than a use. ★ Now anchored to the bootstrap record, with three outcomes — `None` unreadable or no launch prompt, `""` read and names no role, a role otherwise. **6 of 9 after, all from bootstraps.** ⚠ The two accepted phrasings are a **measured snapshot**, not a closed set.
+
+**`gated-caller.py`** — criterion 4 as amended on 2026-08-21 (#381) made checkable: a control must be
+*"shown to FAIL on real data — **by a caller that still runs it**"*, and two issues carried a **count** of
+instruments lacking one. ★ A count in an issue body decays the moment a suite lands; a check does not.
+⛔ **Measured behaviourally, and the textual version is the trap.** *"Does some gated suite mention this tool
+and the flag?"* cannot tell an **invocation** from a **mention** — the same use/mention collapse reported
+against `pipe-exit-scan.py` on #375, and the predicate both #372 and PR #392 used. ⇒ Instead: copy `tools/`,
+replace every instrument with a **recording stub**, run each gated suite once, and read the log. A suite
+that truly calls the subject writes a line; one that talks about it writes nothing. ★ Stubbing all
+instruments at once collapses the cost from *(instruments × suites)* to *(suites)* — 750 tree copies became
+30, and the live run takes **20s**. ⚠ **Suite exit codes are ignored on purpose**: under stubs a strict
+suite fails, and reading that as *"did not call"* would make the answer anti-correlated with the rigour it
+measures. ⛔ **`# SUITE-DEPENDS:` suites are not callers** — the gate skips them, so they cannot fail the
+board. ★ **Three states, because a binary answer hides the interesting one:** `REACHED` means a suite
+**imports** the module and exercises it in-process without ever passing the flag — real coverage, but
+whatever lives behind `--self-test` is still never executed. **Measured 2026-08-21 at `origin/main`: 0 of 25
+instruments have a gated caller that RUNS `--self-test`; 17 are imported but never self-tested; 8 are
+untouched.** ⚠ That is **not** *"17 tools are untested"* — it is a claim about one code path, and their
+suites may cover the same ground by other means.
 
 **`population-leg.py`** — ARCHITECT's ruling on #164 item 1 made checkable: *"name a caller whose inputs
 you did not choose"* is `goals/README.md` criterion 5's population leg applied to a **control**. ⛔ **#26 and
