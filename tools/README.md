@@ -808,6 +808,20 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
   identical. With ANSI already stripped and no `##[group]Run` envelope left, there is nothing to
   discriminate on, and returning the log unchanged is how a count of the script becomes a count
   of the output. Exit 2.
+- ⛔ **`per_page=100` is a reflex, not a check.** `gh api …/check-runs` returns **30 of 54** by
+  default, carries `total_count: 54`, and a filter over `.check_runs[]` answers about a set it
+  never saw — it once **hid a required-check failure**. `gh-complete.py` compares the stated
+  count against the array received and **refuses**. ⚠ It deliberately does not paginate for you:
+  fetching the rest is a different decision with a different cost, and making it silently would
+  hide the truncation the tool exists to surface.
+- ★ **And the endpoint most people reach for cannot be checked at all.** `repos/…/pulls` returns
+  a **bare array with no stated total**, so completeness is unestablishable from it. The tool
+  exits 2 there. That is its limit, not its feature — a helper that cannot rescue every call
+  should say which ones.
+- ⚠ **The rule existed in a wiki page and a friction report for hours while I merged PRs by
+  reading `check-runs` directly.** The audit afterwards found `total_count == length` on all
+  thirteen queries — **repo size, not care.** A rule you have read and still not applied is a
+  rule that needed to be executable.
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
@@ -829,6 +843,7 @@ python3 tools/test_pane_binding.py
 python3 tools/test_fleet_identity_exact.py
 python3 tools/test_bootstrap_audit.py
 python3 tools/test_ci_log_clean.py
+python3 tools/test_gh_complete.py
 ```
 
 ⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only
