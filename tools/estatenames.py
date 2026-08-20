@@ -7,12 +7,18 @@ SIXTH estate reads clean: a real path, in executable position, in an already-ind
 already-passing tool, exit 0. The hard half — *mention vs. use*, decided by executable
 position — was solved and is not touched here. Only the VOCABULARY moves.
 
+⚠ The example above is written `<slug>` rather than spelled out: the literal form is the
+very thing PROJ_SLUG_RE matches, so a worked example in this docstring made THIS MODULE
+report itself. The regex on line ~38 is detection machinery and stays literal; prose does
+not have to be. ⇒ The fixture needs the SHAPE, never the OWNER — and a doc example is a
+fixture.
+
 ⇒ THE MOVE. Do not ask "is this name one of the estates I know?" Ask "does this string
 name an estate that is NOT THIS ONE?" The comparand is read from the tree at run time, so
 a fifth, sixth and seventh estate are caught without an edit:
 
     ~/code/<X>                        <X> != this repo's directory name
-    ~/.claude/projects/-Users-…-<X>   slug != this repo's own slug
+    ~/.claude/projects/<slug>         slug != this repo's own slug
     github.com/<owner>/<repo>         <repo> != this repo's forge name
     gh -R <owner>/<repo>              same, for the flag form
 

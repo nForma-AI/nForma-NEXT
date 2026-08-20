@@ -152,6 +152,9 @@ def void(msg):
 # flag plus a typo produced a clean control result that ignored half its invocation.
 # (#321's shape, measured here 2026-08-21. Kept INLINE rather than shared: an import is
 # what makes an instrument un-pinnable as a single file, and this one still is.)
+# ⇒ Joined, not written: no substring of this file matches the predicate it feeds.
+FIXTURE_ESTATE = "-".join(("fixture", "estate", "not", "an", "owner"))
+
 KNOWN_FLAGS = {"--self-test"}
 
 
@@ -237,7 +240,15 @@ def self_test():
         # ⇒ Was `# control-plane/api/handlers/x.py`, matching a LIST ENTRY. That entry is
         # dropped (DEVOPS measured zero unique detections for it), and the specimen now
         # exercises the DERIVED leg instead: an estate name never typed in this file.
-        ("foreign path, derived",         "p = '/Users/o/code/Fabrikam-Ledger/x.py'", "FOREIGN"),
+        # ⛔ ASSEMBLED AT RUNTIME, AND DELIBERATELY NOT A PLAUSIBLE OWNER. Two reasons, and
+        # the second is the one that cost a specimen. (1) A literal foreign path here makes
+        # this file trip its OWN detector — the fixture becomes indistinguishable from a
+        # dependency in any sweep. (2) A real-looking estate name, once committed, is BURNED
+        # as a future control: it is now in the vocabulary of the thing under test.
+        # ⇒ The fixture needs the SHAPE, never the OWNER. `FIXTURE_ESTATE` is not a company,
+        # cannot be mistaken for one, and no `/code/<name>` literal appears in this file.
+        ("foreign path, derived",         "p = '/Users/o/code/%s/x.py'" % FIXTURE_ESTATE,
+                                                                                    "FOREIGN"),
         # ⛔ THE KNOWN-NEGATIVE, and the whole flood control in one row. Our OWN path is
         # the same shape as the row above. A predicate that reds here matches every path
         # in the tree and is worthless; without this row nothing would say so.
