@@ -233,6 +233,8 @@ revision, which is the condition being reported).
 ⛔ It cannot establish that a notified agent re-read rather than noting the notification and
 continuing on the copy it loaded. That is the difference between a trigger and a guarantee.
 
+⚠ **2026-08-20: `role_of` promised the one thing it did not deliver.** *"The role a session was BOOTSTRAPPED as — a name can be changed; this cannot"* — and it scanned the **whole file** for `You are X.`, taking the first hit anywhere. Measured over nine live transcripts: **3 resolved, 2 of the 3 wrong.** One came from a **correction sent a day later** (*"your identity was wrong … You are DEV2"*, record 17155, against a bootstrap reading MAINTAINER); one from a **quotation** of someone else's prompt; and a session bootstrapped as `DX` was reported `DEV2` because it had spent the day discussing DEV2. ⇒ It returned **the mutable thing it promised immunity from**, and a **mention** rather than a use. ★ Now anchored to the bootstrap record, with three outcomes — `None` unreadable or no launch prompt, `""` read and names no role, a role otherwise. **6 of 9 after, all from bootstraps.** ⚠ The two accepted phrasings are a **measured snapshot**, not a closed set.
+
 **`verdict-census.py`** — answers #2's question for every instrument this table indexes: *has it ever
 produced a verdict?* ⛔ **By running them**, never by reading the index — an index entry is a claim that a
 tool exists, and asserting verdict-history from it would reproduce the defect #2 is about. It separates four
