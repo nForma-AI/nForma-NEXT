@@ -167,9 +167,21 @@ def self_test():
 
 
 def main(argv):
-    if "--self-test" in argv:
+    # ⚠ THE FILTER BELOW USED TO BE THE WHOLE ARGUMENT SURFACE, and it DISCARDED every token
+    # starting with `-` (#321). So `--zzz-not-a-flag` was silently dropped and the run exited 0
+    # — meaning a renamed or misspelled `--self-test` would run the VALIDATOR and report
+    # success, and a CI step invoking the control would go green having never run it.
+    # ⚠ Positional arguments are legitimate here (recipe paths), so only unrecognised FLAGS
+    # void — this is not the same guard as a no-argument checker's.
+    args = argv[1:]
+    if args in (["--self-test"], ["--selftest"]):
         return self_test()
-    paths = [a for a in argv[1:] if not a.startswith("-")] or sorted(glob.glob(".daintree/recipes/*.json"))
+    unknown = [a for a in args if a.startswith("-")]
+    if unknown:
+        print(f"  VOID  unrecognised flag(s): {' '.join(unknown)} — established nothing",
+              file=sys.stderr)
+        return 2
+    paths = [a for a in args if not a.startswith("-")] or sorted(glob.glob(".daintree/recipes/*.json"))
     if not paths:
         print("no recipes found under .daintree/recipes/", file=sys.stderr)
         return 1

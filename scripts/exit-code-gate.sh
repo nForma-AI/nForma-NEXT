@@ -212,16 +212,39 @@ selftest() {
     return $ok
 }
 
+# ⛔ $# IS CHECKED, NOT JUST $1. `case "${1:-}"` matched the flag and IGNORED everything after
+# it, so `--self-test --zzz-not-a-flag` ran the control and exited 0 — a caller could pass a real
+# flag and a typo together and read a clean control result that silently dropped half the
+# invocation. That is membership-not-equality in a `case`, the same defect this PR fixes in two
+# Python checkers, committed in the gate that checks for it. (Found by DEV5, on their own files
+# first; I had only ever tested the garbage flag ALONE, so my gate would have passed this.)
 case "${1:-}" in
     --self-test|--selftest)
+        [ "$#" -eq 1 ] || { echo "  VOID  unrecognised argument(s) after $1: ${*:2} — established nothing" >&2; exit 2; }
         selftest
         exit $?
         ;;
     -h|--help)
+        [ "$#" -eq 1 ] || { echo "  VOID  unrecognised argument(s) after $1: ${*:2} — established nothing" >&2; exit 2; }
         sed -n '2,46p' "$0"
         exit 0
         ;;
 esac
+
+# ⛔ THERE WAS NO ARGUMENT GUARD HERE AT ALL, and both of gate-selftests.sh's controls passed
+# over it for two different wrong reasons. The first positional IS the directory, so
+# `--zzz-not-a-flag` was accepted as a DIRECTORY NAME: the glob matched nothing, the run exited
+# 2 as ESTABLISHED NOTHING, and the flag appeared in the message only because it had been
+# interpolated as a PATH — `zero suites matched "test_*.py" under --zzz-not-a-flag/`.
+#
+# ⇒ So "exits non-zero" was satisfied by an unrelated cause, and "names the flag" by a
+# coincidence of string interpolation. A leading `-` is never a directory here.
+# (The two-cause point is DEV5's, found on their own tools first.)
+for _a in "$@"; do
+    case "$_a" in
+        -*) echo "  VOID  unrecognised argument: $_a — established nothing" >&2; exit 2 ;;
+    esac
+done
 
 DIR="${1:-$DEFAULT_DIR}"
 GLOB="${2:-$DEFAULT_GLOB}"
