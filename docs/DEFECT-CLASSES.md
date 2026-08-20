@@ -439,6 +439,102 @@ document already predicts: *state the remedy at the scope of the boundary, not t
 
 ---
 
+## ★ CLASS D — the verdict contradicts its own report
+
+Class A is two states colliding at a boundary. Class B is a rule whose noun is one word too narrow.
+Class C is a true reading of a proposition nobody asked about. **This one is none of those: the
+population is right, the predicate is right, the finding is right, and the tool says it twice —
+once in prose and once as a return value — and the two do not agree.**
+
+> The human-readable report withholds a judgement in words while the exit code delivers that
+> judgement anyway, to a different reader, in a vocabulary the prose never uses.
+
+⚠ **It survives review because the two statements are never read by the same audience.** A person
+reads the report and sees a careful refusal. CI reads `$?` and sees a verdict. **Nobody is in a
+position to notice they disagree** — the disagreement exists only in the union, and nothing
+produces the union.
+
+### The instance, measured 2026-08-20 at `devops/tools-index-recurse`
+
+`scripts/check-tools-index.py` prints, verbatim:
+
+```
+QUARANTINED  tools/teamlead/ — 10 of 19 instrument(s) name another estate in EXECUTABLE position
+             ⛔ NOT reported as undocumented: presence in tools/ is not evidence of belonging,
+                and an index row would ASSERT that it is
+```
+
+…and then exits **1**, which in that same file's vocabulary — printed by its own summary line — is
+`DRIFTED`: *the index is wrong.*
+
+⇒ **Both cannot be true.** The prose says *I am declining to judge these files.* The exit code says
+*I have judged them and the index has drifted.* The careful refusal is the reason the tool was
+changed; the exit code discards it silently and states the opposite.
+
+⚠ **And it is not cosmetic.** `hermetic suites (gating)` is a required check on `main`, so the
+contradicted half is the half with authority: the exit code freezes the merge queue for nine panes
+while the prose insists no such finding was made.
+
+### ✅ FIXED the same day — and the class is filed on the remedy, not the bug
+
+DEVOPS repaired this at `devops/tools-index-recurse` within the hour: **quarantine no longer sets
+the verdict at all.** `exit 1` now means *the acknowledgement file has drifted from the tree* — the
+drift semantic this checker always had, applied to a third surface. It never means *these files do
+not belong*, because nothing in it can establish that.
+
+⇒ The instance is **closed**. It is recorded here because **the remedy generalises and is
+mechanisable**, not because the bug survives. ⚠ A class filed on a live bug decays into a bug
+report the moment someone fixes it.
+
+### ⇒ The remedy already exists in the same file, one layer away
+
+`check-tools-index.py` **already** prints its verdict word from a map:
+
+```python
+print({0: "clean", 1: "DRIFTED", 2: "VOID"}[rc])
+```
+
+⇒ The defect is that `QUARANTINED` was added as a **line beside** that map instead of a **member of
+it**. So:
+
+> **A tool must print a verdict word, and its exit code must be a FUNCTION of the printed word —
+> never computed alongside it.**
+
+Then disagreement is unrepresentable rather than merely discouraged, and it becomes testable in one
+line: *assert the exit code equals `MAP[the word the run printed]`.* ★ Same shape as Class C's
+remedy — **the fix was present as a property of one code path instead of a property of the tool's
+output**, so the next state added to the tool did not inherit it.
+
+### ★ The authoring-time question
+
+Cheaper than the criterion, and it does not depend on remembering this document:
+
+> **If a reader saw ONLY the exit code, would the prose still be true? If a reader saw ONLY the
+> prose, would the exit code be predictable?**
+
+⛔ Two `no`s is this class. One `no` is usually Class B — a verdict vocabulary one word too narrow,
+which is exactly how `QUARANTINED` arrived with nowhere to go.
+
+### ⛔ NOT this class
+
+- **A tool that reports richly and exits 0** is not contradicting itself; it is reporting. The
+  contradiction requires the exit code to assert something the prose *declines* to assert.
+- **Exit 2 blocking a gate** (#329) is not this class. There the prose and the code agree —
+  *established nothing, therefore not green.* The block is the meaning, not a second opinion.
+- ⛔ **A predicate whose LABEL disagrees with its COMPUTATION is Class C, not this one.** Measured
+  the same day: an AST pass reported *"13 of 13 files name another estate in EXECUTABLE position"*
+  while actually counting every mention, because `ast.get_docstring()` returns a `cleandoc()`'d
+  string and the `Constant` node holds the raw one — so the membership test excluding docstrings
+  never matched. **Prose and exit code agreed there**; the reading was simply of the wrong
+  proposition. ★ Its own output carried the refutation: **`13 of 13` means the discriminator
+  discriminated nothing.** ⇒ *A discriminator returning N of N has not discriminated* — one line to
+  check, and it belongs beside the count, not in a document.
+- ⚠ **One measured instance.** This is filed as a class because its remedy generalises and is
+  mechanisable, **not** because recurrence has been shown. If a second instance does not appear, it
+  is a finding about one file and should be demoted rather than defended.
+
+---
+
 ## ⛔ What is NOT established
 
 - **The frame is not universal, and that is what makes it a claim.** #80 is outside Class A by
