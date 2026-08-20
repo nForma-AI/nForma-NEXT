@@ -125,6 +125,25 @@ def main():
     failures += _bands_checks()
     failures += _name_checks()
 
+    # ⛔ The FLATLINE row must name the moved-agent state. Measured: DEV1 was reported
+    # FLATLINE for six hours at an unchanged depth while merging two pull requests from
+    # a session this machine has no transcript for. A message listing four causes and
+    # omitting the fifth reads as exhaustive.
+    import subprocess as _sp
+    _tool = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fleet-context.py")
+    _out = _sp.run([sys.executable, _tool, "--flatline", "1"],
+                   capture_output=True, text=True).stdout
+    if "FLATLINE" in _out:
+        failures += not check("flatline names the moved-agent cause",
+                              "AGENT MOVED" in _out, True)
+        failures += not check("flatline says it is about the FILE",
+                              "this FILE is consuming nothing" in _out, True)
+        failures += not check("flatline points at the roster as the other population",
+                              "ROSTER" in _out, True)
+    else:
+        print("  ---- no FLATLINE row on this machine right now; those 3 checks NOT RUN")
+        print("       (an absent row is not a passing one — this is stated, not scored)")
+
 
     print()
 

@@ -347,6 +347,26 @@ def main():
     if "--self-test" in sys.argv:
         return self_test()
     ap = argparse.ArgumentParser()
+    # ⛔⛔ A FLATLINE ROW IS ABOUT A FILE, NOT AN AGENT — measured the hard way.
+    #
+    # This scan's population is "transcripts on this machine". An agent that moves to
+    # another session or another machine leaves its old transcript behind, and the
+    # corpse keeps reporting as a live row at whatever depth it died at.
+    #
+    # Measured 2026-08-20: DEV1 was reported FLATLINE for six hours at an unchanged
+    # 804,593 — and merged two pull requests during that window, from a session this
+    # machine has no transcript for. Every "DEV1 dropped out / could not be asked /
+    # consuming nothing" I published was about an abandoned file.
+    #
+    # ★ Same root as the SHARED FILE case, from the opposite side. There, one FILE held
+    # two agents. Here, one AGENT held two files and the scan tracked the dead one.
+    # ⇒ The agent↔transcript relation is neither injective nor surjective, and every
+    # obligation this tool feeds assumed it was a bijection.
+    #
+    # ⚠ ABSENT FROM THIS SCAN IS NOT UNREACHABLE. The roster is a different population
+    # and it had DEV1 the whole time. Check it before concluding anything about a
+    # missing or flatlining row.
+    #
     # ⛔ FLATLINE IS DERIVABLE, WHICH IS THE WHOLE POINT OF PUTTING IT HERE.
     # An agent that has run dry is supposed to send a message saying so. That
     # protocol reaches sessions started after it — and a prompt amendment does not
@@ -507,8 +527,10 @@ def main():
                              f"{b[0][1] / 10000:.0f}%, one near {b[1][1] / 10000:.0f}%. "
                              f"ASK BOTH; do not attribute.")
             elif args.flatline and r["idle_min"] >= args.flatline:
-                warn += (f"  ⛔FLATLINE {r['idle_min']}m — consuming nothing. Finished, "
-                         f"blocked, crashed or waiting; this cannot tell which. ASK IT.")
+                warn += (f"  ⛔FLATLINE {r['idle_min']}m — this FILE is consuming nothing. "
+                         f"Finished, blocked, crashed, waiting, OR THE AGENT MOVED and left "
+                         f"this transcript behind; this cannot tell which. ASK IT — and if it "
+                         f"does not answer, check the ROSTER before concluding it is gone.")
             elif r.get("shape") == "compaction-step":
                 warn += "  ↻compacted in-window — depth is the POST-compaction figure"
             print(f"{r['depth']:>9,} {r['pct']:>6.1f}%  {r['name']:<14} {r['session']}  "
