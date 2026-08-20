@@ -80,6 +80,43 @@ first report is **unreachable, permanently**. Never ask for a delta on one.
 **Re-entry:** ask for a **new report**, never a delta, when `current% ≥ 75` **and** the session
 is not in the table below. Record every ask there or the next sweep cannot tell.
 
+## ⛔ THE SESSION ID NAMES A FILE, NOT AN AGENT — and this table keys on it
+
+Every obligation decision below is keyed on an 8-character session-id prefix. **On a shared
+transcript that prefix identifies up to three agents**, and the dedupe then returns a confident
+wrong answer instead of no answer.
+
+**Measured 2026-08-20, and it fired on me:**
+
+```
+#1187  title: "Session friction report (TEAMLEAD, ~16h): nine instruments…"
+#1187  body:  session e4a7769d
+transcript e4a7769d carries the names: TEAMLEAD, IMPLEMENTER2, DEV2
+```
+
+⇒ I told DEV2 *"your first report #1187 is filed."* **It had not filed.** #1187 is TEAMLEAD's
+report, in a transcript DEV2 shares. DEV2 checked instead of accepting it, which is the only
+reason this is written down.
+
+⛔ **A dedupe that returns a false POSITIVE is strictly worse than the local-state-file problem it
+replaced.** A false negative asks someone twice, which costs a turn. A false positive **suppresses
+a report nobody knows is missing** — there is no artifact, no gap, and nothing to notice.
+
+★ **And the same shared file defeats a second, independent identity mechanism.** DEV2 could not
+derive its own socket when TEAMLEAD probed it (20 sockets in `/tmp/cc-socks`, none
+self-identifying), and it cannot use its session id to prove which turns are its own. Two
+mechanisms, one root.
+
+⇒ **RULE: a row carrying `⛔ SHARED FILE` cannot be deduped by session id.** Ask the agent by
+name, and take *its* answer about whether it has filed — the self-report is weaker evidence in
+general and is the **only** evidence here. Where a report exists, check the session id **in its
+body against the role in its title**; if they disagree, the file is shared and the row is
+unreliable in both directions.
+
+⚠ **This is not hypothetical for the current table:** `e4a7769d` is listed as DEV2 and is a
+shared file. Every obligation decision made about that row has been about a transcript, not an
+agent.
+
 ⚠ **A session that has already filed STAYS listed after it compacts.** DEVOPS reads 12.2% now,
 which is not a new agent owed a first report — it is the same session, post-compaction, with
 `#1250` already filed. Its next obligation arrives when it climbs back to 75%, and the table
