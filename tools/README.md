@@ -503,6 +503,23 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
   parser into a full keyword scan left the test green. **A control that cannot fail is not
   measuring the thing you named it after** — break the implementation and watch the specific
   case go red before believing it.
+- **An identity read from a transcript can belong to somebody else.** `bootstrap_role`
+  scanned every line for the first `You are <ROLE>`; its docstring said "the first user
+  message". Measured on five live sessions, **4 of 5 matches were another agent's identity** —
+  three injected by a recall hook that quotes other sessions' prompts, one from the session's
+  own outbound dispatch text. ⚠ The contamination has a **sign**: recall and dispatch are what
+  busy, well-connected agents do, so the agents most likely to be mislabelled are the ones
+  doing the most cross-session work, and the column gives no hint the string came from
+  elsewhere.
+- **Derive the identifier; never enumerate it.** The same function matched a frozen list of
+  five role names. This fleet runs at least two vocabularies — the bootstraps actually present
+  include `CODER2`..`CODER5` and `TRIAGE` — so a session launched as `TRIAGE` read as having
+  no bootstrap while one launched as `CODER2` was labelled `DX`.
+- ⛔ **A break test must graft the REAL prior implementation, not a paraphrase of it.** The
+  first attempt at breaking the above re-created the old behaviour by hand; it missed the
+  record-type prefilter, and the two headline cases passed against a "broken" version that
+  could not exhibit the bug. Copying the previous function in verbatim turned 2 failures into
+  5. **A break you wrote from memory tests your memory.**
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
@@ -512,6 +529,7 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
 ```
 python3 tools/test_fleet_context.py     # exit 0 = pass, 1 = a control failed
 python3 tools/test_fleet_state.py
+python3 tools/test_fleet_identity.py
 ```
 
 ⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only
