@@ -407,7 +407,48 @@ does not move — a design property, not agent behaviour.
       PREDICATE applied and the CHANNEL the value crossed, then name one case that
       would have produced the OTHER answer and say which of the three it enters by
       ⛔ "no such case exists" is not an answer. It is this criterion's failure mode.
+      ⛔ AND IF THE CHANNEL CAN TRUNCATE, SHOW THAT IT DID NOT — reconcile the returned
+         size against a channel with a DIFFERENT failure mode. A self-check does not
+         qualify: `len(rows) >= limit` needs a `limit`, and a DEFAULT limit is a cap
+         you never stated, so cap and count are the same number and agree.
    ```
+
+   **Measured, and it is why the truncation clause is a leg of 5 rather than a sixth criterion:**
+
+   ```
+   gh issue list --json number --jq length     -> 30    <- the DEFAULT cap, unstated
+   gh issue list --limit 200                   -> 91
+   gh api search/issues …&per_page=1 total_count -> 90
+   ```
+
+   ⇒ The population was **named correctly** — *open issues in this repo* — and the channel delivered
+   a prefix of it. **Naming closes nothing here**, which is the objection; but the value was altered
+   **in transit between the thing measured and the thing printed**, and that is the CHANNEL leg as
+   already written. ⛔ **A sixth criterion would restate the fifth, and a criterion that restates
+   must be ABOLISHED rather than tuned** — so this sharpens the leg instead of adding one.
+
+   ⚠ **Reconciliation yields agreement or a discrepancy to explain — never certainty.** The two
+   channels above **disagree by one**. That is the correct output of the rule: a number you must now
+   account for, rather than a number you trust.
+
+   ### ⚠ The `[NOT-YET-MEASURED]` on criterion 5 was ONE TAG OVER TWO CLAIMS
+
+   ⛔ Split, because they have different evidence and only one has any:
+
+   ```
+   5a. catches a defect AT AUTHORING TIME, before publication      n = 1, self-reported
+   5b. STOPS A CLOSURE that would otherwise have passed 1-4        n = 0
+   ```
+
+   **5a's datum:** a doc stated *"11 of 19"* where two disjoint sets both numbered 19 — every `.py`
+   under `tools/teamlead/`, and the instruments a checker flags. **Numerically identical, disjoint;
+   true of one, read against the other.** Caught by running the disambiguation the criterion demands
+   *before writing the number down.* ⚠ **Self-reported prevention is the weakest admissible evidence
+   class** — *the criterion fired* and *the author would have caught it anyway* are both consistent
+   with what was observed. **Same bound this repository applied to #80's first prospective catch, and
+   it must apply here or it was never a bound.**
+
+   ⇒ **5b is what the falsifier asks for and it remains at zero.** `[NOT-YET-MEASURED]`
 
    ### ⛔ Criterion 5 exists because 1–4 check the INSTRUMENT and never its BINDING to the claim
 
