@@ -161,13 +161,28 @@ working on.
 
 
 
-Keyed on the assignee field, which is a fact a caller can read in one call — not an ownership it
-must infer from prose. It preserves the real concern (do not close work someone is holding) and
-it fails closed only where the field actually says so.
+### ⛔ RETAINED AS EVIDENCE — this is the WITHDRAWN rule's justification, not current doctrine
 
-⚠ **It is therefore weaker than what it replaces, deliberately.** With 29 of 31 unassigned it
-constrains almost nothing today. That is the correct state: **the fix for an unowned board is
-triage, not a reservation that makes unowned mean untouchable.**
+**The two paragraphs below argued FOR the replacement rule struck through above.** They are kept,
+not deleted, because they are the evidence for the REQUIREMENT — *a rule keyed on ownership needs a
+field carrying the PANE, not the account* — and the requirement is the durable part. ⚠ **Nothing
+below this line constrains anyone.**
+
+⇒ Found by DEV2, 2026-08-20, four lines below the strike-through that killed it. ★ **The withdrawal
+lived in a strike-through — a formatting convention — while its justification lived in prose that
+reads identically whether live or dead.** A reader who skims one line mid-table lands on two
+confident paragraphs explaining why the rule is right. ⛔ Same class as use-vs-mention (#36): the
+retraction was expressed in a form a skim does not preserve. Structure carried the negation; the
+words carried the assertion; the words won.
+
+> Keyed on the assignee field, which is a fact a caller can read in one call — not an ownership it
+> must infer from prose. It preserves the real concern (do not close work someone is holding) and
+> it fails closed only where the field actually says so.
+>
+> ⚠ **It is therefore weaker than what it replaces, deliberately.** With 29 of 31 unassigned it
+> constrains almost nothing today. That is the correct state: **the fix for an unowned board is
+> triage, not a reservation that makes unowned mean untouchable.**
+
 ## ★ GRANTED — read-only monitors on your own instruments
 
 **Operator, 2026-08-20.** Every role may arm a **read-only monitor** on instruments it owns,
