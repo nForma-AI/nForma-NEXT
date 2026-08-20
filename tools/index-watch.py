@@ -50,6 +50,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+# ⛔ THE SCRIPT'S LOCATION AND THE REPOSITORY IT MEASURES ARE DIFFERENT THINGS, and conflating
+# them makes the monitor unpinnable. Measured, on this tool: armed from the working tree, a
+# branch switch I made for unrelated work silently swapped the RUNNING monitor's own source to a
+# pre-#139 version, which then read its JSON state as a raw string, printed `{ "sha"` where a SHA
+# belonged, re-raised held findings, and overwrote the rolled baseline. Isolation did not help —
+# it was my own tree and my own checkout. ⇒ A long-running monitor must run from a copy of its
+# source that nothing can rewrite, which is only possible if --repo is separable from __file__.
 ROOT = Path(__file__).resolve().parent.parent
 SUBJECT = ROOT / "scripts" / "check-tools-index.py"
 # Exit codes the subject DOCUMENTS. Anything else is "could not run", never "clean".
@@ -71,9 +78,9 @@ def run(*args, cwd=None):
     return subprocess.run(args, capture_output=True, text=True, cwd=cwd)
 
 
-def remote_sha():
+def remote_sha(repo=None):
     """The SHA of origin/main, or None. None is a VOID condition, never 'unchanged'."""
-    r = run("git", "ls-remote", "origin", "refs/heads/main", cwd=str(ROOT))
+    r = run("git", "ls-remote", "origin", "refs/heads/main", cwd=str(repo or ROOT))
     if r.returncode != 0 or not r.stdout.strip():
         return None
     return r.stdout.split()[0]
@@ -93,14 +100,15 @@ def save_state(path, sha, findings):
     path.write_text(json.dumps({"sha": sha, "findings": sorted(findings)}, indent=1))
 
 
-def check_once(state_path, force=False, subject=None):
+def check_once(state_path, force=False, subject=None, repo=None):
     """Return (exit_code, lines). `subject` is injectable so the self-test can
     exercise the missing-subject path without mutating module state."""
     subject = SUBJECT if subject is None else subject
-    sha = remote_sha()
+    repo = ROOT if repo is None else repo
+    sha = remote_sha(repo)
     if sha is None:
-        return 2, ["  VOID  could not read origin/main — establishes nothing about the index."
-                   " ⛔ This is NOT 'unchanged'."]
+        return 2, [f"  VOID  could not read origin/main from {repo} — establishes nothing about"
+                   " the index. ⛔ This is NOT 'unchanged'."]
 
     prev, base = load_state(state_path)
     if prev == sha and not force:
@@ -223,6 +231,14 @@ def self_test():
             print(f"  {'ok  ' if hit else 'FAIL'}  a NEW finding alongside a held one still fires "
                   f"(got {rc})")
 
+        # ⛔ a --repo that is not a git repository must VOID, never read as 'unchanged'
+        save_state(st, "0" * 40, [])
+        rc, lines = check_once(st, repo=Path(d))
+        hit = rc == 2 and any("could not read origin/main" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a non-repo --repo exits 2 VOID, not 'unchanged' "
+              f"(got {rc})")
+
         # ⛔ a missing subject must be VOID, never silence
         save_state(st, "0" * 40, [])
         rc, lines = check_once(st, subject=Path(d) / "absent.py")
@@ -238,6 +254,9 @@ def main(argv):
     ap.add_argument("--force", action="store_true",
                     help="run the subject even if main has not moved")
     ap.add_argument("--state", default=str(DEFAULT_STATE))
+    ap.add_argument("--repo", default=None,
+                    help="repository to measure, when this script is run from a pinned copy "
+                         "outside it (see the ⛔ note at ROOT)")
     try:
         a = ap.parse_args(argv[1:])
     except SystemExit:
@@ -245,7 +264,8 @@ def main(argv):
         return 2
     if a.self_test:
         return self_test()
-    rc, lines = check_once(Path(a.state), force=a.force)
+    rc, lines = check_once(Path(a.state), force=a.force,
+                           repo=Path(a.repo) if a.repo else None)
     print("\nindex-watch — scripts/check-tools-index.py vs main")
     for l in lines:
         print(l)
