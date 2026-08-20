@@ -53,6 +53,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `doctrine-watch.py` | which roles' doctrine moved under them, and who has not read it? | 0 nothing to tell · 1 a role is behind · **2 established nothing** |
+| `verdict-census.py` | has each indexed instrument ever produced a verdict? | 0 all classified · 1 a never-run, slow, or undocumented instrument · **2 established nothing** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
@@ -140,6 +141,19 @@ revision, which is the condition being reported).
 
 ⛔ It cannot establish that a notified agent re-read rather than noting the notification and
 continuing on the copy it loaded. That is the difference between a trigger and a guarantee.
+
+**`verdict-census.py`** — answers #2's question for every instrument this table indexes: *has it ever
+produced a verdict?* ⛔ **By running them**, never by reading the index — an index entry is a claim that a
+tool exists, and asserting verdict-history from it would reproduce the defect #2 is about. It separates four
+states that a single exit code would collapse: `VERDICT-SEEN` (exited a code its own docstring documents as
+a conclusion), `ESTABLISHED-NOTHING` (exit 2 — a refused verdict, which is the honest form of silence and
+**not** a verdict), `NO-VERDICT-VOCAB` (ran, but documents no exit codes, so *did it conclude?* cannot be
+read from its contract), and `NEVER-RUN` (crashed, or exited a code it does not document). ⚠ A traceback is
+classified before the exit code, because a crash that happens to exit `1` would otherwise read as a
+conclusion. ⚠ A timeout is reported as `NO-VERDICT-IN-TIME`, never `NEVER-RUN` — measured: a 25s bound
+labelled a 45s instrument never-run, which is a statement about the caller's parameter rather than the
+tool. Its known-positive is a set of **synthetic fixtures outside `tools/`**, one per state, so repairing
+any real instrument cannot silence it.
 
 **`wake-yield.py`** — pairs an interruption's cost with its yield. Cost alone is
 uninterpretable: an agent woken into useful work and one woken into churn consume context
