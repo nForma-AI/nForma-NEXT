@@ -1058,6 +1058,24 @@ when the panes it notified read their files.)
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
 
+- ⛔ **The ⛔/✅ glyphs in this file are CONTENT, not formatting.** They carry the polarity of a
+  block — *this is the broken form* vs *this is the correct one* — and **no text matcher can
+  recover it from the prose.** `use-not-mention.py` resolves Python call edges to a sink and has
+  nothing to resolve in markdown; there is no call graph here. ⇒ Anyone who strips or normalises
+  these marks **blinds every future control over this file without changing a word of its text**,
+  and the file will still read correctly to a human, which is what makes it silent.
+- ★ **Prefer the control whose failure mode is a false PASS over one guaranteed to fire on the
+  repaired state.** Measured 2026-08-20 (#291): the obvious control for a documented-forbidden
+  command is to grep for it and fail on a hit. That control is **void**, because naming a broken
+  command means writing it down — after the fix, **the document that forbids the form is the top
+  hit for it.** The sweep returned 2 hits at `origin/main` and both were mentions: this file's own
+  counter-example, and a quoted pointer message in `pointer-verified.py`. ⚠ The author of that
+  sweep began drafting a fix for the counter-example *inside the block that forbids it*.
+  ⇒ Key on the **presence of the correct form** instead (`check-orientation.py`,
+  `check_pin_doctrine`). An absence-check gets **louder the better the documentation gets**; a
+  presence-check degrades quietly and only ever under-reports. ⚠ Stated limit, not a defect:
+  presence is also satisfiable by a mention — that is the price, and it is the cheaper error.
+
 ## Running the checks
 
 ```
