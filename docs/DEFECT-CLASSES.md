@@ -417,6 +417,18 @@ once, because one pane handed another pane a table.** A test nobody is handed is
 5. **Report the result as a partition that sums to a stated population, and name the denominator's
    source** (#214). ⇒ Steps 1–4 need you to suspect a problem. This one does not: a sum that does
    not close, or a count with no denominator, is wrong on the face of the output.
+6. ⛔ **Before reporting the result, pin the reading to the claim** — population, predicate, channel,
+   and one case that would have produced the other answer, **run rather than named** (Class C;
+   `goals/README.md` criterion 5). **Steps 1–5 can all pass on a reading that answers a question
+   nobody asked.**
+7. ⛔ **Run the probe against a known answer before believing its negative** — and against one it
+   must refuse, on the same invocation. A probe that has only ever said ABSENT, and one that says
+   PRESENT for everything, are both untested (see the section of that name below).
+
+⚠ **This checklist is not the whole document.** Classes **C**, **D** and **E**, the probe rule, and
+the limits section all sit **below** it — an artefact of each having been appended as it was found.
+⇒ **Read to the end before treating a checklist step as the complete test**, and see the ordering
+note in *What is NOT established*.
 
 **Authoring a rule:** name the noun it ranges over, then the nearest neighbouring noun, and ask
 whether it has the same defect (#80). ⚠ **Untested** — see below.
@@ -758,6 +770,12 @@ that ruling arrives un-preempted.
 
 ## ⛔ What is NOT established
 
+- ⛔ **The document's ORDER no longer matches its argument, and that is a defect in it.**
+  `## Applying this` sits **above** Classes C, D and E and above the probe rule; this section sits
+  **above** Class E. ⇒ **A reader following the checklist reaches the end of it having met two of
+  five classes.** ⚠ **Not fixed here on purpose:** a reorder is the highest-conflict edit possible
+  on a file **five open PRs were touching**, and the same defect is cheaper to fix once the file
+  cools. **Recorded rather than left for the next reader to trip over.**
 - **The frame is not universal, and that is what makes it a claim.** #80 is outside Class A by
   construction. #19 (nine agents, one working tree) is interference, not a collapse. #29 is a
   record, not a class. **A taxonomy that accommodates everything explains nothing** — if a future
