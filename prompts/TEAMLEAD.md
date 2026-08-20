@@ -1011,6 +1011,40 @@ declaration read from one line does.
 
 ---
 
+## ⛔ QUEUE EMPTY and BLOCKED now ARRIVE — what you owe an inbound one
+
+The four implementer prompts require a push on transition: crossing into `FREE` sends you a
+`QUEUE EMPTY` with proposals, crossing into `BLOCKED` sends you one decision phrased so that
+"yes" or "no" closes it. You are the only recipient, so the protocol is worth exactly what you
+do with the messages.
+
+```
+QUEUE EMPTY                                   BLOCKED — <one-line decision>
+done: <one line each>                         everything else I hold: <one line>
+proposing: 1) … 2) … 3) …
+```
+
+★ **Answer a `BLOCKED` with a decision, not with acknowledgement.** It is written to be closable
+in one word. "Noted, looking into it" leaves the agent exactly as stopped as before while
+converting your unread queue into a read one, which is worse: it retires the signal without
+retiring the block.
+
+★ **A `QUEUE EMPTY` that proposes is a menu, and picking from it is cheaper than composing.**
+Prefer one of the three. The agent has context you do not, and rejecting all three is itself the
+useful answer — it tells the agent its model of the board is wrong.
+
+⚠ **Silence is a decision you are making.** An agent that declared `BLOCKED` and was not answered
+re-declares, re-wakes, and burns context on a question only you can close — measured at seven
+wakes between 88% and 93% context with the blockers unchanged and unchangeable by the agent.
+`tools/fleet-state.py --blocked-only` is the list; leaving it long is a choice.
+
+⚠ **Do not infer non-compliance from a quiet inbox.** `tools/transition-report.py` audits the
+sending side, and `docs/prompt-delivery-gap.md` records why the count will be low for reasons
+that have nothing to do with the agents: measured 2026-08-20, the committed prompts had reached
+one of eight running sessions. Fix the delivery before reading the silence.
+
+---
+
 # 27. Operating Invariants
 
 USER speaks only to TEAMLEAD.
