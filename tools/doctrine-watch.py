@@ -73,6 +73,63 @@ def changed_between(base, head, root):
         void(f"cannot diff {base}..{head}: {err or 'unknown'}")
     return [p for p in out.splitlines() if p in BINDS]
 
+def delta_for(base, head, path, root):
+    """How BIG was the change, and WHERE — so a role can read the delta, not the file.
+
+    ⛔ SIZE IS NOT SEVERITY, and this must never be read as though it were. A six-line
+    strike-through that withdraws a reservation is small and load-bearing; an eighty-line
+    re-wrap is large and binds nobody. DEVOPS held a withdrawn reservation for a day
+    precisely because every BEHIND row looked identical — the remedy is to make the delta
+    CHEAP TO READ, never to let it be cheaply SKIPPED.
+
+    ⇒ Returns (added, removed, [(start, end)]) in HEAD's numbering, or None if the diff
+    established nothing — in which case the caller must say so rather than print zeros.
+    """
+    rc, out, _ = git("diff", "--unified=0", f"{base}..{head}", "--", path, cwd=root)
+    if rc != 0:
+        return None
+    added = removed = 0
+    spans = []
+    for line in out.splitlines():
+        if line.startswith("@@"):
+            m = re.search(r"\+(\d+)(?:,(\d+))?", line)
+            if m:
+                start = int(m.group(1))
+                count = int(m.group(2)) if m.group(2) is not None else 1
+                # a pure deletion reports +N,0 — point at the seam, not at nothing
+                spans.append((start, start + count - 1) if count else (start, start))
+        elif line.startswith("+") and not line.startswith("+++"):
+            added += 1
+        elif line.startswith("-") and not line.startswith("---"):
+            removed += 1
+    return added, removed, spans
+
+
+def read_delta_cmd(path, spans, head_sha):
+    """The exact command, not a description of one.
+
+    ★ `doctrine-version.py` credits a delta read (`sed -n 'A,Bp'`) as SAW-LATER, so
+    emitting the command a role should run makes the cheap read the DETECTABLE one too.
+    A pane that follows this line is visible to the instrument that asks whether it read.
+
+    ⛔ Pinned to the head SHA, never `HEAD` and never `origin/main`. Nine panes may share
+    one tree, so a reader's `HEAD` can be somebody's feature branch; and refs are shared
+    across worktrees, so `origin/main` can move between this line being printed and being
+    run. Only a SHA names the revision this tool actually measured.
+    """
+    if not spans:
+        return None
+    merged, pad = [], 3
+    for lo, hi in sorted(spans):
+        lo = max(1, lo - pad); hi = hi + pad
+        if merged and lo <= merged[-1][1] + 1:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], hi))
+        else:
+            merged.append((lo, hi))
+    expr = ";".join(f"{lo},{hi}p" for lo, hi in merged)
+    return f"git show {head_sha[:12]}:{path} | sed -n '{expr}'"
+
+
 def transcripts_for(root):
     slug = root.replace("/", "-")
     return glob.glob(os.path.expanduser(f"~/.claude/projects/{slug}/*.jsonl"))
@@ -216,8 +273,23 @@ def main():
         else:
             behind.append((r, paths))
 
+    deltas = {}
+    for p in changed:
+        deltas[p] = delta_for(base_sha, head, p, root)
+
     for r, paths in behind:
         print(f"  BEHIND     {r:<10} {', '.join(paths)}")
+        for p in paths:
+            d = deltas.get(p)
+            if d is None:
+                print(f"             ⚠ delta for {p} ESTABLISHED NOTHING — size unknown, not small")
+                continue
+            a, rm, spans = d
+            cmd = read_delta_cmd(p, spans, head)
+            print(f"             +{a}/-{rm} in {len(spans)} hunk(s)"
+                  f"{' — read just the delta:' if cmd else ''}")
+            if cmd:
+                print(f"             {cmd}")
     for r, paths in told:
         print(f"  read-since {r:<10} {', '.join(paths)}")
     for r, paths in unknown:
@@ -228,7 +300,71 @@ def main():
     print("⛔ 'read-since' proves the agent OPENED the file. It does not prove the agent is")
     print("   OBEYING it — a read is not a load, and compaction can drop text that was read.")
     print("⚠ UNKNOWN is not a pass. It is the count this instrument did not establish.")
+    if behind:
+        print("⛔ +N/-M is SIZE, never SEVERITY. A six-line strike-through withdrawing a")
+        print("   reservation binds you; an eighty-line re-wrap does not. The delta command")
+        print("   exists to make the read CHEAP — it is not a licence to skip the small ones.")
     return 1 if behind else 0
+
+def synthetic_case(check):
+    """A known-positive and known-negative on a throwaway tree, OUTSIDE the live fleet.
+
+    Returns True if both fired. ⚠ If the fixture cannot be built, this returns False and
+    says so — an unbuildable control established nothing and must not read as a pass.
+    """
+    import tempfile, shutil, datetime
+    base_dir = tempfile.mkdtemp(prefix="dw-synth-")
+    # ⛔ the path must carry REPO_MARK or main() refuses the root — that guard is correct
+    # and the fixture accommodates it rather than the fixture weakening the guard.
+    root = os.path.join(base_dir, REPO_MARK)
+    doc = "goals/RESERVED-ACTIONS.md"
+    slug = root.replace("/", "-")
+    tdir = os.path.expanduser(f"~/.claude/projects/{slug}")
+    try:
+        os.makedirs(os.path.join(root, "goals"))
+        def g(*a):
+            return subprocess.run(["git", *a], cwd=root, capture_output=True, text=True)
+        g("init", "-q")
+        g("config", "user.email", "synth@localhost")
+        g("config", "user.name", "synth")
+        target = os.path.join(root, doc)
+        open(target, "w").write("original\n")
+        g("add", "-A"); g("commit", "-q", "-m", "base")
+        base_sha = g("rev-parse", "HEAD").stdout.strip()
+        open(target, "w").write("amended\n")
+        g("add", "-A"); g("commit", "-q", "-m", "move the doctrine")
+        head_sha = g("rev-parse", "HEAD").stdout.strip()
+
+        os.makedirs(tdir, exist_ok=True)
+        tpath = os.path.join(tdir, "synth.jsonl")
+        boot = json.dumps({"type": "user", "message": {"role": "user",
+                          "content": "You are DEV1. Adopt the role."}})
+        later = datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+        read = json.dumps({"type": "assistant", "timestamp": later, "message": {"content": [
+            {"type": "tool_use", "input": {"file_path": doc}}]}})
+
+        me = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.path.basename(__file__))
+        def run_on(*a):
+            return subprocess.run([sys.executable, me, "--root", root,
+                                   "--since", base_sha, "--head", head_sha, *a],
+                                  capture_output=True, text=True).returncode
+
+        # POSITIVE: bootstrapped, never read the changed file -> BEHIND -> exit 1
+        open(tpath, "w").write(boot + "\n")
+        pos = run_on()
+        check("synthetic: doctrine moved, role has NOT read it -> 1", pos, 1)
+        # NEGATIVE: same tree, same range, one read AFTER the change -> exit 0
+        open(tpath, "w").write(boot + "\n" + read + "\n")
+        neg = run_on()
+        check("synthetic: same tree, role HAS read it since -> 0", neg, 0)
+        return pos == 1 and neg == 0
+    except Exception as exc:
+        print(f"  ----  synthetic fixture could not be built ({exc}) — NOT exercised")
+        return False
+    finally:
+        shutil.rmtree(tdir, ignore_errors=True)
+        shutil.rmtree(base_dir, ignore_errors=True)
+
 
 def self_test():
     """Controls. ⛔ Every one must be reachable in the REPAIRED state — a control that
@@ -251,18 +387,24 @@ def self_test():
     rc, head, _ = git("rev-parse", "origin/main", cwd=root)
     # known-NEGATIVE, from real data: baseline == head must report nothing, exit 0
     check("baseline == head reports nothing", run("--since", head), 0)
-    # known-POSITIVE, from real data: a range that certainly touched a doctrine file
-    rc2, older, _ = git("rev-list", "--max-count=1", "--skip=40", head, cwd=root)
-    if rc2 == 0 and older:
-        chg = changed_between(older, head, root)
-        if chg:
-            check("a range that moved doctrine exits 1", run("--since", older), 1)
-        else:
-            print("  ----  no doctrine file moved in the sampled range — positive NOT exercised")
-            ok = False
-    else:
-        print("  ----  history too short to construct the positive — NOT exercised")
-        ok = False
+
+    # ⛔ THE KNOWN-POSITIVE IS SYNTHETIC, AND THAT IS THE WHOLE POINT.
+    #
+    # The previous version built it from real data: take a range 40 commits back, assert
+    # exit 1. But this tool exits 1 only when SOME ROLE IS BEHIND — so that control fired
+    # only while the FLEET was broken, and went silent the moment every pane caught up.
+    # Measured 2026-08-20 at 0 behind / 9 read-since: FAIL, verdict refused, on a tool
+    # whose readings were being quoted as authoritative all session.
+    #
+    # ⇒ The known-positive was drawn from INSIDE the population being measured. That is
+    # #26's class, and this function's own docstring states the rule it broke: a control
+    # that only fires while something is broken goes silent the moment it is fixed.
+    #
+    # ★ The pair below is a DISCRIMINATING pair on a throwaway tree: identical in every
+    # respect except whether the transcript contains a READ of the changed file after it
+    # changed. Repairing the real fleet cannot silence it, and neither can breaking it.
+    synth = synthetic_case(check)
+    ok = ok and synth
     # VOID paths
     check("unresolvable baseline exits 2", run("--since", "definitely-not-a-ref"), 2)
     check("unresolvable head exits 2", run("--since", head, "--head", "nope/nope"), 2)
