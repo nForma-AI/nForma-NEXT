@@ -370,7 +370,26 @@ carries it. ⚠ ⛔ **The MARKER IS THE POINTER, NOT THE HEADING** — measured,
 `goals/RESERVED-ACTIONS.md`**. An agent matching the heading would find `architect` and `dev`
 unconverted and **re-convert them, regenerating the collision this rule prevents.**
 
-⇒ **Test:** `grep -c 'RESERVED-ACTIONS' <goal file>` — non-zero means converted. **A converted file
+⇒ **Test — THREE states, not two.** ⛔ A `0` is ambiguous and the ambiguous half is the dangerous
+one:
+
+```
+points at RESERVED-ACTIONS          -> CONVERTED,     verify and stop
+0, and HAS a Reserved section       -> UNCONVERTED,   convert it
+0, and has NO Reserved section      -> NOTHING TO DO, stop
+```
+
+⚠ **Measured (DEV3): `goals/dx-friction-sweep.md` returns 0 and has no Reserved section at all** —
+0 occurrences of *reserved*, and its own header says *"This file grants nothing."* An agent reading
+only the two-state form concludes UNCONVERTED and **has nothing to convert.** ⛔ At worst it **ADDS
+a Reserved section** — the ADDITION failure mode recorded above, which *reads as fixing a gap* and
+so attracts less scrutiny than a deletion while doing the same work.
+
+★ **The absence of a marker establishes nothing.** Same shape as `exit 2`, an empty extraction, and
+depth-unchanged: the rule is correct about what its **positive** proves and was silent about its
+negative — and the negative is the half that sends someone to write.
+
+⇒ **Original test:** `grep -c 'RESERVED-ACTIONS' <goal file>` — non-zero means converted. **A converted file
 announces its own state**, which is the property the instruction should have relied on from the
 start.
 
