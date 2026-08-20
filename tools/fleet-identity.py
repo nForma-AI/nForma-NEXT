@@ -212,17 +212,76 @@ def name_audit(row):
     return ("at-launch" if delta < LAUNCH_WINDOW_S else "later"), delta
 
 
+# ⛔ DERIVED, not enumerated. The first version matched a frozen list —
+# TEAMLEAD|ARCHITECT|DEVOPS|DX|DEV[1-9] — and this fleet does not use one
+# vocabulary: measured bootstraps include CODER2, CODER3, CODER4, CODER5 and
+# TRIAGE, none of which the list could see. A session launched as TRIAGE read as
+# having no bootstrap at all, while a session launched as CODER2 was labelled DX.
+BOOTSTRAP_RE = re.compile(r"\bYou are ([A-Z][A-Z0-9_-]{1,20})\b")
+
+# How many early user turns may carry the bootstrap. Bounded on purpose: the
+# defect being fixed is an UNBOUNDED scan, and a large bound reintroduces it.
+BOOTSTRAP_TURNS = 3
+
+
 def bootstrap_role(path):
-    """The role a session was LAUNCHED as, from its first user message.
+    """The role a session was LAUNCHED as, from its FIRST user turns.
 
     Distinct from any name it now carries: the name can be patched, the
     bootstrap cannot. A disagreement between the two is the finding.
+
+    ⛔ The previous version scanned EVERY LINE of the transcript for the first
+    `You are <ROLE>` and returned it — the docstring said "first user message",
+    the code said "anywhere". Measured on five live sessions, **4 of 5 matches
+    were another agent's identity**:
+
+      4358eeaa  line 10820  a deja-vu recall hook quoting ANOTHER session's prompt
+      ec0d07f0  line  1319  same hook, quoting session 6fc2dca8's prompt
+      96827e4b  line  6414  same hook, quoting session 6150ffb2's prompt
+      e4a7769d  line 14839  the session's own bash heredoc DISPATCHING a role
+      c67ebcb4  line    14  the real bootstrap, in a user record
+
+    ⚠ The contamination has a **sign**: recall hooks and outbound dispatch are
+    what busy, well-connected agents do, so the agents most likely to be
+    mislabelled are the ones doing the most cross-session work. A column reading
+    "DX" gives no hint that the string came from someone else's session.
+
+    Returns None when no bootstrap appears in the early turns — which happens,
+    and honestly: a resumed transcript may simply not contain the message that
+    started it. None means "not in this file", never "unnamed".
     """
     try:
+        seen = 0
         for line in open(path, errors="replace"):
-            m = re.search(r"You are (TEAMLEAD|ARCHITECT|DEVOPS|DX|DEV[1-9])\b", line)
+            if '"user"' not in line:
+                continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                continue
+            # An attachment carries text the agent never received as its own
+            # instruction — that is exactly how another session's prompt got in.
+            if rec.get("type") != "user" or rec.get("isSidechain"):
+                continue
+            msg = rec.get("message") or {}
+            if msg.get("role") != "user":
+                continue
+            content = msg.get("content")
+            if isinstance(content, str):
+                text = content
+            elif isinstance(content, list):
+                text = " ".join(b.get("text", "") for b in content
+                                if isinstance(b, dict) and b.get("type") == "text")
+            else:
+                text = ""
+            if not text.strip():
+                continue
+            m = BOOTSTRAP_RE.search(text)
             if m:
                 return m.group(1)
+            seen += 1
+            if seen >= BOOTSTRAP_TURNS:
+                return None
     except OSError:
         pass
     return None
