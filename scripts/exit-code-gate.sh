@@ -231,6 +231,21 @@ case "${1:-}" in
         ;;
 esac
 
+# ⛔ THERE WAS NO ARGUMENT GUARD HERE AT ALL, and both of gate-selftests.sh's controls passed
+# over it for two different wrong reasons. The first positional IS the directory, so
+# `--zzz-not-a-flag` was accepted as a DIRECTORY NAME: the glob matched nothing, the run exited
+# 2 as ESTABLISHED NOTHING, and the flag appeared in the message only because it had been
+# interpolated as a PATH — `zero suites matched "test_*.py" under --zzz-not-a-flag/`.
+#
+# ⇒ So "exits non-zero" was satisfied by an unrelated cause, and "names the flag" by a
+# coincidence of string interpolation. A leading `-` is never a directory here.
+# (The two-cause point is DEV5's, found on their own tools first.)
+for _a in "$@"; do
+    case "$_a" in
+        -*) echo "  VOID  unrecognised argument: $_a — established nothing" >&2; exit 2 ;;
+    esac
+done
+
 DIR="${1:-$DEFAULT_DIR}"
 GLOB="${2:-$DEFAULT_GLOB}"
 NOUN="${3:-$DEFAULT_NOUN}"
