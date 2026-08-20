@@ -55,6 +55,22 @@ set -uo pipefail
 
 GARBAGE="--zzz-not-a-flag"
 FLAG="--self-test"
+# ⛔ DERIVED, NOT ENUMERATED. Which subjects get their control run is a PROPERTY OF EACH FILE,
+# never a list here or in the workflow. A list of "which instruments are gated" is correct on the
+# day it is written and silently wrong on the next addition — the same defect this repository has
+# now fixed at four separate layers in one night (a glob that did not recurse, a record derived
+# from an index, an index derived from a predicate, a parser narrower than the record).
+#
+# ⇒ A subject either exposes a self-test and the gate RUNS it, or it DECLARES IN-FILE why it has
+# none — following the `# SUITE-DEPENDS:` precedent in .github/workflows/tools.yml, whose whole
+# argument was that the reason must travel with the thing it describes.
+#
+#     # NO-SELF-TEST: <the specific reason>
+#
+# ⚠ DECLARING IS NOT EXEMPTING. A declared subject is SKIPPED, COUNTED and NAMED on every run,
+# because an exclusion nobody can see is how a checker's population quietly stops matching its
+# subject. Silence is the failure mode; a visible skip can be argued with.
+DECLARES_NONE="^# NO-SELF-TEST:"
 LIMIT="${SUBJ_TIMEOUT:-30}"
 
 # ⚠ NO `timeout(1)`. It is absent on macOS by default and its absence exits 127 — which this
@@ -84,8 +100,8 @@ limited() {
 
 gate() {
     local dir="$1" glob="${2:-*.py}"
-    local pass=0 broke=0 unest=0 unver=0 hung=0 ran=0
-    local broke_names="" unest_names="" unver_names="" hung_names=""
+    local pass=0 broke=0 unest=0 unver=0 hung=0 declared=0 ran=0
+    local broke_names="" unest_names="" unver_names="" hung_names="" declared_names="" why=""
     local f b rc grc
 
     for f in "$dir"/$glob; do
@@ -178,8 +194,16 @@ gate() {
         fi
         case "$rc" in
             0) pass=$((pass + 1)) ;;
-            2) unest=$((unest + 1)); unest_names="$unest_names $b"
-               echo "  ⚠ $b UNESTABLISHED (exit 2) — no self-test, or one that concluded nothing." ;;
+            2) if grep -q "$DECLARES_NONE" "$f"; then
+                   why=$(sed -n 's/^# NO-SELF-TEST: //p' "$f" | head -1)
+                   declared=$((declared + 1)); declared_names="$declared_names $b"
+                   echo "  ---- $b has NO self-test, declared in-file: $why"
+               else
+                   unest=$((unest + 1)); unest_names="$unest_names $b"
+                   echo "  ⚠ $b UNESTABLISHED (exit 2) — no self-test and NO \`# NO-SELF-TEST:\`"
+                   echo "     declaration. ⛔ Undeclared absence is indistinguishable from a"
+                   echo "        control that ran and concluded nothing."
+               fi ;;
             *) broke=$((broke + 1)); broke_names="$broke_names $b"
                echo "  ⛔ $b CONTROL FAILED (exit $rc) — the checker's own control does not pass." ;;
         esac
@@ -187,6 +211,7 @@ gate() {
 
     echo
     echo "  ran $ran subject(s): $pass control(s) passed · $broke FAILED · $unest UNESTABLISHED · $unver UNVERIFIABLE · $hung TIMED OUT"
+    echo "  declared NO self-test (skipped, COUNTED and NAMED, never silent):${declared_names:- none}"
 
     if [ "$ran" -eq 0 ]; then
         echo "  ⛔ ESTABLISHED NOTHING — zero subjects matched \"$glob\" under $dir/. Not a pass."
@@ -275,8 +300,33 @@ selftest() {
     esac
 
     out=$(gate "$d" 'd_none.py' 2>&1); rc=$?
-    check "a subject with NO self-test is UNESTABLISHED and blocks, never a silent pass" 2 \
-          "UNESTABLISHED" "BLOCKING"
+    check "a subject with NO self-test and NO declaration is UNESTABLISHED and blocks" 2 \
+          "UNESTABLISHED" "BLOCKING" "Undeclared absence"
+
+    # ⛔ DECLARING IS NOT EXEMPTING — both directions, or the declaration is an off switch.
+    { echo '#!/usr/bin/env python3'; echo '# NO-SELF-TEST: planted; it has no analyser to control'
+      tail -n +2 "$d/d_none.py"; } > "$d/d_declared.py"
+    rm -f "$d/d_none.py"
+    out=$(gate "$d" 'd_declared.py' 2>&1); rc=$?
+    check "a DECLARED absence does not block, and the REASON is printed" 0 \
+          "declared in-file: planted; it has no analyser to control"
+    case "$out" in
+        *"d_declared"*) echo "  ok    a declared subject is still NAMED — skipped, never silent" ;;
+        *) echo "  FAIL  a declared subject vanished from the output"; ok=1 ;;
+    esac
+    case "$out" in
+        *"1 control(s) passed"*) echo "  FAIL  a declared subject was counted as a PASSING control"; ok=1 ;;
+        *) echo "  ok    known-negative: declaring is not passing — it is not counted as a control" ;;
+    esac
+    # ⚠ ...and the declaration must not rescue a subject whose control FAILS. Otherwise one
+    # comment line turns a broken checker green, which is the off switch this repo refuses.
+    { echo '#!/usr/bin/env python3'; echo '# NO-SELF-TEST: planted'
+      tail -n +2 "$d/c_broken.py"; } > "$d/c_declared_broken.py"
+    out=$(gate "$d" 'c_declared_broken.py' 2>&1); rc=$?
+    check "a declaration does NOT rescue a control that FAILS" 1 "CONTROL FAILED"
+    rm -f "$d/c_declared_broken.py" "$d/d_declared.py"
+    printf '#!/usr/bin/env python3\n' > "$d/d_none.py"
+    plant_py "$d/d_none.py" 'if a: void()' 'sys.exit(0)'
 
     # ⛔ THE TWO-CAUSE LEG, CONTROLLED IN BOTH ITS FORMS. Neither of these is caught by reading
     # the exit code, and the second is not caught by requiring the flag NAME either — it was the
