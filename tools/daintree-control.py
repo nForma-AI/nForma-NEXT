@@ -50,19 +50,63 @@ def rpc(url, auth, method, params=None, sid=None):
     if sid:
         cmd += ["-H", f"Mcp-Session-Id: {sid}"]
     cmd += ["-X", "POST", url, "-d", json.dumps(body)]
-    out = subprocess.run(cmd, capture_output=True, text=True).stdout
+    # ⛔ Every parse below can fail on a response that is not this protocol — a proxy
+    # 502 page, a truncated body, a schema that dropped `result`. Measured against a
+    # fake endpoint that completes the handshake and then returns each of those: the
+    # previous version raised and exited **1** for three of eight scenarios, and 1 is
+    # neither "answering" (0) nor "established nothing" (2). A caller branching on the
+    # documented pair mis-handles the crash, and the crash arrives under exactly the
+    # conditions this control exists for.
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+    except OSError as exc:
+        return {"error": {"message": f"cannot run curl: {exc}"}}
+    out = proc.stdout
+    if proc.returncode != 0 and not out.strip():
+        return {"error": {"message": f"curl exited {proc.returncode}: "
+                                     f"{(proc.stderr or '').strip()[:200] or 'no output'}"}}
     for line in out.splitlines():
         if line.startswith("data: "):
-            return json.loads(line[6:])
-    return json.loads(out) if out.strip() else {}
+            try:
+                return json.loads(line[6:])
+            except ValueError as exc:
+                return {"error": {"message": f"event-stream payload is not JSON: {exc}"}}
+    if not out.strip():
+        return {}
+    try:
+        return json.loads(out)
+    except ValueError:
+        return {"error": {"message": "response body is not JSON: "
+                                     f"{out.strip()[:160]!r}"}}
 
 
 def payload(res):
-    """An application error arrives INSIDE a successful response — check for it."""
+    """An application error arrives INSIDE a successful response — check for it.
+
+    ⚠ Every exit from here is 2. A malformed response is *established nothing*, and
+    the one thing this file must never do is let a shape it did not expect become an
+    exit code that reads as a verdict.
+    """
     if not res or res.get("error"):
         print(f"⛔ VOID: rpc error {res.get('error') if res else 'no response'}", file=sys.stderr)
         sys.exit(2)
-    obj = json.loads("".join(c.get("text", "") for c in res["result"].get("content", [])))
+    result = res.get("result")
+    if not isinstance(result, dict):
+        print(f"⛔ VOID: response carries no `result` object — got keys "
+              f"{sorted(res)}. The schema moved, or this is not the endpoint it "
+              f"claims to be.", file=sys.stderr)
+        sys.exit(2)
+    content = result.get("content")
+    if not isinstance(content, list):
+        print(f"⛔ VOID: `result.content` is {type(content).__name__}, not a list.",
+              file=sys.stderr)
+        sys.exit(2)
+    text = "".join(c.get("text", "") for c in content if isinstance(c, dict))
+    try:
+        obj = json.loads(text)
+    except ValueError:
+        print(f"⛔ VOID: tool content is not JSON: {text.strip()[:160]!r}", file=sys.stderr)
+        sys.exit(2)
     if isinstance(obj, dict) and obj.get("code") and obj.get("message"):
         print(f"⛔ VOID: {obj['code']}: {obj.get('details') or obj['message']}", file=sys.stderr)
         sys.exit(2)
@@ -71,14 +115,19 @@ def payload(res):
 
 def main():
     url, auth = endpoint()
-    hs = subprocess.run(
-        ["curl", "-sD", "-", "-o", "/dev/null", "--max-time", "10",
-         "-H", f"Authorization: {auth}", "-H", "Accept: application/json, text/event-stream",
-         "-H", "Content-Type: application/json", "-X", "POST", url,
-         "-d", json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
-             "protocolVersion": "2024-11-05", "capabilities": {},
-             "clientInfo": {"name": "control", "version": "1"}}})],
-        capture_output=True, text=True).stdout
+    try:
+        hs = subprocess.run(
+            ["curl", "-sD", "-", "-o", "/dev/null", "--max-time", "10",
+             "-H", f"Authorization: {auth}",
+             "-H", "Accept: application/json, text/event-stream",
+             "-H", "Content-Type: application/json", "-X", "POST", url,
+             "-d", json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
+                 "protocolVersion": "2024-11-05", "capabilities": {},
+                 "clientInfo": {"name": "control", "version": "1"}}})],
+            capture_output=True, text=True).stdout
+    except OSError as exc:
+        print(f"⛔ VOID: cannot run curl: {exc}", file=sys.stderr)
+        return 2
     sid = next((l.split(":", 1)[1].strip() for l in hs.splitlines()
                 if l.lower().startswith("mcp-session-id:")), None)
     if not sid:

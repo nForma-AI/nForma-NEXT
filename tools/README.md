@@ -548,6 +548,16 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
   shipped file printed **nothing**: the old version had no separable classifier, so it died on
   an AttributeError, and an empty result reads like a clean run. The faithful break grafts the
   old regex and branch **verbatim** and fails 7 checks.
+- **An exit contract is part of the output, and a crash is outside it.** `daintree-control.py`
+  documents `0 answering · 2 VOID`. Driven against a fake endpoint that completes the handshake
+  and then returns each realistic outage shape — a proxy 502 page, a response with no `result`,
+  tool content that is not JSON — **three of eight scenarios exited 1 with a traceback**. ⛔ `1`
+  is neither value in the contract, so a caller branching on the documented pair mis-handles it,
+  and it arrives under exactly the conditions the control exists for.
+- ★ **6 of 6 tools here had a live defect, each found by writing the first test it had ever had.**
+  The one that already shipped with a proven failure path was no exception — but the paths it
+  had exercised were all correct, and the defect sat in the three that were never exercised.
+  **A proven failure path proves that path.**
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
@@ -560,6 +570,7 @@ python3 tools/test_fleet_state.py
 python3 tools/test_fleet_identity.py
 python3 tools/test_discriminates.py
 python3 tools/test_wake_yield.py
+python3 tools/test_daintree_control.py
 ```
 
 ⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only
