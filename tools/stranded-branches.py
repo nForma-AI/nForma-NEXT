@@ -171,6 +171,21 @@ def content_upstream(remote, shas):
     return total > 0 and same == total
 
 
+def content_state(unmatched, same, tot):
+    """LANDED · UNRESOLVED · N/A, from counts alone — no repository required.
+
+    ⛔ tot == 0 is UNRESOLVED, never LANDED. "Every path matched" over zero paths is
+    vacuously true, and it is the whole reason this lives in its own pure function:
+    the empty-population false pass is invisible inside a generator expression and
+    obvious in a table of counts.
+    """
+    if not unmatched:
+        return "N/A"
+    if tot == 0:
+        return "UNRESOLVED"
+    return "LANDED" if same == tot else "UNRESOLVED"
+
+
 def path_agreement(remote, shas):
     """(paths byte-identical at BASE, paths examined). (0, 0) means established nothing.
 
@@ -270,8 +285,17 @@ def self_test():
     print(f"  known-positive  stranded ref   : {pos}")
     print(f"  known-negative  all merged     : {neg}")
     print(f"  known-positive  unreadable ref : {unk}   (unreadable is not zero)")
+    # ⇒ The fourth state needs its own control, and the row that matters is the
+    # vacuous one: zero paths examined must NOT read LANDED.
+    cs = {case: content_state(*case) for case in [(2, 3, 3), (2, 2, 3), (2, 0, 0), (0, 0, 0)]}
+    for case, got in cs.items():
+        print(f"  content-state   unmatched={case[0]} paths={case[1]}/{case[2]}: {got}")
     ok = (pos == ["b/stranded"] and neg == [] and unk == ["d/unreadable"]
-          and cap == ["dev4/instruction-precedence"])
+          and cap == ["dev4/instruction-precedence"]
+          and cs[(2, 3, 3)] == "LANDED"          # all paths upstream
+          and cs[(2, 2, 3)] == "UNRESOLVED"      # one shared file vetoes
+          and cs[(2, 0, 0)] == "UNRESOLVED"      # ⛔ examined nothing is not landed
+          and cs[(0, 0, 0)] == "N/A")
     print("  ✅ discriminated" if ok else "  ⛔ FAILED to discriminate", file=sys.stderr)
     return 0 if ok else 2
 
@@ -337,7 +361,7 @@ def main():
     for ref, sha, cnt, unmatched, prs, (same, tot) in found:
         if cnt is None:
             state, n = "UNREADABLE", "-"
-        elif unmatched and tot and same == tot:
+        elif content_state(unmatched, same, tot) == "LANDED":
             # Patch ids diverged but every touched path is byte-identical at BASE.
             state, n = "CONTENT-UPSTREAM", f"{unmatched} of {cnt} commit(s), {same}/{tot} paths landed"
         elif unmatched == 0:
@@ -354,8 +378,8 @@ def main():
     # ⚠ CONTENT-UPSTREAM leaves the unmatched bucket ON PURPOSE. The footer names this
     # tool's preferred error direction — a false "lost" makes a reader re-do work that
     # already exists — and byte equality is evidence, not a guess.
-    unmatched_refs = [f for f in found
-                      if f[3] not in (0,) and not (f[5][1] and f[5][0] == f[5][1])]
+    unmatched_refs = [f for f in found if f[3] not in (0,)
+                      and content_state(f[3], *f[5]) != "LANDED"]
     print(f"\n{len(unmatched_refs)} ref(s) with no upstream patch-match, of {checked} examined; "
           f"{len(deleted)} ref(s) deleted on merge (nothing to examine); "
           f"{checked + len(deleted)} of {len(by_ref_count(rows))} merged-PR refs accounted for.",
