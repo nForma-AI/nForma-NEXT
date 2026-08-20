@@ -554,10 +554,19 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
   tool content that is not JSON — **three of eight scenarios exited 1 with a traceback**. ⛔ `1`
   is neither value in the contract, so a caller branching on the documented pair mis-handles it,
   and it arrives under exactly the conditions the control exists for.
-- ★ **6 of 6 tools here had a live defect, each found by writing the first test it had ever had.**
+- ★ **6 of 6 tools had a live defect, each found by writing the first test it had ever had.**
   The one that already shipped with a proven failure path was no exception — but the paths it
   had exercised were all correct, and the defect sat in the three that were never exercised.
   **A proven failure path proves that path.**
+- ⛔ **"6 of 6" was 6 of 13, and the error is the more useful finding.** That population came
+  from an `ls` run against a checkout that was **many commits behind `origin/main`**. Seven
+  tools — `bootstrap-audit`, `doctrine-version`, `grant-check`, `pane-binding`, `pipe-exit-scan`,
+  `pretooluse-guard`, `stranded-branches` — had already landed and were invisible to it. The
+  reading was correct; *"these are all the tools"* was not entitled. ⚠ Worse, a peer's issue
+  said **"tools/ doubled to 12 tonight"**, I saw the disagreement with my own count, and
+  explained it away rather than checking. **Enumerate the population against the remote, and
+  when someone else's count disagrees with yours, one of you has a stale list — find out which
+  before writing either number down.**
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
