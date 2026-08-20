@@ -107,6 +107,22 @@ def main():
         check("git cherry finds an unmatched commit (so it too says unmerged)",
               cherry.strip().startswith("+"), True)
 
+        print("\n★ --touches: two-dot and three-dot must DISAGREE on the fixture,")
+        print("  or the flag is guarding a distinction this repo cannot exhibit:")
+        # main changes shared.txt AFTER stranded-branch was cut. The branch never
+        # touches it; the endpoint form says it does, because main moved.
+        g(repo, "checkout", "-q", "main")
+        write(repo, "shared.txt", "main-only change\n")
+        g(repo, "update-ref", "refs/remotes/origin/main", g(repo, "rev-parse", "main"))
+        names = bc.branch_names(repo, "origin", "main")
+        three = bc.touching(repo, "origin", "origin/main", "shared.txt", names)
+        two = [b for b in names
+               if bc.git(repo, "diff", "--name-only",
+                         f"origin/main..origin/{b}", "--", "shared.txt").strip()]
+        check("merge-base form: no branch changed shared.txt", three, [])
+        check("endpoint form names branches anyway", len(two) > 0, True)
+        check("the two forms disagree — that IS the defect", two != three, True)
+
         print("\nexit contract:")
         empty = os.path.join(tmp, "e"); os.makedirs(empty)
         g(empty, "init", "-q", "-b", "main")
