@@ -349,8 +349,15 @@ def self_test():
             print(f"  {'ok  ' if hit else 'FAIL'}  unchanged main says what did NOT run, never "
                   f"'clean' (got {rc})")
         else:
-            ok = False
-            print("  FAIL  could not read origin/main during self-test — control VOID")
+            # ⛔ A VOID IS NOT A FAILURE, and reporting it as one is the exact collapse this file
+            # exists against — stated in its own docstring, and committed three lines from it.
+            # `remote_sha()` needs a reachable origin. On a runner without network, or with no
+            # credentials, this control cannot run — which says nothing about the code.
+            # ⚠ Measured 2026-08-21 with `git ls-remote` stubbed to fail: the self-test exited 1.
+            # Gating that would ship a BORN-RED guard, the failure mode
+            # `.github/workflows/tools.yml` calls load-bearing in its own hermetic/fleet split.
+            print("  ----  NOT ESTABLISHED  origin/main is unreachable, so the unchanged-SHA path"
+                  " was NOT exercised. ⛔ Untested, not correct — and NOT a failure of the code.")
 
         # ⛔ REPEAT-FIRING is a defect of the same severity as silence. A finding already
         # reported must be HELD and NAMED, never re-raised — and never silently dropped either.
@@ -421,6 +428,17 @@ def self_test():
     # ------------------------------------------------------------------------------
     # TWO LEGS — every control below targets a place a wrong answer would be INVISIBLE.
     # ------------------------------------------------------------------------------
+    # ⛔ PRECONDITION, AND WITHOUT IT THESE CONTROLS CRASH RATHER THAN REFUSE. `check_once`
+    # tests `remote_sha()` FIRST and returns VOID before it ever reaches `save_state` — so with
+    # origin unreachable the state file is never written and every control below dies on
+    # FileNotFoundError. ⚠ Measured 2026-08-21 with `git ls-remote` stubbed: exit 1 from a
+    # traceback, which the gate reads as FINDINGS. A crash is not a finding and an unreachable
+    # forge is not a defect; both were being reported as one.
+    if remote_sha() is None:
+        print("  ----  NOT ESTABLISHED  origin/main is unreachable, so the two-leg controls were"
+              " NOT exercised. ⛔ Untested, not correct — and NOT a failure of the code.")
+        return 0 if ok else 3
+
     with tempfile.TemporaryDirectory() as d:
         st = Path(d) / "two.json"
         DOC = {0: "clean", 1: "drift", 2: "established nothing"}
