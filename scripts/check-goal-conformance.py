@@ -114,7 +114,35 @@ HEADING = re.compile(r"^#{2,3}\s+(.*)$", re.M)
 # is a declaration at a fixed position in a fixed form; prose saying "for work in
 # nForma-NEXT" cannot occupy it. Same rule as #36: match on something a mention
 # cannot produce.
-SCOPE = re.compile(r"^\*\*Repository:\*\*\s*(.+)$", re.M)
+# ⚠ Tolerant of MARKUP, strict about the FIELD. Optional list bullet, optional
+# bold, colon inside or outside the emphasis. ⛔ Not tolerance for its own sake —
+# measured: the original pattern required exactly `**Repository:**` and read FOUR
+# of five plainly-declaring forms as MENTION-ONLY, which is a NEGATIVE asserting
+# the file merely names the repository. The worst available verdict for a file
+# that declares correctly in different markup.
+SCOPE = re.compile(r"^\s*(?:[-*]\s+)?\*{0,2}Repository\*{0,2}\s*:\s*\*{0,2}\s*(.+)$",
+                   re.M | re.I)
+
+# ⛔ THE VOID PROBE. Its only job is to tell "no declaration here" from "a
+# declaration I could not parse". Without it, an unparseable field falls through
+# to MENTION-ONLY — an empty extraction reported as a measured absence, which is
+# the defect DX traced as the root of #16's false row:
+#
+#   "An empty extraction means MY EXTRACTOR FOUND NOTHING, never THE FILE CONTAINS
+#    NOTHING."
+#
+# ★ And the reason it read as trustworthy there is the reason it would here: the
+# extractor worked on three of four files because those three shared a format.
+# A PREDICATE VALIDATED ON A HOMOGENEOUS SAMPLE HAS BEEN VALIDATED ON THE SAMPLE'S
+# HOMOGENEITY. All four live goal files write the bold form; this checker's own
+# sample cannot exercise the alternative, so the void state is the only thing
+# standing between a format miss and a confident wrong verdict.
+# ⚠ The COLON is the discriminator between a field and prose, and it was found by
+# testing rather than by reasoning: the first version keyed on the word alone and
+# read "This repository is where the work happens" as an unparseable declaration —
+# a FALSE VOID that masks a genuine MENTION-ONLY. A void is safer than a wrong
+# negative and it is still wrong, so the probe has to be a field probe.
+DECLARATION_SHAPED = re.compile(r"^\s*(?:[-*]\s+)?\*{0,2}Repositor\w*\*{0,2}\s*:", re.M | re.I)
 SLUG = re.compile(r"github\.com[:/]+([A-Za-z0-9._-]+)/([A-Za-z0-9._-]+?)(?:\.git)?\s*$")
 
 # ⛔ THE POPULATION IS DECLARED, NOT DETECTED. ARCHITECT's ruling on #16.
@@ -228,11 +256,18 @@ def scope_verdict(text, mine):
         if got == mine:
             return "FOR-THIS-REPO", f"declares {got[0]}/{got[1]}"
         return "FOREIGN", f"declares {got[0]}/{got[1]}, this repo is {mine[0]}/{mine[1]}"
+    # ⛔ Void before negative. A declaration-shaped line that did not parse is a
+    # failure of THIS EXTRACTOR, and must not be reported as a property of the file.
+    if DECLARATION_SHAPED.search(text):
+        return "UNPARSEABLE-DECLARATION", (
+            "a line looks like a Repository declaration and this extractor could not parse it "
+            "— ESTABLISHED NOTHING about scope, NOT a mention. Fix the extractor or the line; "
+            "do not read this as the file being unscoped")
     if re.search(re.escape(mine[1]), text, re.I):
-        return "MENTION-ONLY", (f"the name {mine[1]!r} appears in the body but there is NO "
-                                f"`**Repository:**` declaration — it names this repository "
-                                f"without being scoped to it")
-    return "NO-DECLARATION", "no `**Repository:**` line and the repository name does not appear"
+        return "MENTION-ONLY", (f"the name {mine[1]!r} appears in the body, no Repository "
+                                f"declaration in any form — it names this repository without "
+                                f"being scoped to it")
+    return "NO-DECLARATION", "no Repository declaration in any form, and the name does not appear"
 
 
 def headings(text):
@@ -291,10 +326,33 @@ def self_test():
     foreign = "**Repository:** /x → github.com/Borduas-Holdings/Blazing-Back\n" + six
     mention = "This goal is for work in nForma-NEXT, the nForma-NEXT repository.\n" + six
     silent = six
-    cases = [("declares this repo", decl, "FOR-THIS-REPO"),
-             ("declares another repo", foreign, "FOREIGN"),
-             ("names it in prose only", mention, "MENTION-ONLY"),
-             ("says nothing about any repo", silent, "NO-DECLARATION")]
+    # ⛔ FORMAT VARIANTS ARE CONTROLS, NOT POLISH. All four live goal files write the
+    # bold form, so the live sample CANNOT exercise the alternatives — a predicate
+    # validated on a homogeneous sample has been validated on the sample's
+    # homogeneity (DX, tracing the root of #16's false row). Measured before these
+    # existed: four of five plainly-declaring forms read MENTION-ONLY, which is a
+    # NEGATIVE asserting the file merely names the repository.
+    cases = [
+        ("declares this repo, bold — the live format", decl, "FOR-THIS-REPO"),
+        ("declares it without bold", "Repository: github.com/nForma-AI/nForma-NEXT\n" + six,
+         "FOR-THIS-REPO"),
+        ("colon outside the emphasis", "**Repository**: github.com/nForma-AI/nForma-NEXT\n" + six,
+         "FOR-THIS-REPO"),
+        ("as a list item", "- **Repository:** github.com/nForma-AI/nForma-NEXT\n" + six,
+         "FOR-THIS-REPO"),
+        ("declares another repo", foreign, "FOREIGN"),
+        # ⛔ The void. A field this extractor cannot parse is ITS failure, never a
+        # property of the file — "an empty extraction means my extractor found
+        # nothing, never the file contains nothing".
+        ("field present, value unparseable", "**Repository:** (see the recipe)\n" + six,
+         "UNPARSEABLE-DECLARATION"),
+        # ⚠ And the void must not swallow a real mention. Found by testing, not by
+        # reasoning: the first probe keyed on the word alone and read this as a
+        # declaration.
+        ("prose beginning 'This repository is…'",
+         "This repository is where the work happens for nForma-NEXT.\n" + six, "MENTION-ONLY"),
+        ("names it in prose only", mention, "MENTION-ONLY"),
+        ("says nothing about any repo", silent, "NO-DECLARATION")]
     ok_scope = True
     for label, text, want in cases:
         got, _ = scope_verdict(text, mine)
@@ -388,7 +446,7 @@ def main():
         verdict, why = scope_verdict(text, mine)
         ok_scope = verdict == "FOR-THIS-REPO"
         scoped_here += ok_scope
-        unverifiable = unverifiable or verdict == "UNVERIFIABLE"
+        unverifiable = unverifiable or verdict in ("UNVERIFIABLE", "UNPARSEABLE-DECLARATION")
         bad += bool(miss) or not ok_scope
         seen[path] = seen.get(path, 0) + 1
         mark = "ok  " if not miss and ok_scope else "FAIL"
