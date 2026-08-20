@@ -138,6 +138,65 @@ LAUNCH_WINDOW_S = 5
 DAINTREE_STATE = os.path.expanduser("~/Library/Application Support/Daintree/projects")
 
 
+def pane_verdict(bound_pane, resolved, content_pane, hits):
+    """(verdict, disagrees). Extracted so it can be tested without an MCP server.
+
+    ⛔ THE PRECEDENCE IS THE POINT. An exact binding wins, and says so — a content
+    match that agrees adds nothing, and one that DISAGREES is a finding. Silently
+    preferring either is how a wrong identity becomes a fact.
+
+    ⚠ Left inline, the only thing a test could assert about this was that the string
+    "EXACT" appears in the file — which a comment would satisfy. A source-text
+    assertion is not a behavioural one.
+    """
+    disagrees = bool(bound_pane and resolved and content_pane
+                     and content_pane != bound_pane)
+    if bound_pane is not None:
+        v = "EXACT"
+    elif resolved:
+        v = "RESOLVED"
+    else:
+        v = "ambiguous" if hits else "no match"
+    if disagrees:
+        v += f"  ⛔ content match said {content_pane!r} — DISAGREEMENT"
+    return v, disagrees
+
+
+def exact_bindings():
+    """★ THE EXACT JOIN, which this file has been working around rather than using.
+
+    Daintree records `terminals[].agentSessionId` for every pane launched with
+    `--session-id`, in the same namespace as the transcript filename. That is not a
+    value Daintree discovers — it is one Daintree chose at launch, so where it is
+    present there is nothing to infer.
+
+    ⛔ Why this tool did not use it: when the content matcher was written, NO pane
+    carried the field. `pane-binding.py` recorded that state as permanent — "the join
+    has never been observed working because no pane has yet held both legs at once" —
+    and the content matcher was built as the answer. Re-measured 2026-08-20: **13
+    panes are exactly bound, including every fleet role.** The premise expired and the
+    workaround outlived it.
+
+    ⇒ An exact binding is a DIFFERENT KIND OF EVIDENCE from a content match and is
+    reported as one. Collapsing them would hide which rows rest on token overlap.
+
+    Returns {session_id: (terminal_id, title)}. A pane without the field is simply
+    absent — never guessed at from a matching title, which is the unreliable join
+    this file exists to refuse.
+    """
+    out = {}
+    for path in glob.glob(os.path.join(DAINTREE_STATE, "*", "state.json")):
+        try:
+            doc = json.load(open(path))
+        except Exception:
+            continue                      # a partial read is not a binding
+        for t in doc.get("terminals", []) or []:
+            sid = t.get("agentSessionId")
+            if sid and t.get("id"):
+                out[sid] = (t["id"], t.get("title"))
+    return out
+
+
 def panel_titles(cwd):
     """★ Leg 2 of the identity triple, WITHOUT the Daintree MCP.
 
@@ -489,6 +548,7 @@ def main():
         scroll[p["id"]] = obj if isinstance(obj, str) else (
             obj.get("output") or obj.get("text") or json.dumps(obj))
 
+    exact = exact_bindings()
     rows = []
     for proj in glob.glob(os.path.expanduser("~/.claude/projects/*")):
         for path in glob.glob(os.path.join(proj, "*.jsonl")):
@@ -515,11 +575,21 @@ def main():
                         and best >= 4
                         and best >= 2 * max(second, 1))
             sid = os.path.basename(path)[:-6]
+            # ⛔ The exact join WINS and is labelled. A content match that agrees with
+            # it adds nothing; one that disagrees is the interesting case and is
+            # printed, because two joins disagreeing is a finding and silently
+            # preferring one is how a wrong identity becomes a fact.
+            bound = exact.get(sid)
+            _v, disagrees = pane_verdict(bound[1] if bound else None, resolved,
+                                         title.get(tid) if resolved else None, best)
             rrow = reg.get(sid)
             rows.append({"session": sid[:8],
-                         "pane": title.get(tid) if resolved else None,
+                         "pane": bound[1] if bound else (title.get(tid) if resolved else None),
+                         "exact": bool(bound),
+                         "content_pane": title.get(tid) if resolved else None,
+                         "disagrees": disagrees,
                          "hits": best, "runner_up": second,
-                         "resolved": resolved,
+                         "resolved": bool(bound) or resolved,
                          "role": bootstrap_role(path),
                          "name": (rrow or {}).get("name"),
                          "named": name_audit(rrow)[0], "named_after_s": name_audit(rrow)[1],
@@ -533,7 +603,8 @@ def main():
         print(f"{'session':<10}{'ROLE':<11}{'name':<22}{'origin':<16}"
               f"{'PANE':<16}{'hits':>5}{'2nd':>5}  verdict")
         for r in rows:
-            v = "RESOLVED" if r["resolved"] else ("ambiguous" if r["hits"] else "no match")
+            v, _ = pane_verdict(r["pane"] if r.get("exact") else None,
+                                bool(r["content_pane"]), r["content_pane"], r["hits"])
             fb = ""
             if r["self_reported"] is not None:
                 sr = ",".join(r["self_reported"]) or "(none)"

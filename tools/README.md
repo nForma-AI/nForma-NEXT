@@ -662,6 +662,22 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
   holds `e4a7769d`, whose **registry name** is `DEV2` — a title-versus-registry disagreement on
   one exactly-bound pane, not an unresolvable identity. The answer was in Daintree's state file
   while the roster check fell back to self-reported names.
+- ★★★ **A workaround outlives the premise that justified it.** `fleet-identity.py` joins
+  sessions to panes by **content** — rare tokens against pane scrollback — because when it was
+  written *no pane carried Daintree's `agentSessionId`*, and that state was recorded as
+  permanent. Re-measured 2026-08-20: **13 panes are exactly bound, including every fleet role.**
+  Wiring the exact join in took the tool from **5 of 12** sessions resolved to **10 of 12** —
+  and the rows it gained are the ones content matching could not reach, because a pane with a
+  single token hit is unresolvable by overlap and unambiguous by binding.
+  ⇒ **When a tool works around an absence, put the check for that absence in the tool.**
+- ★ **Two kinds of evidence get two verdicts.** `EXACT` and `RESOLVED` are not merged, and where
+  both exist and disagree the losing content match is **printed** — two joins disagreeing is a
+  finding, and silently preferring one is how a wrong identity becomes a fact.
+- ⛔ **A source-text assertion is not a behavioural one.** The first version of that suite
+  checked `'"EXACT"' in src` — which a comment would satisfy. `pane_verdict()` is extracted so
+  the precedence can be tested by calling it, the same move that made `verdict_exit()` testable
+  in `stranded-branches.py`. **If the only thing a test can assert is that a string appears in
+  the file, the logic is in the wrong place.**
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
@@ -680,6 +696,7 @@ python3 tools/test_grant_check.py
 python3 tools/test_pipe_exit_scan.py
 python3 tools/test_stranded_branches.py
 python3 tools/test_pane_binding.py
+python3 tools/test_fleet_identity_exact.py
 ```
 
 ⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only
