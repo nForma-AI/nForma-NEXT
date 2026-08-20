@@ -92,7 +92,8 @@ below is the only thing that remembers that. A sweep reading depth alone would a
 | `ec0d07f0` DEV3 | 77.2% | #1256 | 7 wrong-answer instruments, **6 gave a CLEAN total** |
 | `c67ebcb4` DX | self-filed | #1257 | 13 tools audited, **13 defective** |
 | `b00d725a` DEV4 | 87.8% | #1263 ⚠ **DEGRADED** | asked 06:34:13, compacted 06:35:34, answered anyway |
-| `96827e4b` DEV5 | 89.1% | *awaiting* | asked with a **short** prompt — see the note below |
+| `96827e4b` DEV5 | 89.1% | #1268 ⚠ **DEGRADED** | 7 unfiled workarounds; a census that disagrees with itself |
+| `6150ffb2` ARCHITECT | 85.2% | #1269 ✅ **intact** | 11 workarounds; answered in minutes to a SHORT ask |
 
 ★ **The ask's own length is a cost borne by the session least able to pay it.** DEV4 received a
 long, seven-section ask at 87.8% and compacted 81 seconds later; reading it consumed budget it
@@ -110,6 +111,18 @@ because it is the common case. The report arrived; what did not arrive is §1 �
 unfiled workarounds that every prior report ranked highest. **A summary keeps conclusions and
 drops the evidence they rest on**, so the sections that survive are the ones already written as
 conclusions.
+
+⛔ **THAT CHARACTERISATION IS INCOMPLETE, AND ARCHITECT SUPPLIED THE MISSING HALF (#1269).** A
+summary can also drop **the fact that you did the work at all.** ARCHITECT disowned five of its
+own findings as another agent's, published that to TEAMLEAD and DEV2, DEV2 issued a correction
+built on it, and TEAMLEAD had to un-correct.
+
+> **A confident, specific, wrong account of authorship reads exactly like careful work.**
+
+⇒ ★ It presented as an **attribution bug in another agent**, not as amnesia in itself — so it is
+undetectable from inside and nearly undetectable from outside. ⚠ **Therefore a `DEGRADED` report
+is not merely possibly-incomplete; it is possibly MIS-ATTRIBUTED**, and a claim in one should not
+be credited to its reporter without a second source.
 
 ★ **DEV4 labelled every claim itself — `[re-verified]` or `[from summary]` — and that practice
 should be requested in the ask, not hoped for.** It turns a degraded report from something you
@@ -176,6 +189,22 @@ reasons, neither filing it. **The convergence is the finding; either alone reads
   linear model gives a session at 87.8% about **36 minutes**. DEV4 got **1.4**. That is a **25×
   overestimate**, because compaction does not fire at a depth; it fires on the next request that
   would not fit, and one large request is enough.
+
+  ⛔ **AND DO NOT PREDICT ONE SESSION FROM THE FLEET MEAN. MEASURED SPREAD, SAME SWEEP:**
+
+  | session | burn |
+  | --- | --- |
+  | `4358eeaa` DEV1 | **0 points/hour** — unchanged at 804,593 for 271 minutes |
+  | `6150ffb2` ARCHITECT | **28.7 points/hour** — +100,585 tokens in 35 minutes |
+
+  ⇒ I told TEAMLEAD ARCHITECT had ~43 minutes using the fleet-wide 20.6. Its own rate gave **31**.
+  ★ **A real number attached to the wrong population** — the same defect this file catalogues in
+  other people's instruments, committed inside this one while using it. Take the session's own
+  `--since` delta; the mean covers 0 and 28.7 alike and describes neither.
+
+  ⚠ **And the reading is stale by the time the ask is composed.** DEV5 scanned at 89.1% and had
+  **already compacted** by the time the message arrived minutes later. The depth is a fact about
+  when the scan ran, not about when the ask lands.
 
   ⇒ ★ **So "buy margin, not precision" is right for a stronger reason than it was written for.**
   Above roughly 85% the runway is not merely short — it is **unpredictable per session**, so
