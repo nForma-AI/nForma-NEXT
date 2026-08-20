@@ -1,0 +1,78 @@
+32334622192	2026-08-20T05:10:57Z	feat/devops-fleet-instruments	C0: Pod Recovery (dfc)	failure
+32334622192	2026-08-20T05:10:57Z	feat/devops-fleet-instruments	D1: Failover (dfc)	success
+32334622192	2026-08-20T05:10:57Z	feat/devops-fleet-instruments	C1: StatefulSet Recovery (dfc)	success
+32334538469	2026-08-20T05:09:37Z	fix/1230-a-skip-must-carry-the-reason-it-was	D1: Failover (dfc)	success
+32334538469	2026-08-20T05:09:37Z	fix/1230-a-skip-must-carry-the-reason-it-was	C0: Pod Recovery (dfc)	success
+32334538469	2026-08-20T05:09:37Z	fix/1230-a-skip-must-carry-the-reason-it-was	C1: StatefulSet Recovery (dfc)	success
+32334529601	2026-08-20T05:09:29Z	fix/kill-unknown-narrates-a-timeout-it-canno	D1: Failover (dfc)	success
+32334529601	2026-08-20T05:09:29Z	fix/kill-unknown-narrates-a-timeout-it-canno	C0: Pod Recovery (dfc)	success
+32334529601	2026-08-20T05:09:29Z	fix/kill-unknown-narrates-a-timeout-it-canno	C1: StatefulSet Recovery (dfc)	success
+32318381940	2026-08-20T00:43:34Z	fix/1198-probe-budget-must-not-eat-its-windo	D1: Failover (dfc)	success
+32318381940	2026-08-20T00:43:34Z	fix/1198-probe-budget-must-not-eat-its-windo	C0: Pod Recovery (dfc)	success
+32318381940	2026-08-20T00:43:34Z	fix/1198-probe-budget-must-not-eat-its-windo	C1: StatefulSet Recovery (dfc)	success
+32317335259	2026-08-20T00:26:46Z	fix/1198-probe-budget-must-not-eat-its-windo	D1: Failover (dfc)	failure
+32317335259	2026-08-20T00:26:46Z	fix/1198-probe-budget-must-not-eat-its-windo	C0: Pod Recovery (dfc)	success
+32317335259	2026-08-20T00:26:46Z	fix/1198-probe-budget-must-not-eat-its-windo	C1: StatefulSet Recovery (dfc)	success
+32314441328	2026-08-19T23:43:22Z	fix/1198-probe-budget-must-not-eat-its-windo	C0: Pod Recovery (dfc)	failure
+32314441328	2026-08-19T23:43:22Z	fix/1198-probe-budget-must-not-eat-its-windo	D1: Failover (dfc)	failure
+32314441328	2026-08-19T23:43:22Z	fix/1198-probe-budget-must-not-eat-its-windo	C1: StatefulSet Recovery (dfc)	success
+32310738469	2026-08-19T22:51:47Z	fix/1177-kill-must-prove-it-executed	D1: Failover (dfc)	success
+32310738469	2026-08-19T22:51:47Z	fix/1177-kill-must-prove-it-executed	C0: Pod Recovery (dfc)	failure
+32310738469	2026-08-19T22:51:47Z	fix/1177-kill-must-prove-it-executed	C1: StatefulSet Recovery (dfc)	success
+32309927480	2026-08-19T22:41:01Z	fix/1177-kill-must-prove-it-executed	D1: Failover (dfc)	success
+32309927480	2026-08-19T22:41:01Z	fix/1177-kill-must-prove-it-executed	C0: Pod Recovery (dfc)	failure
+32309927480	2026-08-19T22:41:01Z	fix/1177-kill-must-prove-it-executed	C1: StatefulSet Recovery (dfc)	success
+32308407710	2026-08-19T22:21:08Z	fix/1230-a-skip-must-carry-the-reason-it-was	C0: Pod Recovery (dfc)	failure
+32308407710	2026-08-19T22:21:08Z	fix/1230-a-skip-must-carry-the-reason-it-was	D1: Failover (dfc)	success
+32308407710	2026-08-19T22:21:08Z	fix/1230-a-skip-must-carry-the-reason-it-was	C1: StatefulSet Recovery (dfc)	success
+32308372803	2026-08-19T22:20:42Z	fix/1177-kill-must-prove-it-executed	D1: Failover (dfc)	success
+32308372803	2026-08-19T22:20:42Z	fix/1177-kill-must-prove-it-executed	C0: Pod Recovery (dfc)	failure
+32308372803	2026-08-19T22:20:42Z	fix/1177-kill-must-prove-it-executed	C1: StatefulSet Recovery (dfc)	success
+32307814909	2026-08-19T22:13:41Z	fix/recovery-legs-must-prove-the-fault-lande	D1: Failover (dfc)	success
+32307814909	2026-08-19T22:13:41Z	fix/recovery-legs-must-prove-the-fault-lande	C0: Pod Recovery (dfc)	failure
+32307814909	2026-08-19T22:13:41Z	fix/recovery-legs-must-prove-the-fault-lande	C1: StatefulSet Recovery (dfc)	success
+32307428105	2026-08-19T22:08:56Z	fix/1177-kill-must-prove-it-executed	C0: Pod Recovery (dfc)	failure
+32307428105	2026-08-19T22:08:56Z	fix/1177-kill-must-prove-it-executed	D1: Failover (dfc)	success
+32307428105	2026-08-19T22:08:56Z	fix/1177-kill-must-prove-it-executed	C1: StatefulSet Recovery (dfc)	success
+32306584160	2026-08-19T21:58:45Z	fix/recovery-legs-must-prove-the-fault-lande	D1: Failover (dfc)	success
+32306584160	2026-08-19T21:58:45Z	fix/recovery-legs-must-prove-the-fault-lande	C0: Pod Recovery (dfc)	failure
+32306584160	2026-08-19T21:58:45Z	fix/recovery-legs-must-prove-the-fault-lande	C1: StatefulSet Recovery (dfc)	success
+32306322237	2026-08-19T21:55:31Z	fix/1177-kill-must-prove-it-executed	D1: Failover (dfc)	success
+32306322237	2026-08-19T21:55:31Z	fix/1177-kill-must-prove-it-executed	C0: Pod Recovery (dfc)	failure
+32306322237	2026-08-19T21:55:31Z	fix/1177-kill-must-prove-it-executed	C1: StatefulSet Recovery (dfc)	failure
+32305608949	2026-08-19T21:46:47Z	fix/exec-command-must-say-which-producer-fir	C0: Pod Recovery (dfc)	failure
+32305608949	2026-08-19T21:46:47Z	fix/exec-command-must-say-which-producer-fir	D1: Failover (dfc)	failure
+32305608949	2026-08-19T21:46:47Z	fix/exec-command-must-say-which-producer-fir	C1: StatefulSet Recovery (dfc)	success
+32304360005	2026-08-19T21:32:05Z	fix/exec-command-must-say-which-producer-fir	D1: Failover (dfc)	failure
+32304360005	2026-08-19T21:32:05Z	fix/exec-command-must-say-which-producer-fir	C0: Pod Recovery (dfc)	failure
+32304360005	2026-08-19T21:32:05Z	fix/exec-command-must-say-which-producer-fir	C1: StatefulSet Recovery (dfc)	success
+32303283097	2026-08-19T21:19:29Z	fix/kill-unknown-narrates-a-timeout-it-canno	C0: Pod Recovery (dfc)	failure
+32303283097	2026-08-19T21:19:29Z	fix/kill-unknown-narrates-a-timeout-it-canno	D1: Failover (dfc)	success
+32303283097	2026-08-19T21:19:29Z	fix/kill-unknown-narrates-a-timeout-it-canno	C1: StatefulSet Recovery (dfc)	success
+32302856516	2026-08-19T21:14:35Z	fix/a-500-must-name-its-exception-type	D1: Failover (dfc)	success
+32302856516	2026-08-19T21:14:35Z	fix/a-500-must-name-its-exception-type	C0: Pod Recovery (dfc)	success
+32302856516	2026-08-19T21:14:35Z	fix/a-500-must-name-its-exception-type	C1: StatefulSet Recovery (dfc)	success
+32302622985	2026-08-19T21:11:54Z	fix/1198-probe-budget-must-not-eat-its-windo	C0: Pod Recovery (dfc)	failure
+32302622985	2026-08-19T21:11:54Z	fix/1198-probe-budget-must-not-eat-its-windo	D1: Failover (dfc)	failure
+32302622985	2026-08-19T21:11:54Z	fix/1198-probe-budget-must-not-eat-its-windo	C1: StatefulSet Recovery (dfc)	success
+32300074810	2026-08-19T20:43:22Z	fix/kill-unknown-narrates-a-timeout-it-canno	D1: Failover (dfc)	success
+32300074810	2026-08-19T20:43:22Z	fix/kill-unknown-narrates-a-timeout-it-canno	C0: Pod Recovery (dfc)	failure
+32300074810	2026-08-19T20:43:22Z	fix/kill-unknown-narrates-a-timeout-it-canno	C1: StatefulSet Recovery (dfc)	success
+32299558342	2026-08-19T20:37:45Z	fix/kill-unknown-narrates-a-timeout-it-canno	D1: Failover (dfc)	success
+32299558342	2026-08-19T20:37:45Z	fix/kill-unknown-narrates-a-timeout-it-canno	C0: Pod Recovery (dfc)	failure
+32299558342	2026-08-19T20:37:45Z	fix/kill-unknown-narrates-a-timeout-it-canno	C1: StatefulSet Recovery (dfc)	success
+32294067153	2026-08-19T19:37:41Z	docs/correct-parallel-run-safety-claim	D1: Failover (dfc)	success
+32294067153	2026-08-19T19:37:41Z	docs/correct-parallel-run-safety-claim	C0: Pod Recovery (dfc)	success
+32294067153	2026-08-19T19:37:41Z	docs/correct-parallel-run-safety-claim	C1: StatefulSet Recovery (dfc)	success
+32289827971	2026-08-19T18:52:32Z	docs/correct-parallel-run-safety-claim	D1: Failover (dfc)	success
+32289827971	2026-08-19T18:52:32Z	docs/correct-parallel-run-safety-claim	C0: Pod Recovery (dfc)	success
+32289827971	2026-08-19T18:52:32Z	docs/correct-parallel-run-safety-claim	C1: StatefulSet Recovery (dfc)	success
+32282435960	2026-08-19T17:35:05Z	feat/gate-verdicts-are-queryable	D1: Failover (dfc)	success
+32282435960	2026-08-19T17:35:05Z	feat/gate-verdicts-are-queryable	C0: Pod Recovery (dfc)	success
+32282435960	2026-08-19T17:35:05Z	feat/gate-verdicts-are-queryable	C1: StatefulSet Recovery (dfc)	success
+32276866411	2026-08-19T16:36:23Z	docs/correct-parallel-run-safety-claim	C0: Pod Recovery (dfc)	success
+32276866411	2026-08-19T16:36:23Z	docs/correct-parallel-run-safety-claim	D1: Failover (dfc)	success
+32276866411	2026-08-19T16:36:23Z	docs/correct-parallel-run-safety-claim	C1: StatefulSet Recovery (dfc)	success
+32264871860	2026-08-19T14:34:53Z	fix/e2e-summary-must-not-claim-success-on-ze	C0: Pod Recovery (dfc)	success
+32264871860	2026-08-19T14:34:53Z	fix/e2e-summary-must-not-claim-success-on-ze	D1: Failover (dfc)	success
+32264871860	2026-08-19T14:34:53Z	fix/e2e-summary-must-not-claim-success-on-ze	C1: StatefulSet Recovery (dfc)	success
