@@ -61,6 +61,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `pane-binding.py` | which panes join to a session, and which leg is missing? | 0 reported · **2 established nothing** |
 | `stranded-branches.py` | has any merged PR's branch got commits with no equivalent change upstream? | 0 none · 1 unmatched commits · **2 established nothing** |
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
+| `ci-log-clean.py` | is this CI log's text OUTPUT, or the echoed script? | 0 cleaned · **2 established nothing** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
 
 ## What each one is for
@@ -93,6 +94,25 @@ falls back to the registry report and says `UNAVAILABLE` on stderr rather than p
 table. ★ Its known-positive is by construction: the process runs inside a session, so that session
 must appear in the join. Proven to discriminate — break the join and it exits **2** with zero rows,
 rather than printing a clean-looking table of nothing.
+
+**`ci-log-clean.py`** — strips the echoed `run:` block from a CI job log, **before** anything
+strips ANSI. ⛔ GitHub echoes the script into the log ahead of its output, so the log contains the
+text of the grep you are about to run: `grep -c FAILED` returned **4** on a job whose conclusion was
+**SUCCESS** — all four hits were the echoed script declaring `FAILED_FILES`, and the command's real
+output contained zero.
+
+★ **The order cannot be reversed.** The cyan-bold escape is the *only* thing separating the echoed
+block from real output — the words are identical — so stripping ANSI first destroys the
+discriminator irrecoverably and no later pass can rebuild it. ⚠ And the escape is not what a reader
+expects: measured on a real 153 KB log, **0** actual `\x1b` bytes and **218** literal `^[` pairs,
+because `gh` renders it as two characters. A reader stripping `\x1b\[[0-9;]*m` removes nothing and
+believes it cleaned the log. Both forms are handled.
+
+⇒ Two discriminators — the per-line `[36;1m` marker (precise, dies if ANSI is stripped first) and
+the `##[group]Run `…`##[endgroup]` envelope (survives an ANSI strip, but `--log-failed` and some
+fetch paths omit group markers). ⛔ **With neither present it refuses — exit 2 — rather than passing
+the log through**, because handing back an uncleaned log unchanged is exactly how a count of the
+script becomes a count of the output.
 
 **`grant-check.py`** — answers *"is `<role>` authorized to do `<capability>` here, right now?"*
 from a record in `grants/`, never from the message that asked. Built after seven forged
