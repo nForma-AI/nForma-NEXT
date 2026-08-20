@@ -58,12 +58,67 @@ TIMEOUT = 90
 VERDICT, NOTHING, NOVOCAB, NEVERRUN, SLOW = (
     "VERDICT-SEEN", "ESTABLISHED-NOTHING", "NO-VERDICT-VOCAB", "NEVER-RUN", "NO-VERDICT-IN-TIME")
 
+# ⛔ A SECOND QUESTION, and #151 is why it exists. `doctrine-watch.py` shipped to main with a
+# FAILING known-positive: its control asserted that a doctrine-moved range exits 1, but the tool
+# exits 1 only when a role is BEHIND — so the control fired only while the fleet was broken and
+# went silent once everyone caught up. Drawn from inside the population it measured (#26).
+# ⛔ NOTHING CAUGHT IT, because nothing runs `--self-test`. TEAMLEAD named that as #2's territory.
+# ⇒ A bare run answers "did it produce a verdict". It does NOT answer "is that verdict worth
+#   anything", and an instrument whose own known-positive is broken reads VERDICT-SEEN either way.
+STPASS, STFAIL, STNONE = "SELFTEST-PASS", "SELFTEST-FAIL", "NO-SELF-TEST"
+# A flag no instrument can plausibly implement. Used as the NEGATIVE half of a differential.
+BOGUS = "--zzz-not-a-real-flag"
+
 
 def documented_codes(src):
     m = EXIT_DOC.search(src)
     if not m:
         return None
     return {int(c) for c in CODE.findall(m.group(1))}
+
+
+def _norm(r, flag):
+    """Output with the probe flag itself masked, so two rejections differ only in substance."""
+    return (r.returncode, ((r.stdout or "") + (r.stderr or "")).replace(flag, "<FLAG>"))
+
+
+def selftest_state(path, timeout=TIMEOUT):
+    """Does this instrument have a self-test, and does it pass?
+
+    ⛔ DIFFERENTIAL, not a grep and not a bare exit code, and both alternatives were measured
+    to fail on this population:
+
+      grep the source for '--self-test'   -> a MENTION check. The string appears in comments
+                                             and in docstrings that merely discuss it.
+      read the exit code of --self-test   -> COLLIDES. Measured: fleet-state.py exits 2 for an
+                                             unrecognised flag AND this repo reserves 2 for
+                                             "established nothing". doctrine-watch.py exits 0
+                                             for a passing self-test and 2 for a bogus flag.
+                                             ⇒ 2-vs-2 is indistinguishable by code alone.
+
+    So the negative half of the control is a flag nothing can implement. If `--self-test` and
+    BOGUS produce the same (code, output) once the flag name is masked, the flag was not
+    recognised. That is `discriminates.py`'s principle applied to argument parsing.
+    """
+    try:
+        real = subprocess.run([sys.executable, str(path), "--self-test"], capture_output=True,
+                              text=True, timeout=timeout, cwd=str(ROOT))
+        alt = subprocess.run([sys.executable, str(path), BOGUS], capture_output=True,
+                             text=True, timeout=timeout, cwd=str(ROOT))
+    except subprocess.TimeoutExpired:
+        return STNONE, f"no self-test verdict within {timeout}s — bound is the caller's"
+    except OSError as e:
+        return STNONE, f"could not execute: {e}"
+
+    if _norm(real, "--self-test") == _norm(alt, BOGUS):
+        return STNONE, "does not distinguish --self-test from a nonexistent flag"
+    if "Traceback (most recent call last)" in (real.stderr or ""):
+        last = [l for l in (real.stderr or "").strip().splitlines() if l.strip()][-1][:80]
+        return STFAIL, f"self-test crashed: {last}"
+    if real.returncode == 0:
+        return STPASS, "its own known-positive passes"
+    return STFAIL, (f"self-test exited {real.returncode} — ⛔ its known-positive is broken, so "
+                    f"its verdicts are not trustworthy")
 
 
 def classify(path, timeout=TIMEOUT):
@@ -114,19 +169,34 @@ def census(index=None, tools_dir=None, timeout=TIMEOUT):
         return 2, ["  VOID  the index named no instruments — the table format changed, or it is"
                    " gone. Established nothing."], []
 
+    me = Path(__file__).name
     for n in names:
+        if n == me:
+            # ⛔ NAMED, never silently skipped — an invisible population narrowing is the defect
+            # check-tools-index.py exists against. Running the census inside the census spawns a
+            # nested census, which terminates only by timeout and once per level.
+            rows.append((n, "SELF-EXCLUDED", "the census does not census itself — a nested run "
+                         "terminates only by timeout", STNONE, "n/a"))
+            continue
         p = tools_dir / n
         if not p.is_file():
-            rows.append((n, NEVERRUN, "indexed but absent from the directory"))
+            rows.append((n, NEVERRUN, "indexed but absent from the directory",
+                         STNONE, "absent"))
             continue
-        rows.append((n, *classify(p, timeout)))
+        st, sd = selftest_state(p, timeout)
+        rows.append((n, *classify(p, timeout), st, sd))
 
-    width = max(len(n) for n, _, _ in rows)
-    for n, st, detail in rows:
-        out.append(f"  {st:<20} {n:<{width}}  {detail}")
+    width = max(len(n) for n, *_ in rows)
+    for n, st, detail, sst, sdetail in rows:
+        out.append(f"  {st:<20} {sst:<14} {n:<{width}}  {detail}")
+        if sst == STFAIL:
+            out.append(f"  {'':<20} {'':<14} {'':<{width}}  ⛔ {sdetail}")
 
-    tally = {s: sum(1 for _, x, _ in rows if x == s)
+    tally = {s: sum(1 for _, x, *_ in rows if x == s)
              for s in (VERDICT, NOTHING, NOVOCAB, SLOW, NEVERRUN)}
+    tally["SELF-EXCLUDED"] = sum(1 for _, x, *_ in rows if x == "SELF-EXCLUDED")
+    stally = {s: sum(1 for *_, x, _ in rows if x == s) for s in (STPASS, STFAIL, STNONE)}
+    stally[STNONE] -= tally["SELF-EXCLUDED"]  # the self row carries no self-test reading
     out.append("")
     out.append("  " + " · ".join(f"{k} {v}" for k, v in tally.items()))
     out.append("  note  verdict-history is measured BY EXECUTION here, not read from the index")
@@ -136,7 +206,11 @@ def census(index=None, tools_dir=None, timeout=TIMEOUT):
                " produced")
     out.append(f"  note  NO-VERDICT-IN-TIME is a statement about the {timeout}s bound, NOT about"
                " the instrument — re-run it alone with a longer --timeout before concluding")
-    rc = 1 if (tally[NEVERRUN] or tally[NOVOCAB] or tally[SLOW]) else 0
+    out.append("  " + " · ".join(f"{k} {v}" for k, v in stally.items()))
+    out.append("  note  a bare run answers 'did it conclude'; the self-test column answers"
+               " 'is that conclusion worth anything' — an instrument with a broken known-positive"
+               " reads VERDICT-SEEN either way (#151)")
+    rc = 1 if (tally[NEVERRUN] or tally[NOVOCAB] or tally[SLOW] or stally[STFAIL]) else 0
     return rc, out, rows
 
 
@@ -178,6 +252,27 @@ def self_test():
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  a traceback is not a verdict even when the exit "
               f"code is documented (got {got})")
+
+        # ⛔ THE SELF-TEST COLUMN NEEDS ITS OWN CONTROL, and it is synthetic for the same
+        # reason the rest are: keying it on "doctrine-watch is broken today" dies on repair.
+        st_cases = [
+            ("st_pass.py",
+             "import sys\nraise SystemExit(0 if '--self-test' in sys.argv else 2)", STPASS),
+            ("st_fail.py",
+             "import sys\nraise SystemExit(1 if '--self-test' in sys.argv else 2)", STFAIL),
+            # ⛔ the collision case: exits 2 for BOTH, exactly like fleet-state.py
+            ("st_none.py", "raise SystemExit(2)", STNONE),
+            # ⛔ and the false-positive guard: rejects unknown flags by ECHOING the flag name.
+            # Without masking, the two outputs differ and this would read as having a self-test.
+            ("st_echo.py",
+             "import sys\nprint('unrecognised:', sys.argv[1])\nraise SystemExit(2)", STNONE),
+        ]
+        for name, body, want in st_cases:
+            p2 = _fixture(d, name, body, True)
+            got, detail = selftest_state(p2, timeout=30)
+            hit = got == want
+            ok &= hit
+            print(f"  {'ok  ' if hit else 'FAIL'}  {name:<12} -> {got:<14} (want {want})")
 
         # ⛔ a timeout must NOT be reported as never-run — the bound is the caller's
         p = _fixture(d, "slow.py", "import time\ntime.sleep(30)\nraise SystemExit(0)", True)
