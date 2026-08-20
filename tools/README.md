@@ -105,6 +105,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `doctrine-watch.py` | which roles' doctrine moved under them, and who has not read it? | 0 nothing to tell · 1 a role is behind · **2 established nothing** |
 | `verdict-census.py` | has each indexed instrument ever produced a verdict? | 0 all classified · 1 a never-run, slow, or undocumented instrument · **2 established nothing** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
+| `branch-census.py` | which remote branches are finished, live, or work that died quietly? | 0 discriminated · **2 no refs, or every branch in one bucket** |
 | `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
 | `issue-coverage.py` | which open issues has NOBODY opened? | 0 all covered · 1 untouched found · **2 established nothing (empty board, failed query, or no transcripts)** |
