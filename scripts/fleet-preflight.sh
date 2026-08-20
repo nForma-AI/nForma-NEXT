@@ -249,4 +249,19 @@ else
   printf '  \033[32mPreflight clean. Now verify the %d ROLE-READY lines above.\033[0m\n' "${#ROLES[@]}"
 fi
 echo
+
+# ⛔ THE EXIT CODE MUST CARRY THE VERDICT. This was `exit 0` unconditionally: the script
+# printed "Preflight found blocking problems" and then told every caller it had passed.
+# $fail was read twice — to print the tally, and to choose the message — and never to exit.
+#
+# ⇒ onboard.md makes this the ACCEPTANCE TEST for an install ("resolve every FAIL"), and an
+# acceptance test that cannot fail is #26 in the place it does the most damage. A sibling
+# fleet found the same root one layer in: a check whose FAIL never reached the counter.
+#
+# 0 clean · 1 blocking failures · 2 the script could not establish its own verdict.
+if [ -z "${fail+x}" ] || [ -z "${pass+x}" ]; then
+  printf '  \033[31m⛔ VOID: counters unset — this run established NOTHING about the fleet.\033[0m\n'
+  exit 2
+fi
+[ "$fail" -gt 0 ] && exit 1
 exit 0
