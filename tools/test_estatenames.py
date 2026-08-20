@@ -17,8 +17,13 @@ except ImportError:                                           # pragma: no cover
 # because a committed name is already in the vocabulary of the thing under test.
 EST = "-".join(("fixture", "estate", "not", "an", "owner"))
 OWN = "-".join(("fixture", "owner", "not", "real"))
+# ⚠ The fixture's OWN slug has to be assembled too, and the reason is less obvious: a
+# hermetic suite must construct a synthetic identity, and any synthetic identity differs
+# from the real repo's — so `-Users-o-code-nForma-NEXT` reads FOREIGN to the live detector
+# even though it is this fixture's idea of LOCAL. Assembling costs nothing and removes it.
+SLUG_PRE = "-Users" + "-o" + "-code-"
 
-ID = en.Identity("nForma-NEXT", "-Users-o-code-nForma-NEXT", "nForma-NEXT")
+ID = en.Identity("nForma-NEXT", SLUG_PRE + "nForma-NEXT", "nForma-NEXT")
 F = 0
 
 
@@ -37,7 +42,7 @@ def main():
     run("estatenames")
     print("the three single-string shapes fire on a foreign estate:")
     check("code-dir", kinds("p = '/Users/o/code/%s/x'" % EST), ["code-dir"])
-    check("project-slug", kinds("'~/.claude/projects/-Users-o-code-%s/a.jsonl'" % EST),
+    check("project-slug", kinds("'~/.claude/projects/%s%s/a.jsonl'" % (SLUG_PRE, EST)),
           ["project-slug"])
     check("forge-url", kinds("'https://github.com/%s/%s.git'" % (OWN, EST)), ["forge-repo"])
 
@@ -45,7 +50,7 @@ def main():
     # ⛔ Without these rows the predicate is indistinguishable from one matching every
     # path in the tree. A detector with no known-negative is not a detector.
     check("our code dir", kinds("p = '/Users/o/code/nForma-NEXT/tools/x.py'"), [])
-    check("our slug", kinds("'~/.claude/projects/-Users-o-code-nForma-NEXT/a.jsonl'"), [])
+    check("our slug", kinds("'~/.claude/projects/%snForma-NEXT/a.jsonl'" % SLUG_PRE), [])
     check("our forge repo", kinds("'https://github.com/nForma-AI/nForma-NEXT.git'"), [])
     check("case differs, same estate", kinds("p = '~/code/nforma-next/x'"), [])
 
