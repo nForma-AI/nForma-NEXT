@@ -567,6 +567,21 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
   explained it away rather than checking. **Enumerate the population against the remote, and
   when someone else's count disagrees with yours, one of you has a stale list — find out which
   before writing either number down.**
+- ⛔ **"No hits" and "cannot fire" produce the same line and demand opposite work.**
+  `pretooluse-guard.py`'s INVERTED rule was documented as *"the one worth having and the one
+  with NO evidence: zero hits in the measured corpus."* Its lookahead was **backwards** — it
+  required the zsh modifier char NOT to be followed by a word character, which is the
+  **deliberate** form (`$file:t`) and excludes the **accident** (`$P:tools/…`, where `:t`
+  swallows the rest). It fired on correct usage and stayed silent on silent corruption,
+  including the exact example in its own docstring. ★ **105 real instances were sitting in the
+  corpus it had been measured against.**
+- **Check the rule against the shell, not against reasoning about the shell.** Every case above
+  was settled by running it through `zsh` and reading what came out.
+- ⛔ **A rate needs its population printed beside it.** `--measure` called its corpus *"the
+  fleet's record of its own work"*; it scanned **every repository this machine has ever worked
+  on** — 50 project dirs, of which the fleet held **14.3%** and the largest single contributor
+  was an unrelated project at **19.6%**. The docstring had corrected an earlier rate for being
+  quoted without its denominator, and its replacement was mis-denominated the other way.
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
@@ -580,6 +595,7 @@ python3 tools/test_fleet_identity.py
 python3 tools/test_discriminates.py
 python3 tools/test_wake_yield.py
 python3 tools/test_daintree_control.py
+python3 tools/test_pretooluse_guard.py
 ```
 
 ⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only
