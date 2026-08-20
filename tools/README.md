@@ -678,6 +678,24 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
   the precedence can be tested by calling it, the same move that made `verdict_exit()` testable
   in `stranded-branches.py`. **If the only thing a test can assert is that a string appears in
   the file, the logic is in the wrong place.**
+- ★★★ **13 of 13. The tool I could not fault had a defect, and my own falsifier named it.**
+  `bootstrap-audit.py` was the single clean result of the audit; the register row recording that
+  stated the likelier falsifier as *"a defect I missed in the one I passed."* It fired within the
+  hour. Its step classifier read `cmd.lstrip().startswith("/")` as *"names a built-in slash
+  command"* — true of `/rename DEV2`, false of every absolute path:
+
+  ```
+  /rename DEV2                              -> UNEXECUTABLE   correct
+  /usr/bin/git rev-parse --abbrev-ref HEAD  -> UNEXECUTABLE   ⛔ WRONG
+  ```
+
+  ⛔ And `UNEXECUTABLE` is not a shrug — it asserts *"no execution record CAN exist"*, the
+  strongest claim in that file's vocabulary, about a step whose matching call **was in the very
+  list passed to the function.** The evidence sat one argument away and the rule never looked.
+  ⇒ Same shape as two others here: **a restriction asserted in prose that the code implements
+  as something broader.** A slash command is a bare word; a path has a separator inside it.
+- ★ **The clean result was a property of my search, not the tool** — which is what the register
+  row said, and it is worth trusting that kind of caveat enough to go back and test it.
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
@@ -697,6 +715,7 @@ python3 tools/test_pipe_exit_scan.py
 python3 tools/test_stranded_branches.py
 python3 tools/test_pane_binding.py
 python3 tools/test_fleet_identity_exact.py
+python3 tools/test_bootstrap_audit.py
 ```
 
 ⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only

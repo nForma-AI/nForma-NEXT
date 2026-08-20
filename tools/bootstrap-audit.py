@@ -530,7 +530,21 @@ def match_step(cmd, calls):
     # action is not missing, it is MISADDRESSED — it exists and belongs to another
     # actor. Searching would only find prose discussing it, which is how this
     # function produced two false passes before it was written this way.
-    if cmd.lstrip().startswith("/"):
+    # ⛔ `startswith("/")` CONFLATED A SLASH COMMAND WITH AN ABSOLUTE PATH.
+    # Measured 2026-08-20:
+    #
+    #   /rename DEV2                              -> UNEXECUTABLE   correct
+    #   /usr/bin/git rev-parse --abbrev-ref HEAD  -> UNEXECUTABLE   ⛔ WRONG
+    #   /opt/homebrew/bin/python3 x.py            -> UNEXECUTABLE   ⛔ WRONG
+    #
+    # The second was classified unexecutable while a matching call sat in the very
+    # list passed to this function. And the verdict is not a shrug — it asserts "no
+    # execution record CAN exist", the strongest claim in this file's vocabulary,
+    # about a step that both can run and did.
+    #
+    # A slash command is a single bare word: `/` then a name, then whitespace or end
+    # of string. A path has a separator inside it. That is the whole discriminator.
+    if re.match(r"/[A-Za-z][A-Za-z0-9_-]*(?:\s|$)", cmd.lstrip()):
         return "UNEXECUTABLE", ("names a built-in slash command — bound to the human input "
                                 "line, unreachable by any agent tool, so no execution "
                                 "record can exist")
