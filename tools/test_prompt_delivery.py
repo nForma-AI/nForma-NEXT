@@ -17,12 +17,32 @@ cannot tell a fixed tool from a fixture that never exercised it.
 
 Run: python3 tools/test_prompt_delivery.py
 """
-import importlib.util, json, os, sys, tempfile
+import json, os, sys, tempfile, types
 
 _here = os.path.dirname(os.path.abspath(__file__))
-_spec = importlib.util.spec_from_file_location("pd", os.path.join(_here, "prompt-delivery.py"))
-pd = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(pd)
+
+
+def load(path, name):
+    """Execute the source text READ NOW — a positive reload proof.
+
+    ⛔ `spec_from_file_location` consults `__pycache__`, and Python invalidates a
+    `.pyc` on mtime + SIZE. A SIZE-PRESERVING mutation (`==`/`!=`, a flag flip, a
+    token swap) applied within the same second leaves both unchanged, so the
+    cached module is served and the mutation SURVIVES — with a changed file and a
+    moved target both verifying. Measured on a sibling tool: 60 bytes either way,
+    file 18764 either way, and it survived.
+
+    ⚠ Suppressing the cache proves only that none EXISTS. Compiling the bytes we
+    just read is the evidence: there is no cache in the path to consult.
+    """
+    src = open(path).read()
+    mod = types.ModuleType(name)
+    mod.__file__ = path
+    exec(compile(src, path, "exec"), mod.__dict__)
+    return mod
+
+
+pd = load(os.path.join(_here, "prompt-delivery.py"), "pd")
 
 FIXTURE = os.path.join(_here, "testdata", "transcript-head-real-shape.jsonl")
 POINTER = "git -C ~/code/nForma-NEXT show origin/main:prompts/DX.md"
