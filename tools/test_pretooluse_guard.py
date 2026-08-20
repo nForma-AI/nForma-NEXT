@@ -111,6 +111,56 @@ def main():
     rc, out = run("--measure", "--project")
     f += not check("--project with no value exits 2", rc, 2)
 
+    # ── converted rules: the NEGATIVE direction is the one that matters ──────────
+    # Every rule here fires on a defect three agents paid for. The risk a new rule
+    # adds is the opposite one — interrupting correct work — and this file already
+    # shipped a rule (`zsh-var-modifier`) that fired ONLY on correct usage while its
+    # zero hit-count was read as "the defect is rare".
+    print("converted rules, both directions:")
+    for rule, pos, neg in [
+        ("two-dot-diff", "git diff main..HEAD", "git diff main...HEAD"),
+        ("gh-logs-no-escape",
+         "gh api repos/o/r/actions/jobs/1/logs > x.log",
+         "gh api --allow-escape-sequences repos/o/r/actions/jobs/1/logs > x.log"),
+        ("unquoted-glob-arg", "grep -rn x --include=*.py .", "grep -rn x --include='*.py' ."),
+        ("zsh-for-unsplit", "for b in $BR; do :; done", 'for b in "${BR[@]}"; do :; done'),
+        ("git-grep-word-boundary", r"git grep -E '\bfoo\b'", "git grep -E 'foo'"),
+        ("git-archive-tree", "git archive HEAD | tar -x -C /tmp/i", "git worktree add /tmp/i HEAD"),
+    ]:
+        f += not check(f"{rule} fires", rule in names(pos), True)
+        f += not check(f"{rule} silent on the correct form", rule in names(neg), False)
+
+    # ⛔ The exact near-miss that shipped and was caught by the negative above: `.` was
+    # inside the left character class, so the pattern matched from the FIRST dot of
+    # `...` and the (?!\.) lookahead never saw a dot. Pinned with the awkward forms
+    # too, because a path containing dots is where it would come back.
+    f += not check("three-dot with a dotted path stays silent",
+                   "two-dot-diff" in names("git diff a.b...c.d -- x/y.py"), False)
+    f += not check("two-dot with a dotted path still fires",
+                   "two-dot-diff" in names("git diff a.b..c.d -- x/y.py"), True)
+
+    # ── the guard's standing, which is separate from whether its rules discriminate ──
+    print("enforcement self-check:")
+    rc, out = run("--enforcement")
+    f += not check("reports a definite standing", rc in (0, 1), True)
+    # ⛔ THIS ASSERTION PASSED FOR THE WRONG REASON AND A MUTATION EXPOSED IT.
+    # It read `... or "WIRED —" in out`, and the unwired banner says "NOT WIRED — ",
+    # which CONTAINS that substring. So the wired-branch clause was satisfied by the
+    # negation, and gutting the consequence sentence left the test green.
+    # ⇒ Discriminate on a token that cannot appear inside the other state's text.
+    # This is ARCHITECT's #1269 §3 corollary — the matcher finds its token inside the
+    # prose about the token — committed in the test for the guard that catches it.
+    wired = out.startswith("✓ WIRED")
+    unwired = out.startswith("⛔ NOT WIRED")
+    f += not check("banner picks exactly one state", wired ^ unwired, True)
+    f += not check("names the consequence, not just the state",
+                   "evidence that the guard ran" in out if wired
+                   else "evidence of nothing" in out, True)
+    f += not check("refuses to wire itself",
+                   True if wired else "operator decision" in out, True)
+    rc, out = run("--self-test")
+    f += not check("self-test states standing BEFORE passing", "WIRED" in out, True)
+
     print("the self-test still passes:")
     rc, out = run("--self-test")
     f += not check("exit", rc, 0)
