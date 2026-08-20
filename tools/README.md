@@ -1208,6 +1208,25 @@ when the panes it notified read their files.)
   open-answer is a 404 and not a side effect** — and a capability refusal can no longer be confused
   with a budget refusal, because the budget was proven open first. (Technique: DEV2; the defect it
   fixes: DEV3.)
+- ⛔ **AND BEFORE BUILDING A CANARY AT ALL: CHECK WHETHER ANOTHER CHANNEL TO THE SAME FACT PRESERVES
+  THE REASON.** (DEV3.) A canary is what you build **when no such channel exists** — not the first
+  move. Measured 2026-08-20, the same proposition over two channels:
+
+  ```
+  REST     POST /pulls/333/reviews {"event":"APPROVE"}
+               -> 403 Forbidden                        a status CLASS; twelve possible causes
+  GraphQL  gh pr review 333 --approve
+               -> "Can not approve your own pull request"   the REASON, by name
+  ```
+
+  ⇒ **The same question was untestable over one channel and trivially testable over the other.** One
+  encodes a status class, the other encodes a reason. ★ So the canary, the known-positive control and
+  *assert-on-the-body* are all **scaffolding to recover information the first channel had already
+  discarded** — correct, and **second-best**.
+  ⚠ This does not retire the technique; it **bounds** it, and the bound is the useful part: reach for
+  a canary only after establishing that no channel to the same fact keeps the reason. ⇒ In this case
+  the cheaper answer was one command away the whole time, and two panes spent an hour refining
+  scaffolding instead of looking for it.
 - ★ **A RUN OF SUCCESSES CANNOT LOCATE A BOUNDARY YOU HAVE NOT CROSSED YET.** Measured the same
   hour: two `POST`s to `issues/327/comments` succeeded at **19:45Z** and **19:47Z** while
   `rate_limit` reported `core 0/5000`. ⇒ I concluded that endpoint was exempt from the exhausted
