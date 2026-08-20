@@ -117,6 +117,21 @@ jobs:
       #     2  UNESTABLISHED — it refused. ⛔ No claim about the repository follows.
       - name: repo scripts
         run: ./scripts/exit-code-gate.sh scripts '*.py' 'repo check'
+
+      # ⛔ THE STEP ABOVE ASKS "DID THE CHECK PASS". THIS ONE ASKS "DOES IT STILL WORK".
+      # Nothing asked the second until now (#321). `tools/test_*.py` covers the instruments in
+      # tools/; `scripts/` has NO test files — its four checkers carry their controls inside
+      # themselves as `--self-test`, and that surface was the only one CI never invoked. So four
+      # checkers GATED every merge while the controls proving they can still produce a verdict
+      # had never run in CI once.
+      #
+      # ⚠ AND RUNNING `--self-test` IS NOT ENOUGH ON ITS OWN. Measured: two of the four accepted
+      # `--zzz-not-a-flag` and exited 0, so `--self-test` exiting 0 proved nothing about whether
+      # the flag was ever recognised. Both argument surfaces are fixed in the same PR; the gate
+      # runs the known-negative on every subject on every run so it cannot silently return.
+      - name: subject controls
+        run: ./scripts/gate-selftests.sh
+
   fleet-dependent:
     name: fleet-dependent suites (reported, NOT gating)
     runs-on: ubuntu-latest

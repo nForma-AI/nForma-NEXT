@@ -402,8 +402,19 @@ def self_test():
 
 
 def main():
-    if "--self-test" in sys.argv:
+    # ⚠ MEMBERSHIP, NOT EQUALITY, was the bug (#321). `"--self-test" in sys.argv` accepts the
+    # flag but does not REJECT anything else: `--zzz-not-a-flag` fell straight through to a
+    # normal run and exited 0. ⇒ So a misspelled or renamed self-test flag runs the CHECKER and
+    # reports success, and a CI step invoking the control would go green having never run it.
+    # A control whose invocation cannot fail is not being invoked. (ARCHITECT's PR #47 fix,
+    # applied here at last; check-orientation.py has had it since, this file did not.)
+    args = sys.argv[1:]
+    if args in (["--self-test"], ["--selftest"]):
         return self_test()
+    if args:
+        print(f"  VOID  unrecognised argument(s): {' '.join(args)} — established nothing",
+              file=sys.stderr)
+        return 2
     rev = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
                          capture_output=True, text=True).stdout.strip()
     # ⛔ NOT "every .md that is not README". That population is wrong and it fired
