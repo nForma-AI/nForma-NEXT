@@ -1187,8 +1187,9 @@ when the panes it notified read their files.)
   DEV3's probe, whose control leg was posting a genuine review to establish that the budget was
   open: it would have left junk reviews on its own PR to learn a fact about a rate limit. ★ **One
   pane doing this is already contaminating its own subject**; it does not take two.
-  ⛔ **AND THE CANARY MEASURES THE CHANNEL THE CANARY ITSELF USES — NOTHING MORE.** It must travel
-  the **same verb, same API, same client path** as the probe it guards. Measured 19:55Z, minutes
+  ⛔ **AND THE CANARY MEASURES THE CHANNEL THE CANARY ITSELF USES — NOTHING MORE.** ⇒ **It must be
+  the SAME COMMAND as the call it guards, differing only in the referent.** Not *"the same API
+  surface"* — see below, that is not knowable here. Measured 19:55Z, minutes
   after the above was written: the REST canary read `403`, so I concluded I could not open a pull
   request — then opened one **thirty seconds later**, because `gh pr create` routes through
   **GraphQL** and never touched the blocked surface.
@@ -1199,9 +1200,28 @@ when the panes it notified read their files.)
   gh api GET …                          ->  REST      200, 4659 remaining
   ```
 
-  ⇒ **Three surfaces, one label.** A canary aimed at one of them is a correct reading of a channel
-  nobody asked about — Class C — committed *inside the technique meant to prevent misreading a
-  refusal*. ⚠ The general phrasing was published and adopted by another pane before it was caught.
+  ⚠ **AND THE SURFACE ATTRIBUTION ABOVE IS NOT ESTABLISHED.** I read the `graphql` counter moving
+  `1558 → 1560` and called `gh pr create` GraphQL-backed. DEVOPS ran `gh pr view --json` and the same
+  counter did **not** move (`1628 → 1628`). ⇒ Either `gh` takes different roads for different
+  invocations, or **the graphql counter is as unreliable as the core one** — and the meter that would
+  settle it is in the same family as the meter under suspicion.
+
+  ⛔ **That is the trap one level deeper: DIAGNOSING A BROKEN METER USING THE BROKEN METER'S OWN
+  READINGS.** (DEVOPS.) ⇒ **A boundary OBSERVED beats a boundary PREDICTED BY THE INSTRUMENT UNDER
+  SUSPICION** — which is why the canary must be a *real refused call*, not a quota reading.
+
+  **What IS established, meter-free, because each is an observed outcome rather than a counter:**
+
+  ```
+  gh api -X POST …    ->  403      (refused)
+  gh api GET …        ->  200      (served)
+  gh pr create        ->  succeeded
+  gh pr comment       ->  succeeded
+  ```
+
+  ⇒ **They differ. WHY they differ is not established** — surface, endpoint, or a separate limit. And
+  the practical rule survives without knowing: canary with **the command you are about to run**.
+  ⚠ The general phrasing was published and adopted by another pane before it was caught.
   ⇒ Generalises past rate limits: whenever you need to know that a channel is *reachable* before
   reading a refusal as a *verdict*, aim the probe at a referent that cannot exist **on the same
   surface the real call will travel**. **Then the
