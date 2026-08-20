@@ -407,10 +407,29 @@ def self_test():
             # cannot see it and only the stubbed-PATH probe can.
             NL = chr(10)
             (td / "forgey.py").write_text("import subprocess,sys" + NL + "if '--self-test' in sys.argv:" + NL + "    r=subprocess.run(['gh','--version'],capture_output=True,text=True)" + NL + "    print('  ok  gh rc=%d' % r.returncode)" + NL + "    raise SystemExit(0)" + NL + "raise SystemExit(0)" + NL)
-            got, _ = classify(td / "forgey.py", parent, timeout=30)
-            ok &= got == FORGE
-            print(f"  {'ok  ' if got == FORGE else 'FAIL'}  a control that consults the FORGE and"
-                  f" nothing else is UNDRAWN-VIA-FORGE, not NO-REPO-INPUT (got {got})")
+            # ⛔ THIS CONTROL HAS A PRECONDITION AND MUST ESTABLISH IT BEFORE IT MAY FAIL.
+            # The forge axis works by making `gh` fail and looking for a DIFFERENCE. If ambient
+            # `gh` is already failing — no binary, no auth, no network, a CI runner — both runs
+            # produce the same output, no difference exists, and this control reports FAIL for a
+            # reason that has nothing to do with the code under test.
+            # ⚠ Measured 2026-08-21: with a failing `gh` first on PATH this exited 3. Gating it
+            # in that state would ship a BORN-RED guard — the defect .github/workflows/tools.yml
+            # calls load-bearing in its own split, committed in a control ABOUT control quality.
+            # ⇒ Precondition first, and a missing precondition is NOT ESTABLISHED, never FAIL.
+            try:
+                amb = subprocess.run(["gh", "--version"], capture_output=True, text=True,
+                                     timeout=20).returncode
+            except (OSError, subprocess.TimeoutExpired):
+                amb = None
+            if amb != 0:
+                print(f"  ----  NOT ESTABLISHED  ambient `gh` does not answer (rc={amb}), so the"
+                      f" forge axis has nothing to differentiate against. ⛔ The control was NOT"
+                      f" exercised — untested, not correct, and NOT a failure of the code.")
+            else:
+                got, _ = classify(td / "forgey.py", parent, timeout=30)
+                ok &= got == FORGE
+                print(f"  {'ok  ' if got == FORGE else 'FAIL'}  a control that consults the FORGE"
+                      f" and nothing else is UNDRAWN-VIA-FORGE, not NO-REPO-INPUT (got {got})")
 
         idx = d / "R.md"
         idx.write_text("# no table\n")
