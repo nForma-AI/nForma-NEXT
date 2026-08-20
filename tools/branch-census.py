@@ -76,6 +76,52 @@ def age_of(repo, remote, branch, now):
     return f"{d // 86400}d"
 
 
+def branch_names(repo, remote, base):
+    """Remote branch names, excluding HEAD and the base.
+
+    ⛔ Factored out because --touches was calling census(), which builds a patch-id
+    index over 600 commits of the base before answering. A path query needs the branch
+    LIST and nothing else; paying the squash-detection cost for it timed the sweep out
+    at two minutes and hid the exit-2 path from its own verification.
+    """
+    refs = [r.strip() for r in git(
+        repo, "for-each-ref", "--format=%(refname)", f"refs/remotes/{remote}"
+    ).splitlines() if r.strip()]
+    names = [r.split(f"refs/remotes/{remote}/", 1)[1] for r in refs
+             if f"refs/remotes/{remote}/" in r]
+    return [b for b in names if b not in ("HEAD", base)]
+
+
+def touching(repo, remote, base, path, branches):
+    """Which branches carry changes to <path>, measured FROM THE MERGE-BASE.
+
+    ⛔ WHY THIS IS A FLAG AND NOT A NOTE. The naive form answers a different question
+    and inflates by an order of magnitude. Measured on this repository, 2026-08-21:
+
+        git diff origin/main..$b  -- docs/DEFECT-CLASSES.md   ->  130 branches
+        git diff origin/main...$b -- docs/DEFECT-CLASSES.md   ->   13
+        git diff origin/main..$b  -- tools/README.md          ->  121
+        git diff origin/main...$b -- tools/README.md          ->   25
+
+    Two dots compares ENDPOINTS, so every branch cut before `main` last changed the file
+    "touches" it — the difference is main moving, not the branch doing anything. Three
+    dots compares from the MERGE-BASE: what the branch itself changed.
+
+    ⇒ A freeze sweep run with the two-dot form names most of the fleet as violating a
+    hold they are respecting. TEAMLEAD hit this while checking compliance with its own
+    freeze; the count that matters was 13, and the naive form said 130.
+
+    ⚠ A note in a docstring tells a reader who already opened the file. This is a flag
+    so the wrong form is not reachable through the tool at all.
+    """
+    hits = []
+    for b in branches:
+        out = git(repo, "diff", "--name-only", f"{base}...{remote}/{b}", "--", path)
+        if out.strip():
+            hits.append(b)
+    return hits
+
+
 def checked_out_branches(repo):
     """Branches checked out in THIS checkout's worktrees. A lower bound on LIVE."""
     live = set()
@@ -90,12 +136,7 @@ def census(repo, remote="origin", base="main", window=600):
     if not git(repo, "rev-parse", "--verify", "-q", base_ref).strip():
         return None, f"no {base_ref} — nothing to classify against"
 
-    refs = [r.strip() for r in git(
-        repo, "for-each-ref", "--format=%(refname)", f"refs/remotes/{remote}"
-    ).splitlines() if r.strip()]
-    branches = [r.split(f"refs/remotes/{remote}/", 1)[1] for r in refs
-                if f"refs/remotes/{remote}/" in r]
-    branches = [b for b in branches if b not in ("HEAD", base)]
+    branches = branch_names(repo, remote, base)
     if not branches:
         return None, f"{remote} has no branches besides {base}"
 
@@ -129,6 +170,12 @@ def main():
     ap.add_argument("--repo", default=".", help="repository to read (default: cwd)")
     ap.add_argument("--remote", default="origin")
     ap.add_argument("--base", default="main")
+    ap.add_argument("--touches", metavar="PATH",
+                    help="list branches carrying changes to PATH, measured from the "
+                         "merge-base (never endpoint-to-endpoint) — the freeze-sweep question")
+    ap.add_argument("--contrast", action="store_true",
+                    help="with --touches, also compute the endpoint-form count (slow: "
+                         "one extra git spawn per branch)")
     ap.add_argument("--window", type=int, default=600,
                     help="commits of <base> to index for squash detection")
     a = ap.parse_args()
@@ -138,6 +185,37 @@ def main():
         ref_now = int(git(a.repo, "log", "-1", "--format=%ct", f"{a.remote}/{a.base}").strip() or 0)
     except Exception:
         pass
+    if a.touches:
+        base_ref = f"{a.remote}/{a.base}"
+        names = branch_names(a.repo, a.remote, a.base)
+        if not names:
+            print(f"⛔ ESTABLISHED NOTHING — {a.remote} has no branches besides "
+                  f"{a.base}.", file=sys.stderr)
+            return 2
+        hits = touching(a.repo, a.remote, base_ref, a.touches, names)
+        naive = ([b for b in names
+                  if git(a.repo, "diff", "--name-only",
+                         f"{base_ref}..{a.remote}/{b}", "--", a.touches).strip()]
+                 if a.contrast else None)
+        for b in hits:
+            print(f"  TOUCHES  {age_of(a.repo, a.remote, b, ref_now):>7}  {b}")
+        print(f"\n  {len(hits)} of {len(names)} branch(es) change {a.touches} "
+              f"(measured from the merge-base)")
+        if naive is None:
+            print(f"  ⚠ measured 2026-08-21: the endpoint form `{a.base}..<branch>` named "
+                  "130 for this path where the merge-base form named 13. Pass --contrast "
+                  "to recompute it here (one extra git spawn per branch).")
+        else:
+            print(f"  ⚠ the endpoint form `{a.base}..<branch>` names {len(naive)} — "
+                  "that counts main moving, not the branch changing anything.")
+        if not hits:
+            print("\n⛔ ESTABLISHED NOTHING about a quiet moment: zero branches change "
+                  "this path RIGHT NOW, which is a SAMPLE, not a property. A run of "
+                  "successes cannot locate a boundary you have not crossed yet.",
+                  file=sys.stderr)
+            return 2
+        return 0
+
     try:
         rows, why = census(a.repo, a.remote, a.base, a.window)
     except Exception as ex:
