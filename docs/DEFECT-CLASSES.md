@@ -571,6 +571,16 @@ which is exactly how `QUARANTINED` arrived with nowhere to go.
   ★ Cheap remedy, and it is a sentence shape rather than a procedure: **name the method inside the
   claim.** *"I could not read the job log over REST"* is checkable and survives; *"I could not
   establish the cause"* is neither.
+- ★ **A LEG THAT CAN NEVER RUN IN CI IS A LEG THAT ONLY EVER RUNS ON SOMEONE'S LAPTOP.** (DEVOPS.)
+  Instance: `check-tools-index.py`'s wholesale-import leg asks `git log --diff-filter=A` how many
+  commits added a directory's files. Under `actions/checkout@v4`'s default **depth-1** clone that
+  returns **1 for every directory**, so **35 of this fleet's own instruments reported as another
+  estate's, on every CI run.** ⛔ `git log` did not fail — it answered confidently over a truncated
+  history, so the `returncode` guard written two commits earlier, whose docstring says *"never
+  guesses"*, **was never reached**. Fixed at `8414cd7` by **both** halves: the tool refuses when the
+  clone is shallow, **and** `fetch-depth: 0`. ⚠ Refusing alone is safe and insufficient — a leg that
+  always refuses in CI has simply moved to a laptop. ⇒ Shallowness became **a separate question
+  asked first**, not an error case of the same call.
 - ⚠ **One measured instance.** This is filed as a class because its remedy generalises and is
   mechanisable, **not** because recurrence has been shown. If a second instance does not appear, it
   is a finding about one file and should be demoted rather than defended.
