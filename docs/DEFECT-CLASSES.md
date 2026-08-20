@@ -368,6 +368,59 @@ whether it has the same defect (#80). ⚠ **Untested** — see below.
 
 ---
 
+## ★ CLASS C — a correct reading of the WRONG PROPOSITION
+
+Class A is two states colliding at a boundary. Class B is a rule whose noun is one word too narrow.
+**This one is neither: nothing is collapsed and no rule is scoped wrongly.** The instrument is
+healthy, it runs, it can fail, and it reports a **true answer to a question nobody asked.**
+
+> The predicate ran correctly, over a population that was not the one the claim was about, and the
+> result was reported as though it were.
+
+⚠ **This is why it survives review twice over.** The tool passes its own self-test — correctly. The
+finding reads as measured — correctly. **The defect is in the JOIN between the reading and the
+proposition, and neither artifact contains it.** (Same structural place as Class B's temporal form:
+the gap between two correct things.)
+
+### Six instances, one day, four roles — every one passed criteria 3 and 4
+
+```
+grep -cF <filename>       counted the name inside the gap-note SAYING it was undocumented
+                          -> ANTI-CORRELATED with what it measured. 10/12 reported as 12/12
+gh run list --limit 5     reported "5 runs"; the real figure was 100 — a truncation defect
+                          INSIDE a finding about decayed measurements
+AST mutant inversion      inverted `__name__ == "__main__"`, so 12 "controls" were programs that
+                          never ran; a crashing tool exits non-zero and scored as a detection
+armed: false 9 of 9       7 of 9 were running monitors. The positive was ONE FIELD OVER
+"depth-exhausted fleet"   folded in a pane at 34% and one at 74%
+a decorated /compact      returned `sent:true`; it does not expand. Delivery ASSUMED from
+                          transmission — three panes burned to the ceiling
+```
+
+### ⇒ The remedy is #269's three hops, promoted from a habit to a criterion
+
+A reading travels `population → predicate → channel`. Class C is what happens when **any hop is
+left unstated and the reader supplies the flattering default.**
+
+```
+POPULATION   4 of 6   grep · gh run list · AST mutants · depth-exhausted
+PREDICATE    1 of 6   armed: false
+CHANNEL      1 of 6   sent:true
+```
+
+⛔ **An unstated population is the largest hole and not the whole hole** — a rule saying only *name
+the population* passes two of these six. That is why `goals/README.md` criterion 5 names three legs.
+
+### ★ The fix already existed in one tool and had not reached the bar
+
+`tools/architect-sweeps/known-negative.py` carries **both** guards the AST instance needed — mutate
+the analyser not the dispatch, and score a crashed mutant `VOID` rather than a detection. ⇒ **It was
+written as a property of one instrument instead of a property of readings**, so the next reading
+repeated it. **That is Class B operating on Class C's remedy**, and it is the reconciliation this
+document already predicts: *state the remedy at the scope of the boundary, not the instance.*
+
+---
+
 ## ⛔ What is NOT established
 
 - **The frame is not universal, and that is what makes it a claim.** #80 is outside Class A by
@@ -394,5 +447,10 @@ whether it has the same defect (#80). ⚠ **Untested** — see below.
   this file adds.
 - **No claim the remedies are complete.** #2, #16, #26, #29 and #58 have DEV legs open. This
   reconciles the design; it does not report the execution.
+- ⛔ **Class C is named from six instances I did not measure.** TEAMLEAD supplied all six; I
+  re-verified none of them. The partition into three hops is mine and the evidence is borrowed —
+  **if any instance is mis-described, the count moves and the three-leg argument may not survive.**
+- ⚠ **Class C's criterion was derived from those same six**, so passing it against them is fitting.
+  **The first closure it stops that nobody argued in advance is the evidence.** [NOT-YET-MEASURED]
 - **Four of the nine issues carry no acceptance criteria** (#36, #39, #73, #80) — precisely the
   four with no DEV leg. Recorded rather than invented here.
