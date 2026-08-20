@@ -47,9 +47,26 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    import estatenames
+except ImportError as exc:                        # noqa: BLE001
+    print("⛔ VOID: cannot import estatenames (%s) — the DERIVED estate leg did not "
+          "run, so this scan checked a CLOSED LIST only and a new estate would read "
+          "clean. Not a partial answer; a different question." % exc, file=sys.stderr)
+    sys.exit(2)
+
+# ⚠ KEPT, and the reason is measured, not sentimental. #348 says "derive, do not
+# enumerate", and the derived legs in `estatenames` do deliver the open-ended half.
+# But a bare NAME with no path is invisible to a path-shaped predicate: dropping this
+# list took tools/teamlead/ from 9 detections to 5 (ctxwatch, repowatch, t_sentinel,
+# w1226) — measured 2026-08-20 at 0252d62. A shrink is under-detection, so the two
+# legs are a UNION. ⛔ `control-plane/api` is dropped: DEVOPS measured zero unique
+# detections for it across all three populations, and w1226.py matches on `akash`
+# independently.
 FOREIGN_VOCAB = [
     "borduas-holdings", "blazing-back", "blazing", "akash", "worker-blazing-rpg",
-    "control-plane/api", "tron", "digitalfrontier-infra",
+    "tron", "digitalfrontier-infra",
 ]
 ISSUE_RE = re.compile(r"#(\d{1,6})\b")
 TEXT_EXT = {".py", ".sh", ".md", ".json", ".yml", ".yaml", ".txt", ""}
@@ -83,10 +100,13 @@ def local_issue_range(root):
     return nums[0], nums[idx], len(nums)
 
 
-def classify(text, lo, hi):
+def classify(text, lo, hi, ident=None):
     """(verdict, reasons) for one file's content."""
     low = text.lower()
     foreign_terms = sorted({v for v in FOREIGN_VOCAB if v in low})
+    # ⇒ The open-ended leg: an estate NOT on the list above, recognised by shape
+    # rather than by name, compared against values read from this tree.
+    derived = estatenames.scan_strings([text], ident) if ident is not None else []
     cited = sorted({int(m) for m in ISSUE_RE.findall(text)})
     out_of_range = [n for n in cited if n > hi]
     in_range = [n for n in cited if lo <= n <= hi]
@@ -94,9 +114,11 @@ def classify(text, lo, hi):
     reasons = []
     if foreign_terms:
         reasons.append("vocabulary=" + ",".join(foreign_terms[:3]))
+    if derived:
+        reasons.append("derived=" + ",".join("%s:%s" % (k, m) for k, m, _ in derived[:3]))
     if out_of_range:
         reasons.append("cites>%d: %s" % (hi, ",".join(str(n) for n in out_of_range[:4])))
-    if foreign_terms or out_of_range:
+    if foreign_terms or out_of_range or derived:
         return "FOREIGN", reasons
     if in_range:
         return "LOCAL", ["cites in-range: " + ",".join(str(n) for n in in_range[:4])]
@@ -138,6 +160,16 @@ def main(argv):
     print("local issue vocabulary: %d distinct, range #%d-#%d (derived from git log, "
           "cut at largest gap)" % (n, lo, hi))
 
+    # ⛔ Derived HERE, and its absence is VOID. An incomplete identity gives the
+    # derived leg no comparand, and a leg with no comparand reports nothing while
+    # looking exactly like a leg that found nothing.
+    ident = estatenames.local_identity(root)
+    if not ident.complete():
+        return void("cannot derive this repo's own identity (%r) — the derived estate "
+                    "leg has no comparand and did NOT run" % (ident,))
+    print("local identity: repo=%s forge=%s (derived; the derived leg compares against "
+          "these)" % (ident.repo_dir, ident.forge_repo))
+
     rows, found = [], False
     for t in targets:
         fs = files_under(root, t)
@@ -150,7 +182,7 @@ def main(argv):
             if rc2 != 0:
                 rows.append(("UNREADABLE", f, ["git show failed"]))
                 continue
-            v, why = classify(blob, lo, hi)
+            v, why = classify(blob, lo, hi, ident)
             rows.append((v, f, why))
             if v == "FOREIGN":
                 found = True

@@ -74,9 +74,18 @@ def local_identity(root):
         top = os.path.realpath(root)
     except OSError:
         return Identity(None, None, None)
-    rc, out, _ = sh("git", "-C", root, "rev-parse", "--show-toplevel")
+    # ⛔ NOT --show-toplevel. In a worktree that returns the WORKTREE path, so this
+    # repo's own name reads as a foreign estate — and nine panes here work in
+    # worktrees, which is where the predicate would do the most damage. The common
+    # git dir points at the ORIGINAL clone from every linked worktree.
+    rc, out, _ = sh("git", "-C", root, "rev-parse", "--path-format=absolute",
+                    "--git-common-dir")
     if rc == 0 and out.strip():
-        top = os.path.realpath(out.strip())
+        top = os.path.realpath(os.path.dirname(out.strip().rstrip("/")))
+    else:
+        rc, out, _ = sh("git", "-C", root, "rev-parse", "--show-toplevel")
+        if rc == 0 and out.strip():
+            top = os.path.realpath(out.strip())
     repo_dir = os.path.basename(top) or None
     slug = top.replace("/", "-") if top else None
     forge_repo = None
