@@ -200,15 +200,39 @@ def check_pin_doctrine():
               "not absent.", file=sys.stderr)
         return False
 
+    # ⛔ TWO forms are endorsed by this README, each with its own ✅. Keying on one
+    # of them fires on the REPAIRED state — measured: deleting only the archive line
+    # while keeping the runmarker line left the doctrine intact and exited 1. That is
+    # the failure mode this check's own docstring says to prefer AGAINST.
+    _ENDORSED = (
+        re.compile(r"git\s+archive\s+\S+\s+tools/[^\n]*\|\s*tar"),
+        re.compile(r"git\s+show\s+\S*:tools/[^\n]*runmarker"),
+    )
+
+    def _endorsed_pin_line(t):
+        """A pin form counts only on a line that also carries ✅.
+
+        ⛔ Presence alone is satisfiable by a MENTION: a line reading
+        "⛔ Never use: git archive <ref> tools/ | tar -x" passed the previous
+        version while the doctrine said the opposite. The docstring above already
+        calls the ⛔/✅ glyphs "load-bearing content rather than formatting" —
+        this reads the polarity it was already relying on. Position, not care.
+        """
+        for line in t.splitlines():
+            if "✅" in line and any(p.search(line) for p in _ENDORSED):
+                return True
+        return False
+
     required = [
-        ("the ✅ directory-pin form", re.compile(r"git\s+archive\s+\S+\s+tools/[^\n]*\|\s*tar")),
-        ("why it is needed (runmarker)", re.compile(r"import\s+runmarker")),
+        ("an ✅-marked pin form (either endorsed one)", _endorsed_pin_line),
+        ("why it is needed (runmarker)",
+         lambda t: bool(re.search(r"import\s+runmarker", t))),
     ]
-    absent = [label for label, pat in required if not pat.search(text)]
+    absent = [label for label, ok in required if not ok(text)]
 
     print("\n  pin doctrine in tools/README.md (#291):")
-    for label, pat in required:
-        print(f"  {'ok  ' if pat.search(text) else 'GONE'}  {label}")
+    for label, ok in required:
+        print(f"  {'ok  ' if ok(text) else 'GONE'}  {label}")
     if absent:
         print("\n⛔ tools/README.md no longer states how to pin a marker-carrying "
               "tool. Every pane that pins a single file gets ImportError, exit 1 "
