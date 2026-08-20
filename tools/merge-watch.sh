@@ -21,11 +21,19 @@
 # in its own watch an hour ago: its positive was propped up by the defect it
 # detects, and both arms went to zero when seven panes read their files.)
 set -u
-cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)" || exit 2
+if ! top=$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null) || ! cd "$top"; then
+  printf '%s\n' "VOID merge-watch: not inside a git repository — the watch never started, and this line exists because a Monitor streams STDOUT only. A silent death here would be indistinguishable from a quiet fleet. ADDABLE — FIXABLE HERE: run it from a checkout."
+  exit 2
+fi
 
 emit() { printf '%s\n' "$*"; }
 
 last=""
+seen=""      # rows already reported. ⛔ Without this every merge re-reports the
+             # standing backlog, and "an alarm that fires forever on one event
+             # trains its reader to ignore it" — tools/README.md, violated by this
+             # file three minutes after that line was indexed.
+first=1
 while true; do
   sha=$(git ls-remote origin refs/heads/main 2>/dev/null | cut -f1)
   if [ -z "$sha" ]; then
@@ -34,6 +42,10 @@ while true; do
   fi
   if [ "$sha" = "$last" ]; then sleep 60; continue; fi
   last="$sha"
+  # ⚠ The FIRST pass is a BASELINE, not a merge finding. `last` starts empty so any
+  # sha differs, and labelling that emission "FINDING at <sha>" claims the merge
+  # caused a backlog that predates it. Different proposition, same words.
+  if [ "$first" = 1 ]; then tag="BASELINE"; else tag="FINDING at ${sha:0:7}"; fi
   git fetch -q --prune origin 2>/dev/null
 
   # ⛔ Control first. A scan whose instrument cannot fire is not a clean scan.
@@ -46,7 +58,7 @@ while true; do
   case "$rc" in
     0) : ;;
     1) printf '%s\n' "$out" | grep '^NO-UPSTREAM-MATCH' | while read -r _ ref rest; do
-         emit "FINDING at ${sha:0:7}: $ref has commits with no upstream patch-match. NOT proof of loss — recovery-by-recommit reads identically."
+         row="stranded:$ref"; case "$seen" in *"$row"*) ;; *) emit "$tag: $ref has commits with no upstream patch-match. NOT proof of loss — recovery-by-recommit reads identically."; seen="$seen|$row" ;; esac
        done ;;
     2) emit "VOID merge-watch: stranded-branches ESTABLISHED NOTHING at ${sha:0:7} (exit 2) — not clean." ;;
     *) emit "UNDOCUMENTED merge-watch: stranded-branches exit $rc at ${sha:0:7}, which it does not document. Treat as established-nothing." ;;
@@ -56,9 +68,10 @@ while true; do
   case "$wrc" in
     0) : ;;
     1) printf '%s\n' "$wt" | grep -E '^  (DUP|OUTSIDE|MISSING)' | while read -r st role path; do
-         emit "FINDING at ${sha:0:7}: worktree $st for $role — $path"
+         row="wt:$st:$role"; case "$seen" in *"$row"*) ;; *) emit "$tag: worktree $st for $role — $path"; seen="$seen|$row" ;; esac
        done ;;
     2) emit "VOID merge-watch: fleet-worktree ESTABLISHED NOTHING at ${sha:0:7} (exit 2) — not clean." ;;
     *) emit "UNDOCUMENTED merge-watch: fleet-worktree exit $wrc at ${sha:0:7}. Treat as established-nothing." ;;
   esac
+  first=0
 done
