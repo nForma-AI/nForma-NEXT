@@ -518,6 +518,43 @@ def self_test():
               f"(rc={r.returncode}) — a full census here would be ~4m and is deliberately NOT "
               f"wired")
 
+
+    # ==================================================================================
+    # ⛔ A POPULATION THIS AUTHOR DID NOT DRAW — criterion 5's population leg (#164 item 1,
+    # ARCHITECT's ruling, PR #341). EVERY control above runs against fixtures I wrote, and that
+    # is why every one of them PASSED while the ledger leg reported "quiet" on a real finding:
+    # my fixtures all emit `FAIL`, because I wrote them from my own model of the output.
+    #
+    # ★ #26 AND CRITERION 5 ARE DIFFERENT DEMANDS AND SATISFYING ONE DOES NOTHING FOR THE OTHER:
+    #     #26          can this control be SILENCED BY A REPAIR?     -> stay outside the population
+    #     criterion 5  can it be BLIND TO AN INPUT I NEVER IMAGINED? -> do not DRAW the population
+    #   The fixtures above satisfy #26 completely. This leg is the other half.
+    #
+    # ⚠ AND IT IS ALLOWED TO ESTABLISH NOTHING. If a subject exits 0 today, its finding vocabulary
+    # is UNOBSERVABLE — the pattern is untested, not correct. Reported as NOT-ESTABLISHED, never
+    # folded into `ok`, because a control that reports success when it measured nothing is the
+    # defect this whole file exists against.
+    # ==================================================================================
+    for leg in LEGS:
+        pat = leg.get("finding", FAIL_LINE)
+        if not leg["path"].is_file():
+            print(f"  ----  NOT ESTABLISHED  {leg['title']}: subject absent — its finding"
+                  f" vocabulary is unobserved, NOT verified")
+            continue
+        rr = run(sys.executable, str(leg["path"]), *leg["argv"])
+        if rr.returncode == 1:
+            n = len(set(pat.findall(rr.stdout or "")))
+            ok &= n > 0
+            print(f"  {'ok  ' if n else 'FAIL'}  {leg['title']} exited 1 and its REAL output"
+                  f" yields {n} finding(s) under this leg's pattern — population not drawn by"
+                  f" the author")
+        else:
+            # ⛔ NOT 'ok'. The subject had nothing to say today, so nothing about the pattern was
+            # tested. This is the exact reading that "exit 2 means established nothing" protects.
+            print(f"  ----  NOT ESTABLISHED  {leg['title']} exited {rr.returncode}, so it emitted"
+                  f" no findings — this leg's pattern was NOT exercised against real output."
+                  f" ⛔ Untested, not correct.")
+
     return 0 if ok else 3
 
 
