@@ -1038,10 +1038,15 @@ def selftest():
         novel = t / "novel_estate.py"
         novel.write_text('#\nR = "/Users/someone/code/Contoso-Widgets/state"\n')
         rc, lines, _ = check(root)
-        hit = rc == 1 and any("novel_estate.py" in l and "->" in l for l in lines)
+        # ⛔ NAMES THE LEG, not just the detection. The predicate is a UNION — closed list OR
+        # derived shapes — so "novel_estate.py was quarantined" cannot tell you WHICH half
+        # fired, and the derived half is the entire subject of #348. Asserting the printed
+        # literal carries `[derived ` means the closed list cannot silently cover for a
+        # derived leg that has stopped working. (DEVOPS's stronger form.)
+        hit = rc == 1 and any("novel_estate.py" in l and "[derived " in l for l in lines)
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  DERIVED leg: a NOVEL estate name — one no closed "
-              f"list contains — IS detected (#348, closed by #354) (got {rc})")
+              f"list contains — is caught BY THE DERIVED LEG (#348, closed by #354) (got {rc})")
         novel.unlink()
         # ⚠ RESTORE BOTH. The next case unlinks `one` AND `two`; recreating only `one` made it
         # raise on a file I had already removed — the same shared-fixture bite recorded above the
