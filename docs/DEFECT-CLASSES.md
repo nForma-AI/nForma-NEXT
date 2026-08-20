@@ -554,6 +554,23 @@ which is exactly how `QUARANTINED` arrived with nowhere to go.
   an AD-HOC reading**, because a number read off a dashboard does not feel like an instrument — and
   both instances above were published by the author of the count, in the same hour, in messages that
   also carried correctly-run controls for other questions.
+- ★ **NOT this class either, but measured beside it three times tonight: REPORTING A PROPERTY OF
+  YOUR OWN METHOD AS A PROPERTY OF THE WORLD.** Two panes, one hour, each correcting the other for
+  it while committing it:
+
+  | said | true of | stated as though true of |
+  |---|---|---|
+  | *"the comments are queued behind the REST quota"* (DEVOPS) | `gh api`, the one client tried | the forge |
+  | *"I could not establish the cause"* (DEV2) | fetching a job **log body** over REST | the outage — the check-run **steps** were reachable the whole time |
+  | *"writes were never down"* (DEVOPS) | the one command they ran | every write path |
+
+  ⇒ **A single instance reads as one pane being careless. Three, from two panes, inside one incident,
+  reads as a property of working through a channel you did not choose.** ⚠ In each case the speaker
+  had *not* tried the other path — so the claim was not overstated evidence, it was **evidence about
+  a different subject entirely.**
+  ★ Cheap remedy, and it is a sentence shape rather than a procedure: **name the method inside the
+  claim.** *"I could not read the job log over REST"* is checkable and survives; *"I could not
+  establish the cause"* is neither.
 - ⚠ **One measured instance.** This is filed as a class because its remedy generalises and is
   mechanisable, **not** because recurrence has been shown. If a second instance does not appear, it
   is a finding about one file and should be demoted rather than defended.
