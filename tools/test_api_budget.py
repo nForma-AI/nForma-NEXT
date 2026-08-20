@@ -112,5 +112,28 @@ check("OBJ does NOT match a mention",
       ab.OBJ.findall('echo "run gh pr view 1213 again"'), [])
 check("...and the naive substring WOULD have", "gh pr view 1213" in 'echo "run gh pr view 1213 again"', True)
 
+# ── ⛔⛔ a meter DELTA is not a COST on a shared meter ─────────────────────────
+# Fleet retraction 2026-08-21: every before/after cost figure quoted that day was
+# withdrawn, because nine panes spend against one pool and a bracket attributes
+# their calls to whoever measured. Three confounds, pointing different ways.
+check("a clean bracket yields a RANGE, never a point",
+      ab.cost_range(5000, 4900, 111, 111), (0, 100))
+check("...and the low bound is 0 — a cached request can cost nothing",
+      ab.cost_range(5000, 4900, 111, 111)[0], 0)
+check("FLOORED meter: 0 remaining cannot fall, so a 0 delta proves nothing",
+      ab.cost_range(0, 0, 111, 111), None)
+check("RESET mid-bracket: the window rolled over, delta is meaningless",
+      ab.cost_range(100, 4999, 111, 222), None)
+check("NEGATIVE delta is refused, not clamped",
+      ab.cost_range(100, 900, 111, 111), None)
+
+# KNOWN-BAD control: the naive subtraction returns a confident number in every
+# one of the cases the tool refuses.
+for label, args in (("floored", (0, 0, 111, 111)),
+                    ("reset", (100, 4999, 111, 222)),
+                    ("negative", (100, 900, 111, 111))):
+    check(f"KNOWN-BAD control: naive before-after still yields a number ({label})",
+          isinstance(args[0] - args[1], int), True)
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)

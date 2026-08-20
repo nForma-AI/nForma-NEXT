@@ -111,6 +111,39 @@ def quota():
     return out or None
 
 
+def cost_range(before, after, reset_before, reset_after, concurrent=True):
+    """What one operation cost, as a RANGE — or None when the meter cannot say.
+
+    ⛔⛔ A METER DELTA IS NOT A COST MEASUREMENT ON A SHARED METER. Nine panes spend
+    against one pool, so a before/after bracket attributes THEIR calls to whoever
+    happened to be measuring. Demonstrated on this fleet: a single jobs-API call
+    bracketed a drop of far more than one, and the difference was other agents.
+
+    ⚠ THREE WAYS THE DELTA LIES, and they do not point the same way:
+
+      concurrency  other panes spend inside your bracket   -> delta TOO HIGH
+      floor        the meter is already 0 and cannot fall   -> delta 0, spend hidden
+      reset        the window rolled over mid-bracket       -> delta NEGATIVE
+
+    ⇒ So this returns (low, high) and never a point. `low` is 0 — a cached or
+    conditional request can cost nothing — and `high` is the delta, which is an
+    upper bound ONLY because concurrency can add but not subtract. When the meter
+    is floored or reset, there is no bound at all and it returns None.
+
+    ★ Real attribution needs a PER-PROCESS counter, which nothing has. Report a
+    range, or report nothing. A confident cost number on a shared meter is a
+    fabricated attribution wearing a measurement's costume.
+    """
+    if reset_after != reset_before:
+        return None                      # window rolled over: the delta is meaningless
+    if before <= 0:
+        return None                      # floored: it cannot fall, so 0 proves nothing
+    d = before - after
+    if d < 0:
+        return None                      # only possible via a reset we failed to see
+    return (0, d)
+
+
 def scan(root, limit):
     paths = sorted(glob.glob(os.path.expanduser(root)),
                    key=lambda p: -os.path.getmtime(p))[:limit]
@@ -181,6 +214,13 @@ def main():
 
     per, subs, multi, objs, files, unreadable = scan(a.root, a.limit)
     total = sum(per.values())
+    if q:
+        print("\n  ⛔ DO NOT SUBTRACT TWO OF THESE READINGS AND CALL IT A COST. Nine panes"
+              "\n     spend against one pool: a delta attributes THEIR calls to you"
+              " (too high),\n     reads 0 when the meter is already floored (too low), and"
+              " goes negative\n     across a reset. Use cost_range() — it returns a RANGE"
+              " or nothing.")
+
     print(f"\n── INVOCATIONS ── {files} transcript(s)"
           + (f", {unreadable} unreadable" if unreadable else ""))
     if not total:
