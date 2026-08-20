@@ -167,6 +167,130 @@ of them, which is why it is stated here rather than in a docstring.
 | `close-condition-scan.py` | which open issues carry no close condition — and which hide one in a comment? | 0 every open issue has one **in its body** · 1 `NONE` or `BURIED` found · **2 established nothing (failed query, empty board, or a truncated reading)** · **3 known-positive failed** · `--self-test` `--states` |
 | `merge-watch.sh` | did a merge leave work behind, or drift the worktrees? | emits FINDING · VOID · UNDOCUMENTED; silence means ran-and-found-nothing |
 
+## Subdirectories — findable, and QUARANTINED where they are not ours
+
+⛔ **`tools/*.py` did not recurse, and 22 instruments sat in the blind spot.** #307: the index
+that exists to make instruments findable saw **32** files while **84** were on disk, and three
+successive TEAMLEADs hand-rolled work `teamlead/waker.py` had already measured and committed —
+including *"a literal `/compact` executes; text in a pane is not an action taken"*, which was
+re-derived from scratch an hour after being merged. ⇒ `scripts/check-tools-index.py` now
+enumerates `tools/**/*.py` **and `*.sh`**; nothing under `tools/` is outside its population.
+
+⚠ **These directories are held to a WEAKER contract than the table above, on purpose.** A
+subdirectory instrument must be **named in its own directory's `README.md`**, and the directory
+must be named here. That is *findable*. It is **not** a row, **not** a prose entry, and **not a
+claim that anyone has run the file.** The three-surface contract is not extended downward,
+because widening a population is not the same as adopting its contents.
+
+| directory | what it holds |
+|---|---|
+| `teamlead/` | 22 scripts lifted **byte-identical** from a TEAMLEAD scratchpad (#138) — the fleet monitors that had been running untracked. Load-bearing: `waker.py`, `guard.py`, `classify_fleet.py`; running continuously at copy time: `fleetwatch.sh`, `mergeready.py`, `repowatch.py`. |
+| `architect-sweeps/` | 3 one-shot ARCHITECT measurements, made reproducible after their inline heredocs died with the pane. ⚠ **Sweeps, not instruments** — none is a control, none has a known-negative. |
+
+## ⛔ QUARANTINE — and why the gate is red on purpose
+
+**The operator has ruled quarantine on `tools/teamlead/`: not indexed, not silenced, not
+deleted.** Commit `ac6a946` promoted 22 files wholesale out of a `/private/tmp/claude-501/…`
+scratch directory that **more than one estate wrote to**. `w1226.py` line 1 is
+`# control-plane/api/handlers/workloads.py` — another product's application source.
+
+### ⛔ The marker is a FILE, not an exit code — and here is why that changed
+
+The first version of this made quarantine **exit 1**, so the gate would stay red. Two things
+killed it, both measured:
+
+1. ⛔ **The red was never real.** On `main` this checker globbed `tools/*.py` **non-recursively**,
+   so `tools/teamlead/` was never in its population and all four `scripts/*.py` exited 0. **The
+   gate had been green the entire time it was being cited as the marker.**
+2. ⛔ **A marker that cannot be committed is not a marker.** `hermetic suites (gating)` is a
+   *required* check. The instrument that would produce the red could not merge, because its own
+   finding blocked it — and had it merged, **every subsequent PR from all nine panes would hit
+   the same exit 1 and freeze the merge queue.** (DEV2 measured the required-check leg.)
+
+⇒ **`tools/QUARANTINE.txt`.** Determinism belongs in the substrate, not in an exit code. A
+tracked file survives compaction — prose in nine pane contexts does not — and it names who
+recorded what, when.
+
+```
+held and LISTED there      ->  reported LOUDLY on every run, exit 0, summary "HELD — not clean"
+held and NOT listed        ->  exit 1.  New contamination, or a ruling nobody wrote down.
+listed but no longer held  ->  exit 1.  Deleted or repaired, and the file did not move.
+parses to ZERO entries     ->  exit 1, named as a FORMAT CHANGE, never as "nothing is held"
+```
+
+⛔ **This is not silencing, and the third rule is why.** An allowlist only ever subtracts, and
+nothing ever tells you it has stopped describing its subject. This one **rots loudly**. Full
+discriminating power is kept over the thing that matters: **a new estate appearing reds
+immediately.**
+
+★ And exit 1 here means **the acknowledgement file has drifted from the tree** — the same drift
+semantic this checker has always had, on a third surface. It never means *these files do not
+belong*; nothing here can establish that. ⚠ **DEV2 is why:** the output said *"NOT reported as
+undocumented"* while the exit code said `DRIFTED` — **the verdict contradicted the message.**
+
+★ **A complete index of a contaminated directory is a more confident wrong answer than an
+incomplete one**, so quarantine is evaluated **before** the documented/undocumented split: a
+quarantined file is never reported as missing a row, because the repair for *"missing a row"*
+is to **add** one — and an index row is an **assertion that the file belongs here.**
+
+⚠ **The obvious predicate does not work, and this is the part worth carrying elsewhere.** A
+content grep for the estate's vocabulary — `akash|blazing|Blazing-Back|#1[0-2]\d\d` — matches
+**8 of 63 files in `tools/` itself**: `reference-check.py`, `fleet-context.py`,
+`marker-reachability.py`, `named-referent-check.py`. Those instruments **exist because of those
+incidents** and cite them in their docstrings. ⇒ **A grep cannot separate a tool that MENTIONS
+another estate from a tool that BELONGS to one** — `tools/use-not-mention.py`'s question, asked
+about estates instead of commands.
+
+⇒ So the predicate is **position, not vocabulary**: an estate identifier in an executable
+string literal — a path a tool opens, a repo a tool queries — never in a docstring or comment.
+
+```
+tools/ top-level          1 of 33     memory-index-check.py, a default path
+tools/teamlead/          10 of 19
+tools/architect-sweeps/   0 of  3     <- the control: the predicate is not matching everything
+```
+
+### ⛔ UNCLAIMED is not LOCAL — and a content scan cannot tell them apart
+
+`docs/ESTATE-BOUNDARY.md` names four states and rules that **`UNCLAIMED` must never be collapsed
+into `LOCAL`** — that collapse is the only thing between this reading and a confident wrong
+answer. ⚠ **A content predicate cannot detect `UNCLAIMED`: it is the ABSENCE of provenance
+evidence, and absence has no string to match.**
+
+★ `boxwatch.py` is the specimen. Four hardcoded terminal UUIDs under the role names
+`IMPLEMENTER`…`IMPLEMENTER5` — **another estate's role names** — and *no* estate identifier a scan
+can find. The position predicate calls it clean, and the index then requires it to be named,
+which **asserts it is ours.**
+
+⇒ **The signal that is not in the content is in the HISTORY**, measured at `280ac70`:
+
+```
+tools/                    65 files added across 51 commits   accreted, file by file
+tools/teamlead/           22 files added across  1 commit    WHOLESALE (ac6a946)
+tools/architect-sweeps/    3 files across         2 commits   accreted
+```
+
+A directory that arrived in **one** commit out of a shared scratch directory has **one**
+provenance question, not N — which is why the operator ruled quarantine on the *directory* and
+not on the ten files a scan happened to catch. ⇒ So a wholesale-imported directory with any
+foreign marker holds **every** file: 10 `FOREIGN`, 9 `UNCLAIMED`, none required to be indexed.
+
+⚠ **The leg never guesses.** If git cannot answer it reports **NOT CHECKED**, because defaulting
+to *accreted* converts an unmeasured directory into an asserted-local one — the same collapse,
+arriving through the error path.
+
+⚠ **It is not a verdict about ownership, and no exemption list is offered** — an exemption list
+is the silencing mechanism this ruling refuses. Each hit is **a question for a human.** The one
+top-level hit is real and is **named rather than tuned away**, because a threshold that clears
+it is a number chosen to make the output comfortable.
+
+⛔ **DO NOT PROMOTE EITHER DIRECTORY INTO THE TABLE ABOVE**, and do not investigate the other
+estate's repositories from here — no standing.
+
+⚠ `testdata/` is excluded **by directory**, and the exclusion is printed on every run. An input a
+tool reads is not a tool — and demanding a README for a fixture directory is how a fixture
+directory stops being distinguishable from an instrument one.
+
 ## What each one is for
 
 **`fleet-context.py`** — reports per-session context depth so "compact this agent" and

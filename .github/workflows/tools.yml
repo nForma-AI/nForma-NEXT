@@ -47,7 +47,20 @@ jobs:
     name: hermetic suites (gating)
     runs-on: ubuntu-latest
     steps:
+      # ⛔ fetch-depth: 0 IS LOAD-BEARING, not a convenience. The default is a DEPTH-1 clone, and
+      # `scripts/check-tools-index.py` asks a history question — how many distinct commits ADDED
+      # the files in this directory — to separate a directory that accreted from one imported
+      # wholesale out of another estate's scratch dir. At depth 1 that query returns ONE for
+      # EVERY directory. Measured 2026-08-20 by reproducing a `--depth 1` clone of this branch:
+      # ALL 35 top-level instruments — the fleet's own tools — were reported UNCLAIMED and the
+      # run exited 2. ⚠ `git log` did not fail; it answered confidently over a truncated
+      # population, which is why the tool's returncode guard never fired.
+      # ⇒ The tool now refuses the question when the clone is shallow (NOT CHECKED, never
+      # guessed). This line is the other half: refusing is safe, but a leg that can never run in
+      # CI is a leg that only ever runs on someone's laptop.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
