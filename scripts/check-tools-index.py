@@ -42,6 +42,16 @@ WORDS = {w: i for i, w in enumerate(
     "fifteen sixteen seventeen eighteen nineteen twenty".split())}
 
 # `| `name.py` | …` — a table row naming a tool.
+# ⛔ NOT every .py in tools/ is an instrument. #77 landed the first TEST file there, and the
+# check failed correctly for the wrong reason: the INDEX had not drifted, the POPULATION had.
+# Adding a table row for a test would have silenced the check by putting a non-instrument into
+# the instrument index — making the claim true by damaging the thing it describes.
+# ⚠ The exclusion is PRINTED ON EVERY RUN, named rather than counted. An exclusion nobody can
+# see is how a checker's population quietly stops matching its subject, which is the defect this
+# file exists against — and a real instrument mis-named `test_*.py` would be silently dropped
+# unless a reader can see what was removed. (Found by TEAMLEAD, running it by hand after a merge.)
+NOT_AN_INSTRUMENT = re.compile(r"^(?:test_.+|.+_test)\.py$")
+
 ROW = re.compile(r"^\|\s*`([A-Za-z0-9_.-]+\.py)`\s*\|", re.M)
 # `**`name.py`** — …` — a prose entry opening the "what each one is for" paragraph.
 PROSE = re.compile(r"^\*\*`([A-Za-z0-9_.-]+\.py)`\*\*", re.M)
@@ -83,20 +93,27 @@ def check(root):
     if not index.is_file():
         return 2, [f"  VOID  {index} is not readable — established nothing"]
 
-    actual = sorted(p.name for p in tools_dir.glob("*.py"))
+    every = sorted(p.name for p in tools_dir.glob("*.py"))
+    actual = [n for n in every if not NOT_AN_INSTRUMENT.match(n)]
+    excluded = [n for n in every if NOT_AN_INSTRUMENT.match(n)]
     text = index.read_text(encoding="utf-8")
     rows = ROW.findall(text)
     prose = PROSE.findall(text)
 
     # ⛔ Absence of a finding must not be reported as a clean result.
     if not actual:
-        return 2, ["  VOID  tools/ holds no .py files — nothing to index, established nothing"]
+        return 2, [f"  VOID  tools/ holds no instrument .py files ({len(every)} file(s) present,"
+                   f" {len(excluded)} excluded as tests) — established nothing"]
     if not rows:
         return 2, ["  VOID  no table rows matched in tools/README.md — the index format changed,"
                    " or the table is gone. Established nothing."]
 
     failed = False
-    out.append(f"  tools/*.py on disk : {len(actual)}  ({', '.join(actual)})")
+    out.append(f"  instruments on disk: {len(actual)}  ({', '.join(actual)})")
+    # Named, never merely counted — see NOT_AN_INSTRUMENT.
+    out.append("  ----  excluded from the population as tests: "
+               + (", ".join(excluded) if excluded else "none")
+               + "  (tests are not instruments and must not be indexed as ones)")
 
     for label, found in (("table row", rows), ("prose entry", prose)):
         missing = [t for t in actual if t not in found]
@@ -186,6 +203,28 @@ def selftest():
         hit = rc == 0 and any("NOT CHECKED" in l for l in lines)
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  no count at all still exits 0 as NOT CHECKED (got {rc})")
+
+        # ⛔ a TEST file must be excluded, not reported as an undocumented instrument
+        (t / "README.md").write_text(good)
+        (t / "test_alpha.py").write_text("#\n")
+        rc, lines = check(root)
+        hit = rc == 0 and any("excluded from the population as tests: test_alpha.py" in l
+                              for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a test file is excluded AND named in the output "
+              f"(got {rc})")
+
+        # ⛔ ...and if the exclusion swallows the whole population, that is VOID, never clean.
+        # An empty population passing every check is #1's class: a guard aimed at nothing.
+        for f in ("alpha.py", "beta.py"):
+            (t / f).unlink()
+        rc, lines = check(root)
+        hit = rc == 2 and any("established nothing" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  an all-excluded population exits 2, not 0 (got {rc})")
+        for f in ("alpha.py", "beta.py"):
+            (t / f).write_text("#\n")
+        (t / "test_alpha.py").unlink()
 
         # instrument failure must not read as a pass
         (t / "README.md").write_text("# Fleet instruments\n\nnothing here\n")
