@@ -80,6 +80,11 @@ first report is **unreachable, permanently**. Never ask for a delta on one.
 **Re-entry:** ask for a **new report**, never a delta, when `current% ≥ 75` **and** the session
 is not in the table below. Record every ask there or the next sweep cannot tell.
 
+⚠ **A session that has already filed STAYS listed after it compacts.** DEVOPS reads 12.2% now,
+which is not a new agent owed a first report — it is the same session, post-compaction, with
+`#1250` already filed. Its next obligation arrives when it climbs back to 75%, and the table
+below is the only thing that remembers that. A sweep reading depth alone would ask it again.
+
 | session | asked at | filed | what it contained |
 | --- | --- | --- | --- |
 | `4358eeaa` DEV1 | 77.9% | #1248 | 5 guards built, **4 defective** |
@@ -106,8 +111,19 @@ reasons, neither filing it. **The convergence is the finding; either alone reads
 - ⛔ **At most one per sweep**, highest `current%` first among sessions not yet listed. An
   absolute threshold **synchronises** the fleet: four agents that filed at 17–26% crossed
   together in one sweep.
-- ⚠ **75 is measured.** An agent asked at 85.4% compacted within **one sweep** of answering and
-  made it by a single cycle. Buy margin, not precision.
+- ⚠ **75 is measured, and the margin it buys is now measured too — from both ends.**
+
+  | asked at | sweeps of runway after answering | outcome |
+  | --- | --- | --- |
+  | **85.4%** | **1** | answered, then compacted the next cycle. Made it by one. |
+  | **75.5%** | **5** | answered, worked five more sweeps, compacted at 87.4% with the report already filed |
+
+  ⇒ The second case settles it. DEVOPS filed `#1250` at 75.5%, was asked once, and went over the
+  edge five sweeps later **with its report in hand** — the obligation working end to end rather
+  than surviving by a cycle.
+
+  ★ **Buy margin, not precision.** Ten points of context bought five sweeps of runway, and the
+  cost of asking early is a report written slightly sooner than it had to be.
 - ⚠ **Say the context figure is EXTERNAL** — read from the transcript's `usage` records, not
   from the agent's self-report. DEVOPS pushed back believing the numbers were its own estimate,
   and noted it once reported ~96% while actually at 79%. **A session cannot verify its own
