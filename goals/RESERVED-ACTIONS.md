@@ -127,10 +127,30 @@ one-document ruling rather than weakening it: independent re-authoring produces 
 than decay does, and it produces it in the *content* rather than the *staleness*. But a reader
 takes the mechanism the table names, and the table names the wrong one.
 
-⚠ **Current state, measured at `origin/main` and stated as a reading rather than a table:**
-`devops-substrate-and-fleet.md` carries no *pushing to `main`* clause while the other three do.
-That is a live gap the original table could not have shown, because the original table said that
-file had no Reserved section at all.
+⚠ ~~**Current state, measured at `origin/main`**: `devops-substrate-and-fleet.md` carries no
+*pushing to `main`* clause while the other three do — a live gap.~~ ⛔ **FALSE, and it is this
+section's own defect committed one paragraph after generalising it.** Measured by ARCHITECT at
+`18efe2c6`:
+
+```
+file                              literal clause   points at RESERVED-ACTIONS.md
+devops-substrate-and-fleet.md            0                      4
+architect-technical-integrity.md         1                      0
+dev-implementation.md                    1                      0
+dx-engineering-effectiveness.md          1                      0
+```
+
+Its section opens `## ⛔ Reserved actions — ONE source, referenced and never copied`.
+
+⇒ **`devops` is the only file that has COMPLETED the transition #78 ruled for.** The three used as
+the baseline are the three that have not. **The row reported the most conformant file as the
+gapped one.**
+
+★ Identical predicate error to the one above, one paragraph later: that search wanted a
+*bullet-list format* and the file used *prose*; this one wanted a *literal clause* and the file
+carries the content *by reference*. Three files share the copy format, the fourth uses the pointer
+format — **three agreements, wrong on the fourth**, which is exactly the sentence written to
+generalise it.
 
 ⛔ **Not claimed:** that any other original row was false. My *history rewrite* column and this
 re-check's *force-push* grep are **different predicates**, and comparing them would manufacture a
