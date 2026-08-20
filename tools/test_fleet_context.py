@@ -76,13 +76,13 @@ def main():
         print("known-positive — two panes in one file MUST stay flagged:")
         p = os.path.join(d, "interleaved.jsonl")
         write_transcript([v * 1000 for v in INTERLEAVED_K], p)
-        names, depth, shape, _bands = fleet_context.session_depth(p)
+        names, depth, shape, _bands, _kind = fleet_context.session_depth(p)
         failures += not check("shape", shape, "interleaved")
 
         print("known-negative — a compaction is ONE agent, depth stands:")
         p = os.path.join(d, "compacted.jsonl")
         write_transcript([v * 1000 for v in COMPACTED_K], p)
-        names, depth, shape, _bands = fleet_context.session_depth(p)
+        names, depth, shape, _bands, _kind = fleet_context.session_depth(p)
         failures += not check("shape", shape, "compaction-step")
         # The point of not suppressing: the reported depth is the post-compaction
         # figure, which is the correct one and the one supervision acts on.
@@ -91,13 +91,13 @@ def main():
         print("a steady session is neither:")
         p = os.path.join(d, "steady.jsonl")
         write_transcript([100_000 + 1_000 * i for i in range(40)], p)
-        names, depth, shape, _bands = fleet_context.session_depth(p)
+        names, depth, shape, _bands, _kind = fleet_context.session_depth(p)
         failures += not check("shape", shape, "single")
 
         print("an all-zero usage record is not a depth of zero:")
         p = os.path.join(d, "zeroes.jsonl")
         write_transcript([0], p)
-        names, depth, shape, _bands = fleet_context.session_depth(p)
+        names, depth, shape, _bands, _kind = fleet_context.session_depth(p)
         failures += not check("depth", depth, None)
         failures += not check("shape", shape, "no-reading")
 
@@ -107,7 +107,7 @@ def main():
         p = os.path.join(d, "zero_mixed.jsonl")
         series = [v * 1000 for v in COMPACTED_K[:25]] + [0] + [v * 1000 for v in COMPACTED_K[25:]]
         write_transcript(series, p)
-        names, depth, shape, _bands = fleet_context.session_depth(p)
+        names, depth, shape, _bands, _kind = fleet_context.session_depth(p)
         failures += not check("shape", shape, "compaction-step")
 
         print("★ FLATLINE is derivable and must not claim a cause:")
@@ -123,6 +123,7 @@ def main():
                               "this cannot tell which" in src, True)
 
     failures += _bands_checks()
+    failures += _name_checks()
 
 
     print()
@@ -143,6 +144,30 @@ def main():
 # Cleanly bimodal — 423-444k and 847-884k, no overlap — and BOTH NAMES APPEAR IN BOTH
 # BANDS. So nearest-name attribution assigns at chance. The bands are recoverable; the
 # assignment is not, and the tool must report the first without claiming the second.
+# ── classify_names: a rename is not an ambiguity ─────────────────────────────────────
+# ⛔ `⚠name-ambiguous(IMPLEMENTER4/DEV4)` and `⚠name-ambiguous(TEAMLEAD/DEV2)` printed
+# identically and are OPPOSITE: one agent renamed, versus two agents interleaved. Reading
+# the rename as ambiguity sent me looking for a third, unaddressable writer — I published
+# that speculation and then found 78 live sessions with no IMPLEMENTER in any of them.
+def _name_checks():
+    f = 0
+    f += not check("a rename never returns to an earlier name",
+                   fleet_context.classify_names(["A", "A", "B", "B", "B"]), "rename")
+    f += not check("alternation is concurrent",
+                   fleet_context.classify_names(["A", "B", "A", "B", "A"]), "concurrent")
+    f += not check("one name is single",
+                   fleet_context.classify_names(["A", "A", "A"]), "single")
+    # ⚠ The near-miss: a single late recurrence is enough to make it NOT a rename, because
+    # a renamed session cannot emit its old name again.
+    f += not check("one recurrence defeats the rename reading",
+                   fleet_context.classify_names(["A", "A", "B", "B", "A"]), "concurrent")
+    # ⚠ Three names in sequence is still a rename chain, not ambiguity.
+    f += not check("a three-step rename chain is still a rename",
+                   fleet_context.classify_names(["A", "B", "B", "C", "C"]), "rename")
+    f += not check("empty history is single", fleet_context.classify_names([]), "single")
+    return f
+
+
 def _bands_checks():
     f = 0
     H, L = 880_000, 435_000
