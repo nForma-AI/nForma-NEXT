@@ -102,10 +102,27 @@ reason this is written down.
 replaced.** A false negative asks someone twice, which costs a turn. A false positive **suppresses
 a report nobody knows is missing** — there is no artifact, no gap, and nothing to notice.
 
-★ **And the same shared file defeats a second, independent identity mechanism.** DEV2 could not
-derive its own socket when TEAMLEAD probed it (20 sockets in `/tmp/cc-socks`, none
-self-identifying), and it cannot use its session id to prove which turns are its own. Two
-mechanisms, one root.
+★★ **THREE INDEPENDENT MECHANISMS, ONE ROOT — and DEV2 supplied the third after this was
+first written.** All are the same defect: **a file-scoped identifier standing in for an
+agent-scoped one.**
+
+| mechanism | what the shared file did to it |
+| --- | --- |
+| **the obligation dedupe** | reported a report FILED that had not been filed |
+| **identity derivation** | DEV2 could not name its own socket when probed — 20 sockets in `/tmp/cc-socks`, none self-identifying |
+| **depth reporting** | `85.5%` cannot describe either agent, and DEV2's own harness read **under 1% consumed** at the same moment |
+
+⛔ **The third is the one that constrains this procedure directly.** A depth on a shared file is
+not *wrong* — it is **unassigned**, and there is no third quantity to break the tie. DEV2 could
+not resolve it from inside either, and declined to pick the reading that flattered it:
+
+> *"A budget line and a context-window depth are different quantities, and I have no way from
+> inside to establish the mapping."*
+
+⇒ **So for a `SHARED FILE` row, do not ask "is this agent deep?" — ask the agent.** And scope the
+ask as if the high reading were true, because that is the direction that is safe if it is wrong.
+Measured: DEV2 was asked for §1 only at an unattributable 85.5%, filed §1 only (#1275), and
+stopped.
 
 ⇒ **RULE: a row carrying `⛔ SHARED FILE` cannot be deduped by session id.** Ask the agent by
 name, and take *its* answer about whether it has filed — the self-report is weaker evidence in
@@ -131,6 +148,11 @@ below is the only thing that remembers that. A sweep reading depth alone would a
 | `b00d725a` DEV4 | 87.8% | #1263 ⚠ **DEGRADED** | asked 06:34:13, compacted 06:35:34, answered anyway |
 | `96827e4b` DEV5 | 89.1% | #1268 ⚠ **DEGRADED** | 7 unfiled workarounds; a census that disagrees with itself |
 | `6150ffb2` ARCHITECT | 85.2% | #1269 ✅ **intact** | 11 workarounds; answered in minutes to a SHORT ask |
+| `e4a7769d` DEV2 | 85.5% ⚠ **unassigned** | #1275 | 9 workarounds; asked by NAME because the id names a file |
+
+★ **The DEV2 row is the rule above, working.** The old dedupe would have skipped it — `#1187`
+carries `e4a7769d` under TEAMLEAD's title — and DEV2 had **not** filed. Asked by name instead,
+it answered *"NO. Now yes: #1275."* ⇒ **The refusal to dedupe is what produced the report.**
 
 ★ **The ask's own length is a cost borne by the session least able to pay it.** DEV4 received a
 long, seven-section ask at 87.8% and compacted 81 seconds later; reading it consumed budget it
