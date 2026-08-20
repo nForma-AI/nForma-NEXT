@@ -42,6 +42,7 @@ Exit: 0 every indexed instrument classified, none NEVER-RUN
 import argparse
 import re
 import subprocess
+import time
 import sys
 from pathlib import Path
 
@@ -53,6 +54,14 @@ EXIT_DOC = re.compile(r"^Exit(?:\s+codes)?:\s*(.+?)(?:\n\n|\n\"\"\")", re.M | re
 CODE = re.compile(r"\b(\d)\b")
 # This repo's single carried convention: 2 means "established nothing", never "all clear".
 REFUSAL = 2
+# ⚠ AN INVENTED CALIBRATION, and it is labelled as one. 90 was extrapolated from a SINGLE
+# measurement of a SINGLE instrument (stranded-branches.py, ~45s) after a 25s bound manufactured a
+# false NEVER-RUN. ⛔ One doubling of one observation is not a distribution.
+# ⇒ Rather than guess a better number, every run now PRINTS the elapsed time of each instrument
+# and the slowest observed against this bound, so a reader can see whether 90 is anywhere near
+# anything. Same move as #229's source-age line: state the calibration's basis, do not judge it.
+# ⛔ And note what a clean run does NOT prove: if nothing times out, the bound was never TESTED.
+# "No instrument approached it" and "the bound is correct" are different propositions.
 TIMEOUT = 90
 
 VERDICT, NOTHING, NOVOCAB, NEVERRUN, SLOW = (
@@ -152,9 +161,11 @@ def classify(path, timeout=TIMEOUT):
     except OSError as e:
         return NEVERRUN, f"unreadable: {e}"
     codes = documented_codes(src)
+    t0 = time.time()
     try:
         r = subprocess.run([sys.executable, str(path)], capture_output=True, text=True,
                            timeout=timeout, cwd=str(ROOT))
+        elapsed = time.time() - t0
     except subprocess.TimeoutExpired:
         # ⛔ NOT NeverRun. A timeout is a property of the bound I chose, not of the instrument.
         # Measured: stranded-branches.py concludes in ~45s and was reported NEVER-RUN under a 25s
@@ -168,15 +179,16 @@ def classify(path, timeout=TIMEOUT):
     # code, because a crash that happens to exit 1 would otherwise read as a conclusion.
     if "Traceback (most recent call last)" in (r.stderr or ""):
         last = [l for l in (r.stderr or "").strip().splitlines() if l.strip()][-1][:90]
-        return NEVERRUN, f"crashed: {last}"
+        return NEVERRUN, f"crashed: {last} [{elapsed:.1f}s]"
 
     if codes is None:
-        return NOVOCAB, f"exited {r.returncode}; docstring documents no exit codes"
+        return NOVOCAB, f"exited {r.returncode}; docstring documents no exit codes [{elapsed:.1f}s]"
     if r.returncode not in codes:
-        return NEVERRUN, f"exited {r.returncode}, not in its documented set {sorted(codes)}"
+        return NEVERRUN, (f"exited {r.returncode}, not in its documented set {sorted(codes)}"
+                          f" [{elapsed:.1f}s]")
     if r.returncode == REFUSAL:
-        return NOTHING, "exit 2 — refused a verdict (this is the honest form of silence)"
-    return VERDICT, f"exit {r.returncode} — a documented conclusion"
+        return NOTHING, f"exit 2 — refused a verdict (honest silence) [{elapsed:.1f}s]"
+    return VERDICT, f"exit {r.returncode} — a documented conclusion [{elapsed:.1f}s]"
 
 
 def census(index=None, tools_dir=None, timeout=TIMEOUT):
@@ -231,6 +243,26 @@ def census(index=None, tools_dir=None, timeout=TIMEOUT):
                " produced")
     out.append(f"  note  NO-VERDICT-IN-TIME is a statement about the {timeout}s bound, NOT about"
                " the instrument — re-run it alone with a longer --timeout before concluding")
+    # ⛔ MAKE THE BOUND CHECKABLE. 90 was one doubling of one observation; printing the observed
+    # distribution turns "safe by guess" into "safe against a measurement a reader can see".
+    times = []
+    for _, _, detail, _, _ in rows:
+        m = re.search(r"\[(\d+\.\d)s\]", detail or "")
+        if m:
+            times.append(float(m.group(1)))
+    if times:
+        slow = max(times)
+        out.append(f"  ----  slowest instrument that CONCLUDED: {slow:.1f}s against a {timeout}s"
+                   f" bound ({len(times)} timed).")
+        if tally[SLOW]:
+            out.append(f"  ----  ⚠ {tally[SLOW]} instrument(s) hit the bound, so the slowest figure"
+                       f" above is a LOWER limit — their true durations are unmeasured.")
+        else:
+            out.append("  ----  ⛔ nothing hit the bound, so the bound was NOT TESTED by this run."
+                       " 'No instrument approached it' and 'the bound is correct' are different"
+                       " propositions.")
+    else:
+        out.append("  ----  no durations recovered — the bound is UNEXAMINED by this run.")
     out.append("  " + " · ".join(f"{k} {v}" for k, v in stally.items()))
     out.append("  note  a bare run answers 'did it conclude'; the self-test column answers"
                " 'is that conclusion worth anything' — an instrument with a broken known-positive"
