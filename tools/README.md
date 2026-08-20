@@ -59,6 +59,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |
 | `pane-binding.py` | which panes join to a session, and which leg is missing? | 0 reported · **2 established nothing** |
+| `index-watch.py` | did the tools index drift when `main` last moved? | 0 quiet · 1 finding · **2 established nothing** |
 | `stranded-branches.py` | has any merged PR's branch got commits with no equivalent change upstream? | 0 none · 1 unmatched commits · **2 established nothing** |
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
@@ -212,6 +213,18 @@ three facts it carries, and every bootstrap had a step with no execution record*
 consumer that verified the assertions would have passed all nine. The token is treated as
 punctuation delimiting the bootstrap window, never as a claim; the audit is of what ran inside
 that window. See #20.
+
+**`index-watch.py`** — runs `scripts/check-tools-index.py` when `main` moves and relays what it
+found. ⛔ Built because `ci-log-clean.py` reached `main` undocumented while the checker that detects
+exactly that had existed for hours and **nothing invoked it**; the defect surfaced only because a human
+ran the check by hand after a merge. ★ **Event-driven, not clocked** — it polls
+`git ls-remote origin refs/heads/main` and runs the subject only when the SHA changes, because the
+defect is caused by an event and a timer on a quiet repo fires all day with nothing to say. ⚠ Its
+known-positive is the **subject's own** `--self-test`, deliberately outside the population it measures:
+a control of the form *"the repo has a drift right now"* is silenced by repairing the repo. It emits a
+**finding**, never a task and never a grant — a scheduled job that re-enters an agent with a plausible
+instruction has genuine provenance, which is harder to catch than a forgery. Armed under the operator's
+read-only monitor grant in `goals/RESERVED-ACTIONS.md`.
 
 **`stranded-branches.py`** — commits sitting on a branch whose PR already merged. Found 2 of 15 by
 hand; the mechanism (`git for-each-ref` + `git rev-list --count`) already existed and **had no
