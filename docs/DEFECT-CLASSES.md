@@ -606,6 +606,40 @@ answer looks like a finding.** Measured the same evening: an AST pass reported `
 *absent* for any input. Its own output carried the refutation: **N of N means the discriminator
 discriminated nothing.**
 
+#### ⇒ The second half was already paid for once, in this repository
+
+`tools/discriminates.py` **implements this rule for comparisons**, and its header records learning
+the mirror the hard way (verified at `origin/main`):
+
+> `--control-a/--control-b` are a KNOWN-DIFFERENT pair. … Without that, a comparison harness that is
+> itself broken **reports NON-DISCRIMINATING for everything and looks rigorous while measuring
+> nothing.**
+>
+> ⛔ **AND THE MIRROR DEFECT, in this tool, found by probing it: it had a KNOWN-DIFFERENT control and
+> no KNOWN-SAME one.**
+> ```
+> discriminates.py --a 'date +%N' --b 'date +%N'   ->  ✅ DISCRIMINATED, exit 0
+> ```
+> **The tool built to refuse a false *same* verdict emitted a false *differ* verdict.**
+>
+> over-firing is caught by a known-same control, under-firing by a known-different one, **and only
+> one of the two was here.**
+
+⇒ `exit 4 UNSTABLE` exists because of that. ★ **So the two-sided form is not a proposal.** It was
+derived once already at a narrower scope, by a tool that shipped one-sided and emitted a false
+verdict for exactly the missing half. (Found by DEV3.)
+
+#### ⛔ Which sharpens the finding into something worse than a gap
+
+The principle is **already doctrine and already tooled — for COMPARISONS.** It is not tooled for
+**existence/absence** probes. That same file records: *of 26 instruments in `tools/`, 16 carried a
+control and 10 did not — and this file was on the second list.*
+
+⇒ **The finding is not "we lack this rule." It is: we have it, it is committed, it is indexed, and
+six ad-hoc probes in one evening ran without it.** ⚠ That strengthens the ad-hoc argument below
+rather than weakening it — **a rule can be present, correct, tooled and cited, and still not reach
+the hand typing the command.**
+
 ### Measured 2026-08-20: five broken probes between two panes, on a three-line question
 
 *"Did DEVOPS's sentence land on `main`?"*
@@ -617,6 +651,9 @@ discriminated nothing.**
 | 3 | `grep` the **commit subject** | a commit message *describes* a change; it **is not the change** |
 | 4 | line-by-line `grep` | a line beginning with `-` was parsed as an **option flag** → false MISSING, 9 of 10 |
 | 5 | python, literal, normalised | **10 of 10 present** |
+| 6 | `grep -nE '/Users/…/(code\|\.claude)/…'` over `tools/*.py` (DEV3) | **zero hits**, printed as *"no other-estate absolute paths found"* — the real path is an **encoded** `~/.claude/projects/-Users-…-DigitalFrontier-infra/…` default. A name-based pattern found **40**. ⚠ Caught only because TEAMLEAD had named the file **in advance**; otherwise the estate sweep closes CLEAN |
+| 7 | *"has anyone already written this rule?"* — searched **`main`** | **absent** — the answer was in an **open, mergeable PR**, which `main` structurally cannot contain. **Two panes ran it independently and both got the same false clear** |
+| 8 | this section's **own** verification: whitespace-normalised substring match | **absent** — for a quote that is present. Markdown **blockquote continuation markers** (`> `) sit *inside* the wrapped phrase, so `\s+`-normalising is not enough. ⇒ Caught **by the positive control written three lines above it**, mid-verification of this very section |
 
 ⇒ **Every one was a broken probe, not a wrong answer.** ⛔ And a false negative from probe 1 was
 built into a doctrine claim — *"the forge's own summary of what it merged cannot be trusted"* — which
@@ -633,6 +670,20 @@ is **false**: `gh pr view --json commits` listed exactly the three commits that 
 was complete and correct at merge time, and the work was simply nowhere. ⚠ **The late push is silent
 on every channel** — no warning on the branch, the PR, or the merge. It bit precisely because one
 pane was carrying another's work in its PR to avoid a conflict on this file.
+
+### ★ Instance 7 is the rule firing on the people writing it
+
+Two panes each asked *"has this been written?"*, each searched `main`, each got **absent** — while the
+answer sat in an open PR. ⇒ Same shape as the wrapped phrase and the estate grep: **a probe run
+against a corpus that could not hold the answer.** We were one turn from handing a reviewer the same
+doctrine twice.
+
+⚠ A positive control would have cost one command: *search `main` for something you KNOW is only in an
+open PR.* ★ **And instance 8 is this section catching a violation of itself while being
+verified**: a matcher that normalised whitespace but not markdown markup reported a present quote as
+absent, and the positive control fired. ⇒ **Strip the markup, not just the whitespace** — `> `, `- `,
+`| ` and `#` are content interruptions, not formatting, to any matcher run over a document. ⇒ **This is why the rule is not about shell commands.** It governs any reading used as
+evidence — including a reading about the state of the work itself.
 
 ### ⇒ The rule
 
