@@ -44,6 +44,41 @@ the only thing that does, and it is not available at the suite level: measured 2
 **2 of 30 `tools/test_*.py` files touch `runmarker` at all.** A gate cannot read a marker 28 of
 its subjects do not emit.
 
+⇒ ★ **#58 and #73 are the same third value at opposite ends.** #58 puts it in the **caller** — `2`
+must resolve to `UNESTABLISHED` rather than fold into pass or fail. #73 puts it in the **producer** —
+the refusal must carry its own disposition. **A caller that separates `2` still cannot act on it if
+the tool did not say which kind of refusal it was.**
+
+### ⛔ And a refusal must say which KIND of refusal it is (#73)
+
+*"I established nothing"* is two states, and a reader cannot act on either until it knows which:
+
+```
+ADDABLE — <who>: <what>          a remedy exists; name it AND its owner
+NO REMEDY — the refusal is the verdict   the states genuinely do not differ; say so
+neither of the above                     <- the defect. An absence with no disposition
+```
+
+⇒ **A correctly-reported absence and an unfixable one arrive as the same value**, so the first is
+never fixed and the second is re-investigated forever. ⚠ **`NO REMEDY` is not a lesser answer** —
+`discriminates.py` refusing with `NON-DISCRIMINATING` is the *correct* terminal state, and the rule
+that would force it to invent a remedy is worse than the gap.
+
+**Pinned reading, per `goals/README.md` criterion 5:**
+
+```
+POPULATION  git archive 2fcd8e1a tools/*.py, excluding test_*   = 33
+PREDICATE   A: has an exit-2 path  (return 2 | sys.exit(2))     = 31 of 33
+            B: contains the string "VOID"                       = 15 of 33
+CHANNEL     grep over pinned files; exits not involved
+COUNTER     A-but-not-B = 16 · B-but-not-A = 0
+```
+
+★ **The vocabulary predicate finds fewer than half the refusals the behavioural one does, and is a
+strict subset of it.** `bootstrap-audit.py` refuses with `UNAUDITABLE`, `discriminates.py` with
+`NON-DISCRIMINATING` — ⛔ **predicate B could not have produced the other answer for any of the 16.**
+*(#73's own first survey used predicate B. The noun was the string, not the behaviour.)*
+
 ⛔ **A MARKER-CARRYING TOOL CANNOT BE PINNED AS A SINGLE FILE**, and the fleet's pinning practice
 does exactly that. Measured 2026-08-20: **8 of 26 instruments** `import runmarker`, so
 
