@@ -331,7 +331,20 @@ def adding_commits(root, directory):
 def quarantined(directory, names):
     """[(name, the literal that triggered it)] for instruments referencing another estate."""
     out = []
-    ident = estatenames.local_identity(str(directory))
+    # ⛔ NOT `directory`. The question is "does this name an estate other than THIS
+    # repository", and "this repository" is the one the CHECKER belongs to — not whatever
+    # directory it was pointed at. Deriving from the target silently disabled the entire
+    # derived leg whenever the target was not itself a git repo — which is every
+    # --self-test fixture: identity incomplete -> foreign_in returns [] -> reads exactly
+    # like "found nothing". ⚠ My own leg-4 plant could not catch this, because it planted
+    # into the REAL tree where identity derives fine. DEVOPS's fixture runs outside a repo,
+    # which is the one environment where the leg vanishes.
+    ident = estatenames.local_identity(os.path.dirname(os.path.abspath(__file__)))
+    if not ident.complete():
+        # A leg with no comparand must not look like a leg that found nothing.
+        print("⛔ VOID: cannot derive this repo's identity (%r) — the DERIVED estate leg "
+              "did NOT run; this checked a closed list only." % (ident,), file=sys.stderr)
+        sys.exit(2)
     for n in names:
         lits = code_strings(directory / n)
         named = next((l for l in lits if ESTATE.search(l)), None)

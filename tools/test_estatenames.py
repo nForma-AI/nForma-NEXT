@@ -62,6 +62,10 @@ def main():
     check("no identity -> no claim", en.foreign_in("p='/Users/o/code/Anything/x'",
                                                    en.Identity(None, None, None)), [])
     check("incomplete is not complete", en.Identity("a", "b", None).complete(), False)
+    # ⛔ THE REAL TRIGGER, not a constructed one. A directory that is not a git repo
+    # yields an incomplete identity — which is how the derived leg silently vanished
+    # inside a self-test fixture while every plant in the real tree still worked.
+    check("non-repo dir -> incomplete", en.local_identity("/").complete(), False)
     check("complete is complete", ID.complete(), True)
 
     print()
