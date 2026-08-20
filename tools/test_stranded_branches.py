@@ -26,6 +26,8 @@ survives a partial sweep; a negative one does not.**
 
 Run: python3 tools/test_stranded_branches.py
 """
+# SUITE-DEPENDS: queries the gh API — network plus auth
+
 import importlib.util
 import os
 import subprocess

@@ -22,6 +22,8 @@ whose history is authoritative — a fixture that fakes the remote cannot test i
 
 Run: python3 tools/test_grant_check.py
 """
+# SUITE-DEPENDS: git fetch origin — MEASURED PASSING on a runner (run 32345860216); listed here only because a network-dependent gate is a flake source
+
 import datetime as dt
 import os
 import shutil
