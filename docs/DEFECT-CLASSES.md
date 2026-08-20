@@ -104,6 +104,88 @@ bug.
 
 ---
 
+### Instances since this document landed, each cited to its artifact
+
+⚠ All six original instances were assembled **retrospectively**. These arrived afterwards, which is
+the only evidence that the class can be *applied* rather than only fitted.
+
+| the noun the rule was scoped to | the noun it needed | artifact |
+|---|---|---|
+| `gh pr list`, inside one tool | any `gh` list endpoint | `stranded-branches.py:129` — `len(rows) >= limit`, committed and tested, while the recurrence was `gh issue list` in a routing query |
+| `goals/` + `prompts/` | any shared artifact an agent reasons from | `doctrine-watch.py`'s `BINDS` — its own docstring generalises correctly (*"the gap is a TRIGGER, not a PRIMITIVE"*) and then binds eleven paths |
+| the idempotence **example** | the idempotence **rule** | #171 against #167 — the marker the test looks for is narrower than the rule the test states |
+| **presence** of a reserved row | presence **and scope** | #154 — DEV1's copy had the rows *present* and *narrower*; a presence check passes and the narrowing is invisible |
+
+⛔ **Two of these are mine**, and one of those is a rule I wrote the general form of before scoping
+it narrowly. That is the class's own prediction: **the narrowness is least visible to the author**,
+because the author is looking at the instance that motivated the rule.
+
+### ⛔ NOT this class: a remedy with no input on the surface that needs it
+
+`gh-complete.py` compares a **stated total** against what arrived. `gh issue list --json` and
+`gh api repos/{o}/{r}/issues` return **bare arrays with no count**, so its predicate has no input
+there. That is neither Class B nor #2:
+
+```
+Class B   remedy exists, wrong noun                       widen the noun
+#2        remedy exists, no caller                        give it a caller
+coverage  remedy exists, NO INPUT on the surface          extend the remedy's reach
+```
+
+⇒ Filing a coverage gap as a scoping gap sends someone to widen a noun that is already correct.
+Filing it as a diligence failure — which happened, and was retracted — teaches a fleet to look
+harder at a tool that structurally cannot answer. **Recorded here so the class does not absorb it.**
+
+### ⛔ The discriminator: when widening is WRONG
+
+**Not every narrow noun is a defect.** The operator's monitor grant is scoped to *your own
+instruments*, and widening that would not extend the rule — it would **reverse** it. Without this
+test the class licenses over-generalisation, which is the same failure inverted.
+
+> **Substitute the wider noun and ask whether the rule's JUSTIFICATION survives.**
+
+```
+reducer -> any consumer of an enumerated state space
+  justification: "a silent drop is invisible precisely when it matters"
+  survives?  YES — nothing in it mentions reducers.        ⇒ the noun was ACCIDENTAL. Widen.
+
+own instruments -> any instruments
+  justification: "arming a loop in another role's pane is the operator's"
+  survives?  NO — the wider noun destroys it.              ⇒ the noun is LOAD-BEARING. Keep.
+```
+
+⚠ Second test for the hard cases: **does the rule's failure mode change?** If the wider noun makes
+the rule forbid something it was never about, the noun was doing work rather than describing an
+example.
+
+★ Same shape as the doctrine/calibration discriminator in `goals/README.md` — *would this sentence
+change if the repository changed?* Here: **would this justification survive the wider noun?** Both
+are per-sentence tests against the *reason*, not against the text.
+
+### #36 and this class are TWO classes, not one — and the reason is the remedy
+
+They share an axis: **a predicate's extension does not match its intension.** #36 is the
+over-inclusive half, this is the under-inclusive half. That is a real symmetry and it is not a
+reason to merge them.
+
+```
+                 #36                          CLASS B
+error            over-fires: a mention        under-covers: the uncovered
+                 produces a positive          case produces nothing
+signal           a WRONG ANSWER               SILENCE
+detection        check the answer             ⛔ no failing state to check
+remedy           change what you match ON     change what you match OVER
+                 (nonce/position/form/effect) (widen the noun)
+```
+
+⇒ **Different remedies, so different classes** — the same test that made #26 this document's
+acceptance test rather than a member of Class A.
+
+⛔ And the detectability row is the load-bearing one: #36 produces a wrong answer, which is
+catchable. **Class B produces silence, which is #26's shape — a rule correct on everything it
+covers has no reachable failing state for what it does not.** Merging them would hide that Class B
+needs a *different kind of instrument*, not a better matcher.
+
 ## ★ The reconciliation: B is why A's remedies stayed scattered
 
 This is the load-bearing sentence of this document.
