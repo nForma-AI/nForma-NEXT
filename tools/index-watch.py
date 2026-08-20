@@ -140,6 +140,30 @@ def source_staleness(repo=None):
     if r.returncode != 0 or not r.stdout.strip():
         return None, "could not hash this file"
     blob = r.stdout.strip()
+
+    # ⛔ ASK "AM I THE CURRENT BLOB" BEFORE ASKING "HOW OLD AM I", because the history walk
+    # below cannot answer the first question and was reporting the second as if it were.
+    #
+    # MEASURED 2026-08-20 (#320), from a clean checkout of origin/main at 280ac70:
+    #     git diff origin/main -- tools/index-watch.py    -> empty
+    #     this function                                   -> "87 COMMIT(S) BEHIND (pinned at 06e6dca8)"
+    # The file had not changed in 89 commits. 87 is a correct answer to *how long since this
+    # file was last edited*; it was printed as the answer to *how far behind is this source*,
+    # which is a different question whose answer was ZERO.
+    #
+    # ⇒ The two collapse only for a file that is still being edited. For a settled file they
+    # diverge without bound, and in the direction that produces the LOUDEST warning: the more
+    # stable a tool is, the more stale it claims to be. ⚠ That is a false positive on a
+    # staleness warning, fired unconditionally, and a warning that fires on the state needing no
+    # action is how a reader learns to skip the line — while the real case it exists to catch
+    # (#205: panes running instruments from trees dozens of commits behind) is live.
+    #
+    # ★ The reassuring answer was also UNREPRESENTABLE before this: the only outcomes were a
+    # distance or UNKNOWN, so the state a reader most wants confirmed could not be printed.
+    head = run("git", "rev-parse", f"origin/main:tools/{me.name}", cwd=str(repo or ROOT))
+    if head.returncode == 0 and head.stdout.strip() == blob:
+        return 0, "origin/main"
+
     listing = run("git", "rev-list", "origin/main", "--", f"tools/{me.name}",
                   cwd=str(repo or ROOT))
     if listing.returncode != 0:
@@ -400,6 +424,37 @@ def self_test():
                                                       f"Path({str(oldcopy)!r})")
             ns = {}
             exec(compile(src2, "iw", "exec"), ns)
+            # ⛔ THE DIRECTION THAT WAS NEVER TESTED, and #320 is what lived in the gap: a copy
+            # that IS origin/main must report 0. Only "an older copy reports > 0" existed, and
+            # BOTH a correct implementation and one reporting age-of-last-edit satisfy that.
+            #
+            # ⚠ SYNTHETIC, not the working tree. Asserting on this file as it sits on disk would
+            # pass only while it is committed and unmodified — it fails during every edit to
+            # itself, including the edit that adds this control. A control whose verdict depends
+            # on the author's uncommitted state is a control that will be deleted for being
+            # flaky, and the finding goes with it.
+            # ⚠ THE BASENAME IS LOAD-BEARING. source_staleness looks up
+            # `origin/main:tools/<me.name>`, so a copy named anything else asks git for a path
+            # that does not exist and comes back UNKNOWN — which looks exactly like the defect
+            # under test passing. Written first as `current-index-watch.py`; it reported
+            # UNKNOWN and I nearly read that as the control catching something.
+            curdir = Path(d) / "cur"
+            curdir.mkdir(exist_ok=True)
+            curcopy = curdir / "index-watch.py"
+            cur = run("git", "show", "origin/main:tools/index-watch.py", cwd=str(ROOT))
+            if cur.returncode == 0:
+                curcopy.write_text(cur.stdout)
+                ns0 = {}
+                exec(compile(Path(__file__).read_text().replace(
+                    "Path(__file__).resolve()", f"Path({str(curcopy)!r})"), "iw", "exec"), ns0)
+                n_cur, why_cur = ns0["source_staleness"](ROOT)
+                hit = n_cur == 0
+                ok &= hit
+                print(f"  {'ok  ' if hit else 'FAIL'}  a CURRENT copy reports 0, not the age of "
+                      f"its last edit (got {n_cur}, {why_cur})")
+            else:
+                print("  ----  current-copy control NOT EXERCISED: origin/main unreadable")
+
             n_old, _ = ns["source_staleness"](ROOT)
             hit = isinstance(n_old, int) and n_old > 0
             ok &= hit
