@@ -499,6 +499,17 @@ nothing a label?"*. ★ The row is **right**, the tool is **healthy**, and readi
 would condemn it. Every instrument here is run with **no arguments**; the `NEVER` set is a statement about
 what a bare invocation establishes, which is #2's premise made measurable — not a verdict on anyone's tool.
 
+**`branch-census.py`** — classifies every remote branch as MERGED, SQUASH-MERGED, LIVE or
+STRANDED. Built because 89 branches carried no signal of which were finished, and four panes
+independently opened a fix for the same defect (#307) — one defect, four branches, three
+wasted. ⛔ Ancestry alone cannot do this: a squash lands the content and never makes the tip
+an ancestor, so **12 of 89 branches that had shipped read as STRANDED** — and STRANDED is the
+flattering default, reading as abandoned work when the truth is that it landed. `git cherry`
+does not close it either; it patch-id-matches commits individually, so a three-commit branch
+squashed into one matches nothing. The cumulative diff is the unit that survives a squash.
+⚠ It cannot tell ABANDONED from PAUSED, and reads only this checkout's worktrees — LIVE is a
+lower bound and STRANDED an upper one. It proposes no deletions.
+
 **`wake-yield.py`** — pairs an interruption's cost with its yield. Cost alone is
 uninterpretable: an agent woken into useful work and one woken into churn consume context
 identically.
