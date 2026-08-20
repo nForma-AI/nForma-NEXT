@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run `scripts/check-tools-index.py` when `main` moves, and report what it found.
+"""Run this role's cheap checkers when `main` moves, and report what they found.
 
 ⛔ Why this exists. `tools/ci-log-clean.py` landed on `main` with no table row and no prose
 entry. The checker that detects exactly that had existed for hours and **nothing invoked it** —
@@ -19,7 +19,9 @@ here rather than promised:
                    channel and a real scheduled job cannot.
   SILENCE == RAN   silence means *ran and found nothing*, never *could not run*. Every failure
                    path prints. See the exit table below.
-  OWN INSTRUMENTS  the subject is `scripts/check-tools-index.py`, written by this role.
+  OWN INSTRUMENTS  both subjects — `scripts/check-tools-index.py` and `tools/verdict-census.py
+                   --stale-check` — are instruments of this role. Arming a leg on another
+                   role's instrument remains the operator's, not mine.
 
 ⚠ EVENT-DRIVEN, NOT CLOCKED — DEVOPS's finding on #131, taken rather than re-derived. The defect
 arrives when `main` moves, so this polls `git ls-remote origin refs/heads/main` and runs the
@@ -47,6 +49,7 @@ import json
 import os
 import re
 import subprocess
+import time
 import sys
 from pathlib import Path
 
@@ -61,6 +64,38 @@ ROOT = Path(__file__).resolve().parent.parent
 SUBJECT = ROOT / "scripts" / "check-tools-index.py"
 # Exit codes the subject DOCUMENTS. Anything else is "could not run", never "clean".
 DOCUMENTED = {0: "clean", 1: "drift", 2: "established nothing"}
+
+# ⛔ A SECOND LEG ON THE SAME TRIGGER — and it is a trigger COLLAPSE, not a second watcher.
+# #164 item 2 asked whether two drift-watchers should be merged. The answer I filed was: collapse
+# the TRIGGER, not the watchers, because two instruments with the same trigger and disjoint
+# finding-sets are one poller and two questions. This is that, applied to my own two instruments.
+#
+# ★ WHY verdict-census EARNS A SEAT HERE and did not before. ARCHITECT measured the census
+# emitting a real finding that nobody read, because reading it cost over two minutes — and an
+# instrument whose cost exceeds the attention available is not consulted, which makes its verdict
+# indistinguishable from one never produced (#2, from the opposite side). `--stale-check` runs NO
+# subprocesses and concludes in 0.085s. ⇒ It is affordable on a merge cadence; a full census is
+# not, and is deliberately NOT wired here.
+#
+# ⚠ BOUND 4 HOLDS: both subjects are instruments of this role. Arming a leg on another role's
+# instrument remains the operator's, not mine.
+LEGS = [
+    {"key": "index", "title": "scripts/check-tools-index.py",
+     "path": ROOT / "scripts" / "check-tools-index.py", "argv": [],
+     "doc": {0: "clean", 1: "drift", 2: "established nothing"},
+     "finding": re.compile(r"^\s*FAIL\s+(.*\S)\s*$", re.M)},
+    {"key": "ledger", "title": "tools/verdict-census.py --stale-check",
+     "path": ROOT / "tools" / "verdict-census.py", "argv": ["--stale-check"],
+     # ⚠ 0 HERE MEANS "the record is current", NOT "every instrument produces verdicts". The two
+     # legs' codes look alike and mean different things; printing the MEANING per leg is what
+     # keeps them apart at the point a reader sees them.
+     "doc": {0: "record current", 1: "population moved", 2: "established nothing"},
+     # ⛔ ITS OUTPUT DOES NOT SAY "FAIL". Reusing the first leg's pattern made this leg exit 1
+     # and the watch report "quiet" — a leg with NO REACHABLE FAILING STATE, which is the mirror
+     # of #26 and was invisible to a self-test whose fixtures all emit FAIL lines. Caught by
+     # running it, not by testing it.
+     "finding": re.compile(r"^\s*⛔\s+(.*\S)\s*$", re.M)},
+]
 DEFAULT_STATE = Path.home() / ".claude" / "dev1-index-watch.json"
 
 # ⛔ ROLL THE BASELINE FORWARD. tools/README.md: "An alarm that fires forever on one event trains
@@ -135,7 +170,14 @@ def load_state(path):
     """(sha, findings). Absent or unreadable state is a clean slate, never an assertion."""
     try:
         d = json.loads(path.read_text())
-        return d.get("sha"), sorted(d.get("findings") or [])
+        # ⛔ MIGRATION, AND IT IS THE PART THAT CAN SILENTLY DESTROY A BASELINE. Findings are now
+        # namespaced "<leg>\t<finding>" so two legs' identical strings cannot mask one another.
+        # A state file written before the second leg holds BARE strings; read as unprefixed they
+        # would match nothing, every held finding would read as RESOLVED on the next run, and the
+        # baseline would roll forward over a report that was never made. ⇒ A bare entry is
+        # attributed to the original leg, which is the only leg that could have written it.
+        raw = sorted(d.get("findings") or [])
+        return d.get("sha"), [f if "\t" in f else f"index\t{f}" for f in raw]
     except Exception:
         return None, []
 
@@ -145,10 +187,24 @@ def save_state(path, sha, findings):
     path.write_text(json.dumps({"sha": sha, "findings": sorted(findings)}, indent=1))
 
 
-def check_once(state_path, force=False, subject=None, repo=None):
-    """Return (exit_code, lines). `subject` is injectable so the self-test can
-    exercise the missing-subject path without mutating module state."""
-    subject = SUBJECT if subject is None else subject
+def check_once(state_path, force=False, subject=None, repo=None, legs=None):
+    """Return (exit_code, lines). One poll of `main`, every leg run against it.
+
+    ⛔ COMBINING THE LEGS' EXIT CODES IS ITSELF A COLLAPSED PAIR, so the rule is stated rather
+    than assumed. If leg A returns a FINDING and leg B VOIDs, a combined `2` would assert
+    "established nothing" while something WAS established, and hide the finding behind it.
+
+        1  any leg produced a finding          ← knowledge exists; it outranks a refusal
+        2  no findings, and at least one leg established nothing
+        0  every leg ran and found nothing
+
+    ⚠ AND THE COMBINED CODE NEVER STANDS ALONE: every leg prints its own code and its own
+    MEANING on every run, so a per-leg VOID can never be absorbed by another leg's finding.
+    """
+    legs = LEGS if legs is None else legs
+    if subject is not None:
+        # back-compat for the injected single-subject controls
+        legs = [{**legs[0], "path": subject}]
     repo = ROOT if repo is None else repo
     sha = remote_sha(repo)
     if sha is None:
@@ -157,39 +213,76 @@ def check_once(state_path, force=False, subject=None, repo=None):
 
     prev, base = load_state(state_path)
     if prev == sha and not force:
-        # The only silent-ish path, and it is silent about the SUBJECT, not about itself.
-        return 0, [f"  ok    main unchanged at {sha[:8]} — subject not run (nothing to re-check)"]
+        # The only silent-ish path, and it is silent about the SUBJECTS, not about itself.
+        return 0, [f"  ok    main unchanged at {sha[:8]} — {len(legs)} leg(s) not run"
+                   f" (nothing to re-check)"]
 
+    codes, all_lines, all_found = [], [], []
+    for leg in legs:
+        rc, lines, found, sub_rc = _run_leg(leg, base, prev, sha, repo)
+        codes.append(rc)
+        all_found += found
+        # ⚠ TWO DIFFERENT NUMBERS, AND THEY WERE PRINTED AS ONE. `sub_rc` is what the SUBJECT
+        # exited and carries the subject's meaning; `rc` is what THIS WATCH concluded, which is 0
+        # when a finding is real but already reported. Labelling the watch's verdict with the
+        # subject's vocabulary printed "record current" while the record was stale.
+        meaning = leg["doc"].get(sub_rc, "⛔ UNDOCUMENTED") if sub_rc is not None else "not run"
+        all_lines += [f"  == {leg['title']}  ->  subject exited {sub_rc} ({meaning});"
+                      f" watch says {rc}"] + lines
+    # ⛔ Roll the baseline only over legs that ESTABLISHED something. A leg that VOIDed keeps its
+    # previous findings, because nothing replaced them — dropping them would manufacture a
+    # RESOLVED line for a report that was never made.
+    voided = {leg["key"] for leg, rc in zip(legs, codes) if rc == 2}
+    kept = [f for f in base if f.split("\t", 1)[0] in voided]
+    save_state(state_path, sha, sorted(set(all_found) | set(kept)))
+    rc = 1 if 1 in codes else (2 if 2 in codes else 0)
+    head = f"main moved {(prev or 'unknown')[:8]} -> {sha[:8]}"
+    return rc, [f"  ----  {head}; {len(legs)} leg(s) run"] + all_lines
+
+
+def _run_leg(leg, base_all, prev, sha, repo):
+    """(watch_rc, lines, namespaced_found, subject_rc) for one leg. Never rolls state."""
+    key, subject, DOCUMENTED = leg["key"], leg["path"], leg["doc"]
+    base = [f.split("\t", 1)[1] for f in base_all if f.split("\t", 1)[0] == key]
     if not subject.is_file():
-        return 2, [f"  VOID  subject missing: {subject} — establishes nothing"]
+        # ⚠ NOT exit 2 from the runtime. `python3 <missing>` also exits 2 (#58), so the absence is
+        # detected HERE, before running, and never inferred from a code.
+        return 2, [f"  VOID  subject missing: {subject} — establishes nothing"], [], None
 
-    r = run(sys.executable, str(subject))
+    r = run(sys.executable, str(subject), *leg["argv"])
     rc = r.returncode
 
     if rc not in DOCUMENTED:
         return 2, [f"  VOID  subject exited {rc}, which it does not document"
                    f" (documented: {sorted(DOCUMENTED)}) — establishes nothing",
-                   f"        stderr: {(r.stderr or '').strip()[:300]}"]
+                   f"        stderr: {(r.stderr or '').strip()[:300]}"], [], rc
 
-    head = f"main moved {(prev or 'unknown')[:8]} -> {sha[:8]}; subject exited {rc}" \
-           f" ({DOCUMENTED[rc]})"
+    head = f"exited {rc} ({DOCUMENTED[rc]})"
 
     if rc == 2:
         # ⛔ Do NOT roll the baseline on a VOID — nothing was established, so the previous
         # finding set is still the best knowledge available.
-        return 2, [f"  VOID  {head} — the subject established nothing; ⛔ not a clean index",
-                   *(f"        {l}" for l in (r.stdout or "").splitlines() if l.strip())]
+        return 2, [f"  VOID  {head} — the subject established nothing; ⛔ not a clean result",
+                   *(f"        {l}" for l in (r.stdout or "").splitlines() if l.strip())], [], rc
 
-    found = sorted(set(FAIL_LINE.findall(r.stdout or "")))
+    found = sorted(set(leg.get("finding", FAIL_LINE).findall(r.stdout or "")))
+    # ⛔ THE EXTRACTOR MUST BE ABLE TO SEE THIS SUBJECT'S FINDINGS. If the subject exited its
+    # DRIFT code and the pattern matched nothing, the pattern does not understand this output —
+    # and reporting "quiet" would turn a real finding into silence. That is exactly what happened
+    # when the ledger leg inherited the first leg's `FAIL` pattern. Establishes NOTHING, loudly.
+    if rc == 1 and not found:
+        return 2, [f"  VOID  subject exited 1 but this watch extracted NO findings from its"
+                   f" output — the pattern does not match this subject. ⛔ NOT 'quiet'.",
+                   *[f"        {l}" for l in (r.stdout or "").splitlines() if l.strip()][:8]], [], rc
     fresh = [f for f in found if f not in base]
     gone = [f for f in base if f not in found]
-    save_state(state_path, sha, found)
+    ns = [f"{key}\t{f}" for f in found]
 
     if not found:
         if gone:
             return 0, [f"  ok    {head}", "  ⇒ RESOLVED since the last report:",
-                       *(f"        - {g}" for g in gone)]
-        return 0, [f"  ok    {head} — index clean"]
+                       *(f"        - {g}" for g in gone)], ns, rc
+        return 0, [f"  ok    {head} — nothing found"], ns, rc
 
     if not fresh:
         # Repeat-firing is a defect of the same severity as silence. Stay quiet about the
@@ -200,7 +293,7 @@ def check_once(state_path, force=False, subject=None, repo=None):
         lines += [f"        held: {f}" for f in found]
         if gone:
             lines += ["  ⇒ RESOLVED since the last report:"] + [f"        - {g}" for g in gone]
-        return 0, lines
+        return 0, lines, ns, rc
 
     return 1, [f"  FIND  {head}",
                f"  ⇒ {len(fresh)} NEW finding(s) since the last report:",
@@ -208,7 +301,7 @@ def check_once(state_path, force=False, subject=None, repo=None):
                *([f"  ---- {len(found) - len(fresh)} other finding(s) already reported, held"]
                  if len(found) > len(fresh) else []),
                "", *(f"        {l}" for l in (r.stdout or "").splitlines() if l.strip()), "",
-               "  ⚠ This is a FINDING, not a task. It names no owner and requests no action."]
+               "  ⚠ This is a FINDING, not a task. It names no owner and requests no action."], ns, rc
 
 
 def _fixture_subject(d, fails):
@@ -248,9 +341,12 @@ def self_test():
         if sha:
             save_state(st, sha, [])
             rc, lines = check_once(st)
-            hit = rc == 0 and any("subject not run" in l for l in lines)
+            # ⚠ The assertion is on the SEMANTIC — that the quiet path names what did NOT run —
+            # not on the old wording. "clean" must never appear on a path where nothing ran.
+            hit = (rc == 0 and any("not run" in l for l in lines)
+                   and not any("clean" in l for l in lines))
             ok &= hit
-            print(f"  {'ok  ' if hit else 'FAIL'}  unchanged main says 'subject not run', never "
+            print(f"  {'ok  ' if hit else 'FAIL'}  unchanged main says what did NOT run, never "
                   f"'clean' (got {rc})")
         else:
             ok = False
@@ -321,6 +417,144 @@ def self_test():
         hit = rc == 2 and any("VOID" in l for l in lines)
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  a missing subject exits 2 VOID, not 0 (got {rc})")
+
+    # ------------------------------------------------------------------------------
+    # TWO LEGS — every control below targets a place a wrong answer would be INVISIBLE.
+    # ------------------------------------------------------------------------------
+    with tempfile.TemporaryDirectory() as d:
+        st = Path(d) / "two.json"
+        DOC = {0: "clean", 1: "drift", 2: "established nothing"}
+        mk = lambda k, f: {"key": k, "title": k, "path": _fixture_subject(Path(d), f) if f
+                           else Path(d) / ("clean_" + k + ".py"), "argv": [], "doc": DOC}
+        for k in ("a", "b"):
+            (Path(d) / f"clean_{k}.py").write_text("raise SystemExit(0)\n")
+
+        # ⛔ THE SAME FINDING STRING FROM TWO LEGS MUST NOT MASK ONE ANOTHER. Un-namespaced, leg
+        # b's identical finding would already be in the baseline that leg a wrote, and would
+        # never be reported at all.
+        same = "the index disagrees"
+        la = {**mk("a", [same])}
+        lb = {**mk("b", [same])}
+        la["path"] = _fixture_subject(Path(d), [same])
+        lb["path"] = Path(d) / "fixture_b.py"
+        lb["path"].write_text(f'print("  FAIL  {same}")\nraise SystemExit(1)\n')
+        rc, lines = check_once(st, force=True, legs=[la, lb])
+        state = json.loads(st.read_text())["findings"]
+        hit = rc == 1 and sorted(state) == sorted([f"a\t{same}", f"b\t{same}"])
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  two legs reporting the SAME string are recorded "
+              f"separately, so neither masks the other (got {state})")
+
+        # ⛔ A FINDING OUTRANKS A REFUSAL. Combined 2 would assert "established nothing" while
+        # something WAS established, and bury the finding under it.
+        st2 = Path(d) / "mixed.json"
+        missing = {"key": "b", "title": "b", "path": Path(d) / "not-here.py", "argv": [],
+                   "doc": DOC}
+        rc, lines = check_once(st2, force=True, legs=[la, missing])
+        hit = rc == 1 and any("VOID" in l for l in lines) and any("FIND" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  finding + VOID exits 1, and the VOID line still "
+              f"PRINTS — a refusal is never absorbed by another leg's finding (got {rc})")
+
+        # ⛔ A VOIDED LEG KEEPS ITS BASELINE. Rolling over it would manufacture a RESOLVED line
+        # for a report that was never made.
+        held = json.loads(Path(d).joinpath("mixed.json").read_text())["findings"]
+        hit = any(f.startswith("a\t") for f in held)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  the establishing leg's findings are recorded while "
+              f"the VOIDed leg's baseline is preserved")
+
+        # ⛔ THE MIGRATION. A state file written before the second leg holds BARE strings. Read
+        # unprefixed they match nothing, every held finding reads as RESOLVED, and the baseline
+        # rolls over a report nobody made.
+        st3 = Path(d) / "old.json"
+        st3.write_text(json.dumps({"sha": "deadbeef", "findings": [same]}))
+        _, base = load_state(st3)
+        hit = base == [f"index\t{same}"]
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a pre-two-leg state file migrates to the ORIGINAL "
+              f"leg, so nothing false-RESOLVES (got {base})")
+
+        # ⛔ THE CONTROL FOR THE DEFECT THIS FILE SHIPPED AND I CAUGHT BY RUNNING IT, NOT BY
+        # TESTING IT. The ledger leg inherited the first leg's `FAIL` pattern; verdict-census
+        # emits `⛔`, so the leg exited 1 and the watch reported QUIET. A leg with no reachable
+        # failing state — #26's mirror. Every fixture above emits FAIL lines, which is exactly
+        # why none of them could see it.
+        odd = Path(d) / "odd_output.py"
+        odd.write_text('print("  ⛔ something is wrong")\nraise SystemExit(1)\n')
+        st4 = Path(d) / "odd.json"
+        rc, lines = check_once(st4, force=True, legs=[
+            {"key": "odd", "title": "odd", "path": odd, "argv": [], "doc": DOC}])
+        hit = rc == 2 and any("extracted NO findings" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a subject that exits 1 with output the pattern "
+              f"cannot match is VOID, never 'quiet' (got {rc})")
+
+        # ⚠ and the same subject WITH a matching pattern must find it — otherwise the guard above
+        # could pass by never matching anything at all.
+        rc, lines = check_once(Path(d) / "odd2.json", force=True, legs=[
+            {"key": "odd", "title": "odd", "path": odd, "argv": [], "doc": DOC,
+             "finding": re.compile(r"^\s*⛔\s+(.*\S)\s*$", re.M)}])
+        hit = rc == 1 and any("something is wrong" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  with the RIGHT pattern the same subject yields a "
+              f"finding — the guard is not passing by matching nothing (got {rc})")
+
+        # ⛔ the two numbers that were printed as one
+        rc, lines = check_once(Path(d) / "hdr.json", force=True, legs=[la])
+        hdr = [l for l in lines if l.startswith("  == ")][0]
+        hit = "subject exited 1" in hdr and "watch says 1" in hdr
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  the header prints the SUBJECT's code and the "
+              f"WATCH's verdict as two numbers, not one")
+
+        # ⚠ and the real second leg must actually be affordable on this trigger
+        t0 = time.time()
+        r = run(sys.executable, str(ROOT / "tools" / "verdict-census.py"), "--stale-check")
+        dt = time.time() - t0
+        hit = r.returncode in (0, 1, 2) and dt < 10
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  the ledger leg concludes in {dt:.2f}s "
+              f"(rc={r.returncode}) — a full census here would be ~4m and is deliberately NOT "
+              f"wired")
+
+
+    # ==================================================================================
+    # ⛔ A POPULATION THIS AUTHOR DID NOT DRAW — criterion 5's population leg (#164 item 1,
+    # ARCHITECT's ruling, PR #341). EVERY control above runs against fixtures I wrote, and that
+    # is why every one of them PASSED while the ledger leg reported "quiet" on a real finding:
+    # my fixtures all emit `FAIL`, because I wrote them from my own model of the output.
+    #
+    # ★ #26 AND CRITERION 5 ARE DIFFERENT DEMANDS AND SATISFYING ONE DOES NOTHING FOR THE OTHER:
+    #     #26          can this control be SILENCED BY A REPAIR?     -> stay outside the population
+    #     criterion 5  can it be BLIND TO AN INPUT I NEVER IMAGINED? -> do not DRAW the population
+    #   The fixtures above satisfy #26 completely. This leg is the other half.
+    #
+    # ⚠ AND IT IS ALLOWED TO ESTABLISH NOTHING. If a subject exits 0 today, its finding vocabulary
+    # is UNOBSERVABLE — the pattern is untested, not correct. Reported as NOT-ESTABLISHED, never
+    # folded into `ok`, because a control that reports success when it measured nothing is the
+    # defect this whole file exists against.
+    # ==================================================================================
+    for leg in LEGS:
+        pat = leg.get("finding", FAIL_LINE)
+        if not leg["path"].is_file():
+            print(f"  ----  NOT ESTABLISHED  {leg['title']}: subject absent — its finding"
+                  f" vocabulary is unobserved, NOT verified")
+            continue
+        rr = run(sys.executable, str(leg["path"]), *leg["argv"])
+        if rr.returncode == 1:
+            n = len(set(pat.findall(rr.stdout or "")))
+            ok &= n > 0
+            print(f"  {'ok  ' if n else 'FAIL'}  {leg['title']} exited 1 and its REAL output"
+                  f" yields {n} finding(s) under this leg's pattern — population not drawn by"
+                  f" the author")
+        else:
+            # ⛔ NOT 'ok'. The subject had nothing to say today, so nothing about the pattern was
+            # tested. This is the exact reading that "exit 2 means established nothing" protects.
+            print(f"  ----  NOT ESTABLISHED  {leg['title']} exited {rr.returncode}, so it emitted"
+                  f" no findings — this leg's pattern was NOT exercised against real output."
+                  f" ⛔ Untested, not correct.")
+
     return 0 if ok else 3
 
 
@@ -342,7 +576,7 @@ def main(argv):
         return self_test()
     repo = Path(a.repo) if a.repo else None
     rc, lines = check_once(Path(a.state), force=a.force, repo=repo)
-    print("\nindex-watch — scripts/check-tools-index.py vs main")
+    print("\nindex-watch — this role's checkers vs main")
     # ⛔ PRINTED ON EVERY RUN, including the quiet path. A pin makes the source immutable, which
     # is #149's remedy and also #149's cost: TEAMLEAD's monitor froze 42 commits behind by
     # applying it correctly. This does not re-take the pin and does not decide whether the
