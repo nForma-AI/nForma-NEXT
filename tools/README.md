@@ -221,6 +221,35 @@ tools/teamlead/          10 of 19
 tools/architect-sweeps/   0 of  3     <- the control: the predicate is not matching everything
 ```
 
+### ⛔ UNCLAIMED is not LOCAL — and a content scan cannot tell them apart
+
+`docs/ESTATE-BOUNDARY.md` names four states and rules that **`UNCLAIMED` must never be collapsed
+into `LOCAL`** — that collapse is the only thing between this reading and a confident wrong
+answer. ⚠ **A content predicate cannot detect `UNCLAIMED`: it is the ABSENCE of provenance
+evidence, and absence has no string to match.**
+
+★ `boxwatch.py` is the specimen. Four hardcoded terminal UUIDs under the role names
+`IMPLEMENTER`…`IMPLEMENTER5` — **another estate's role names** — and *no* estate identifier a scan
+can find. The position predicate calls it clean, and the index then requires it to be named,
+which **asserts it is ours.**
+
+⇒ **The signal that is not in the content is in the HISTORY**, measured at `280ac70`:
+
+```
+tools/                    65 files added across 51 commits   accreted, file by file
+tools/teamlead/           22 files added across  1 commit    WHOLESALE (ac6a946)
+tools/architect-sweeps/    3 files across         2 commits   accreted
+```
+
+A directory that arrived in **one** commit out of a shared scratch directory has **one**
+provenance question, not N — which is why the operator ruled quarantine on the *directory* and
+not on the ten files a scan happened to catch. ⇒ So a wholesale-imported directory with any
+foreign marker holds **every** file: 10 `FOREIGN`, 9 `UNCLAIMED`, none required to be indexed.
+
+⚠ **The leg never guesses.** If git cannot answer it reports **NOT CHECKED**, because defaulting
+to *accreted* converts an unmeasured directory into an asserted-local one — the same collapse,
+arriving through the error path.
+
 ⚠ **It is not a verdict about ownership, and no exemption list is offered** — an exemption list
 is the silencing mechanism this ruling refuses. Each hit is **a question for a human.** The one
 top-level hit is real and is **named rather than tuned away**, because a threshold that clears

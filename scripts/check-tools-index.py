@@ -67,6 +67,7 @@ Exit: 0 every surface agrees with the directory
 """
 import ast
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -188,6 +189,44 @@ def code_strings(path):
             if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs]
 
 
+def adding_commits(root, directory):
+    """How many distinct commits ADDED files under this directory? None if unmeasurable.
+
+    ⛔ WHY A GIT QUESTION BELONGS IN AN INDEX CHECKER. `docs/ESTATE-BOUNDARY.md` names four
+    states — LOCAL · FOREIGN · UNCLAIMED · QUARANTINED — and rules that **UNCLAIMED must never
+    be collapsed into LOCAL**, because that collapse is the only thing between this reading and
+    a confident wrong answer. A content predicate cannot detect UNCLAIMED: it is the ABSENCE of
+    provenance evidence, and absence has no string to match. `boxwatch.py` is the specimen —
+    it carries four hardcoded terminal UUIDs under another estate's role names and yet holds no
+    estate identifier a scan can find, so a content test calls it clean and the index then
+    requires it to be named, which asserts it is ours.
+
+    ⇒ The signal that is NOT in the content is in the HISTORY. Measured 2026-08-20 at 280ac70:
+
+          tools/                65 files added across 51 commits    accreted, file by file
+          tools/teamlead/       22 files added across  1 commit     WHOLESALE (ac6a946)
+          tools/architect-sweeps/ 3 files across 2 commits          accreted
+
+    A directory that arrived in ONE commit out of a shared scratch directory has ONE provenance
+    question, not N — which is why the operator ruled quarantine on the DIRECTORY and not on the
+    ten files a scan happened to catch.
+
+    ⚠ NEVER GUESSES. If git cannot answer — no repository, no history, a failed call — this
+    returns None and the leg is reported NOT CHECKED. Defaulting to "accreted" would convert an
+    unmeasured directory into an asserted-local one, which is the collapse this exists against.
+    """
+    try:
+        r = subprocess.run(["git", "log", "--diff-filter=A", "--format=%H", "HEAD", "--",
+                            str(directory.relative_to(root))],
+                           capture_output=True, text=True, cwd=str(root), timeout=20)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    if r.returncode != 0:
+        return None
+    shas = {l for l in r.stdout.split() if l}
+    return len(shas) if shas else None
+
+
 def quarantined(directory, names):
     """[(name, the literal that triggered it)] for instruments referencing another estate."""
     out = []
@@ -252,7 +291,7 @@ def check(root):
     failed = False
     unchecked = []          # legs that established NOTHING, so the summary cannot claim them
 
-    held = set()            # quarantined, and therefore OUT of the naming population
+    held = set()            # quarantined or unclaimed — OUT of the naming population
 
     def impound(label, directory, names):
         """Report quarantined files and REMOVE them from the naming population.
@@ -274,6 +313,21 @@ def check(root):
                    " evidence of belonging, and an index row would ASSERT that it is.")
         out.append("               ⛔ Do not index, do not delete, do not rewrite history —"
                    " the disposition is the operator's. This red is the finding's only marker.")
+        # ⛔ WHOLESALE IMPORT ⇒ THE DIRECTORY IS THE UNIT, NOT THE FILE.
+        survivors = [n for n in names if n not in {q for q, _ in quar}]
+        adds = adding_commits(root, directory)
+        if adds is None:
+            unchecked.append(f"wholesale-import test for {label}")
+            out.append(f"               ----  could not read git history for {label} — the"
+                       f" wholesale-import leg is NOT CHECKED (never assumed accreted)")
+        elif adds == 1 and survivors:
+            out.append(f"               ⛔ WHOLESALE: every file here arrived in ONE commit, so"
+                       f" the provenance question is the DIRECTORY's, not each file's.")
+            out.append(f"               UNCLAIMED ({len(survivors)}): {', '.join(survivors)}")
+            out.append("               ⚠ No estate marker — and NO evidence they are ours either."
+                       " UNCLAIMED is not LOCAL, and the index must not assert that it is.")
+            held.update(survivors)
+            return []
         held.update(n for n, _ in quar)
         return [n for n in names if n not in held]
 
@@ -428,6 +482,7 @@ def selftest():
     known-positive drawn from a currently-broken repo would go silent the moment the repo is
     fixed.
     """
+    import shutil
     import tempfile
     ok = True
     with tempfile.TemporaryDirectory() as d:
@@ -596,6 +651,53 @@ def selftest():
               f"MENTION of the same estate is NOT quarantined (got {rc})")
         (sub / "tainted.py").unlink()
 
+        # ⛔ NO GIT ⇒ NOT CHECKED, NEVER "accreted". This fixture is not a repository, so the
+        # wholesale leg cannot be answered — and an unanswerable provenance question defaulting
+        # to "these files are ours" is the exact collapse docs/ESTATE-BOUNDARY.md forbids.
+        (sub / "tainted.py").write_text('#\nREPO = "/x/code/DigitalFrontier-infra"\n')
+        rc, lines, _ = check(root)
+        hit = rc == 1 and any("wholesale-import leg is NOT CHECKED" in l for l in lines) \
+              and not any("UNCLAIMED" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  no git history: the wholesale leg reports NOT "
+              f"CHECKED and claims nothing (got {rc})")
+
+        # ⛔ ...and WITH history, a directory that arrived in ONE commit holds its clean files as
+        # UNCLAIMED rather than requiring them to be indexed. `boxwatch.py` is the live specimen:
+        # another estate's role names, no estate string a scan can match.
+        def git(*a):
+            subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *a],
+                           cwd=str(root), capture_output=True)
+        git("init", "-q", "-b", "main")
+        git("add", "-A")
+        git("commit", "-q", "-m", "wholesale import")
+        rc, lines, _ = check(root)
+        hit = (rc == 1
+               and any("WHOLESALE" in l for l in lines)
+               and any("UNCLAIMED" in l and "planted.py" in l for l in lines)
+               and not any("never names: planted.py" in l for l in lines))
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  WHOLESALE: a one-commit directory holds its clean "
+              f"files UNCLAIMED, not LOCAL (got {rc})")
+
+        # ⛔ THE KNOWN-NEGATIVE FOR THE WHOLESALE LEG: a directory built up over SEVERAL commits
+        # keeps per-file quarantine. Without this, "one commit" and "any commit" are the same
+        # reading and every directory would be impounded wholesale.
+        (sub / "later.py").write_text("#\n")
+        (sub / "README.md").write_text("# newdir\n\n`planted.py` a. `tainted.py` b. `later.py` c.\n")
+        git("add", "-A")
+        git("commit", "-q", "-m", "a second commit adds a file here")
+        rc, lines, _ = check(root)
+        hit = rc == 1 and not any("WHOLESALE" in l for l in lines) \
+              and any("QUARANTINED" in l and "newdir" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  wholesale KNOWN-NEGATIVE: an accreted directory "
+              f"keeps PER-FILE quarantine (got {rc})")
+        (sub / "later.py").unlink()
+        (sub / "tainted.py").unlink()
+        (sub / "README.md").write_text("# newdir\n\n`planted.py` — a planted instrument.\n")
+        shutil.rmtree(root / ".git")
+
         # ⛔ the TOP-LEVEL branch is separate code and needs its own case
         (t / "tainted.py").write_text('#\nR = "Borduas-Holdings/Blazing-Back"\n')
         rc, lines, _ = check(root)
@@ -637,7 +739,6 @@ def selftest():
               f"(got {rc})")
         (t / "delta.sh").unlink()
 
-        import shutil
         shutil.rmtree(sub)
         shutil.rmtree(fx)
         (t / "README.md").write_text(good)

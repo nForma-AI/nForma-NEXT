@@ -49,6 +49,13 @@ so a reader can see what is being held, and the disposition is the operator's.
 
 ⛔ Do not index into `tools/README.md`'s table · do not delete · do not rewrite history.
 
+⚠ **All 19 instruments are held, not 10.** Every file here arrived in **one commit** (`ac6a946`)
+out of a shared scratch directory, so the provenance question is this **directory's**, not each
+file's. Ten carry a foreign estate marker in executable position; the other nine — `boxwatch.py`
+`boxwatch.sh` `classify_fleet.py` `dt.sh` `guard.py` `mergeready.py` `t_500.py` `t_skip.py`
+`waker.py` — are **`UNCLAIMED`: no estate marker, and no evidence they are ours either.**
+⛔ `UNCLAIMED` is not `LOCAL`, and the index must not assert that it is.
+
 ## The full inventory — every file, named
 
 ⚠ Added 2026-08-20 by DEVOPS under #307. `boxwatch.py`, `boxwatch.sh` and `dt.sh` were in this
