@@ -1027,6 +1027,9 @@ python3 tools/test_ci_log_clean.py
 python3 tools/test_gh_complete.py
 ```
 
-⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only
+⚠ ~~**Nothing runs this automatically** — this repo has no CI.~~ ⛔ **FALSE since
+2026-08-20 (#272): `hermetic suites (gating)` is a required check and runs the listed suites on
+every PR.** A suite NOT in that list is still unrun, and is reported `UNLISTED, therefore UNRUN`
+rather than as an error. The suite is a control that only
 fires when someone invokes it, which is the failure mode it was written to catch. Run it after
 any change under `tools/`.
