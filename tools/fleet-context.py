@@ -40,6 +40,44 @@ FLEET_ROLES = ("TEAMLEAD", "ARCHITECT", "DEVOPS", "DX",
                "DEV1", "DEV2", "DEV3", "DEV4", "DEV5")
 
 
+def classify_series(window):
+    """single | compaction-step | interleaved, from the ORDER of depth readings.
+
+    ⛔ EXTRACTED SO IT CAN CARRY A CONTROL. The rule this implements was fixed
+    against a real fleet transcript — `e4a7769d`, a window with 14 crossings between
+    a ~350k and an ~850k series — and THAT TRANSCRIPT NO LONGER EXISTS. Not aged out
+    of a scan window: the file is gone.
+
+    ⇒ So "0 SHARED FILE flags" today establishes that the false positives stopped and
+    establishes NOTHING about whether a genuine shared file would still be flagged.
+    The comment at the call site warns that silencing a false positive by creating a
+    false negative is the worse trade — and its own control evaporated with the
+    session that produced it. A live-real fixture decaying, exactly as
+    `stranded-branches.py` found when both its known-positives went to zero inside an
+    hour.
+
+    ⇒ The control is now CAPTURED-REAL and frozen in self_test(): both shapes come
+    from the measured incident, cannot decay, and depend on no transcript surviving.
+
+        compaction  H H H H l l l l l l      one crossing, and never back
+        interleaved H H l H l l H H l H      many crossings, both series still live
+    """
+    if len(window) < 8:
+        return "single"
+    lo, hi = min(window), max(window)
+    if hi - lo <= 100_000:
+        return "single"
+    mid = (lo + hi) / 2
+    side = [v >= mid for v in window]
+    if side.count(True) < 3 or side.count(False) < 3:
+        return "single"
+    crossings = sum(1 for i in range(1, len(side)) if side[i] != side[i - 1])
+    # A step down taken once is a compaction: the last reading is then the CORRECT
+    # post-compaction depth and must be reported, not suppressed. Returning to the
+    # high cluster after leaving it is what no single session does.
+    return "interleaved" if crossings >= 3 else "compaction-step"
+
+
 def session_depth(path):
     """Context depth = the prompt size of the LAST COMPLETED assistant turn.
 
@@ -117,20 +155,7 @@ def session_depth(path):
     # with 14 crossings between a ~350k and an ~850k series. Any replacement must keep
     # flagging that one — silencing a false positive by creating a false negative is
     # the worse trade, because an unattributable depth then reports as a fact.
-    window = recent[-40:]
-    shape = "single"
-    if len(window) >= 8:
-        lo, hi = min(window), max(window)
-        if hi - lo > 100_000:
-            mid = (lo + hi) / 2
-            side = [v >= mid for v in window]
-            if side.count(True) >= 3 and side.count(False) >= 3:
-                crossings = sum(1 for i in range(1, len(side)) if side[i] != side[i - 1])
-                # A step down, taken once, is a compaction: the last reading is then the
-                # CORRECT post-compaction depth and must be reported, not suppressed.
-                # Returning to the high cluster after leaving it is what no single
-                # session does.
-                shape = "interleaved" if crossings >= 3 else "compaction-step"
+    shape = classify_series(recent[-40:])
 
     return names, last, shape
 
@@ -173,7 +198,41 @@ def scan(active_within_s, limit):
     return sorted(rows, key=lambda r: -r["depth"]), unreadable, len(roots), no_reading
 
 
+def self_test():
+    """⛔ CAPTURED-REAL, because the live control evaporated.
+
+    `e4a7769d` — the transcript this rule was fixed against — no longer exists, so a
+    scan reporting zero flags cannot distinguish *the false positives stopped* from
+    *the detector can no longer fire*. Those are opposite, and the second is the
+    worse one: an unattributable depth then reports as a fact.
+
+    Both series below are the measured shapes from that incident, frozen.
+    """
+    H, L = 850_000, 350_000
+    compaction  = [H]*5 + [L]*5                      # one crossing, never back
+    interleaved = [H, H, L, H, L, L, H, H, L, H]     # many crossings, both live
+    flat        = [H - i*1000 for i in range(10)]    # one series, no cluster split
+    short       = [H, L, H]                          # too few readings to claim anything
+
+    got = {n: classify_series(w) for n, w in
+           (("compaction", compaction), ("interleaved", interleaved),
+            ("flat", flat), ("short", short))}
+    want = {"compaction": "compaction-step", "interleaved": "interleaved",
+            "flat": "single", "short": "single"}
+    for n in want:
+        mark = "ok  " if got[n] == want[n] else "FAIL"
+        print(f"  {mark} {n:<12} -> {got[n]:<16} (want {want[n]})")
+    ok = got == want
+    print("  ⇒ the interleaved case is the one that matters: it is the FALSE-NEGATIVE\n"
+          "    direction, and the live transcript that used to prove it is gone.",
+          file=sys.stderr)
+    print("\nselftest PASS" if ok else "\nselftest FAIL")
+    return 0 if ok else 2
+
+
 def main():
+    if "--self-test" in sys.argv:
+        return self_test()
     ap = argparse.ArgumentParser()
     ap.add_argument("--threshold", type=float, default=80.0,
                     help="percent at which a session is reported as due (default 80). "

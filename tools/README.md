@@ -48,7 +48,7 @@ of them, which is why it is stated here rather than in a docstring.
 
 | tool | question | exit codes |
 |---|---|---|
-| `fleet-context.py` | how much context does each agent have left? | 0 none due · 1 due · **2 scan established nothing** |
+| `fleet-context.py` | how much context does each agent have left? | 0 none due · 1 due · **2 scan established nothing** · `--self-test` |
 | `fleet-identity.py` | which role is this session, and which pane runs it? | 0 resolved · **2 population too small** · **2 own-session control failed** |
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
