@@ -179,6 +179,45 @@ def self_test():
     hit = rc == 2 and any("NOT" in l for l in lines)
     ok &= hit
     print(f"  {'ok  ' if hit else 'FAIL'}  VOID says in words that it is not an ABSENT verdict")
+
+    # ==================================================================================
+    # ⛔ A POPULATION THIS AUTHOR DID NOT DRAW — criterion 5's population leg (#164 item 1).
+    # Everything above runs on label sets I invented. `population-leg.py` scored this tool DRAWN,
+    # and I wrote the sentence that says a DRAWN control wants either a real leg or a STATED
+    # EXCEPTION. There is no exception available here: the undrawn population is one API call.
+    #
+    # ★ THE ASSERTION THAT ONLY A REAL POPULATION CAN MAKE. `_same_referent` collapses two
+    # labelling schemes onto one name — `role dev 1` ends with `dev 1`. If TWO LABELS THAT REALLY
+    # EXIST collapsed onto each other under that rule, the near-miss would confidently offer the
+    # WRONG label as "the same referent, other scheme", and every fixture I could invent would
+    # still pass. Only the repository's actual label set can answer it.
+    # ==================================================================================
+    live = repo_labels(DEFAULT_REPO)
+    if live is None:
+        # ⛔ NOT a failure, and NOT a pass. The forge was unreachable, so this leg measured
+        # nothing — the same reading exit 2 protects everywhere else in this repository.
+        print("  ----  NOT ESTABLISHED  the live label set could not be read, so the undrawn"
+              " population was NOT exercised. ⛔ Untested, not correct.")
+    else:
+        rc, _ = check(live, live)
+        ok &= rc == 0
+        print(f"  {'ok  ' if rc == 0 else 'FAIL'}  all {len(live)} REAL labels check as present"
+              f" against the real set — a population I did not draw (rc={rc})")
+
+        collide = sorted({(a, b) for a in live for b in live if a < b and _same_referent(a, b)})
+        ok &= not collide
+        print(f"  {'ok  ' if not collide else 'FAIL'}  no two DISTINCT real labels collapse under"
+              f" _same_referent — the near-miss cannot offer a wrong label as the same referent"
+              f"{'' if not collide else ' — COLLISIONS: ' + str(collide)}")
+
+        # ⚠ and the rule must still be able to FIRE on this population, or the line above passes
+        # by matching nothing at all — the vacuous-control defect this repo files against.
+        probe = "role:" + live[0]
+        ok &= _same_referent(probe, live[0])
+        print(f"  {'ok  ' if _same_referent(probe, live[0]) else 'FAIL'}  and it DOES fire on a"
+              f" real label wearing a second scheme ({probe!r} -> {live[0]!r}) — the check above"
+              f" is not passing by matching nothing")
+
     return 0 if ok else 3
 
 

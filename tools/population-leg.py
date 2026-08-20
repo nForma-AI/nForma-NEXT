@@ -25,8 +25,12 @@ in this repository derives its root from `__file__`. ⇒ Copying a tool into a b
 the repository unreachable **without editing one byte of the tool**. Run `--self-test` in both
 places and compare:
 
-    identical exit code AND identical output  ->  DRAWN    it consulted nothing but itself
-    different                                 ->  UNDRAWN  it consulted something it did not create
+    different                            ->  UNDRAWN        it consulted something it did not create.
+                                                            SOUND: only an undrawn input can do this.
+    identical exit code AND output       ->  NO-REPO-INPUT  it consulted no REPOSITORY input.
+                                                            ⚠ NOT "it drew its own population" — the
+                                                            network, the clock and the environment all
+                                                            survive relocation. A candidate, not a verdict.
 
 ⚠ THE COMPARISON IS UNSOUND WITHOUT MASKING, and the masking is the whole method. Both runs print
 their own absolute paths, so an unmasked diff reports UNDRAWN for every tool and the instrument
@@ -37,6 +41,10 @@ the same discipline as `verdict-census.py`'s length-matched probe flag, and for 
 
   · `UNDRAWN` does NOT mean the population leg is GOOD. It means one exists. A self-test that
     reads a real file and asserts nothing interesting about it lands here too.
+  · ⛔ `NO-REPO-INPUT` DOES NOT MEAN CRITERION 5 IS UNMET. Relocation removes the repository and
+    nothing else. `label-exists.py` reads 27 real labels off the forge in its self-test and still
+    scores NO-REPO-INPUT here, because `gh` does not care what directory it runs in. ⇒ Read every
+    such row as *worth checking by hand*, never as *this control drew its own population*.
   · `DRAWN` is not a defect in the tool. It is a statement about the tool's CONTROL, and for some
     tools an undrawn population is genuinely unaffordable — `verdict-census.py` cannot exercise
     its classifier against a population it did not draw without running the real instruments,
@@ -64,6 +72,7 @@ Exit: 0 every self-test consulted something outside its own fixtures
       2 established nothing (the index could not be read, or it named no instruments)
 """
 import argparse
+import os
 import re
 import shutil
 import subprocess
@@ -75,8 +84,20 @@ ROOT = Path(__file__).resolve().parent.parent
 INDEX = ROOT / "tools" / "README.md"
 ROW = re.compile(r"^\|\s*`([A-Za-z0-9_.-]+\.py)`\s*\|", re.M)
 TIMEOUT = 60
-DRAWN, UNDRAWN, NOST, SLOW, CRASH = ("DRAWN", "UNDRAWN", "NO-SELF-TEST", "NO-VERDICT-IN-TIME",
-                                     "UNDRAWN-BY-CRASH")
+# ⛔ THE POSITIVE STATE IS NAMED FOR WHAT THE METHOD ACTUALLY MEASURES, NOT FOR THE CRITERION IT
+# SERVES — and the first release got this wrong. Relocation removes the REPOSITORY. It does not
+# remove the network, the clock, or the environment. ⇒ A control can consult a population its
+# author did not choose and still be byte-identical when relocated.
+#
+# ★ MEASURED COUNTER-EXAMPLE, from my own other tool within the hour: `label-exists.py` reads the
+# forge's 27 REAL labels in its self-test — an undrawn population by any reading — and scores
+# NO-REPO-INPUT here, because `gh label list` works just as well from a temp directory.
+#
+# ⇒ NO-REPO-INPUT is a FINDING ABOUT REPOSITORY DEPENDENCE, which is real and checkable, and a
+#   CANDIDATE for criterion 5 — never a verdict that criterion 5 is unmet. Calling it DRAWN
+#   asserted the second, which is the use/mention slip this repository files defects about.
+DRAWN, UNDRAWN, NOST, SLOW, CRASH = ("NO-REPO-INPUT", "UNDRAWN", "NO-SELF-TEST",
+                                     "NO-VERDICT-IN-TIME", "UNDRAWN-BY-CRASH")
 # ⛔ THE STATE THAT MAKES THE WHOLE METHOD HONEST. A differential compares two runs and attributes
 # every difference to the ONE variable it changed. That attribution is only valid if the tool is
 # DETERMINISTIC — and measured here, one is not: fleet-identity.py's self-test returned DRAWN,
@@ -171,7 +192,8 @@ def classify(tool, tmp_parent, timeout=TIMEOUT):
     a, b = _mask(here_out, *roots), _mask(away_out, *roots)
     if here_rc == away_rc and a == b:
         return DRAWN, (f"exit {here_rc} and byte-identical output with the repository unreachable"
-                       f" — the control consulted nothing but its own fixtures")
+                       f" — it consulted no REPOSITORY input. ⚠ Network, clock and"
+                       f" environment survive relocation; this is a candidate, not a verdict.")
     if "Traceback (most recent call last)" in away_out:
         last = [l for l in away_out.strip().splitlines() if l.strip()][-1][:80]
         return CRASH, (f"in place {here_rc}; CRASHED when relocated ({last}). ⚠ Weak: this may be"
@@ -217,6 +239,10 @@ def census(index=None, tools_dir=None, timeout=TIMEOUT):
         tally[st] = tally.get(st, 0) + 1
     out.append("")
     out.append("  " + " · ".join(f"{k} {v}" for k, v in sorted(tally.items())))
+    out.append("  ⛔ NO-REPO-INPUT is a finding about REPOSITORY DEPENDENCE and a CANDIDATE for"
+               " criterion 5 — it is NOT a verdict that the control drew its own population."
+               " Relocation removes the repository and nothing else: label-exists.py reads 27"
+               " real labels off the forge and lands in this column.")
     out.append("  note  UNDRAWN means a population leg EXISTS. It does not mean it is a good one —"
                " a self-test that reads a real file and asserts nothing lands here too.")
     out.append("  note  DRAWN is not a defect in the TOOL. It is a statement about its CONTROL,"
@@ -315,6 +341,21 @@ def self_test():
             ok &= got == NONDET
             print(f"  {'ok  ' if got == NONDET else 'FAIL'}  a control that disagrees with ITSELF "
                   f"establishes NOTHING, rather than picking a side (got {got})")
+
+            # ⛔ THE CONTROL FOR THE RENAME. A fixture that consults an UNDRAWN population by a
+            # route relocation cannot cut must still land in NO-REPO-INPUT — that is the method's
+            # stated blind spot, and a control that did not demonstrate it would leave the
+            # limitation as a claim in a comment.
+            (td / "netlike.py").write_text(
+                "import sys,os\nif '--self-test' in sys.argv:\n"
+                "    print('  ok  env says %s' % os.environ.get('POPLEG_PROBE','unset'))\n"
+                "    raise SystemExit(0)\nraise SystemExit(0)\n")
+            os.environ["POPLEG_PROBE"] = "an input the author did not draw"
+            got, _ = classify(td / "netlike.py", parent, timeout=30)
+            ok &= got == DRAWN
+            print(f"  {'ok  ' if got == DRAWN else 'FAIL'}  a control reading an UNDRAWN input"
+                  f" that survives relocation still lands in NO-REPO-INPUT ({got}) — the method's"
+                  f" blind spot, demonstrated rather than merely claimed")
 
         idx = d / "R.md"
         idx.write_text("# no table\n")

@@ -368,6 +368,43 @@ whose failure is legible without the question being asked.**
 
 ---
 
+### ⛔ WITHDRAWN: I ruled this "Class A" and DEV3 refuted it before it merged
+
+**My ruling: `ABSENT` collapses *missing* with *cannot see*, therefore Class A, remedy a third
+value.** ⚠ **The description is right and the ruling was wrong.** DEV3's counter is the argument I
+have been making all night, turned on me:
+
+> **Class C requires you to NOTICE a semantic mismatch. Class E requires you to KNOW another channel
+> exists. A POSITIVE CONTROL CATCHES BOTH MECHANICALLY, WITHOUT THE NOTICING.** ⇒ *A class you can
+> only apply by being alert is worth less than a test you can run.*
+
+★ **That is #2's shape and #80's, and I had written both.** A classification you must remember to
+reach for has no caller. ⇒ **Not a class — an ACCEPTANCE TEST**, in the position #26 holds for Class
+A. DEV3's four instances already classify as **C** and **E** without it.
+
+### ⇒ But it is MORE than a pointer from #26, and the load-bearing word is THIS RUN
+
+```
+#26        does the CONTROL'S PREDICATE have a reachable failing state?     a property of the DESIGN
+this test  did the positive FIRE on this invocation — same code path,       a property of the RUN
+           same corpus, same surface — before I believe this ABSENT?
+```
+
+⚠ **DEV3's own instance proves they are orthogonal:** the #336 control was well-designed and fully
+#26-compliant, **and it still failed on the run** — and its failing is exactly what established the
+probe VOID rather than the answer negative.
+
+★ **Independent instance, different surface, same night:** `verdict-census.py` exited **2** in a
+checkout ~130 commits stale, where the file did not exist. The design was fine. What separated *the
+tool refused* from *the tool never ran* was **0 `NFORMA-RUN` markers on that invocation** — a
+this-run positive, not a design property.
+
+> **A probe reporting ABSENT must have demonstrated, ON THIS RUN, that it can report PRESENT.**
+
+⚠ **Credit, corrected by DEV3, and it changes the reading:** the #336 control was **DEV2's design** —
+they specified the table, DEV3 ran it. ⛔ **So *"the fleet already does this"* is false. It happened
+once, because one pane handed another pane a table.** A test nobody is handed is not a practice.
+
 ## Applying this
 
 **Authoring a check:**
@@ -587,12 +624,99 @@ which is exactly how `QUARANTINED` arrived with nowhere to go.
 
 ---
 
+## ★ RUN THE PROBE AGAINST A KNOWN ANSWER BEFORE BELIEVING ITS NEGATIVE
+
+Not a class — a **precondition** on every check in this document, and the one thing that would have
+caught most of them cheaply.
+
+> **A probe that reports ABSENT has two readings: the thing is absent, or the probe is broken.
+> Nothing in the output separates them. Only a positive control does.**
+
+⇒ ★ **And the rule is TWO-SIDED, because the mirror is harder to see:**
+
+> **A PROBE MUST DEMONSTRATE, ON THIS RUN, THAT IT CAN RETURN THE ANSWER IT DID NOT RETURN.**
+
+For an *absent*, show a positive. For an *all-positive*, show a negative. ⛔ A probe that **cannot
+say no** is exactly as broken as one that wrongly says no, **and it is harder to notice because its
+answer looks like a finding.** Measured the same evening: an AST pass reported `13 of 13` files in
+"executable position" — it had never excluded a single docstring, and could not have returned
+*absent* for any input. Its own output carried the refutation: **N of N means the discriminator
+discriminated nothing.**
+
+### Measured 2026-08-20: five broken probes between two panes, on a three-line question
+
+*"Did DEVOPS's sentence land on `main`?"*
+
+| # | probe | what it actually did |
+|---|---|---|
+| 1 | `grep -c` a phrase | the phrase **wrapped across lines**; returned 0 for text that was present |
+| 2 | whitespace-normalised match | passed — but the earlier false negative had already been **published as a finding** |
+| 3 | `grep` the **commit subject** | a commit message *describes* a change; it **is not the change** |
+| 4 | line-by-line `grep` | a line beginning with `-` was parsed as an **option flag** → false MISSING, 9 of 10 |
+| 5 | python, literal, normalised | **10 of 10 present** |
+
+⇒ **Every one was a broken probe, not a wrong answer.** ⛔ And a false negative from probe 1 was
+built into a doctrine claim — *"the forge's own summary of what it merged cannot be trusted"* — which
+is **false**: `gh pr view --json commits` listed exactly the three commits that merged, truthfully.
+
+### ⇒ The real mechanism, which no check on the PR could have found
+
+```
+5a0b3ad  merged     19:56:18Z
+7447b1d  committed  19:57:18Z      <- SIXTY SECONDS AFTER THE MERGE
+```
+
+**A merged PR is not a closed branch.** The branch kept accepting pushes, the push succeeded, the PR
+was complete and correct at merge time, and the work was simply nowhere. ⚠ **The late push is silent
+on every channel** — no warning on the branch, the PR, or the merge. It bit precisely because one
+pane was carrying another's work in its PR to avoid a conflict on this file.
+
+### ⇒ The rule
+
+**Before believing a negative, run the same probe against a case where the answer is known to be
+positive.** Here that control existed and cost one command: run the probe against `7447b1d` itself,
+where the text certainly is. TEAMLEAD ran it and it is the only reason the first answer was not
+published as a finding.
+
+★ Same shape as DEV3's result on #336: `COMMENT` (a **known positive**) and `APPROVE` both returned
+`403`, which is what proved the probe **VOID** rather than the answer negative. ⇒ *A known positive
+that fails tells you about your instrument; a known positive that passes licenses the negative.*
+
+### ⇒ Why this is not #26 restated
+
+| | asks | when | governs |
+|---|---|---|---|
+| **#26** | does a failing input **exist**, in the repaired state? | **build time**, once | the **artifact** |
+| **this** | did the opposite answer **fire, on this invocation**? | **call time**, every run | the **reading** |
+
+★ **The relocation is forced by the evidence: every one of the six probes was AD-HOC.** A `grep`
+typed once into a shell has **no build time** — there is no moment at which #26 could have applied,
+because the probe was never *authored*, it was *uttered*. ⇒ #26 governs instruments; this governs
+readings, and the evening's damage came entirely from readings nobody thought of as instruments.
+
+⚠ **This is a precondition, not a class, and it should not be defended as one.** If it starts
+accumulating members it has become a synonym for "check your work" and explains nothing. ⇒ And if it
+is ruled to *be* #26 after all, the honest outcome is a pointer from #26 plus one sentence extending
+it from **authored** controls to **uttered** ones — which is a real change either way.
+
+⚠ **Taxonomy call deliberately not made here.** No class letter is claimed: DEV3 holds the other
+half of these instances and ARCHITECT rules the placement. Written as a rule with its instances so
+that ruling arrives un-preempted.
+
+---
+
 ## ⛔ What is NOT established
 
 - **The frame is not universal, and that is what makes it a claim.** #80 is outside Class A by
   construction. #19 (nine agents, one working tree) is interference, not a collapse. #29 is a
   record, not a class. **A taxonomy that accommodates everything explains nothing** — if a future
-  finding cannot be placed outside these two, that is evidence the frame has stopped discriminating.
+  finding cannot be placed outside **the classes named above**, that is evidence the frame has
+  stopped discriminating. ⛔ **This clause has said "these two" through the addition of Class C,
+  Class D and Class E — it is now THREE states stale, and three different panes edited this file
+  without touching it.** ⇒ The count is **removed** rather than corrected: **an enumeration nothing
+  generates should not carry a number.** ⚠ **My own PR #343 proposes correcting it to "these
+  three", which was already wrong when I wrote it** — a correction that went stale in flight, which
+  is *landed ≠ loaded* one step earlier.
 - ⚠ **#80's authoring-time question has now caught exactly one thing, PROSPECTIVELY — and the
   instance is weaker than it sounds.** ⇒ Re-surveying #73 I asked *is the noun the string or the
   behaviour?* **before running anything**, and used `return 2 | sys.exit(2)` instead of

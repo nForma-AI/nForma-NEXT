@@ -190,11 +190,12 @@ of them, which is why it is stated here rather than in a docstring.
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
 | `readd-scan.py` | is this diff RESTORING a line a commit deliberately removed? | 0 none · 1 re-additions · **2 established nothing** |
 | `runmarker.py` | ⚠ **a module, not an instrument** — the two stderr markers every tool emits | n/a, it is imported |
+| `estatenames.py` | ⚠ **a module, not an instrument** — does this string name an estate that is NOT this one? | n/a, it is imported |
 | `ci-log-clean.py` | is this CI log's text OUTPUT, or the echoed script? | 0 cleaned · **2 established nothing** |
 | `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
 | `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
 | `use-not-mention.py` | does this file CALL `<pattern>`, or merely TALK ABOUT calling it? | 0 no call · 1 at least one CALL · **2 established nothing** |
-| `population-leg.py` | does each `--self-test` consult anything its author did not write? | 0 all consult something outside · 1 a DRAWN control · **2 established nothing** |
+| `population-leg.py` | does each `--self-test` consult anything outside the repository? | 0 all do · 1 a NO-REPO-INPUT control · **2 established nothing** · ⚠ NO-REPO-INPUT is a CANDIDATE for criterion 5, not a verdict |
 | `pointer-verified.py` | did this pane READ the artifact a pointer NAMED, before acting? | 0 all read · 1 at least one not · **2 established nothing** · **3 control failed** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
 | `named-referent-check.py` | does a requirement sentence name an identifier that does not exist? | 0 none · 1 candidates · **2 established nothing** |
@@ -258,8 +259,30 @@ parses to ZERO entries     ->  exit 1, named as a FORMAT CHANGE, never as "nothi
 
 ⛔ **This is not silencing, and the third rule is why.** An allowlist only ever subtracts, and
 nothing ever tells you it has stopped describing its subject. This one **rots loudly**. Full
-discriminating power is kept over the thing that matters: **a new estate appearing reds
-immediately.**
+discriminating power is kept over **a new FILE from a KNOWN estate**.
+
+⛔ **AND NOT OVER A NEW ESTATE. That sentence used to say "a new estate appearing reds
+immediately" and it was FALSE.** TEAMLEAD refuted it by execution — a fifth control, after four
+passed:
+
+```
+FOURTH_ESTATE = "/Users/jonathanborduas/code/Contoso-Widgets/state"
+planted in tools/wake-yield.py, executable position, not a docstring   ->  exit 0
+```
+
+`ESTATE` is a **closed list of five names**. ⇒ It catches new *files* from *known* estates, never
+a new estate. ⚠ **And no control of mine could have found it, because every one of them plants a
+name drawn FROM the list** — a control built out of the enumeration cannot test whether the
+enumeration is complete. That is the same shape as `architect-sweeps 0 of 3` and `13 of 13`: a
+reading that cannot take the value that would refute it.
+
+⚠ TEAMLEAD also reports **two of their four passing controls passed for the wrong reason** — the
+unlisted plant reddened because its *directory* was unindexed, so the estate predicate was never
+exercised at all. That is why the gap survived two reviews.
+
+⇒ #348, routed to DEV5: **derive the vocabulary, do not enumerate it.** The limit is
+`--self-test`-demonstrated here in the meantime — a control asserts a novel estate name is NOT
+caught, so the day the derivation lands **that control fails** and someone reads this paragraph.
 
 ★ And exit 1 here means **the acknowledgement file has drifted from the tree** — the same drift
 semantic this checker has always had, on a third surface. It never means *these files do not
@@ -379,6 +402,40 @@ fetch paths omit group markers). ⛔ **With neither present it refuses — exit 
 the log through**, because handing back an uncleaned log unchanged is exactly how a count of the
 script becomes a count of the output.
 
+**`estatenames.py`** — ⚠ **not an instrument; a module.** The estate predicate, shared so that
+`scripts/check-tools-index.py` and `tools/estate-provenance.py` cannot disagree about the same file.
+
+⛔ **It exists because a closed list cannot enumerate the future.** #348 proved by execution that a
+*sixth* estate reads clean: a real path, executable position, in an already-indexed and
+already-passing tool — `exit 0`. Both guards carried the same five names. The hard half, *mention vs.
+use* decided by executable position, was already solved and is untouched here; only the vocabulary
+moved.
+
+⇒ **The move is to invert the question.** Not *"is this one of the estates I know?"* but *"does this
+name an estate that is not THIS one?"* — comparing against `~/code/<X>`, the `.claude/projects` slug
+and the forge repo, each read from the tree at run time. A seventh estate is caught without an edit.
+
+⚠ **NOT a replacement for the name list — a union, and the measurement is why.** Derived-only takes
+`tools/teamlead/` from **9 detections to 5**: `ctxwatch.py`, `repowatch.py`, `t_sentinel.py` and
+`w1226.py` name an estate with **no path**, and a path-shaped predicate is blind to them. *(measured
+2026-08-20 at `0252d62`.)* A shrink is under-detection. `control-plane/` **is** dropped — zero unique
+detections in all three populations, and `w1226.py` matches `akash` independently.
+
+⛔ **`--show-toplevel` is the wrong call and cost a rewrite.** In a linked worktree it returns the
+WORKTREE path, so this repo's own name reads as foreign — and nine panes here work in worktrees,
+which is exactly where the damage would land. `--git-common-dir` points at the original clone from
+every worktree.
+
+★ **The known-negative is the whole flood control.** `/Users/o/code/nForma-NEXT/tools/x.py` is the
+same *shape* as a foreign path and must read clean; without that row nothing distinguishes this
+predicate from one that matches every path in the tree. It is asserted in `--self-test`.
+
+⚠ **What it cannot do — the proxy test.** A path-shaped predicate catches estates that leave PATHS.
+An estate present only as vendored source, with no path, no issue number and no name, still reads
+clean — `w1226.py` was nearly exactly that, identifiable only because line 1 kept a foreign file
+header. ⇒ Its silence is never "no foreign estate present", and `UNCLAIMED` must never collapse into
+`LOCAL` on it.
+
 **`runmarker.py`** — ⚠ **not an instrument; a module.** It is imported, never run, and has no
 exit codes of its own. It is indexed here only because `check-tools-index.py`'s population is
 `tools/*.py` minus `test_*` — a shared module is not excluded, so leaving it out would read as
@@ -479,8 +536,17 @@ credits**, which is why the correction is recorded here: 7 of 35 tools came back
 shared cause — a sibling import broken by relocation, an artifact of the method — and every one of those
 **credited a tool with a population leg it may not have had**. Sibling *source* is now copied on demand;
 repository *content* still is not, and the seven moved into the finding. **Measured 2026-08-20 at
-`bb7e6fe`: of 37 indexed instruments, 28 carry a `--self-test` — 22 DRAWN, 6 UNDRAWN; the other 9 have
-no self-test at all.** ⚠ `UNDRAWN`
+`bb7e6fe`: of 37 indexed instruments, 28 carry a `--self-test` — 22 with no repository input, 6 UNDRAWN; the
+other 9 have no self-test at all.**
+
+⛔ **2026-08-21: the positive state was named for the criterion it serves rather than for what the method
+measures, and that is a use/mention slip.** Relocation removes the **repository**. It does not remove the
+network, the clock, or the environment. ★ **Counter-example measured on the author's own other tool within
+the hour:** `label-exists.py` reads the forge's **27 real labels** in its self-test — an undrawn population
+by any reading — and still scored the positive state, because `gh label list` does not care what directory
+it runs in. ⇒ Renamed **`NO-REPO-INPUT`**: a finding about **repository dependence**, which is real and
+checkable, and a **candidate** for criterion 5 — never a verdict that a control drew its own population.
+The blind spot is now *demonstrated* by a control rather than claimed in a comment. ⚠ `UNDRAWN`
 means a population leg **exists**, not that it is a good one; `DRAWN` is a statement about a tool's
 **control**, not a defect in the tool, and where an undrawn population is genuinely unaffordable the answer
 is a **stated exception with a reason**. ★ Its own control is DRAWN, and it reports itself as such — a tool

@@ -399,8 +399,8 @@ does not move — a design property, not agent behaviour.
    ```
    1. the fix LANDED ON MAIN            — not merged-on-a-branch, landed
    2. the MECHANISM is retired          — not the instance
-   3. an instrument reports the defect absent — BY EXECUTION, never by reading,
-      ⛔ AND EVERY LEG OF THAT VERDICT MUST ITSELF BE A READING
+   3. an instrument reports the defect absent — BY EXECUTION, never by reading source,
+      ⛔ AND EVERY LEG OF THAT VERDICT MUST ITSELF BE MEASURED
    4. that instrument has been shown to FAIL on real data
       ⛔ otherwise its "clean" establishes nothing
    5. the READING IS PINNED TO THE PROPOSITION — name the POPULATION drawn, the
@@ -597,6 +597,29 @@ does not move — a design property, not agent behaviour.
    the timestamps are checkable — and **4 requires naming what the artifact turned away.** Both
    require an artifact you did not write, which is what makes work cheaper than assertion here. It is
    *a control that has only ever passed is not a control*, in prose.
+
+   ### ⛔ Criteria attach to the FIX. A closure comment carries CLAIMS. Nothing binds them.
+
+   **Measured on #315 (#348).** Its acceptance criteria were satisfied by execution — four controls,
+   baseline `0`, plant `1`, restore `0`, stale-ack `1`. ⇒ **Criteria 1–4 passed, correctly.**
+
+   ⛔ **And the sentence merged alongside them was false:** *"a NEW estate reds immediately."*
+   `estate-provenance.py`'s `FOREIGN_VOCAB` is a **closed list of eight strings**, so a path naming
+   an estate nobody has met returns **`UNCLAIMED`** — which that tool's own docstring says is the
+   **correct** verdict: *absence of a foreign marker is not presence of a local one.*
+
+   ★ **The instrument printed the refutation of the claim on every run.** No criterion was ever
+   pointed at the claim, because **criteria are written about the FIX and the claim rode in the
+   narration.** ⇒ Not a criterion-5 catch and not a criterion-3 failure — **a proposition with no
+   criterion attached at all.**
+
+   > **Every claim in a closure — comment, commit message or PR body — is either the subject of a
+   > stated criterion, or is marked `[NOT-ESTABLISHED]`. A sentence that is neither is unreviewed
+   > by construction, however carefully the criteria beneath it were checked.**
+
+   ⚠ **This is cheap to satisfy and that is the point:** it costs a tag, and the alternative is that
+   the most quotable sentence in a closure is the only unverified one. ⛔ **A closure's claims outlive
+   its criteria** — nobody re-reads a criteria block, and everybody quotes the summary.
 
    ### ⚠ Criteria are a PROXY, and meeting a proxy is not meeting the thing
 

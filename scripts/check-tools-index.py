@@ -66,10 +66,30 @@ Exit: 0 every surface agrees with the directory
       2 established nothing (no tools found, no rows found, or the index is unreadable)
 """
 import ast
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
+
+# ⇒ DEV5 wrote this block for #348; DEVOPS owns the file and this is the import site
+# offered for review. The shared predicate lives in tools/ so the two guards cannot
+# disagree about the same file — one module, referenced, never copied.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools"))
+try:
+    import estatenames
+except ImportError as _exc:                       # noqa: BLE001
+    # ⛔ VOID, never a silent skip. A quarantine leg that quietly stops checking is the
+    # exact defect the acknowledgement file exists against, and this file GATES EVERY PR
+    # — a silent skip here reads as "all clear" on the whole repository.
+    # ⚠ Known cost, accepted knowingly: this makes check-tools-index.py the 9th
+    # instrument that cannot be pinned as a single file. `git show <ref>:scripts/…` piped
+    # to python now raises here instead of running, and THAT IS THE POINT — it fails
+    # loudly at exit 2 rather than running a checker with one leg silently missing.
+    print("⛔ VOID: cannot import estatenames (%s) — the DERIVED estate leg did not run. "
+          "This checked a CLOSED LIST only, so a new estate would read clean. Run from a "
+          "checkout, not from a pinned single file." % _exc, file=sys.stderr)
+    sys.exit(2)
 
 WORDS = {w: i for i, w in enumerate(
     "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
@@ -155,8 +175,15 @@ LOOSE = re.compile(r"\b(?:(" + "|".join(list(WORDS)[1:]) + r")|(\d+))\b[^.\n]{0,
 # Each hit is A QUESTION FOR A HUMAN. The one top-level hit is real — that file's default path
 # does point into another project's transcript directory — and it is NAMED rather than tuned
 # away, because a threshold that clears it is a number chosen to make the output comfortable.
+# ⚠ `control-plane/` DROPPED — DEVOPS measured zero unique detections for it across all
+# three populations, and w1226.py matches on `akash` independently.
+# ⛔ THE REST IS KEPT ON PURPOSE, against #348's "derive, do not enumerate". Measured at
+# 0252d62: derived-only takes tools/teamlead/ from 9 detections to 5 — ctxwatch,
+# repowatch, t_sentinel, w1226 name an estate with NO PATH, and a path-shaped predicate
+# cannot see them. A shrink is under-detection. So the two legs are a UNION: this list
+# for known names, estatenames for shapes nobody has listed yet.
 ESTATE = re.compile(
-    r"DigitalFrontier-infra|Borduas-Holdings|Blazing-Back|worker-blazing|akash|control-plane/",
+    r"DigitalFrontier-infra|Borduas-Holdings|Blazing-Back|worker-blazing|akash",
     re.I)
 
 
@@ -304,12 +331,34 @@ def adding_commits(root, directory):
 def quarantined(directory, names):
     """[(name, the literal that triggered it)] for instruments referencing another estate."""
     out = []
+    # ⛔ NOT `directory`. The question is "does this name an estate other than THIS
+    # repository", and "this repository" is the one the CHECKER belongs to — not whatever
+    # directory it was pointed at. Deriving from the target silently disabled the entire
+    # derived leg whenever the target was not itself a git repo — which is every
+    # --self-test fixture: identity incomplete -> foreign_in returns [] -> reads exactly
+    # like "found nothing". ⚠ My own leg-4 plant could not catch this, because it planted
+    # into the REAL tree where identity derives fine. DEVOPS's fixture runs outside a repo,
+    # which is the one environment where the leg vanishes.
+    ident = estatenames.local_identity(os.path.dirname(os.path.abspath(__file__)))
+    if not ident.complete():
+        # A leg with no comparand must not look like a leg that found nothing.
+        print("⛔ VOID: cannot derive this repo's identity (%r) — the DERIVED estate leg "
+              "did NOT run; this checked a closed list only." % (ident,), file=sys.stderr)
+        sys.exit(2)
     for n in names:
-        for lit in code_strings(directory / n):
-            m = ESTATE.search(lit)
-            if m:
-                out.append((n, lit.strip()[:72]))
-                break
+        lits = code_strings(directory / n)
+        named = next((l for l in lits if ESTATE.search(l)), None)
+        if named:
+            out.append((n, named.strip()[:72]))
+            continue
+        # The open-ended leg. Same literals, same executable position — only the
+        # question differs: not "is this a name I know" but "does this name an estate
+        # that is not this one". ⛔ Passed as a LIST: one leg needs adjacency, because
+        # `gh -R owner/repo` reaches us as two separate string literals.
+        der = estatenames.scan_strings(lits, ident)
+        if der:
+            kind, matched, _ = der[0]
+            out.append((n, ("[derived %s] " % kind) + matched))
     return out
 
 
@@ -957,6 +1006,43 @@ def selftest():
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  ack 4/5: an ack file parsing to ZERO entries says "
               f"the FORMAT CHANGED, not 'nothing is acknowledged' (got {rc})")
+
+        # ⛔ THE STATED LIMIT, DEMONSTRATED RATHER THAN CLAIMED — and this control asserts the
+        # tool gets it WRONG, on purpose. `ESTATE` is a CLOSED LIST of five names, so a novel
+        # estate is not detected. TEAMLEAD refuted the opposite claim by execution: a plant of
+        # "/Users/…/Contoso-Widgets/state" in executable position exited 0 (#348).
+        #
+        # ⚠ AND NO OTHER CONTROL HERE COULD HAVE FOUND THAT, because every one plants a name
+        # drawn FROM the list. A control built out of an enumeration cannot test whether the
+        # enumeration is complete — the same shape as a discriminator that reports N of N.
+        #
+        # ⇒ When #348's derived predicate lands, THIS CONTROL FAILS. That is the point: the
+        # failure is the notification, and whoever sees it reads the paragraph above.
+        # ⚠ CLEAN STATE FIRST. A stated-limit control asserting an ABSENCE is worthless if some
+        # earlier case is already reddening the run — "not quarantined" and "not reached" print
+        # the same. So the assertion is POSITIVE: the novel file must land in the NAMING
+        # population and be reported as missing a row, which can only happen if quarantine
+        # declined it.
+        one.unlink(); two.unlink()
+        ack.unlink()
+        (t / "README.md").write_text(good)
+        novel = t / "novel_estate.py"
+        novel.write_text('#\nR = "/Users/someone/code/Contoso-Widgets/state"\n')
+        rc, lines, _ = check(root)
+        quarantined_it = any("novel_estate.py" in l and "->" in l for l in lines)
+        in_population = any("no table row for" in l and "novel_estate.py" in l for l in lines)
+        hit = rc == 1 and in_population and not quarantined_it
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  STATED LIMIT: a NOVEL estate name is NOT detected "
+              f"and lands in the NAMING population — the vocabulary is a closed list (#348). "
+              f"⚠ THIS CONTROL FAILS WHEN THAT IS FIXED, by design (got {rc})")
+        novel.unlink()
+        # ⚠ RESTORE BOTH. The next case unlinks `one` AND `two`; recreating only `one` made it
+        # raise on a file I had already removed — the same shared-fixture bite recorded above the
+        # gamma restore. A fixture is shared state and my insertion is not its last reader.
+        ack.write_text(HDR + row("tainted.py"))
+        for f in (one, two):
+            f.write_text('#\nR = "Borduas-Holdings/Blazing-Back"\n')
 
         # ...and an ack file with nothing left to acknowledge is stale in the other direction
         one.unlink(); two.unlink()
