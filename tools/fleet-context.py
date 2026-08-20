@@ -78,6 +78,41 @@ def classify_series(window):
     return "interleaved" if crossings >= 3 else "compaction-step"
 
 
+def depth_bands(series, recent=60, min_gap=150_000):
+    """The SET of depths in a shared transcript, when the assignment is not recoverable.
+
+    ⛔ WHY A SET AND NOT AN ATTRIBUTION. A shared file was reported as one number —
+    `85.5%` — which is wrong for at least one of its two writers. The obvious repair is to
+    pair each usage reading with the nearest preceding name record and attribute it.
+
+    **That was tested and REFUTED.** Measured on `e4a7769d`, last 60 readings in order:
+
+        D423 D423 D423 D847 D847 D847 T425 T848 T426 T854 T854 T854 ...
+
+    The readings are cleanly bimodal — 423-444k and 847-884k, no overlap — but **both
+    names appear in BOTH bands.** ⇒ The name record does not identify which agent produced
+    the adjacent reading, so nearest-name attribution assigns depth at chance.
+
+    ★ The bands themselves are real and recoverable. So report *"two agents, one near 44%
+    and one near 88%"* and refuse to say which. That is strictly better than one number
+    that is wrong for somebody, and strictly more honest than a coin-flip attribution.
+
+    ⚠ Returns [] when the recent readings do not separate — a unimodal shared file gets no
+    band claim rather than an invented one.
+    """
+    vals = sorted(series[-recent:])
+    if len(vals) < 8:
+        return []
+    gaps = [(vals[i + 1] - vals[i], i) for i in range(len(vals) - 1)]
+    gap, at = max(gaps)
+    if gap < min_gap:
+        return []                       # unimodal: no separable bands
+    lo, hi = vals[: at + 1], vals[at + 1:]
+    if len(lo) < 3 or len(hi) < 3:
+        return []                       # a lone outlier is not a band
+    return [(min(lo), max(lo)), (min(hi), max(hi))]
+
+
 def session_depth(path):
     """Context depth = the prompt size of the LAST COMPLETED assistant turn.
 
@@ -131,7 +166,7 @@ def session_depth(path):
                 last = total
                 recent.append(total)
     if last is None:
-        return names, None, "no-reading"
+        return names, None, "no-reading", []
 
     # ⛔ One transcript file is NOT one agent. Measured: two panes wrote to a single
     # .jsonl under one consistent sessionId, producing two interleaved depth series —
@@ -157,7 +192,7 @@ def session_depth(path):
     # the worse trade, because an unattributable depth then reports as a fact.
     shape = classify_series(recent[-40:])
 
-    return names, last, shape
+    return names, last, shape, depth_bands(recent)
 
 
 def scan(active_within_s, limit):
@@ -177,7 +212,7 @@ def scan(active_within_s, limit):
                 idle_s = time.time() - os.path.getmtime(path)
                 if idle_s > active_within_s:
                     continue
-                names, depth, shape = session_depth(path)
+                names, depth, shape, bands = session_depth(path)
             except Exception:
                 unreadable += 1
                 continue
@@ -187,6 +222,7 @@ def scan(active_within_s, limit):
                 continue
             rows.append({"shared_file": shape == "interleaved",
                          "shape": shape,
+                         "bands": bands,
                          "name": (names[-1] if names else "(unnamed)"),
                          "names": names,
                          "ambiguous": len(names) > 1,
@@ -370,6 +406,14 @@ def main():
             warn = f"  ⚠name-ambiguous({'/'.join(r['names'])})" if r["ambiguous"] else ""
             if r.get("shared_file"):
                 warn += "  ⛔SHARED FILE — two agents, depth UNATTRIBUTABLE"
+                # ★ The assignment is unrecoverable; the SET is not. Printing both bands
+                # turns "this number is wrong for somebody" into "one of these two agents
+                # is deep, ask both" — which is an action a reader can take.
+                b = r.get("bands") or []
+                if len(b) == 2:
+                    warn += (f" — but the readings SEPARATE: one agent near "
+                             f"{b[0][1] / 10000:.0f}%, one near {b[1][1] / 10000:.0f}%. "
+                             f"ASK BOTH; do not attribute.")
             elif args.flatline and r["idle_min"] >= args.flatline:
                 warn += (f"  ⛔FLATLINE {r['idle_min']}m — consuming nothing. Finished, "
                          f"blocked, crashed or waiting; this cannot tell which. ASK IT.")
