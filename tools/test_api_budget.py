@@ -67,8 +67,26 @@ ab.subprocess.run = lambda *a, **k: Fake(1)
 check("rate_limit failing is None, NOT a full pool", ab.quota(), None)
 ab.subprocess.run = lambda *a, **k: Fake(0, "")
 check("rate_limit returning empty is None too", ab.quota(), None)
-ab.subprocess.run = lambda *a, **k: Fake(0, "0\t5000\t99\n")
-check("an EXHAUSTED pool is a real reading, not an error", ab.quota(), (0, 5000, 99))
+ab.subprocess.run = lambda *a, **k: Fake(0, "not json")
+check("unparseable rate_limit is None", ab.quota(), None)
+
+# ⛔ IT IS NOT ONE POOL. core can be EXHAUSTED while graphql is two-thirds free,
+# and reporting only core turns "one bucket is empty" into "we are rate limited".
+payload = json.dumps({"resources": {
+    "core":    {"remaining": 0,    "limit": 5000, "reset": 99},
+    "graphql": {"remaining": 3508, "limit": 5000, "reset": 99},
+    "search":  {"remaining": 30,   "limit": 30,   "reset": 99}}})
+ab.subprocess.run = lambda *a, **k: Fake(0, payload)
+q = ab.quota()
+check("all three buckets are read", sorted(q), ["core", "graphql", "search"])
+check("an EXHAUSTED bucket is a real reading, not an error", q["core"], (0, 5000, 99))
+check("...and a FREE bucket is reported alongside it", q["graphql"][0], 3508)
+check("KNOWN-BAD control: reading core alone calls this 'rate limited'",
+      q["core"][0] == 0 and q["graphql"][0] > 0, True)
+
+# a payload with no recognised bucket is None, never an empty-but-healthy reading
+ab.subprocess.run = lambda *a, **k: Fake(0, json.dumps({"resources": {"weird": {}}}))
+check("no recognised bucket is None, not {}", ab.quota(), None)
 ab.subprocess.run = real
 
 # ── an empty corpus establishes nothing ──────────────────────────────────────

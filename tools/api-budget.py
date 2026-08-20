@@ -67,26 +67,45 @@ def bootstrap_role(path, window=40):
     return None
 
 
+# ⛔ IT IS NOT ONE POOL. Measured 2026-08-20 with `core` fully drained for the
+# SECOND consecutive hour, while every pane reported "we are rate limited":
+#
+#     core       0/5000  used=5000   resets in  7.9m   <- EXHAUSTED
+#     graphql 3508/5000  used=1492   resets in 18.5m   <- 70% FREE
+#     search    30/30    used=   0
+#
+# ⇒ "rate limited" named one bucket and was read as all of them. The heaviest
+# consumers are REST (`gh api repos/...`, `gh pr view`), and the GraphQL bucket
+# sat two-thirds idle the whole time. A read that can be expressed as a GraphQL
+# query is spending from a different, emptier pool -- so reporting only `core`
+# hides the capacity that is actually available.
+BUCKETS = ("core", "graphql", "search")
+
+
 def quota():
-    """(remaining, limit, reset_epoch) or None — a failed read is NOT a full pool.
+    """{bucket: (remaining, limit, reset_epoch)} or None — a failed read is NOT a full pool.
 
     ⚠ `rate_limit` is exempt from the quota it reports, so this call is free even
     when everything else is 403ing. If it fails anyway, the network or auth is the
     problem, and reporting 0 would blame the wrong thing.
     """
     try:
-        r = subprocess.run(["gh", "api", "rate_limit", "--jq",
-                            ".resources.core | [.remaining,.limit,.reset] | @tsv"],
+        r = subprocess.run(["gh", "api", "rate_limit"],
                            capture_output=True, text=True, timeout=30)
     except (OSError, subprocess.SubprocessError):
         return None
     if r.returncode != 0 or not r.stdout.strip():
         return None
     try:
-        rem, lim, rst = r.stdout.strip().split("\t")
-        return int(rem), int(lim), int(rst)
+        res = (json.loads(r.stdout) or {}).get("resources") or {}
     except ValueError:
         return None
+    out = {}
+    for b in BUCKETS:
+        v = res.get(b)
+        if isinstance(v, dict) and "remaining" in v and "limit" in v:
+            out[b] = (int(v["remaining"]), int(v["limit"]), int(v.get("reset", 0)))
+    return out or None
 
 
 def scan(root, limit):
@@ -133,16 +152,26 @@ def main():
     a = ap.parse_args()
 
     q = quota()
-    print("── QUOTA ── one pool, shared by every agent and every tool")
+    print("── QUOTA ── SEPARATE pools, all shared by every agent and every tool")
+    exhausted = False
     if q is None:
         print("  ⛔ ESTABLISHED NOTHING — could not read rate_limit. That endpoint is")
         print("     EXEMPT from the quota, so a failure here is network or auth, not")
         print("     exhaustion. Reporting 0 would blame the wrong thing.")
     else:
-        rem, lim, rst = q
-        mins = max(0, int((rst - time.time()) // 60))
-        bar = "EXHAUSTED" if rem == 0 else f"{100 * rem // max(lim, 1)}% left"
-        print(f"  core {rem}/{lim}  ({bar}), resets in {mins}m")
+        for b, (rem, lim, rst) in q.items():
+            mins = max(0, int((rst - time.time()) // 60))
+            state = "EXHAUSTED" if rem == 0 else f"{100 * rem // max(lim, 1)}% left"
+            print(f"  {b:8s} {rem:5d}/{lim:<5d} ({state}), resets in {mins}m")
+            if rem == 0:
+                exhausted = True
+        dead = [b for b, v in q.items() if v[0] == 0]
+        free = [b for b, v in q.items() if v[1] and v[0] * 2 > v[1]]
+        if dead and free:
+            print(f"\n  ⚠ {', '.join(dead)} EXHAUSTED while {', '.join(free)} is over half"
+                  " free.\n     \"We are rate limited\" names ONE bucket and is read as all"
+                  " of them —\n     a read expressible as a GraphQL query spends from a"
+                  " different pool.")
 
     per, subs, multi, files, unreadable = scan(a.root, a.limit)
     total = sum(per.values())
@@ -165,7 +194,7 @@ def main():
     print("   each cost more than 1, so the true spend is higher than the count above and")
     print("   this tool does not guess the multiplier.")
     print("⚠ The cost lands on whoever asks NEXT. A pane that made no calls gets the 403.")
-    return 1 if (q and q[0] == 0) else 0
+    return 1 if exhausted else 0
 
 
 if __name__ == "__main__":
