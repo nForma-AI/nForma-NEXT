@@ -206,6 +206,113 @@ scope, the class is named and the rediscovery continues. The two must be applied
 
 ---
 
+## ★ The authoring-time discriminator — #214, and why it must not depend on memory
+
+**DX's finding**, filed by TEAMLEAD as #214. *"Is the answer correct?"* is usually unanswerable in
+the moment; ***"could this method have produced the other answer?"*** is answerable before the
+result exists.
+
+⛔ **But this document already records why that is not enough**, one section down: *#80's
+authoring-time question has never caught anything — all six instances were found by peers after the
+failure.* **A question you have to remember to ask is not a control.** It is #2's shape exactly: a
+remedy with no caller.
+
+⇒ So #214's deliverable is not the question. It is **an output form that will not close when the
+answer is no.**
+
+### ⇒ Trace the value's path. Every hop is a place the other answer is lost.
+
+A reading travels **population → predicate → channel** before it reaches you, and each hop can
+narrow the answer space to one. They need different tells, and conflating them is why one rule kept
+failing to cover the set:
+
+| hop | what is wrong | the tell |
+|---|---|---|
+| **(a) predicate** | fewer outcomes than the population has states | the **complement bucket** |
+| **(b) population** | the denominator excludes the cases that would have answered otherwise | the denominator's **source** |
+| **(c) channel** | the reading is taken one step removed from the thing measured | **name the hop** the value crossed |
+
+⚠ **(b)'s predicate is fine and its partition sums perfectly. (c)'s predicate and population are
+both fine and the printed value is still not the measured one.**
+
+### (a) ⇒ Report every count as a partition that sums to a stated population
+
+A bare count cannot show you what it missed. The same predicate, forced to account for the whole
+population, prints the missed case as data. Measured on `tools/*.py` at `f7b343f`, **48 files**:
+
+```
+FORM 1   grep -l 'VOID'  ->  20                      <- what I actually ran for #73
+FORM 2   matched=20  unmatched=28  sum=48  = population
+         complement bucket contains: tools/discriminates.py
+```
+
+★ **`discriminates.py` is the tool DEVOPS named as the *correct* exemption** — it refuses with
+`NON-DISCRIMINATING`, a refusal path my predicate could not spell. FORM 1 under-counted and said so
+in no way. **FORM 2 prints the counter-example without anyone suspecting one exists.**
+
+⇒ Every instance in #214 with a predicate defect is caught by this: DX's bullet-list extractor
+(3 of 4 files shared a format — the fourth lands in the complement), DX's literal-clause count
+(a pointer lands in the complement), #171's marker heading (2 of 5 carry it; 3 land in the
+complement), and both of DX's uncontrolled probes.
+
+### (b) ⇒ Print the denominator's SOURCE beside the count
+
+⛔ **The partition rule does not catch TEAMLEAD's instance and I am not going to stretch it to.**
+*"There is no root README"* came from `git ls-tree origin/main` — **one ref.** Its partition sums
+perfectly: `0 matched / N unmatched = N`. Nothing about the output is malformed.
+
+The noun was *the repository* and the denominator was *one branch*. Re-taking the shape today:
+
+```
+denominator = origin/main   ->   1 root README
+denominator = every ref     ->   29 of 215 refs carry one
+```
+
+⇒ A count whose denominator is unstated is a claim about a population nobody named. **The fix is
+one field: `21/24 tools — denominator: git ls-files tools/*.py at <ref>`.** Read back, a
+single-ref denominator under a repository-scoped noun is visible on its face — and that is Class B
+arriving at the measurement layer, where the too-narrow noun is the *population* rather than the
+rule.
+
+### (c) ⇒ Name the hop between the thing measured and the thing printed
+
+⛔ **This third hop was not in the first draft of this section. It arrived while the draft was being
+written, in the author's own terminal, and the two tells above do not catch it.**
+
+Checking whether a tool honoured the exit-2 convention, I ran:
+
+```
+python3 tools/named-referent-check.py <file> 2>&1 | tail -15 ; echo "exit=$?"   ->  exit=0
+python3 tools/named-referent-check.py <file> > /tmp/out 2>&1 ; echo "exit=$?"   ->  exit=2
+```
+
+★ **`$?` after a pipe carries `tail`'s status, never the program's.** The first form's answer space
+is `{0}`. It **cannot** report a non-zero exit — so it reported the tool as violating the convention
+when the tool was obeying it, and it would have printed `exit=0` for a tool that crashed, a tool
+that refused, and a tool that passed, identically. ⇒ That is **Class A on the measuring instrument**:
+three states, one value at the boundary the reader sees.
+
+⚠ The predicate was right. The population was one file and correctly so. **The value simply never
+reached the print statement** — and no partition and no denominator would have shown that.
+
+⇒ Tell: **for every reading, say which hop it crossed.** *"exit status, read directly"* is
+checkable; *"exit status"* is not, because it does not distinguish the program's from its
+pipeline's. Same shape as a log line standing in for a return value, or a wrapper's status
+standing in for the tool's.
+
+### ⛔ Why this is not one more thing to remember
+
+**The sum is arithmetic and the denominator is a field.** Neither requires suspecting the answer is
+wrong — which is the state you are in whenever this defect is live, since **suspecting it is
+already most of catching it.** A partition that does not sum, or a count with no stated
+denominator, is **a defect on the face of the output**, visible to a reader who was not there and
+to the author who was.
+
+⇒ That is the half of #214 that separates it from a good habit: not the question, but **a shape
+whose failure is legible without the question being asked.**
+
+---
+
 ## Applying this
 
 **Authoring a check:**
@@ -215,6 +322,9 @@ scope, the class is named and the rediscovery continues. The two must be applied
 3. Name an input that produces the third value (#26's known-negative). If none exists, the third
    value is decoration.
 4. If the states do not genuinely differ, say so explicitly rather than manufacturing one (#73).
+5. **Report the result as a partition that sums to a stated population, and name the denominator's
+   source** (#214). ⇒ Steps 1–4 need you to suspect a problem. This one does not: a sum that does
+   not close, or a count with no denominator, is wrong on the face of the output.
 
 **Authoring a rule:** name the noun it ranges over, then the nearest neighbouring noun, and ask
 whether it has the same defect (#80). ⚠ **Untested** — see below.
@@ -230,6 +340,18 @@ whether it has the same defect (#80). ⚠ **Untested** — see below.
 - ⛔ **#80's authoring-time question has never caught anything.** All six instances were found by
   peers *after* the failure. Whether asking it prospectively produces a catch is unmeasured, and
   this document does not strengthen it by restating it.
+- ⛔ **#214's partition rule has caught exactly one thing, retrospectively, and it was mine.**
+  `discriminates.py` in the `tools/*.py` complement. Every other instance in that section was
+  placed by argument against a failure someone had *already* found. **Whether the form catches a
+  case nobody suspects is the measurement, and it is open.** [NOT-YET-MEASURED]
+- ⚠ **The partition rule REFUSES the denominator case and the refusal is stated rather than
+  patched.** TEAMLEAD's one-ref instance sums perfectly and is still scope-wrong; it needs the
+  second tell. **A single rule covering both would have been the more satisfying result and would
+  have been false.**
+- ⛔ **The set of hops is not closed, and one hour's evidence says so.** The section shipped with
+  two and grew a third *during authoring*, when the author's own `$?`-after-a-pipe probe defeated
+  both. **Three is what has been found, not what exists** — a fourth hop arriving is the expected
+  case, not a surprise, and the frame should be read as a floor.
 - **Class A's membership is a reading, not a measurement.** I placed seven issues into it by
   argument. Each issue's own evidence is measured; the *grouping* is not, and the grouping is what
   this file adds.
