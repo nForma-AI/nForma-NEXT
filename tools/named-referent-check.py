@@ -31,6 +31,15 @@ that is never defined anywhere. It is deliberately narrow — see the limits bel
     So this tool catches one of the two incidents that motivated it, and saying otherwise
     would be the overclaim the incidents are about.
 
+  * ⛔ AN IDENTIFIER DEFINED ONLY ON AN UNMERGED BRANCH READS AS UNDEFINED. Measured
+    2026-08-20: `ci_guard_closing_keywords.py` was reported as never having existed by two
+    agents independently, because both searched one ref. It is 161 lines on
+    `origin/ci/closing-keyword-guard`, unmerged and with no PR. ⇒ This tool's population is
+    the TRACKED TREE AT ONE REF, so "a convention naming a thing that was built and never
+    merged" is invisible to it and will be reported as a phantom reference if you let it.
+    The two are different defects with different remedies — one is a wrong sentence, the
+    other is an unmerged branch.
+
 ⇒ A clean run means "no requirement sentence names an undefined identifier". It does NOT
 mean the stated and enforced sets agree.
 

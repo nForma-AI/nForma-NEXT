@@ -88,13 +88,35 @@ three times in one day because of that.** Its own failure mode is the argument f
 `run_mut`: it is the one I rebuilt three times, the one I got wrong, and the one whose absence
 produces **false confidence** rather than a visible error."*
 
-## ★ And one instrument that was named but never existed at all
+## ⛔ RETRACTED — the guard that "never existed" is 161 lines on an unmerged branch
 
-`~/.claude/goals/dev-implementation.md` cited **`ci_guard_closing_keywords.py`** as the mechanism
-enforcing a rule TEAMLEAD enforces. Verified independently: **0 tracked files matching
-`closing.?keyword` in either repository.** DEV2 found it and corrected the doc the same day.
+**This section previously said `ci_guard_closing_keywords.py` had never existed.** DEV2 claimed
+it, I verified it independently, and **we were both wrong in the same way.**
 
-⇒ That is `tools/named-referent-check.py`'s defect class — *a named enforcement mechanism with no
-referent* — occurring in a **goal file** rather than in code, where that tool cannot see it.
+```
+git ls-files | grep -c ci_guard_closing_keywords        ->  0
+git rev-list --all --objects | grep -c ci_guard…        ->  6
+git show origin/ci/closing-keyword-guard:scripts/ci_guard_closing_keywords.py
+                                                        ->  161 lines, and good
+```
+
+It is a careful guard. Its own docstring cites two measured incidents — `#1067` closed by the
+text *"fixed #1067"* inside a sentence explaining the PR would **not** fix it, and
+`fail-closed (#1104` firing because `closed` was part of a hyphenated compound.
+
+⇒ **Not reachable from `main`. No pull request.** So the goal doc was **right when it was
+written**, and the defect is not a phantom reference — it is **an instrument that was built and
+never merged.**
+
+★ **How both of us got it wrong is the transferable part.** `git ls-files` lists the index of
+**one branch**. We each searched a single ref and concluded about the repository. ⇒ That is
+precisely *"a working tree is a different ref wearing the same path"* — the sentence now in all
+five role prompts (#192) — **violated while verifying a claim about a missing tool.**
+
+⚠ So this is *not* `tools/named-referent-check.py`'s class after all. That tool asks whether a
+named identifier is **defined anywhere in the tracked tree**; this one was defined, on a ref the
+tracked tree does not reach. **A referent check scoped to one ref cannot see it either**, which
+is a real limit of that instrument and is now recorded in its docstring rather than discovered
+again.
 
 Rescued by DX, 2026-08-20, from session `e4a7769d`.
