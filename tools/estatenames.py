@@ -122,12 +122,35 @@ def foreign_in(text, ident):
     return hits
 
 
+FORGE_FLAG_TOKENS = {"-R", "--repo"}
+
+
 def scan_strings(strings, ident):
-    """Deduplicated hits across many code strings, ordered for a stable report."""
+    """Deduplicated hits across many code strings, ordered for a stable report.
+
+    ⛔ TAKES THE WHOLE LIST, not one string, because one leg needs ADJACENCY.
+    `code_strings()` returns literals individually, so an argv-list call arrives as
+    ["gh", "issue", "list", "-R", "Owner/Repo"] — the flag and its value are never in
+    the same string, and a per-string regex cannot see the pair. That is the form every
+    tool in this repo uses to call gh, so the per-string version missed all of them.
+    ⚠ Matching a BARE `owner/repo` in any string is not the alternative: `tools/README.md`
+    is exactly that shape, and so is half the tree.
+    """
+    strings = list(strings)
     seen, out = set(), []
-    for s in strings:
+
+    def add(kind, matched, estate):
+        if (kind, matched) not in seen:
+            seen.add((kind, matched))
+            out.append((kind, matched, estate))
+
+    for i, s in enumerate(strings):
         for kind, matched, estate in foreign_in(s, ident):
-            if (kind, matched) not in seen:
-                seen.add((kind, matched))
-                out.append((kind, matched, estate))
+            add(kind, matched, estate)
+        # The adjacency leg: a lone flag token whose NEXT literal is the forge ref.
+        if s.strip() in FORGE_FLAG_TOKENS and i + 1 < len(strings):
+            nxt = strings[i + 1].strip()
+            m = re.fullmatch(r"([A-Za-z0-9._-]+)/([A-Za-z0-9._-]+)", nxt)
+            if m and not _same(m.group(2), ident.forge_repo):
+                add("forge-flag", nxt, m.group(2))
     return sorted(out)

@@ -333,19 +333,19 @@ def quarantined(directory, names):
     out = []
     ident = estatenames.local_identity(str(directory))
     for n in names:
-        for lit in code_strings(directory / n):
-            m = ESTATE.search(lit)
-            if m:
-                out.append((n, lit.strip()[:72]))
-                break
-            # The open-ended leg. Same string, same executable position — only the
-            # question differs: not "is this a name I know" but "does this name an
-            # estate that is not this one".
-            der = estatenames.foreign_in(lit, ident)
-            if der:
-                kind, matched, _ = der[0]
-                out.append((n, ("[derived %s] " % kind) + matched))
-                break
+        lits = code_strings(directory / n)
+        named = next((l for l in lits if ESTATE.search(l)), None)
+        if named:
+            out.append((n, named.strip()[:72]))
+            continue
+        # The open-ended leg. Same literals, same executable position — only the
+        # question differs: not "is this a name I know" but "does this name an estate
+        # that is not this one". ⛔ Passed as a LIST: one leg needs adjacency, because
+        # `gh -R owner/repo` reaches us as two separate string literals.
+        der = estatenames.scan_strings(lits, ident)
+        if der:
+            kind, matched, _ = der[0]
+            out.append((n, ("[derived %s] " % kind) + matched))
     return out
 
 
