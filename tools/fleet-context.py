@@ -113,6 +113,65 @@ def depth_bands(series, recent=60, min_gap=150_000):
     return [(min(lo), max(lo)), (min(hi), max(hi))]
 
 
+def classify_names(seq):
+    """A NAME HISTORY IS NOT A ROSTER. Which is this?
+
+    ⛔ This function exists because its absence produced a chain of wrong conclusions in one
+    session. `⚠name-ambiguous(IMPLEMENTER4/DEV4)` and `⚠name-ambiguous(TEAMLEAD/DEV2)` printed
+    identically, and they are **opposite situations**:
+
+        rename        A A A A B B B B        one agent, renamed. The last name is CURRENT.
+        concurrent    A B A B A A B A        two agents interleaved. No name is current.
+
+    Measured, and the two are cleanly separable by ORDER — the same insight `classify_series`
+    applies to depths:
+
+        b00d725a   IMPLEMENTER4 lines 5541..6795, then DEV4 from 6808 and never again -> RENAME
+        e4a7769d   TEAMLEAD/DEV2 alternating for ~1800 records                    -> CONCURRENT
+
+    ⇒ Reading the rename as ambiguity cost a full detour: I concluded a third, unaddressable
+    writer existed, published that on a Blazing-Back issue, and only found it false by checking
+    the roster — 78 live sessions, no IMPLEMENTER anywhere. **A name that appears in one
+    contiguous early block and never returns is a rename, and the current name is knowable.**
+
+    ⚠ Two states behind one warning string is the collapse this fleet catalogued five instances
+    of in one toolchain the same day. This one was mine.
+
+    ⛔ AND THIS ANSWERS A NAME QUESTION, NOT A WRITER QUESTION. Measured on `6150ffb2`: this
+    returns **single** — only `ARCHITECT` ever wrote a name record — while the depth series is
+    unmistakably interleaved, `428 → 77 → 431 → 82 → … → 433`, with the high series still live
+    in the last two readings.
+
+    ⇒ **Two writers, one name.** So `single` here does NOT mean one agent, and reading it that
+    way is a mistake I made and nearly shipped a "fix" for: I inferred *one name ⇒ one writer ⇒
+    the second band must be a compaction*, and went looking for a defect in `depth_bands` that
+    was not there. The data refuted it in one look.
+
+    ★ **A writer that never emits a name record is invisible to every name-based mechanism** —
+    the roster, the obligation dedupe, ask-routing — while being fully visible in the depth
+    series. That is the residual hole in fleet addressing, and it is not closable from here:
+    nothing in the transcript gives it an address.
+    """
+    seen, order = set(), []
+    for n in seq:
+        if n not in seen:
+            seen.add(n)
+            order.append(n)
+    if len(order) < 2:
+        return "single"
+    # A rename never returns to an earlier name. Any recurrence means interleaving.
+    last_index = {}
+    for i, n in enumerate(seq):
+        last_index[n] = i
+    first_index = {}
+    for i, n in enumerate(seq):
+        first_index.setdefault(n, i)
+    for a, b in zip(order, order[1:]):
+        if last_index[a] > first_index[b]:
+            return "concurrent"
+    return "rename"
+
+
 def session_depth(path):
     """Context depth = the prompt size of the LAST COMPLETED assistant turn.
 
@@ -138,7 +197,10 @@ def session_depth(path):
 
     Returns (names, depth); names is an ordered list of every title seen.
     """
-    names, last, recent = [], None, []
+    # ⚠ `names` is the DISTINCT set (order of first appearance); `name_seq` is EVERY
+    # record in order. classify_names needs the sequence — the distinct set cannot
+    # tell a rename from an interleave, which is the whole distinction it draws.
+    names, name_seq, last, recent = [], [], None, []
     with open(path, errors="replace") as fh:
         for line in fh:
             try:
@@ -149,6 +211,8 @@ def session_depth(path):
                 n = rec.get("customTitle") or rec.get("agentName")
                 if n and n not in names:      # distinct set: these records ALTERNATE
                     names.append(n)
+                if n:
+                    name_seq.append(n)
             msg = rec.get("message")
             if isinstance(msg, dict) and msg.get("role") == "assistant" and msg.get("usage"):
                 u = msg["usage"]
@@ -166,7 +230,7 @@ def session_depth(path):
                 last = total
                 recent.append(total)
     if last is None:
-        return names, None, "no-reading", []
+        return names, None, "no-reading", [], "single"
 
     # ⛔ One transcript file is NOT one agent. Measured: two panes wrote to a single
     # .jsonl under one consistent sessionId, producing two interleaved depth series —
@@ -192,7 +256,7 @@ def session_depth(path):
     # the worse trade, because an unattributable depth then reports as a fact.
     shape = classify_series(recent[-40:])
 
-    return names, last, shape, depth_bands(recent)
+    return names, last, shape, depth_bands(recent), classify_names(name_seq)
 
 
 def scan(active_within_s, limit):
@@ -212,7 +276,7 @@ def scan(active_within_s, limit):
                 idle_s = time.time() - os.path.getmtime(path)
                 if idle_s > active_within_s:
                     continue
-                names, depth, shape, bands = session_depth(path)
+                names, depth, shape, bands, name_kind = session_depth(path)
             except Exception:
                 unreadable += 1
                 continue
@@ -223,6 +287,7 @@ def scan(active_within_s, limit):
             rows.append({"shared_file": shape == "interleaved",
                          "shape": shape,
                          "bands": bands,
+                         "name_kind": name_kind,
                          "name": (names[-1] if names else "(unnamed)"),
                          "names": names,
                          "ambiguous": len(names) > 1,
@@ -403,7 +468,16 @@ def main():
             mark = "  <-- DUE" if r["pct"] >= args.threshold else ""
             # A name this session also answered to earlier. Printing only the last
             # one turns a guess into an assertion.
-            warn = f"  ⚠name-ambiguous({'/'.join(r['names'])})" if r["ambiguous"] else ""
+            # ⛔ A RENAME IS NOT AN AMBIGUITY. `IMPLEMENTER4/DEV4` and `TEAMLEAD/DEV2`
+            # printed identically and are opposite: the first is one agent whose current
+            # name is knowable, the second is two agents where no name is current.
+            kind = r.get("name_kind")
+            if r["ambiguous"] and kind == "rename":
+                warn = f"  ↻renamed({'→'.join(r['names'])}) — current name is the last"
+            elif r["ambiguous"]:
+                warn = f"  ⚠name-ambiguous({'/'.join(r['names'])})"
+            else:
+                warn = ""
             if r.get("shared_file"):
                 warn += "  ⛔SHARED FILE — two agents, depth UNATTRIBUTABLE"
                 # ★ The assignment is unrecoverable; the SET is not. Printing both bands
