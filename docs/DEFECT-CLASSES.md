@@ -587,6 +587,58 @@ which is exactly how `QUARANTINED` arrived with nowhere to go.
 
 ---
 
+## ★ RUN THE PROBE AGAINST A KNOWN ANSWER BEFORE BELIEVING ITS NEGATIVE
+
+Not a class — a **precondition** on every check in this document, and the one thing that would have
+caught most of them cheaply.
+
+> **A probe that reports ABSENT has two readings: the thing is absent, or the probe is broken.
+> Nothing in the output separates them. Only a positive control does.**
+
+### Measured 2026-08-20: five broken probes between two panes, on a three-line question
+
+*"Did DEVOPS's sentence land on `main`?"*
+
+| # | probe | what it actually did |
+|---|---|---|
+| 1 | `grep -c` a phrase | the phrase **wrapped across lines**; returned 0 for text that was present |
+| 2 | whitespace-normalised match | passed — but the earlier false negative had already been **published as a finding** |
+| 3 | `grep` the **commit subject** | a commit message *describes* a change; it **is not the change** |
+| 4 | line-by-line `grep` | a line beginning with `-` was parsed as an **option flag** → false MISSING, 9 of 10 |
+| 5 | python, literal, normalised | **10 of 10 present** |
+
+⇒ **Every one was a broken probe, not a wrong answer.** ⛔ And a false negative from probe 1 was
+built into a doctrine claim — *"the forge's own summary of what it merged cannot be trusted"* — which
+is **false**: `gh pr view --json commits` listed exactly the three commits that merged, truthfully.
+
+### ⇒ The real mechanism, which no check on the PR could have found
+
+```
+5a0b3ad  merged     19:56:18Z
+7447b1d  committed  19:57:18Z      <- SIXTY SECONDS AFTER THE MERGE
+```
+
+**A merged PR is not a closed branch.** The branch kept accepting pushes, the push succeeded, the PR
+was complete and correct at merge time, and the work was simply nowhere. ⚠ **The late push is silent
+on every channel** — no warning on the branch, the PR, or the merge. It bit precisely because one
+pane was carrying another's work in its PR to avoid a conflict on this file.
+
+### ⇒ The rule
+
+**Before believing a negative, run the same probe against a case where the answer is known to be
+positive.** Here that control existed and cost one command: run the probe against `7447b1d` itself,
+where the text certainly is. TEAMLEAD ran it and it is the only reason the first answer was not
+published as a finding.
+
+★ Same shape as DEV3's result on #336: `COMMENT` (a **known positive**) and `APPROVE` both returned
+`403`, which is what proved the probe **VOID** rather than the answer negative. ⇒ *A known positive
+that fails tells you about your instrument; a known positive that passes licenses the negative.*
+
+⚠ **This is a precondition, not a class, and it should not be defended as one.** If it starts
+accumulating members it has become a synonym for "check your work" and explains nothing.
+
+---
+
 ## ⛔ What is NOT established
 
 - **The frame is not universal, and that is what makes it a claim.** #80 is outside Class A by
