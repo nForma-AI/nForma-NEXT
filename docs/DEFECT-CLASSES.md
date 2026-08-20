@@ -636,3 +636,174 @@ which is exactly how `QUARANTINED` arrived with nowhere to go.
   **The first closure it stops that nobody argued in advance is the evidence.** [NOT-YET-MEASURED]
 - **Four of the nine issues carry no acceptance criteria** (#36, #39, #73, #80) — precisely the
   four with no DEV leg. Recorded rather than invented here.
+
+---
+
+## ★ CLASS E — the reason was discarded before you asked, and another channel still has it
+
+Class A is two states colliding into one value at a boundary. Class B is a rule whose noun is one
+word too narrow. Class C is a true reading of a proposition nobody asked about. Class D is one
+producer emitting a finding into two channels that **contradict**. **This one is none of those, and
+it is the one you cannot fix by fixing the thing you are looking at:**
+
+> **Two channels carry the same fact and one of them carries less of it. They do not disagree —
+> the lossy channel is CORRECT. It simply cannot express the distinction the reader needs, and the
+> reader has no way to learn that a fuller channel exists.**
+
+⛔ **This is why no derivation repairs it.** Class D's remedy works because one channel is derivable
+from the other, so you make the exit code a function of the printed word. Here there is nothing to
+derive *from*: the information was gone before the value was produced. **The remedy is not to fix
+the channel. It is to CHOOSE a different one.**
+
+⚠ **It survives because the lossy channel is the cheap one, the default one, and the one that
+answers.** Nothing fails. You get a well-formed answer to a coarser question than you asked, and
+the coarseness is invisible from inside the answer — the same property that makes Class A's
+collapsed pair undetectable, arriving one layer earlier.
+
+### The instance, measured 2026-08-20 while falsifying #336
+
+The question: *is `APPROVE` permitted on a self-authored PR under one shared credential?* Asked
+over REST, four times, at three different budget states:
+
+```
+POST /repos/…/pulls/333/reviews  {"event":"APPROVE"}   ->  HTTP 403 Forbidden
+```
+
+⛔ **`403` is the correct answer, and it is worth nothing.** A refused self-approval returns 403. So
+does an exhausted rate limit, a scope failure, a blocked actor, and roughly a dozen other causes.
+**Three of the four attempts were the budget**, and the first one arrived with a conclusion already
+attached: *APPROVE is refused, the split is confirmed.* That conclusion was **true, and the evidence
+could not support it.**
+
+What was built to compensate — all of it correct, all of it unnecessary:
+
+| scaffolding | purpose | whose |
+|---|---|---|
+| assert on the **body**, never the status class | recover the discarded reason | DEV2 |
+| a **known-positive control** posted seconds apart | prove the probe VOID rather than negative | DEV2 |
+| a **zero-side-effect canary** (`POST` to an id that cannot exist) | test the channel without mutating it | DEV2 |
+
+⇒ The known-positive control is what actually worked: `event=COMMENT` and `event=APPROVE`, same
+endpoint, seconds apart, **both returned 403** — and *a known positive that fails is the only thing
+that distinguishes "the answer is no" from "the question never ran."*
+
+★ **Then the same question, over the other channel:**
+
+```
+gh pr review 333 --approve
+    > POST /graphql            < HTTP/2.0 200 OK
+      "message": "Review Can not approve your own pull request"
+```
+
+**One call. No control, no canary, no budget reasoning.** The fact had a name the whole time, on a
+channel nobody had asked.
+
+### ⛔ And the inversion, which is why the remedy is not "prefer GraphQL"
+
+The refusal came back as **`200 OK`**.
+
+| channel | status | reason | what the status is worth |
+|---|---|---|---|
+| REST | `403` | discarded | **under-determined** — a dozen causes |
+| GraphQL | **`200 OK`** | preserved, in the body | ⛔ **nothing** — a *refused* operation returns success |
+
+⇒ **Neither channel carries both halves. REST keeps the alarm and loses the reason; GraphQL keeps
+the reason and loses the alarm.** A caller checking HTTP status over GraphQL reads a capability
+refusal as a pass. `gh` rescues its own callers by translating the body into `rc=1`; `curl`, or a
+raw `gh api graphql`, gets no such rescue.
+
+### ⇒ The remedy, and it is an authoring-time question, not a runtime one
+
+> **Before building an instrument to recover information a channel discarded, enumerate the other
+> channels to the same fact and check whether one of them preserves it.**
+
+⚠ **This does not retire the scaffolding — it BOUNDS it.** A canary, a known-positive, and
+body-assertion are what you build when no fuller channel exists. Reaching for them *first* is how an
+hour goes into reconstructing something that was never thrown away.
+
+Two corollaries, both measured the same day:
+
+1. ⛔ **A canary must travel the same surface as the work it gates, and must NAME that surface.**
+   Committed twice within twenty minutes, by two roles, *inside the technique meant to prevent
+   misreading a refusal*: DEV2 gated `gh pr create` on a REST canary and declined to open a PR they
+   opened 30 seconds later; **I armed a REST canary and used it to gate filings that all run over
+   GraphQL**, then sat on a finished answer while the channel I needed was open the whole time. The
+   canary was **correct about a channel neither of us was going to use.**
+2. **Assert on the body, never the status class — on BOTH channels, for opposite reasons.** On REST
+   because the status is under-determined; on GraphQL because the status is meaningless.
+
+### ⛔ The limit case — a probe that makes NO request, whose silence looks like data
+
+Found the same evening, in the follow-up to the message where the surface-scope rule was accepted:
+
+```
+GH_DEBUG=api gh pr view 315 --json number             ->  NO HTTP request logged at all
+GH_DEBUG=api gh pr view 315 --json mergeStateStatus   ->  > POST /graphql   < 200 OK
+```
+
+`--json number` is **derivable from the argument**, so `gh` answers it without calling anything. The
+probe asked for the one field that requires no request. ⇒ **The counter did not move because the
+counter was never exercised** — and *not-moving was read as evidence about the counter.*
+
+★ **This is the corollary's limit case.** The earlier two instances used the *wrong* surface; this
+one used **no surface at all**, and produced a reading indistinguishable from a probe that ran and
+observed nothing. ⇒ **A probe that makes no request is #58's `never ran` arriving at the probe
+layer** — the same collapse the exit-code convention exists to prevent, one level below where
+anybody thought to look for it.
+
+⚠ **Three roles, three instances, one evening — the third committed while accepting the rule for
+the second.** The rule is easy to agree with and evidently hard to apply to your own next probe.
+⇒ Which is why the operational form must be mechanical rather than remembered:
+
+> **Show the request. If a probe cannot name the call it made, it did not make one.**
+> `GH_DEBUG=api` does not presuppose the thing under investigation; every counter-based method here
+> is circular, because the counters are what is in doubt.
+
+⚠ **Still unresolved, recorded rather than dropped**: whether the `graphql` counter is otherwise
+accurate. Same command, same field — three calls moved it `+0`, a later single call `+1`. Nobody
+chased it and nothing here depends on it.
+
+⇒ **Audited on this repository's committed instruments**: no `tools/*.py` or `scripts/*` invokes
+`gh api graphql`; every occurrence is docstring prose, a comment, or a test fixture. ⚠ **The
+exposure is therefore in the uncommitted population** — `api-budget.py` counts **509 `gh api
+graphql` invocations across nine transcripts**, which is ad-hoc inline instrument work (#261: 87% of
+it), and it is **not greppable from the repository**. A clean grep of `tools/` establishes nothing
+about the shape of the traffic.
+
+### ⚠ What is NOT claimed
+
+- **Not that REST is defective.** `403` is a correct answer to *may this request proceed*. The
+  defect is asking it a question it was never shaped to answer.
+- **Not that every GraphQL mutation error returns 200.** One endpoint (`addPullRequestReview`), one
+  API, measured once. Not surveyed, not generalised.
+- ⛔ **Not a member of Class D.** The two channels here never contradict; one says strictly less.
+  DEV2 drew that boundary and it is the reason this is filed separately rather than folded in —
+  *contradiction* is repaired by derivation, *under-determination* cannot be.
+- **Not derived from a fixed bug.** ⚠ Per Class D's own note, a class filed on a live bug decays
+  into a bug report. This one is filed on an **instrument-design rule**; the REST behaviour is not
+  a defect anyone will fix.
+
+### The third instance, same day, different layer — and it cost four panes
+
+`tools/api-budget.py` reads `.resources.core` from `gh api rate_limit` and prints it as *"one pool,
+shared by every agent and every tool"*. Measured: `gh`'s high-level commands go to `POST /graphql`
+(established from the request log via `GH_DEBUG=api`, **not** from a counter — the counter is the
+instrument under suspicion), while `core` reported `0/5000` and REST **reads** were served from a
+counter showing `4727` remaining under the *identical* `X-Ratelimit-Resource: core` label.
+
+⇒ One label, three counters, and **the label cannot say which pool is empty.** Nothing in the 403
+response says *write*; nothing says *REST*. Four panes lost work to it inside one hour — TEAMLEAD
+held a PR 35 minutes and told five panes to build offline, DEVOPS held five comments ~30 minutes,
+DEV2 declined a PR, and I held a finished report.
+
+★ **And DEVOPS's observation is the second cost: the reading mis-gates the DECISION TO RETRY**, so
+the pane that would discover the error is the pane that stops looking. **DEV2 supplied the
+mechanism — the broken reading also supplies the retry time.** `reset` comes from the same field.
+⇒ *A silent failure that also sets its own duration.* A pane waits on a number the instrument
+invented, produces no error, and nothing teaches anyone it was wrong. Filed as #347.
+
+⚠ **Attribution**, since four roles are in this section: the class and this write-up are DEV3's, at
+TEAMLEAD's direction. **DEV2 named the contradiction/under-determination boundary, designed the
+known-positive control and the zero-side-effect canary, and caught the surface-scope error in
+both.** DEVOPS established the retry cost and **retracted an all-clear of their own, unprompted,
+through the same channel and to the same recipients, within minutes.**
