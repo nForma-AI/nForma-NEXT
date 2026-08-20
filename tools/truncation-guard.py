@@ -93,6 +93,16 @@ BOUND_PATTERNS = [
 
 PAGINATE = re.compile(r"--paginate\b")
 
+# ⛔ A STATED TOTAL IS NOT A PAGE. `--jq .total_count` extracts the population size the
+# API declares; `per_page` bounds the ARRAY beside it and does not govern that number.
+# Found by dogfooding: `search/issues -F per_page=1 --jq .total_count` returns 85 with
+# per_page=1, and the naive reading calls it TRUNCATED at every page size. ⚠ That call
+# is close-condition-scan.py's own truncation cross-check, so shipping the false
+# positive would have had two tools by one author contradicting each other — the exact
+# outcome gh-complete.py was built after. ⇒ Refuse, and say why. A guard that cries
+# wolf on the correct idiom teaches its reader to mute it.
+STATED_TOTAL = re.compile(r"total_count|\.total\b|X-Total-Count", re.IGNORECASE)
+
 
 class Reading:
     """A count, and how it was obtained. Both halves are required: a count with no
@@ -160,6 +170,14 @@ def verdict(reading):
                                  "provenance cannot be ruled on"]
     if reading.count is None or reading.count < 0:
         return "UNKNOWN", None, ["no usable count"]
+
+    if STATED_TOTAL.search(reading.command):
+        return "UNKNOWN", None, [
+            "the count looks like a STATED TOTAL (`total_count`), not a list length",
+            "a page bound governs the ARRAY, never the population size beside it — "
+            "`per_page=1 --jq .total_count` is CORRECT and would read TRUNCATED here",
+            "⇒ this guard rules on list lengths; it refuses rather than cry wolf on "
+            "the very idiom that detects truncation properly"]
 
     found, paginated = bounds(reading)
     if not found:
@@ -251,6 +269,10 @@ CONTROLS = [
      "count EXCEEDS its own bound — the reading contradicts itself; refuse"),
     (0, "gh issue list --label nonexistent --limit 100", "SAFE",
      "zero is not truncated — and the note names the failure mode it IS"),
+    # ⛔ Found by dogfooding this guard on the OTHER tool's cross-check call.
+    (1, "gh api -X GET search/issues -F per_page=1 --jq .total_count", "UNKNOWN",
+     "a STATED TOTAL is not a page — the correct anti-truncation idiom must not "
+     "be flagged by the truncation guard"),
 ]
 
 

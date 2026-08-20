@@ -81,6 +81,21 @@ class UnknownNeverCollapses(unittest.TestCase):
         _, out, _ = cli(["--count", "9", "--command", "curl -s x | jq length"])
         self.assertIn("NOT 'fine'", out)
 
+    def test_stated_total_is_not_a_page(self):
+        """⛔ Found by dogfooding this guard on close-condition-scan.py's own
+        truncation cross-check. `--jq .total_count` extracts the population size the
+        API DECLARES; per_page bounds the array beside it. The naive reading flags
+        the correct anti-truncation idiom as truncated at every page size — a guard
+        that cries wolf on the right answer teaches its reader to mute it."""
+        code, out, _ = cli(["--count", "85", "--command",
+                            "gh api -X GET search/issues -F per_page=1 "
+                            "--jq .total_count"])
+        self.assertEqual(code, 2)
+        self.assertIn("STATED TOTAL", out)
+        # and it must not depend on the count coinciding with per_page
+        self.assertEqual(v(1, "gh api search/issues -F per_page=1 --jq .total_count"),
+                         "UNKNOWN")
+
     def test_paginate_does_not_prove_completion(self):
         self.assertEqual(v(85, "gh api repos/o/r/issues --paginate"), "UNKNOWN")
 
