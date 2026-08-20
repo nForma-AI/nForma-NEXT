@@ -217,7 +217,12 @@ def code_strings(path):
 
 
 ACK_NAME = "QUARANTINE.txt"
-ACK_ENTRY = re.compile(r"^\s*([A-Za-z0-9_./-]+\.(?:py|sh))\s*\|", re.M)
+# ⛔ ANY EXTENSION, NOT JUST py|sh — the record's PARSER had an instrument-shaped population too
+# (#382). Scoping the record to the ruled DIRECTORY was not enough: this regex could not hold a
+# `README.md` line at all, so the entry could be written and would still read as unacknowledged.
+# ★ Third occurrence of container-vs-contents in one chain — the gate, the record, and now the
+# record's parser, each correct about a population one noun narrower than the ruling.
+ACK_ENTRY = re.compile(r"^\s*((?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.[A-Za-z0-9]+)\s*\|", re.M)
 
 
 def read_ack(tools_dir):
@@ -462,6 +467,23 @@ def check(root):
             # already reported above, so they LOOKED accounted for, and the acknowledgement
             # population silently became 11 instead of 21. A count that is short by exactly the
             # files everyone is looking at is the easiest kind to read past.
+            # ⛔ THE OPERATOR RULED ON A DIRECTORY; THE RECORD COVERED A PREDICATE (#382).
+            # This gate's population is INSTRUMENTS — which correctly excludes tests and
+            # non-`.py` — so an acknowledgement derived from it could only ever cover
+            # instruments, however well maintained. Measured: 23 files in tools/teamlead/, 19
+            # recorded, 4 unrecorded — its README.md (2 estate-name hits) and three test files,
+            # one of which carries an AKASH DEPLOYMENT LOG LINE as test data.
+            #
+            # ★ Container versus contents, and NEITHER LAYER WAS WRONG ABOUT ITS OWN QUESTION.
+            # That is why it was invisible: the index leg answered "which instruments are
+            # indexed" correctly, and the ack leg answered "which held paths are recorded"
+            # correctly, over a population one noun narrower than the ruling.
+            #
+            # ⇒ When a directory is held WHOLESALE the ack population is EVERY FILE IN IT.
+            # ⚠ `held` — the NAMING population — deliberately does not widen: a README is not
+            # an instrument and must never be demanded in an index row.
+            held_paths.update(f"{rel}/{q.name}" if rel else q.name
+                              for q in directory.iterdir() if q.is_file())
             held_paths.update(f"{rel}/{n}" if rel else n
                               for n in survivors + [q for q, _ in quar])
             held.update(survivors)
@@ -874,6 +896,31 @@ def selftest():
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  WHOLESALE: a one-commit directory holds its clean "
               f"files UNCLAIMED, not LOCAL (got {rc})")
+
+        # ⛔ THE RECORD'S POPULATION IS THE DIRECTORY LISTING, AND THIS PROVES IT IS DERIVED
+        # RATHER THAN ENUMERATED (#382). DEV3's objection, and it is the right one: adding four
+        # rows makes the count right today and leaves the derivation wrong — the next .md or
+        # test_*.py added to a held directory is unrecorded again, silently, by the same route.
+        # ⇒ So a NON-INSTRUMENT planted into a wholesale-held directory must ENTER the held set.
+        # If it does not, the population is a list wearing the grammar of a derivation.
+        # ⚠ Counted rather than named, because at this point the fixture has no ack file and the
+        # run takes the "record is absent" branch — which reports a COUNT of held paths.
+        def held_count(lines_):
+            for l in lines_:
+                m = re.search(r"(\d+) path\(s\) are held", l)
+                if m:
+                    return int(m.group(1))
+            return None
+        before_n = held_count(lines)
+        (sub / "NOTES.md").write_text("# notes\n")
+        rc, lines2, _ = check(root)
+        after_n = held_count(lines2)
+        hit = before_n is not None and after_n == before_n + 1
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a NON-INSTRUMENT planted in a held directory ENTERS "
+              f"the record's population — it is the LISTING, not the index "
+              f"(held {before_n} -> {after_n})")
+        (sub / "NOTES.md").unlink()
 
         # ⛔ THE KNOWN-NEGATIVE FOR THE WHOLESALE LEG: a directory built up over SEVERAL commits
         # keeps per-file quarantine. Without this, "one commit" and "any commit" are the same
