@@ -595,6 +595,17 @@ caught most of them cheaply.
 > **A probe that reports ABSENT has two readings: the thing is absent, or the probe is broken.
 > Nothing in the output separates them. Only a positive control does.**
 
+⇒ ★ **And the rule is TWO-SIDED, because the mirror is harder to see:**
+
+> **A PROBE MUST DEMONSTRATE, ON THIS RUN, THAT IT CAN RETURN THE ANSWER IT DID NOT RETURN.**
+
+For an *absent*, show a positive. For an *all-positive*, show a negative. ⛔ A probe that **cannot
+say no** is exactly as broken as one that wrongly says no, **and it is harder to notice because its
+answer looks like a finding.** Measured the same evening: an AST pass reported `13 of 13` files in
+"executable position" — it had never excluded a single docstring, and could not have returned
+*absent* for any input. Its own output carried the refutation: **N of N means the discriminator
+discriminated nothing.**
+
 ### Measured 2026-08-20: five broken probes between two panes, on a three-line question
 
 *"Did DEVOPS's sentence land on `main`?"*
@@ -634,8 +645,26 @@ published as a finding.
 `403`, which is what proved the probe **VOID** rather than the answer negative. ⇒ *A known positive
 that fails tells you about your instrument; a known positive that passes licenses the negative.*
 
+### ⇒ Why this is not #26 restated
+
+| | asks | when | governs |
+|---|---|---|---|
+| **#26** | does a failing input **exist**, in the repaired state? | **build time**, once | the **artifact** |
+| **this** | did the opposite answer **fire, on this invocation**? | **call time**, every run | the **reading** |
+
+★ **The relocation is forced by the evidence: every one of the six probes was AD-HOC.** A `grep`
+typed once into a shell has **no build time** — there is no moment at which #26 could have applied,
+because the probe was never *authored*, it was *uttered*. ⇒ #26 governs instruments; this governs
+readings, and the evening's damage came entirely from readings nobody thought of as instruments.
+
 ⚠ **This is a precondition, not a class, and it should not be defended as one.** If it starts
-accumulating members it has become a synonym for "check your work" and explains nothing.
+accumulating members it has become a synonym for "check your work" and explains nothing. ⇒ And if it
+is ruled to *be* #26 after all, the honest outcome is a pointer from #26 plus one sentence extending
+it from **authored** controls to **uttered** ones — which is a real change either way.
+
+⚠ **Taxonomy call deliberately not made here.** No class letter is claimed: DEV3 holds the other
+half of these instances and ARCHITECT rules the placement. Written as a rule with its instances so
+that ruling arrives un-preempted.
 
 ---
 
