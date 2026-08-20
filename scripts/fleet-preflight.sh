@@ -104,9 +104,40 @@ section 'Panel identity (measured, not asserted)'
 if ! command -v python3 >/dev/null 2>&1; then
   note "python3 not on PATH — panel titles UNMEASURED, not verified"
 else
-  python3 - "${main_tree:-$toplevel}" <<'PANELS'
+  # ⛔ The tally file is the ONLY channel by which this block's verdicts reach
+  # the counters below. Without it the block printed FAIL and the summary still
+  # said "0 fail / Preflight clean" — measured on this repo, all nine roles.
+  panel_tally=$(mktemp)
+  python3 - "${main_tree:-$toplevel}" "$panel_tally" <<'PANELS'
 import glob, json, os, sys, time
 top = sys.argv[1] if len(sys.argv) > 1 else ""
+tally_path = sys.argv[2] if len(sys.argv) > 2 else ""
+n_ok = n_warn = n_fail = 0
+
+# ⚠ These reproduce ok()/note()/bad() from the shell above, spacing included.
+# They exist so this block COUNTS what it prints instead of only printing it.
+def emit_ok(msg):
+    global n_ok
+    print(f"  \033[32mok\033[0m    {msg}")
+    n_ok += 1
+
+def emit_warn(msg):
+    global n_warn
+    print(f"  \033[33mwarn\033[0m  {msg}")
+    n_warn += 1
+
+def emit_fail(msg):
+    global n_fail
+    print(f"  \033[31mFAIL\033[0m  {msg}")
+    n_fail += 1
+
+def write_tally():
+    # ⛔ Every exit path writes this, including the early one. A path that
+    # returns without writing is indistinguishable from a crash, and the
+    # caller is required to treat a missing tally as a failure.
+    if tally_path:
+        with open(tally_path, "w") as fh:
+            fh.write(f"{n_ok} {n_warn} {n_fail}\n")
 base = os.path.expanduser("~/Library/Application Support/Daintree/projects")
 found, mtime = {}, None
 for path in glob.glob(os.path.join(base, "*", "state.json")):
@@ -122,25 +153,38 @@ for path in glob.glob(os.path.join(base, "*", "state.json")):
         if t.get("title"):
             found[t["title"]] = t.get("titleMode")
 if not found:
-    print("  \033[33mwarn\033[0m  no Daintree project state for this repo — "
-          "panel titles UNMEASURED, not verified")
+    emit_warn("no Daintree project state for this repo — "
+              "panel titles UNMEASURED, not verified")
+    write_tally()
     sys.exit(0)
 stamp = time.strftime("%H:%M:%S", time.localtime(mtime))
-print(f"  \033[32mok\033[0m    {len(found)} panes in Daintree state, read {stamp} "
-      f"(persisted view — it can lag the live UI)")
+emit_ok(f"{len(found)} panes in Daintree state, read {stamp} "
+        f"(persisted view — it can lag the live UI)")
 roles = ["TEAMLEAD", "ARCHITECT", "DEVOPS", "DX", "DEV1", "DEV2", "DEV3", "DEV4", "DEV5"]
 missing = [r for r in roles if r not in found]
 loose = sorted(t for t, m in found.items() if m != "user")
 if missing:
-    print(f"  \033[31mFAIL\033[0m  roles with no panel: {', '.join(missing)}")
+    emit_fail(f"roles with no panel: {', '.join(missing)}")
 else:
-    print("  \033[32mok\033[0m    every declared role has a panel")
+    emit_ok("every declared role has a panel")
 if loose:
-    print(f"  \033[33mwarn\033[0m  titles NOT pinned (titleMode != user, auto-titling may "
-          f"overwrite): {', '.join(loose)}")
+    emit_warn(f"titles NOT pinned (titleMode != user, auto-titling may "
+              f"overwrite): {', '.join(loose)}")
 else:
-    print("  \033[32mok\033[0m    every title pinned (titleMode=user)")
+    emit_ok("every title pinned (titleMode=user)")
+write_tally()
+sys.exit(1 if n_fail else 0)
 PANELS
+  panel_rc=$?
+  if [ -s "$panel_tally" ]; then
+    read -r p_ok p_warn p_fail < "$panel_tally"
+    pass=$((pass + p_ok)); warn=$((warn + p_warn)); fail=$((fail + p_fail))
+  else
+    # ⛔ NOT 'clean'. The block established nothing, and an unrun check and a
+    # passing one are otherwise the same silence.
+    bad "panel identity established nothing (python3 exited $panel_rc, no tally)"
+  fi
+  rm -f "$panel_tally"
 fi
 
 # ⚠ The companion half of the same claim. "$NFORMA_ROLE is the authoritative
@@ -165,13 +209,20 @@ if [ -x scripts/fleet-worktree.sh ]; then
   if scripts/fleet-worktree.sh check >/dev/null 2>&1; then
     ok "every declared role has an isolated worktree"
   else
-    scripts/fleet-worktree.sh check 2>&1 | while read -r st r pa rest; do
+    # ⛔ Process substitution, NOT `cmd | while`. A pipe runs the loop body in a
+    # SUBSHELL, so bad()'s `fail=$((fail+1))` increments a copy that dies with it.
+    # Measured here: 8 worktree FAILs printed, 0 counted, summary said "1 fail" —
+    # and the worktree FAILs are the blocking condition for launching at all.
+    # ⚠ Same family as the `| tail` defect this repo already warns about: a pipe
+    # discarding the thing the caller depends on. tools/pipe-exit-scan.py does not
+    # see this shape — it looks for lost EXIT CODES, not lost VARIABLE STATE.
+    while read -r st r pa rest; do
       case "$st" in
         MISSING) bad  "$r has NO isolated tree — it works in the SHARED tree; run fleet-worktree.sh create" ;;
         OUTSIDE) bad  "$r isolated OUTSIDE the convention at $pa — MOVE it; creating would duplicate it" ;;
         DUP)     note "$r has TWO trees ($pa $rest) — commits land in whichever the pane is in; needs a deliberate decision" ;;
       esac
-    done
+    done < <(scripts/fleet-worktree.sh check 2>&1)
   fi
 else
   note "scripts/fleet-worktree.sh not executable — worktree coverage UNMEASURED, not clean"
