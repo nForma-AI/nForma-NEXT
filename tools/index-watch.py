@@ -78,6 +78,51 @@ def run(*args, cwd=None):
     return subprocess.run(args, capture_output=True, text=True, cwd=cwd)
 
 
+def source_staleness(repo=None):
+    """How far behind `origin/main` is THE SOURCE THIS PROCESS IS RUNNING FROM?
+
+    ⛔ Why this exists — #149's own remedy, corrected. That issue established that a monitor must
+    not read its own source from a mutable tree, and prescribed pinning. It argued ONE direction.
+    Measured on TEAMLEAD's monitor: pinned at ~07:0x, correctly applying the remedy, and frozen 42
+    commits later — the derived-delta fix landed on main and never reached the thing reporting.
+
+        Unpinned means rewritten under you.  Pinned means never updated.  Neither is safe.
+
+    ⇒ **A pin is a calibration and nothing re-takes calibrations.** This does not re-take it and
+    does not decide whether the staleness matters. It STATES it, on every run, so a silent freeze
+    becomes a stated one.
+
+    ⛔ DERIVED, never stored. The answer comes from this file's OWN BYTES — hash them, find which
+    commit of `tools/<name>` carries that blob. A recorded "pinned at <sha>" alongside the copy
+    would be a second calibration, freezing exactly like the first. **A derived value cannot go
+    stale**, which is the same argument that settled #183's watermark.
+
+    ⚠ Returns (None, reason) when it cannot establish the answer — a copy that matches no commit is
+    UNKNOWN, never "0 behind". Absence of a match establishes nothing.
+    """
+    me = Path(__file__).resolve()
+    r = run("git", "hash-object", str(me), cwd=str(repo or ROOT))
+    if r.returncode != 0 or not r.stdout.strip():
+        return None, "could not hash this file"
+    blob = r.stdout.strip()
+    listing = run("git", "rev-list", "origin/main", "--", f"tools/{me.name}",
+                  cwd=str(repo or ROOT))
+    if listing.returncode != 0:
+        return None, "could not read origin/main history"
+    for c in listing.stdout.split():
+        # ⚠ BRACED. `"$c:tools/…"` unbraced applies a zsh history modifier and silently rewrites
+        # the path — tools/README.md carries the rule, and it caught the author of that rule a
+        # third time while writing this function.
+        got = run("git", "rev-parse", f"{c}:tools/{me.name}", cwd=str(repo or ROOT))
+        if got.returncode == 0 and got.stdout.strip() == blob:
+            n = run("git", "rev-list", "--count", f"{c}..origin/main", cwd=str(repo or ROOT))
+            if n.returncode != 0 or not n.stdout.strip().isdigit():
+                return None, f"matched {c[:8]} but could not count the distance"
+            return int(n.stdout.strip()), c
+    return None, ("this copy matches no commit of origin/main — locally modified, never committed,"
+                  " or from another branch")
+
+
 def remote_sha(repo=None):
     """The SHA of origin/main, or None. None is a VOID condition, never 'unchanged'."""
     r = run("git", "ls-remote", "origin", "refs/heads/main", cwd=str(repo or ROOT))
@@ -239,6 +284,37 @@ def self_test():
         print(f"  {'ok  ' if hit else 'FAIL'}  a non-repo --repo exits 2 VOID, not 'unchanged' "
               f"(got {rc})")
 
+        # ⛔ SOURCE-AGE CONTROLS. #149 shipped pinning with no expiry and no re-pin trigger;
+        # these assert the tool can at least STATE its own age, and that it refuses to call an
+        # unmatchable copy current.
+        hist = run("git", "rev-list", "origin/main", "--", "tools/index-watch.py", cwd=str(ROOT))
+        older = [c for c in hist.stdout.split()][1:2] if hist.returncode == 0 else []
+        if older:
+            oldcopy = Path(d) / "index-watch.py"
+            got = run("git", "show", f"{older[0]}:tools/index-watch.py", cwd=str(ROOT))
+            oldcopy.write_text(got.stdout)
+            src2 = Path(__file__).read_text().replace("Path(__file__).resolve()",
+                                                      f"Path({str(oldcopy)!r})")
+            ns = {}
+            exec(compile(src2, "iw", "exec"), ns)
+            n_old, _ = ns["source_staleness"](ROOT)
+            hit = isinstance(n_old, int) and n_old > 0
+            ok &= hit
+            print(f"  {'ok  ' if hit else 'FAIL'}  an older pinned copy reports a POSITIVE "
+                  f"distance, not 0 (got {n_old})")
+
+            oldcopy.write_text(got.stdout + "\n# locally modified\n")
+            ns2 = {}
+            exec(compile(Path(__file__).read_text().replace(
+                "Path(__file__).resolve()", f"Path({str(oldcopy)!r})"), "iw", "exec"), ns2)
+            n_mod, why = ns2["source_staleness"](ROOT)
+            hit = n_mod is None and "matches no commit" in why
+            ok &= hit
+            print(f"  {'ok  ' if hit else 'FAIL'}  an unmatchable copy is UNKNOWN, never 0 "
+                  f"(got {n_mod})")
+        else:
+            print("  ----  source-age controls NOT EXERCISED: no older revision available")
+
         # ⛔ a missing subject must be VOID, never silence
         save_state(st, "0" * 40, [])
         rc, lines = check_once(st, subject=Path(d) / "absent.py")
@@ -264,9 +340,23 @@ def main(argv):
         return 2
     if a.self_test:
         return self_test()
-    rc, lines = check_once(Path(a.state), force=a.force,
-                           repo=Path(a.repo) if a.repo else None)
+    repo = Path(a.repo) if a.repo else None
+    rc, lines = check_once(Path(a.state), force=a.force, repo=repo)
     print("\nindex-watch — scripts/check-tools-index.py vs main")
+    # ⛔ PRINTED ON EVERY RUN, including the quiet path. A pin makes the source immutable, which
+    # is #149's remedy and also #149's cost: TEAMLEAD's monitor froze 42 commits behind by
+    # applying it correctly. This does not re-take the pin and does not decide whether the
+    # distance matters — it states it, so a SILENT freeze becomes a STATED one.
+    behind_n, src = source_staleness(repo)
+    if behind_n is None:
+        print(f"  ----  SOURCE AGE UNKNOWN — {src}. ⛔ Not 'current': absence of a match"
+              f" establishes nothing.")
+    elif behind_n == 0:
+        print(f"  ok    source is origin/main ({str(src)[:8]}) — not pinned behind")
+    else:
+        print(f"  ----  ⚠ THIS SOURCE IS {behind_n} COMMIT(S) BEHIND origin/main"
+              f" (pinned at {str(src)[:8]}). A fix to this tool that landed since then is NOT"
+              f" running here. Stated, not judged — re-pin if it matters.")
     for l in lines:
         print(l)
     print({0: "  quiet", 1: "  FINDING", 2: "  VOID"}[rc])
