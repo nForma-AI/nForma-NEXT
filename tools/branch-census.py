@@ -55,6 +55,27 @@ def patch_id(repo, *diff_args):
     return out[0] if out else None
 
 
+def age_of(repo, remote, branch, now):
+    """Age of a branch's last commit, as a compact string.
+
+    ⛔ WHY THIS COLUMN EXISTS. Running this tool on its own repository, four branches
+    pushed within FIFTEEN MINUTES classified STRANDED — correctly, by the definition:
+    unmerged and not checked out in this checkout. ⇒ But STRANDED reads as ABANDONED,
+    and "pushed 8 minutes ago" and "untouched since yesterday" were the same word.
+    The classification was right and the presentation made it wrong.
+    """
+    try:
+        t = int(git(repo, "log", "-1", "--format=%ct", f"{remote}/{branch}").strip())
+    except Exception:
+        return "?"
+    d = max(0, now - t)
+    if d < 3600:
+        return f"{d // 60}m"
+    if d < 86400:
+        return f"{d // 3600}h"
+    return f"{d // 86400}d"
+
+
 def checked_out_branches(repo):
     """Branches checked out in THIS checkout's worktrees. A lower bound on LIVE."""
     live = set()
@@ -86,6 +107,7 @@ def census(repo, remote="origin", base="main", window=600):
             index.setdefault(pid, sha)
 
     live_local = checked_out_branches(repo)
+    now = int(git(repo, "log", "-1", "--format=%ct", base_ref).strip() or 0)
     rows = []
     for b in sorted(branches):
         ref = f"{remote}/{b}"
@@ -111,6 +133,11 @@ def main():
                     help="commits of <base> to index for squash detection")
     a = ap.parse_args()
 
+    ref_now = 0
+    try:
+        ref_now = int(git(a.repo, "log", "-1", "--format=%ct", f"{a.remote}/{a.base}").strip() or 0)
+    except Exception:
+        pass
     try:
         rows, why = census(a.repo, a.remote, a.base, a.window)
     except Exception as ex:
@@ -124,12 +151,16 @@ def main():
     for state in ORDER:
         for b, s, note in rows:
             if s == state:
-                print(f"  {s:<14} {b}{('  — ' + note) if note else ''}")
+                age = age_of(a.repo, a.remote, b, ref_now)
+                print(f"  {s:<14} {age:>7}  {b}{('  — ' + note) if note else ''}")
     print(f"\n  {len(rows)} branch(es): " +
           " · ".join(f"{s} {counts.get(s, 0)}" for s in ORDER))
 
     print("\n⚠ WHAT THIS DOES NOT ESTABLISH:")
     print("  · STRANDED is a shape, not a verdict — it cannot tell ABANDONED from PAUSED.")
+    print("  · ⛔ AGE IS NOT MEMBERSHIP. A branch pushed minutes ago classifies STRANDED if it")
+    print("    is unmerged and not checked out here — measured: 4 such branches under 15m old.")
+    print("    Read the age column before reading the word.")
     print("  · It reads THIS checkout's worktrees only, so a branch live on another")
     print("    machine reads STRANDED here. LIVE is a LOWER bound, STRANDED an UPPER one.")
     print("  · It proposes no deletions. Classification only (DEVOPS holds that work).")
