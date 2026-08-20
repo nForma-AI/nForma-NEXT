@@ -89,12 +89,78 @@ def main():
     print("⚠ Checks existence only. It does not establish that a pointer still leads to what "
           "CLAUDE.md says is there.")
 
+    decayed = check_no_ci_claim()
+
     if missing:
         print("\nCLAUDE.md points at paths that do not exist:", file=sys.stderr)
         for p in missing:
             print(f"  {p}", file=sys.stderr)
         return 1
-    return 0
+    return 1 if decayed else 0
+
+
+# ⛔ A DATED CLAIM NEEDS A RE-MEASURING CALLER, NOT A WARNING TO THE READER (#272).
+#
+# CLAUDE.md's "No CI" line carried a date, a SHA, a method, AND the sentence
+# "re-measure before relying on either" — all four — and still stood false for ~7
+# hours. ⇒ Dating a measurement tells a reader it CAN decay. It does not tell them
+# it HAS, and no reader in seven hours discharged the obligation the caveat handed
+# them.
+#
+# ★ Worse: the commit that falsified it CITED it as its justification — "this
+# repository had no CI, so 23 instruments had never run" (239639a). A measurement
+# is most likely to be falsified by work it caused, which is exactly the case
+# nobody re-checks: the author of the fix already knows, and the files asserting
+# the claim are not in the fix's blast radius.
+#
+# ⚠ Scope, stated: this re-measures ONE claim. It is not a general calibration
+# checker and must not be read as one — every other dated fact in CLAUDE.md still
+# relies on a reader.
+def check_no_ci_claim():
+    """True if CLAUDE.md still asserts 'no CI' while workflows exist."""
+    wf = sorted((ROOT / ".github" / "workflows").glob("*.y*ml")) \
+        if (ROOT / ".github" / "workflows").is_dir() else []
+    try:
+        text = (ROOT / "CLAUDE.md").read_text(errors="replace")
+    except OSError:
+        print("\n⛔ CLAUDE.md unreadable — the No-CI claim is UNCHECKED, not absent.",
+              file=sys.stderr)
+        return False
+    # An asserted claim, not a struck one. `~~No CI.~~` and a line marked FALSE are
+    # corrections; they must not trip this.
+    # ⛔⛔ STRIP QUOTED SPANS FIRST — MULTI-LINE. A correction must QUOTE the false
+    # claim to explain it, so a corrected file necessarily contains the string this
+    # checker hunts. Measured: the first version of this function fired on this
+    # repository's own correction, matching the commit message it cites
+    # ("…had no CI, so 23 instruments…") — the population of false positives is
+    # created by the remedy (#36), in a detector written by the author of that
+    # finding, the same day.
+    #
+    # ★ Same rule as use-not-mention.py's command_positions(): remove quoted spans,
+    # then match what remains. A quotation cannot survive its own removal.
+    # ⚠ Spans are stripped across NEWLINES because the citation that fooled this
+    # opens on one line and closes on another — a per-line strip does not reach it.
+    QUOTED = re.compile(r'"[^"]*"', re.S)
+    stripped = QUOTED.sub(" ", text)
+    asserted = [ln for ln in stripped.splitlines()
+                if re.search(r"\bno CI\b|[Zz]ero workflow", ln)
+                and "~~" not in ln and "FALSE" not in ln]
+    print(f"\n  workflow files present : {len(wf)}"
+          f"{'  (' + ', '.join(f.name for f in wf) + ')' if wf else ''}")
+    print(f"  un-struck 'no CI' lines: {len(asserted)}")
+    if wf and asserted:
+        print("\n⛔ CLAUDE.md still asserts this repository has no CI, and it has "
+              f"{len(wf)} workflow file(s). The claim has DECAYED (#272):", file=sys.stderr)
+        for ln in asserted:
+            print(f"    {ln.strip()[:96]}", file=sys.stderr)
+        return True
+    if not wf and asserted:
+        print("  ⇒ claim and world agree: no workflows, claim stands")
+    elif wf and not asserted:
+        print("  ⇒ claim and world agree: workflows exist, no un-struck claim")
+    else:
+        print("  ⚠ no workflows and no claim — nothing asserted, nothing to check")
+    return False
 
 
 if __name__ == "__main__":
