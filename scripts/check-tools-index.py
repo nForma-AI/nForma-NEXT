@@ -265,7 +265,30 @@ def adding_commits(root, directory):
     ⚠ NEVER GUESSES. If git cannot answer — no repository, no history, a failed call — this
     returns None and the leg is reported NOT CHECKED. Defaulting to "accreted" would convert an
     unmeasured directory into an asserted-local one, which is the collapse this exists against.
+
+    ⛔ A SHALLOW CLONE IS UNMEASURABLE, AND CHECKING `returncode` DOES NOT CATCH IT. Measured
+    2026-08-20: `actions/checkout@v4` clones at **depth 1** by default, so `git log
+    --diff-filter=A` returns ONE commit for EVERY directory and every one reads as WHOLESALE.
+    Reproduced in a `--depth 1` clone of this branch: **all 35 top-level instruments** — the
+    fleet's own tools — were reported UNCLAIMED, and the run exited 2. ⇒ The whole instrument
+    tree read as another estate's, on every CI run.
+
+    ★ `git log` DID NOT FAIL. It succeeded over a history containing one commit, so the
+    `returncode` guard above was never reached and a truncated population answered confidently.
+    That is this repository's most-filed defect class committed inside the guard written against
+    it — and it is why the shallow test is a SEPARATE question, asked first, rather than an
+    error case of the same call.
     """
+    shallow = subprocess.run(["git", "rev-parse", "--is-shallow-repository"],
+                             capture_output=True, text=True, cwd=str(root))
+    if shallow.returncode != 0 or shallow.stdout.strip() != "false":
+        return None
+    # ⚠ ...and a repository holding exactly one commit cannot distinguish the two either, whether
+    # or not git calls it shallow. A fresh `git init` + one commit is the self-test's own fixture.
+    total = subprocess.run(["git", "rev-list", "--count", "HEAD"],
+                           capture_output=True, text=True, cwd=str(root))
+    if total.returncode != 0 or total.stdout.strip() in ("", "0", "1"):
+        return None
     try:
         r = subprocess.run(["git", "log", "--diff-filter=A", "--format=%H", "HEAD", "--",
                             str(directory.relative_to(root))],
@@ -377,8 +400,9 @@ def check(root):
         adds = adding_commits(root, directory)
         if adds is None:
             unchecked.append(f"wholesale-import test for {label}")
-            out.append(f"               ----  could not read git history for {label} — the"
-                       f" wholesale-import leg is NOT CHECKED (never assumed accreted)")
+            out.append(f"               ----  git history is absent, shallow, or one commit deep"
+                       f" for {label} — the wholesale-import leg is NOT CHECKED, never assumed"
+                       f" accreted and never assumed wholesale")
         elif adds == 1 and survivors:
             out.append(f"               ⛔ WHOLESALE: every file here arrived in ONE commit, so"
                        f" the provenance question is the DIRECTORY's, not each file's.")
@@ -552,6 +576,16 @@ def check(root):
                            f" {', '.join(stale)}")
                 out.append("        ⚠ A stale acknowledgement is how an allowlist quietly stops"
                            " describing its subject. It reds the gate on purpose.")
+                # ⛔ AND THE OBVIOUS REPAIR IS THE WRONG ONE WHEN A LEG DID NOT RUN. If the
+                # wholesale test was NOT CHECKED — a shallow clone — then paths held ONLY by
+                # that leg cannot be derived, and they show up here as stale. Deleting them
+                # "to fix the red" destroys a correct record using a reading that established
+                # nothing. Named, because a maintainer clearing a gate reaches for the delete.
+                if any("wholesale-import" in u for u in unchecked):
+                    out.append("        ⛔ ...BUT a wholesale-import leg was NOT CHECKED in this"
+                               " run (shallow clone?). Paths held only by that leg cannot be"
+                               " derived here and will read as stale. DO NOT delete entries on"
+                               " the strength of this run — re-run with full history first.")
     else:
         # ⚠ An ack file with nothing to acknowledge is also stale.
         acked, _ = read_ack(tools_dir)
@@ -771,9 +805,18 @@ def selftest():
         def git(*a):
             subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *a],
                            cwd=str(root), capture_output=True)
+        # ⚠ TWO COMMITS MINIMUM, and the reason is the defect this control now also covers:
+        # a repository holding exactly ONE commit cannot tell "everything arrived together"
+        # from "only one commit is visible" — which is precisely what a shallow CI clone looks
+        # like. So the fixture commits a placeholder FIRST, and the subdirectory arrives in a
+        # second commit. That makes `newdir/` genuinely wholesale inside a history deep enough
+        # to say so.
         git("init", "-q", "-b", "main")
+        (root / ".keep").write_text("")
+        git("add", ".keep")
+        git("commit", "-q", "-m", "root")
         git("add", "-A")
-        git("commit", "-q", "-m", "wholesale import")
+        git("commit", "-q", "-m", "wholesale import of newdir")
         rc, lines, _ = check(root)
         hit = (rc == 1
                and any("WHOLESALE" in l for l in lines)
@@ -799,6 +842,22 @@ def selftest():
         (sub / "later.py").unlink()
         (sub / "tainted.py").unlink()
         (sub / "README.md").write_text("# newdir\n\n`planted.py` — a planted instrument.\n")
+        # ⛔ THE SHALLOW PRODUCER, controlled. `actions/checkout@v4` clones at depth 1, and at
+        # depth 1 EVERY directory reads as wholesale — measured, all 35 top-level instruments
+        # reported UNCLAIMED on a real CI run. git does not fail there; it answers over a
+        # truncated history, so a returncode guard cannot see it.
+        shallow = Path(d) / "shallow"
+        sr = subprocess.run(["git", "clone", "-q", "--depth", "1", f"file://{root}",
+                             str(shallow)], capture_output=True, text=True)
+        if sr.returncode == 0:
+            n_shallow = adding_commits(shallow, shallow / "tools" / "newdir")
+            hit = n_shallow is None
+            ok &= hit
+            print(f"  {'ok  ' if hit else 'FAIL'}  a SHALLOW clone is unmeasurable, not "
+                  f"'one commit' — the leg refuses (got {n_shallow})")
+        else:
+            print("  ----  shallow control NOT EXERCISED: clone failed")
+
         shutil.rmtree(root / ".git")
 
         # ⛔ the TOP-LEVEL branch is separate code and needs its own case
