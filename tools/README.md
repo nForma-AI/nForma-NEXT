@@ -696,6 +696,18 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
   as something broader.** A slash command is a bare word; a path has a separator inside it.
 - ★ **The clean result was a property of my search, not the tool** — which is what the register
   row said, and it is worth trusting that kind of caveat enough to go back and test it.
+- ⛔ **A rule that lives in a report gets re-derived wrong.** `ci-log-clean.py` exists because
+  *"drop the echoed `run:` block BEFORE stripping ANSI"* was a sentence in a wiki page and in a
+  friction report, and a sentence cannot be piped into. `grep -c FAILED` returned **4 on a job
+  whose conclusion was SUCCESS** — all four were the echoed script declaring `FAILED_FILES`.
+- ⚠ **And the escape is not the one you would reach for.** Measured on a real 153 KB
+  `gh run view --log`: **0** real `\x1b` bytes, **218** literal `^[` pairs. Stripping
+  `\x1b\[[0-9;]*m` removes nothing and looks like it worked. Both forms are handled.
+- ★ **The order cannot be reversed, so the tool refuses rather than guessing.** The cyan-bold
+  marker is the only thing separating the echoed block from real output — the words are
+  identical. With ANSI already stripped and no `##[group]Run` envelope left, there is nothing to
+  discriminate on, and returning the log unchanged is how a count of the script becomes a count
+  of the output. Exit 2.
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
@@ -716,6 +728,7 @@ python3 tools/test_stranded_branches.py
 python3 tools/test_pane_binding.py
 python3 tools/test_fleet_identity_exact.py
 python3 tools/test_bootstrap_audit.py
+python3 tools/test_ci_log_clean.py
 ```
 
 ⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only
