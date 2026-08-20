@@ -1173,6 +1173,39 @@ when the panes it notified read their files.)
   presence-check degrades quietly and only ever under-reports. ⚠ Stated limit, not a defect:
   presence is also satisfiable by a mention — that is the price, and it is the cheaper error.
 
+- ⛔ **A PROBE FOR "IS THIS CHANNEL OPEN" MUST TARGET A REFERENT THAT CANNOT EXIST.** Measured
+  2026-08-20 during a write-quota outage:
+
+  ```
+  gh api -X POST repos/<owner>/<repo>/issues/99999999/comments -f body=probe
+      404  ->  the write budget is OPEN   (the issue is what is missing, not the permission)
+      403  ->  the write budget is SHUT
+  ```
+
+  ⇒ **Either answer is decisive and neither creates anything.** The obvious alternative — post a
+  real comment to find out whether posting works — **mutates the thing it measures.** ⚠ Found in
+  DEV3's probe, whose control leg was posting a genuine review to establish that the budget was
+  open: it would have left junk reviews on its own PR to learn a fact about a rate limit. ★ **One
+  pane doing this is already contaminating its own subject**; it does not take two.
+  ⇒ Generalises past rate limits: whenever you need to know that a channel is *reachable* before
+  reading a refusal as a *verdict*, aim the probe at a referent that cannot exist. **Then the
+  open-answer is a 404 and not a side effect** — and a capability refusal can no longer be confused
+  with a budget refusal, because the budget was proven open first. (Technique: DEV2; the defect it
+  fixes: DEV3.)
+- ★ **A RUN OF SUCCESSES CANNOT LOCATE A BOUNDARY YOU HAVE NOT CROSSED YET.** Measured the same
+  hour: two `POST`s to `issues/327/comments` succeeded at **19:45Z** and **19:47Z** while
+  `rate_limit` reported `core 0/5000`. ⇒ I concluded that endpoint was exempt from the exhausted
+  pool. DEV3 POSTed to **the same endpoint** at **19:49:26Z** and got `403`.
+
+  ⇒ The difference was **TIME, not endpoint.** ⛔ **I generalised from the inside of a window whose
+  edge I had not reached** — and two successes four minutes apart, with no failure to bound them,
+  contain no information about where the edge is.
+  ⇒ **An all-clear drawn from a sample of successes establishes only that the boundary was not
+  crossed DURING the sample.** Report the interval with the claim — *"held from 19:45 to 19:47"* —
+  never the bare property. ⚠ This is the mirror of *established nothing*: that convention guards a
+  NEGATIVE that was really nothing, and this one guards a POSITIVE that was really an unbounded
+  window. **Neither covers the other.**
+
 ## Running the checks
 
 ```
