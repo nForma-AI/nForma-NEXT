@@ -15,54 +15,118 @@ measurement is the justification, not the description.
 established nothing*. A run that establishes nothing exits **2** and must never be read as
 "all clear". This is the single convention worth carrying to any other tool here.
 
+⛔ **A MARKER-CARRYING TOOL CANNOT BE PINNED AS A SINGLE FILE**, and the fleet's pinning practice
+does exactly that. Measured 2026-08-20: **8 of 26 instruments** `import runmarker`, so
+
+```
+git show <ref>:tools/x.py > /tmp/x.py && python3 /tmp/x.py
+    -> exit 1, ImportError, ZERO markers        <- the tool never ran
+```
+
+⚠ The pin idiom exists for a real reason — the shared tree runs dozens of commits behind and nine
+panes share it, so reading a tool from it reads someone else's branch. ⇒ The fix is to pin the
+**directory**, not the file:
+
+```
+git archive <ref> tools/ | tar -x -C /tmp/pin   &&  python3 /tmp/pin/tools/x.py     ✅ markers emit
+git show <ref>:tools/x.py + tools/runmarker.py  &&  python3 /tmp/pin2/x.py          ✅ markers emit
+```
+
+★ **The convention diagnoses its own pin.** A pinned tool that emits no `NFORMA-RUN` line was
+pinned wrong — the absent marker means *never reached our code*, which is exactly what an
+ImportError is. ⇒ You do not need to know about this rule to catch it; you need to read stderr.
+
+⚠ Adoption is spreading beyond the tools that introduced it — `pipe-exit-scan`, `pretooluse-guard`,
+`stranded-branches` and `transition-report` all import it now, none of them written by the author of
+the markers. **The breakage grows with adoption**, which is the argument for stating it here rather
+than in the two docstrings that started it.
+
 ⛔ **The convention collides with the interpreter, and you must check for it before trusting a
 `2`.** `python3 tools/<x>.py` exits **2** when the file **does not exist** — that is Python's own
 code for "cannot open". So an exit 2 read alone cannot separate *this tool established nothing*
 from *this tool was never here*. Measured: a role ran `grant-check.py` against a ref where it had
 not yet merged, got `2`, and nearly recorded "VOIDs correctly per convention".
 
-⇒ **Stopgap, and it is bounded — measured 6/6, nonzero exits only.** The *first line of stderr*
-separates runtime from convention:
+⇒ ⛔ **THE REMEDY: two stderr markers, and they survive a pipe.** `tools/runmarker.py`. The exit
+code stays as it is; it stops being the sole carrier.
 
 ```
-2  python3: can't open file '…'      runtime — never ran
-2  usage: <tool> [-h] …              runtime — rejected its arguments
-2  VOID: …                           the convention
-1  Traceback (most recent call last) runtime — started and DIED PART-WAY
-1  (stderr empty)                    the convention — a real finding
+NFORMA-RUN <tool>          emitted BEFORE argument parsing, as the first action
+NFORMA-RESULT <state>      emitted on every path the tool controls
 ```
 
-⛔ **Note the `1` row, which is the dangerous one:** the crash path is loud and the legitimate
-path is **silent**, so a caller reading only the code logs a crash as a finding.
-`doctrine-version.py` did exactly this on a missing `import re`.
+★ **Why stderr is the whole design.** `cmd | head` consumes **stdout** — stderr is not piped and
+arrives intact, so it survives exactly the construct that destroys the exit code. It also keeps
+data-producing tools honest: `ci-log-clean.py` emits a cleaned log on stdout, and a marker
+injected there would corrupt the artifact it exists to produce.
 
-⚠ **This is a stopgap, not the remedy, and three things bound it.** It relies on every tool
-honouring a stderr convention on every path, with nothing enforcing it; it requires reading a
-stream the caller demonstrably does not read (the incident above had the stderr right there);
-and no stream distinguishes *started and died part-way* from *never started*. ⇒ **#58 carries
-the ruling** — the discriminator must be positive evidence of execution, not an exit code — and
-a start line plus a terminal `RESULT:` line is the accepted form. **Establish the tool exists
-before believing what its exit code means.** ⚠ This is a property of every tool in this table,
+⇒ **Three states from two markers, and the three producers of `2` finally separate.** Measured by
+execution — `tools/test_runmarker.py`:
+
+```
+exit 2   RUN + RESULT: ESTABLISHED-NOTHING   the convention
+exit 2   RUN + RESULT: BAD-ARGS              argparse rejected the arguments
+exit 2   (no markers at all)                 the runtime refused the file
+exit 1   RUN, no RESULT                      started and DIED PART-WAY
+exit 0   RUN + RESULT: OK                    a controlled conclusion
+```
+
+⛔ **Emitting `RUN` before argument parsing is the load-bearing detail** — it is what separates *the
+runtime refused the file* from *the tool rejected your flags*, two things byte-identical at exit 2
+until now. And `RUN` without `RESULT` expresses **started and died**, a state the exit code cannot
+carry at all.
+
+⚠ **Two bounds, both asserted in the test rather than promised here.** A crash during **import**
+emits nothing — identical to a refused file, because `begin()` has not run yet; both are correctly
+*never reached our code*, and stderr's first line (`Traceback` vs `can't open file`) is what
+separates them. And this **does not make the exit code correct**: a caller who reads neither the
+code nor stderr is unchanged. It removes the exit code's monopoly; it does not remove the need to
+look.
+
+⇒ **Reference implementations:** `grant-check.py`, `pane-binding.py`. ⚠ Rollout across the rest is
+DEVOPS's, per #58 — a convention demonstrated on two tools by its proposer is worth less than one
+landed across the set.
+
+⚠ **The older stopgap still holds where markers are absent:** the *first line of stderr* separates
+runtime from convention on nonzero exits, measured 6/6. ⛔ Note the `1` row — the crash path is
+loud and the legitimate path is **silent**, so a caller reading only the code logs a crash as a
+finding; `doctrine-version.py` did exactly that on a missing `import re`. **Establish the tool
+exists before believing what its exit code means.** ⚠ This is a property of every tool in this table,
+
 not of any one
 of them, which is why it is stated here rather than in a docstring.
 
 | tool | question | exit codes |
 |---|---|---|
-| `fleet-context.py` | how much context does each agent have left? | 0 none due · 1 due · **2 scan established nothing** |
+| `fleet-context.py` | how much context does each agent have left? | 0 none due · 1 due · **2 scan established nothing** · `--self-test` |
 | `fleet-identity.py` | which role is this session, and which pane runs it? | 0 resolved · **2 population too small** · **2 own-session control failed** |
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `doctrine-watch.py` | which roles' doctrine moved under them, and who has not read it? | 0 nothing to tell · 1 a role is behind · **2 established nothing** |
+| `verdict-census.py` | has each indexed instrument ever produced a verdict? | 0 all classified · 1 a never-run, slow, or undocumented instrument · **2 established nothing** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
+| `transition-report.py` | did the fleet ANNOUNCE its transitions, or only declare them? | 0 audited · **2 the control failed** |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |
 | `pane-binding.py` | which panes join to a session, and which leg is missing? | 0 reported · **2 established nothing** |
 | `index-watch.py` | did the tools index drift when `main` last moved? | 0 quiet · 1 finding · **2 established nothing** |
 | `stranded-branches.py` | has any merged PR's branch got commits with no equivalent change upstream? | 0 none · 1 unmatched commits · **2 established nothing** |
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
+| `readd-scan.py` | is this diff RESTORING a line a commit deliberately removed? | 0 none · 1 re-additions · **2 established nothing** |
+| `runmarker.py` | ⚠ **a module, not an instrument** — the two stderr markers every tool emits | n/a, it is imported |
+| `ci-log-clean.py` | is this CI log's text OUTPUT, or the echoed script? | 0 cleaned · **2 established nothing** |
+| `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
+| `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
+| `use-not-mention.py` | does this file CALL `<pattern>`, or merely TALK ABOUT calling it? | 0 no call · 1 at least one CALL · **2 established nothing** |
+| `pointer-verified.py` | did this pane READ the artifact a pointer NAMED, before acting? | 0 all read · 1 at least one not · **2 established nothing** · **3 control failed** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
+| `named-referent-check.py` | does a requirement sentence name an identifier that does not exist? | 0 none · 1 candidates · **2 established nothing** |
+| `exists-anywhere.py` | does this name exist at ANY ref, or only on the one checked out? | 0 on the ref · 1 exists unmerged · 2 absent everywhere · **3 established nothing** |
+| `memory-index-check.py` | does the memory index cover the memory files, and can it be loaded whole? | 0 covered · 1 orphans/dangling/oversize · **2 established nothing** |
+| `marker-reachability.py` | can any CI invocation actually collect this test? | 0 all reachable · 1 unreachable found · **2 established nothing** |
+| `merge-watch.sh` | did a merge leave work behind, or drift the worktrees? | emits FINDING · VOID · UNDOCUMENTED; silence means ran-and-found-nothing |
 
 ## What each one is for
 
@@ -94,6 +158,60 @@ falls back to the registry report and says `UNAVAILABLE` on stderr rather than p
 table. ★ Its known-positive is by construction: the process runs inside a session, so that session
 must appear in the join. Proven to discriminate — break the join and it exits **2** with zero rows,
 rather than printing a clean-looking table of nothing.
+
+**`ci-log-clean.py`** — strips the echoed `run:` block from a CI job log, **before** anything
+strips ANSI. ⛔ GitHub echoes the script into the log ahead of its output, so the log contains the
+text of the grep you are about to run: `grep -c FAILED` returned **4** on a job whose conclusion was
+**SUCCESS** — all four hits were the echoed script declaring `FAILED_FILES`, and the command's real
+output contained zero.
+
+★ **The order cannot be reversed.** The cyan-bold escape is the *only* thing separating the echoed
+block from real output — the words are identical — so stripping ANSI first destroys the
+discriminator irrecoverably and no later pass can rebuild it. ⚠ And the escape is not what a reader
+expects: measured on a real 153 KB log, **0** actual `\x1b` bytes and **218** literal `^[` pairs,
+because `gh` renders it as two characters. A reader stripping `\x1b\[[0-9;]*m` removes nothing and
+believes it cleaned the log. Both forms are handled.
+
+⇒ Two discriminators — the per-line `[36;1m` marker (precise, dies if ANSI is stripped first) and
+the `##[group]Run `…`##[endgroup]` envelope (survives an ANSI strip, but `--log-failed` and some
+fetch paths omit group markers). ⛔ **With neither present it refuses — exit 2 — rather than passing
+the log through**, because handing back an uncleaned log unchanged is exactly how a count of the
+script becomes a count of the output.
+
+**`runmarker.py`** — ⚠ **not an instrument; a module.** It is imported, never run, and has no
+exit codes of its own. It is indexed here only because `check-tools-index.py`'s population is
+`tools/*.py` minus `test_*` — a shared module is not excluded, so leaving it out would read as
+drift. ⇒ Reported to that checker's owner rather than worked around: **the same reasoning that
+excludes tests (*"tests are not instruments and must not be indexed as ones"*) applies to a
+library module**, and the population rule has no clause for one.
+
+It provides `begin()` / `result()` / `guard()` — the `NFORMA-RUN` and `NFORMA-RESULT` markers
+described in the exit-code convention above. See #58 for why the exit code could not carry this
+alone, and `test_runmarker.py` for the three-producer demonstration.
+
+**`readd-scan.py`** — flags an added line that an earlier commit **deliberately removed**, and
+prints *that commit's own subject* next to it. ⛔ Built for the **ADDITION** failure mode (#220):
+of the three ways to resolve a contradiction between a document and a claim about it — deletion,
+narrowing, addition — **the third attracts the least scrutiny while doing identical work.** A
+deletion has an obvious victim; an addition *reads as fixing a gap*. Measured case: a drift row
+asserted a goal file *"carries no pushing-to-`main` clause — a live gap."* It had converted to a
+pointer and was the only conformant file; acting on the row would have undone the conversion.
+
+⇒ **It does not judge.** A revert is a legitimate re-addition. It puts the earlier decision in
+front of the person reversing it — *"you are adding a line that `988d932` removed, saying: convert
+Reserved to a pointer"* — so the reversal is a **choice** rather than an omission.
+
+⛔ **The obvious mechanic is wrong and was measured wrong before this shipped.** `git log -S'<line>'
+-- <path>` finds the **add** and **misses the removal**; so does `--full-history -m`; without a
+pathspec it answers about other files. All three reported *no prior removal* for a line provably
+absent from `main` and removed in `988d932`. ⇒ It **presence-walks** the file's history instead —
+one pass per file, O(commits) rather than O(commits × lines). ★ A detector built on the pickaxe
+would have returned a clean scan for the exact case it exists to catch.
+
+⚠ `MIN_LEN = 24` is a stated calibration: short lines (```` ``` ````, `---`) recur across unrelated
+edits and would bury the finding in noise. ⚠ Its known-positive is **constructed**, not sampled —
+the live repo's re-additions are whatever exists today, and a control anchored to them goes silent
+when they are resolved (#26).
 
 **`grant-check.py`** — answers *"is `<role>` authorized to do `<capability>` here, right now?"*
 from a record in `grants/`, never from the message that asked. Built after seven forged
@@ -140,6 +258,21 @@ revision, which is the condition being reported).
 
 ⛔ It cannot establish that a notified agent re-read rather than noting the notification and
 continuing on the copy it loaded. That is the difference between a trigger and a guarantee.
+
+⚠ **2026-08-20: `role_of` promised the one thing it did not deliver.** *"The role a session was BOOTSTRAPPED as — a name can be changed; this cannot"* — and it scanned the **whole file** for `You are X.`, taking the first hit anywhere. Measured over nine live transcripts: **3 resolved, 2 of the 3 wrong.** One came from a **correction sent a day later** (*"your identity was wrong … You are DEV2"*, record 17155, against a bootstrap reading MAINTAINER); one from a **quotation** of someone else's prompt; and a session bootstrapped as `DX` was reported `DEV2` because it had spent the day discussing DEV2. ⇒ It returned **the mutable thing it promised immunity from**, and a **mention** rather than a use. ★ Now anchored to the bootstrap record, with three outcomes — `None` unreadable or no launch prompt, `""` read and names no role, a role otherwise. **6 of 9 after, all from bootstraps.** ⚠ The two accepted phrasings are a **measured snapshot**, not a closed set.
+
+**`verdict-census.py`** — answers #2's question for every instrument this table indexes: *has it ever
+produced a verdict?* ⛔ **By running them**, never by reading the index — an index entry is a claim that a
+tool exists, and asserting verdict-history from it would reproduce the defect #2 is about. It separates four
+states that a single exit code would collapse: `VERDICT-SEEN` (exited a code its own docstring documents as
+a conclusion), `ESTABLISHED-NOTHING` (exit 2 — a refused verdict, which is the honest form of silence and
+**not** a verdict), `NO-VERDICT-VOCAB` (ran, but documents no exit codes, so *did it conclude?* cannot be
+read from its contract), and `NEVER-RUN` (crashed, or exited a code it does not document). ⚠ A traceback is
+classified before the exit code, because a crash that happens to exit `1` would otherwise read as a
+conclusion. ⚠ A timeout is reported as `NO-VERDICT-IN-TIME`, never `NEVER-RUN` — measured: a 25s bound
+labelled a 45s instrument never-run, which is a statement about the caller's parameter rather than the
+tool. Its known-positive is a set of **synthetic fixtures outside `tools/`**, one per state, so repairing
+any real instrument cannot silence it.
 
 **`wake-yield.py`** — pairs an interruption's cost with its yield. Cost alone is
 uninterpretable: an agent woken into useful work and one woken into churn consume context
@@ -198,6 +331,19 @@ final non-empty line of the last assistant turn — never by searching for the t
 the text, because a keyword scan is tripped by any turn *discussing* blockage and this fleet
 produced five such instances in one session. A quoted example is never the last line.
 
+**`transition-report.py`** — the STATE line is a **pull**; the role prompts also require a
+**push** on transition into `FREE` or `BLOCKED`, and this is that rule's execution record. Built
+the same day as the rule, because `prompts/README.md` names the alternative: a rule asking a
+reader to check something mechanical is *"a check with no execution record: its compliance is
+unobservable, so its violation rate is unmeasurable."* ★ **Its two directions are not equally
+strong.** `MISSED` is strong — no message at all between your previous declaration and this one,
+so this channel cannot have carried it. `notified` is weak — a message exists in the window and
+the tool cannot read what it was about. ⇒ It finds omissions; it is not a compliance rate, and
+quoting the notified count as one is the way to misuse it. ⚠ A `MISSED` row is a **candidate**:
+a pane can also be spoken to directly. It imports `fleet-state.py`'s parser rather than
+re-implementing it, so the positional rule has one home and two readings can never corroborate
+each other by both being wrong.
+
 **`doctrine-version.py`** — answers which version of its role prompt each agent is actually
 running. `ROLE-READY` proves the prompt file was *reachable*; it never says which version was
 read, and the version is the part that decides behaviour. ★ It takes no cooperation from the
@@ -240,6 +386,92 @@ diagnosing that class. A count without its sha is not comparable to the same cou
 known-positive and **both went to zero within the hour** as their follow-up PRs merged — #26
 instance 3, realised rather than hypothetical: a control propped up by a defect queued for repair
 stops being a control the moment the defect is fixed.
+
+**`gh-complete.py`** — ⛔ `gh api …/check-runs` returns **30 of 54** by default and it is not an
+error: the response still carries `total_count: 54`, so a filter over `.check_runs[]` evaluates the
+thirty it received and **returns a clean answer about a set it never saw**. Measured: it hid a
+required-check failure, and made two instruments by one author contradict each other about one PR.
+⚠ `per_page=100` is the reflex and **it is not the check** — it fails silently the moment a
+population exceeds it. This compares the stated total against what arrived and refuses the reading
+when they differ.
+
+**`reference-check.py`** — answers the one question a curated list cannot answer about itself:
+**has any of it moved?** ⇒ Built because a 249-line root-cause investigation of a failure this fleet
+re-derived from CI logs overnight had been on this machine for a month, and the standing rule that
+pointed at it existed while nobody opened its `docs/`. ⚠ And searching is not the remedy — 304
+repositories under `~/code` and 14,517 markdown files mention *exec*, so a keyword sweep returns a
+haystack. `reference-implementations.md` is therefore CURATED, and this watches the curation.
+
+**`pointer-verified.py`** — ⛔ *"verify at the artifact, never the message"* is this fleet's
+mitigation for #3 and it is **doctrine with no execution record** (#2). ⚠ The obvious tool is #26:
+*"did **any** artifact command run after the pointer"* scores 21 of 23 on its author's transcript
+and would score **any live pane clean**, because a working pane always runs `git` for something
+else. ⇒ So the predicate is specific — *did a command read **the ref-and-path the pointer
+named***. ⛔⛔ And the false positive is **guaranteed**: a pointer's text *contains* the command
+that would verify it, so any scan over the turn reports the pointer as self-verifying. **The
+population of false positives is created by the pointer format itself** (#36). Named artifacts are
+read from the inbound turn; **evidence only from `tool_use` command fields** — a quotation cannot
+occupy a tool call. ⚠ `READ-DIFFERENT` **over-reports on purpose**: a pointer names every file in a
+role's row including ones with a `+0/-0` delta, and reading only the changed ones is correct and
+scores FAIL. Narrowing it to guess which named file mattered would trade a *visible* over-report
+for an *invisible* under-report.
+
+**`use-not-mention.py`** — ⛔ a grep for a command finds every sentence *discussing* that command.
+Measured in a sweep its author wrote minutes after working on this exact class: two false
+positives, one a `print()` warning about the very defect being scanned for and one a fixture
+string inside a test of a different matcher. ★ **The sub-class that makes it worse over time:**
+correct handling *generates* mentions — a tool that documents the defect necessarily contains the
+pattern — so a *"does this code handle X"* scan gets **noisier as the estate improves**, with the
+noise concentrated in the files that are already right. ⇒ Resolves the **sink** rather than
+matching the text. (#36)
+
+**`memory-index-check.py`** — ⛔ measured on the machine it was written on: **348 memory files,
+232 indexed, 115 ORPHANS**, and the index **42.5 KB against a recalled ~25 KB load budget**. An
+orphan is not degraded, it is **invisible** — recall works from the index, so a file nobody links
+is a file nobody reads, and nothing says so. ★ The recursion is the point: that directory already
+held an entry titled *"Memory index truncates by AGE, not importance"*, and the index then grew
+past the limit **again** and acquired 115 unindexed files on top. A recorded lesson did not fire.
+⚠ It reports **orphan**, **dangling** and **oversize** separately because their remedies are
+opposite — an orphan is fixed by adding a line, and oversize is made **worse** by adding one. ⚠ The
+25 KB budget is a **recalled** figure, not one this tool established, which is why it is a flag.
+
+**`exists-anywhere.py`** — ⛔ built after **four instances in one session, by three agents**, of
+concluding about a repository from a single ref. One reached publication and had to be retracted:
+`ci_guard_closing_keywords.py`, reported as never having existed by two agents who each ran
+`git ls-files | grep`, is **161 lines with its own test file** on an unmerged branch. ★ The
+object-store count is the discriminator and it is one command — `iter_console_backends` returns
+**0**, that guard returns **6**. ⇒ *"Never existed"* and *"exists on a ref you did not search"*
+are different defects with different remedies, **a wrong sentence versus an unmerged branch**, and
+`git grep`, `git ls-files` and a working-tree scan cannot tell them apart. ⚠ Deliberately a tool
+and **not** a `pretooluse-guard` rule: the wrong reading is not a wrong command, it is a correct
+command answering a narrower question than the one asked, so a guard would fire on the correct use
+— which this repository has already shipped once.
+**`marker-reachability.py`** — the static half of #2. #2 specifies five states from RUN
+HISTORY, and a test excluded by every `-m` selector generates no runs to query: ⇒ **you cannot
+ask "has this gate ever spoken?" about something you do not know exists.** This supplies that
+population from the repository alone — no API, no rate limit, gates in CI. ⛔ Its known positive
+is `tests/test_cluster_spec_drift.py`, reported by two agents and filed as Blazing-Back#1115:
+`pytestmark = pytest.mark.network`, and the only selector covering `tests/` is
+`-m "not e2e and not network"`. ★ **Its first working version reported 870 files, 0 unreachable,
+and missed that guard** — because it matched `pytest` inside COMMENTS, and those mis-parses
+yielded `paths=[] -m=None`, which the rule reads as *collects everything*. **One comment marked
+the whole repository reachable.** ⚠ Three states, and `UNKNOWN-PATH` (a `${var}` path) is counted
+in neither column: resolving it either way would overstate the evidence. A direct
+`python3 e2e/test_x.py` counts as run — asking "can pytest collect it" gave a *true answer to the
+wrong question* for 11 e2e files.
+
+**`named-referent-check.py`** — converted from a **convergence**, not from one report: two
+agents, different subsystems, no contact, within one hour found a named enforcement mechanism
+with no referent (`iter_console_backends`, asserted in capitals as mandatory, defined nowhere;
+`EXEC_REQUIRE_EVIDENCE`, three exec sites "held behind a flag" that does not exist). ★ Neither
+is a stale reference to something removed — both describe machinery **never built**, in prose
+confident enough that the author stopped checking. ⛔ Its narrowing history is the point: **126
+candidates → 8 → 1** on the same 1,559-file repo, and only hand-verification forced each step —
+at 8 it was **7/8 false**, calling real config keys phantoms because string literals and kwargs
+were missing from its universe. ⚠ It is deliberately narrow and says so: a convention naming
+*nothing* is invisible here, an identifier that exists but is never called passes, and one of
+its own two founding cases is undetectable by it. A clean run means *no requirement sentence
+names an undefined identifier* — **not** that stated and enforced conventions agree.
 
 **`pretooluse-guard.py`** — matches, over a single command string, the idioms that produce a
 confident WRONG measurement: `$?` read after a pipeline, `${PIPESTATUS[n]}` under zsh, and a
@@ -290,6 +522,25 @@ their refusals are *the verdict*, not an obstacle: a non-discriminating comparis
 un-analysable interval have no remedy beyond a different input, and inventing an `ADDABLE` line for
 them would be a remedy slot filled to look complete. **NOT swept:** tools owned by other roles.
 [measured: nForma-NEXT 2026-08-19] (#73)
+
+**`merge-watch.sh`** — a read-only monitor under the operator grant of 2026-08-20. Runs the
+merge-time instruments **when `main` moves**, not on a clock.
+
+★ **Placement, not schedule, is the finding.** `stranded-branches.py` already had a caller — at
+**launch** — and the regression it exists to catch arrives at **merge** time, hours before the next
+launch. A clock would be no better: the defect is not periodic, it is *caused by an event*. ⇒ So the
+cadence **is** the event.
+
+⛔ **Silence means ran-and-found-nothing.** It emits on findings, on VOID, and on any exit code the
+callee does not document — a watch whose quiet covers both states is the never-concluded defect with
+a schedule attached. Proven by stubbing the instrument's control to fail: the watch emits `VOID`
+rather than going dark.
+
+★ **Its control is one a fix cannot silence.** Before trusting a scan it asserts the instrument's own
+`--self-test`, which is synthetic and does not decay — unlike a known-positive drawn from live fleet
+state, which the fleet repairing itself turns negative. (An orchestrator declared exactly that defect
+in its own watch: its positive was propped up by the defect it detected, and both arms went to zero
+when the panes it notified read their files.)
 
 ## Conventions worth copying
 
@@ -738,6 +989,20 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
   identical. With ANSI already stripped and no `##[group]Run` envelope left, there is nothing to
   discriminate on, and returning the log unchanged is how a count of the script becomes a count
   of the output. Exit 2.
+- ⛔ **`per_page=100` is a reflex, not a check.** `gh api …/check-runs` returns **30 of 54** by
+  default, carries `total_count: 54`, and a filter over `.check_runs[]` answers about a set it
+  never saw — it once **hid a required-check failure**. `gh-complete.py` compares the stated
+  count against the array received and **refuses**. ⚠ It deliberately does not paginate for you:
+  fetching the rest is a different decision with a different cost, and making it silently would
+  hide the truncation the tool exists to surface.
+- ★ **And the endpoint most people reach for cannot be checked at all.** `repos/…/pulls` returns
+  a **bare array with no stated total**, so completeness is unestablishable from it. The tool
+  exits 2 there. That is its limit, not its feature — a helper that cannot rescue every call
+  should say which ones.
+- ⚠ **The rule existed in a wiki page and a friction report for hours while I merged PRs by
+  reading `check-runs` directly.** The audit afterwards found `total_count == length` on all
+  thirteen queries — **repo size, not care.** A rule you have read and still not applied is a
+  rule that needed to be executable.
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
@@ -759,6 +1024,7 @@ python3 tools/test_pane_binding.py
 python3 tools/test_fleet_identity_exact.py
 python3 tools/test_bootstrap_audit.py
 python3 tools/test_ci_log_clean.py
+python3 tools/test_gh_complete.py
 ```
 
 ⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only

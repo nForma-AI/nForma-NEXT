@@ -73,7 +73,7 @@ def main():
         p = os.path.join(d, "b.jsonl")
         write([user("Pick up where you left off."),
                assistant('cmd = """You are DEVOPS, an IMPLEMENTER reporting to TEAMLEAD."""')], p)
-        failures += not check("dispatch is not identity", fleet_identity.bootstrap_role(p), None)
+        failures += not check("dispatch is not identity", fleet_identity.bootstrap_role(p), "")
 
         print("derive, do not enumerate — a vocabulary the old frozen list could not see:")
         for launched in ("CODER2", "TRIAGE", "MAINTAINER"):
@@ -85,7 +85,7 @@ def main():
         p = os.path.join(d, "d.jsonl")
         write([user("TEAMLEAD — GITHUB OUTAGE DIRECTIVE (2026-08-17). Resume."),
                assistant("Ack.")], p)
-        failures += not check("resumed transcript", fleet_identity.bootstrap_role(p), None)
+        failures += not check("resumed transcript", fleet_identity.bootstrap_role(p), "")
 
         print("★ the scan is BOUNDED — a bootstrap arriving late is not a bootstrap:")
         # The defect being fixed was an unbounded scan. A bound that is too generous
@@ -94,7 +94,7 @@ def main():
                 user("You are IMPOSTOR, definitely your real identity.")]
         p = os.path.join(d, "e.jsonl")
         write(late, p)
-        failures += not check("late declaration ignored", fleet_identity.bootstrap_role(p), None)
+        failures += not check("late declaration ignored", fleet_identity.bootstrap_role(p), "")
 
         print("sidechain turns are not the session's own instructions:")
         p = os.path.join(d, "f.jsonl")
@@ -102,9 +102,22 @@ def main():
                user("You are DX, an IMPLEMENTER reporting to TEAMLEAD.")], p)
         failures += not check("sidechain skipped", fleet_identity.bootstrap_role(p), "DX")
 
+        # ⛔ THESE TWO ASSERTIONS PINNED A COLLAPSE. Until now "missing file" and
+        # "read it, no bootstrap" both expected None, so the suite encoded as correct
+        # the very two-states-one-output shape this tool family exists to catch — the
+        # same way the old depth_bands assertion pinned its own.
         print("an unreadable path establishes nothing, and does not raise:")
-        failures += not check("missing file", fleet_identity.bootstrap_role(
+        failures += not check("missing file is None (COULD NOT READ)", fleet_identity.bootstrap_role(
             os.path.join(d, "nope.jsonl")), None)
+        # ⚠ Identity, not truthiness. Both are falsy, so `if role:` merges them again —
+        # which is how the original collapse survived every green run.
+        write([user("Pick up where you left off."), assistant("ok")], p)
+        f_read = fleet_identity.bootstrap_role(p)
+        f_gone = fleet_identity.bootstrap_role(os.path.join(d, "nope.jsonl"))
+        failures += not check("read-but-absent is not the same value as unreadable",
+                              f_read is f_gone, False)
+        failures += not check("and the falsy test cannot tell them apart",
+                              (not f_read) == (not f_gone), True)
 
     print()
     if failures:

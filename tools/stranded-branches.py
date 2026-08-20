@@ -81,6 +81,10 @@ auth failure, `gh` returning an empty array on a swallowed error — a naive ver
 reports "0 stranded" and exits 0. That is absence read as success, inside a check
 written to catch absence read as success.
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from runmarker import guard, result  # noqa: E402
+
 import json, subprocess, sys
 
 BASE = "origin/main"
@@ -313,5 +317,17 @@ def main():
     return code
 
 
+def _entry():
+    """Emit the terminal state for every path this tool controls.
+
+    guard() covers only the argparse SystemExit path, where the tool never regains
+    control. Without this, a successful run emits NFORMA-RUN and no NFORMA-RESULT —
+    which reads as STARTED-AND-NEVER-FINISHED, the collapse #58 exists to prevent.
+    """
+    rc = main()
+    result({0: "OK", 1: "FINDING", 2: "ESTABLISHED-NOTHING", 3: "CONTROL-FAILED"}.get(rc, f"EXIT-{rc}"))
+    return rc
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(guard("stranded-branches", _entry))

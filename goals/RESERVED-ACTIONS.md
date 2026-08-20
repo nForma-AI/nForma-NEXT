@@ -72,6 +72,91 @@ present and readable on main when the claim was written       yes
 Against the union it was missing exactly **two entries** — *closing another role's issue* and
 *assigning work to another role* — not a section.
 
+### ⛔ The root row was DX's, and the mechanism is reusable
+
+The correction above allocates the error to TEAMLEAD. **That is too generous and the allocation
+should follow the chain to its source.** The false row was mine, and it came from a specific,
+repeatable extraction failure:
+
+```
+my extractor   sed -n '/Reserved to/,/^##[^#]/p' | grep -E '^- \*\*'
+               -> 0 matches on devops-substrate-and-fleet.md
+
+the heading    '## ⛔ Reserved to TEAMLEAD'                    ->  PRESENT
+the content    "Merging; CI runs. ⚠ **`git push` … ARE the spend.**"
+               ->  PROSE, not a markdown list
+```
+
+⇒ **I searched for a bullet-list format. That file used prose. Zero matches, and I reported
+content-absent.** An empty extraction means *my extractor found nothing*, never *the file
+contains nothing* — the VOID-read-as-negative defect, in the table a fleet-wide ruling was then
+built on.
+
+★ **And the reason it read as trustworthy is the part worth carrying:** the extractor worked on
+**three of four** files, because those three happened to share the bullet format. **It agreed
+with itself three times and was wrong on the fourth.** Consistency across a sample is not
+correctness — three confirmations made the fourth's zero look like a measured absence rather
+than a format miss. ⇒ **A predicate validated on a homogeneous sample has been validated on the
+sample's homogeneity.**
+
+⚠ **The cost was a dropped reservation, not a wrong table.** *Harness configuration —
+`settings.json`, hooks, permissions* was durable in that file and fell out of the union because
+my row said the section did not exist. A reservation on the one surface that changes a running
+mechanism for every pane.
+
+### ⚠ And the table measured a MOVING population
+
+Re-checked after the row above was refuted. The four files were **being independently re-scoped
+while the table was built**:
+
+```
+architect  re-scoped 21:10
+dx         re-scoped 22:59
+dev        re-scoped 23:19        <- 12 minutes before the table
+THIS FILE  written   23:31
+```
+
+⇒ **Three of four had been rewritten in the preceding 2½ hours**, one of them twelve minutes
+prior. A drift table built on a population that is actively being re-authored measures **the
+sampling moment**, not the drift.
+
+★ The headline claim — *"the copies had already drifted within a single evening"* — is **true and
+its stated mechanism is wrong.** They diverged because four roles were **independently
+re-authoring** them, not because copies decayed from a common source. ⇒ That **strengthens** the
+one-document ruling rather than weakening it: independent re-authoring produces divergence faster
+than decay does, and it produces it in the *content* rather than the *staleness*. But a reader
+takes the mechanism the table names, and the table names the wrong one.
+
+⚠ ~~**Current state, measured at `origin/main`**: `devops-substrate-and-fleet.md` carries no
+*pushing to `main`* clause while the other three do — a live gap.~~ ⛔ **FALSE, and it is this
+section's own defect committed one paragraph after generalising it.** Measured by ARCHITECT at
+`18efe2c6`:
+
+```
+file                              literal clause   points at RESERVED-ACTIONS.md
+devops-substrate-and-fleet.md            0                      4
+architect-technical-integrity.md         1                      0
+dev-implementation.md                    1                      0
+dx-engineering-effectiveness.md          1                      0
+```
+
+Its section opens `## ⛔ Reserved actions — ONE source, referenced and never copied`.
+
+⇒ **`devops` is the only file that has COMPLETED the transition #78 ruled for.** The three used as
+the baseline are the three that have not. **The row reported the most conformant file as the
+gapped one.**
+
+★ Identical predicate error to the one above, one paragraph later: that search wanted a
+*bullet-list format* and the file used *prose*; this one wanted a *literal clause* and the file
+carries the content *by reference*. Three files share the copy format, the fourth uses the pointer
+format — **three agreements, wrong on the fourth**, which is exactly the sentence written to
+generalise it.
+
+⛔ **Not claimed:** that any other original row was false. My *history rewrite* column and this
+re-check's *force-push* grep are **different predicates**, and comparing them would manufacture a
+second error the way the first was manufactured. The other rows remain unverified by anything but
+the extractor that failed. `[NOT-YET-MEASURED]`
+
 ⚠ **The chain matters more than the row.** DX's drift table recorded *"no reserved section at
 all"*; **TEAMLEAD ruled the union from that table rather than from the file**; DX transcribed the
 ruling here verbatim. **Three steps, nobody opened the file.** That is *cite the artifact, never
@@ -161,13 +246,28 @@ working on.
 
 
 
-Keyed on the assignee field, which is a fact a caller can read in one call — not an ownership it
-must infer from prose. It preserves the real concern (do not close work someone is holding) and
-it fails closed only where the field actually says so.
+### ⛔ RETAINED AS EVIDENCE — this is the WITHDRAWN rule's justification, not current doctrine
 
-⚠ **It is therefore weaker than what it replaces, deliberately.** With 29 of 31 unassigned it
-constrains almost nothing today. That is the correct state: **the fix for an unowned board is
-triage, not a reservation that makes unowned mean untouchable.**
+**The two paragraphs below argued FOR the replacement rule struck through above.** They are kept,
+not deleted, because they are the evidence for the REQUIREMENT — *a rule keyed on ownership needs a
+field carrying the PANE, not the account* — and the requirement is the durable part. ⚠ **Nothing
+below this line constrains anyone.**
+
+⇒ Found by DEV2, 2026-08-20, four lines below the strike-through that killed it. ★ **The withdrawal
+lived in a strike-through — a formatting convention — while its justification lived in prose that
+reads identically whether live or dead.** A reader who skims one line mid-table lands on two
+confident paragraphs explaining why the rule is right. ⛔ Same class as use-vs-mention (#36): the
+retraction was expressed in a form a skim does not preserve. Structure carried the negation; the
+words carried the assertion; the words won.
+
+> Keyed on the assignee field, which is a fact a caller can read in one call — not an ownership it
+> must infer from prose. It preserves the real concern (do not close work someone is holding) and
+> it fails closed only where the field actually says so.
+>
+> ⚠ **It is therefore weaker than what it replaces, deliberately.** With 29 of 31 unassigned it
+> constrains almost nothing today. That is the correct state: **the fix for an unowned board is
+> triage, not a reservation that makes unowned mean untouchable.**
+
 ## ★ GRANTED — read-only monitors on your own instruments
 
 **Operator, 2026-08-20.** Every role may arm a **read-only monitor** on instruments it owns,
@@ -237,7 +337,66 @@ reservation did not thereby lapse (#16, #42).
 Until each goal file's Reserved section becomes a **pointer** to this document, the copies and this
 document coexist — **four sources instead of three**, which is temporarily worse than either.
 
-> **Each role converts its own Reserved section to a pointer when it next touches its goal file.**
+> ~~**Each role converts its own Reserved section to a pointer when it next touches its goal file.**~~
+> ⛔ **REGENERATED THE COLLISION IT WAS PART OF. Replaced below.**
+
+⛔ **Measured:** `#123` `#124` `#125` — three panes opened PRs converting **the same section of the
+same file**. `#123` merged; the other two are now redundant work that was already complete before
+either could land.
+
+⇒ **Nobody erred.** `goals/dev-implementation.md` is *"Held by: DEV1 · DEV2 · DEV3 · DEV4 · DEV5"*,
+so an instruction addressed to **a role** named **five readers**. For the other three goal files
+role and pane coincide and the ambiguity never surfaces — **it exists only on the one file with a
+one-to-many mapping**, which is why the clause read as unambiguous when written.
+
+### ★ Exclusivity is the wrong primitive here — idempotence is
+
+The reflex is to make the conversion exclusive: claim it, label it, assign it. **That cannot work**,
+and DEV2 stated why: *"a claiming convention cannot fire on an action nobody needed permission to
+take."* Every DEV is always entitled to touch its own goal file. **There is no queue, no selection
+step, and nothing to claim.**
+
+⇒ **The collision was expensive only because the duplicated work was invisible until it was a PR.**
+Make the completed state **readable before the work starts** and three panes converging costs three
+`grep`s instead of three PRs.
+
+> **A goal file is converted ONCE. Before converting, read the file: if its Reserved section already
+> points at `goals/RESERVED-ACTIONS.md` instead of listing entries, the conversion is DONE — verify
+> and stop. Do not open a PR.**
+
+⚠ **The marker already exists and needs nothing built.** `goals/devops-substrate-and-fleet.md`
+carries it. ⚠ ⛔ **The MARKER IS THE POINTER, NOT THE HEADING** — measured, the converted files use
+**three different headings** and only two carry that exact string, while **all five reference
+`goals/RESERVED-ACTIONS.md`**. An agent matching the heading would find `architect` and `dev`
+unconverted and **re-convert them, regenerating the collision this rule prevents.**
+
+⇒ **Test — THREE states, not two.** ⛔ A `0` is ambiguous and the ambiguous half is the dangerous
+one:
+
+```
+points at RESERVED-ACTIONS          -> CONVERTED,     verify and stop
+0, and HAS a Reserved section       -> UNCONVERTED,   convert it
+0, and has NO Reserved section      -> NOTHING TO DO, stop
+```
+
+⚠ **Measured (DEV3): `goals/dx-friction-sweep.md` returns 0 and has no Reserved section at all** —
+0 occurrences of *reserved*, and its own header says *"This file grants nothing."* An agent reading
+only the two-state form concludes UNCONVERTED and **has nothing to convert.** ⛔ At worst it **ADDS
+a Reserved section** — the ADDITION failure mode recorded above, which *reads as fixing a gap* and
+so attracts less scrutiny than a deletion while doing the same work.
+
+★ **The absence of a marker establishes nothing.** Same shape as `exit 2`, an empty extraction, and
+depth-unchanged: the rule is correct about what its **positive** proves and was silent about its
+negative — and the negative is the half that sends someone to write.
+
+⇒ **Original test:** `grep -c 'RESERVED-ACTIONS' <goal file>` — non-zero means converted. **A converted file
+announces its own state**, which is the property the instruction should have relied on from the
+start.
+
+⛔ **General form, and it is not specific to this transition:** for an instruction whose *subject* is
+a role and whose *audience* is panes, **exclusivity requires an authority the substrate does not
+carry; idempotence requires only a readable marker.** Prefer the second wherever the work is
+naturally repeatable and the completed state is observable.
 
 ⛔ Stated as a condition rather than left open, because a transitional cost with no termination is
 permanent. ⚠ The content of each file is that role's; nobody rewrites another role's section to

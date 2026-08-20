@@ -128,6 +128,34 @@ def check(root):
         if not missing and not extra:
             out.append(f"  ok    every tool has a {label} ({len(found)})")
 
+    # ⛔ A ROW AND A FILE BOTH EXISTING IS SATISFIED BY A FILE WITH NOTHING IN IT.
+    #
+    # Measured 2026-08-20 (#226): a 218-line instrument was committed as git's EMPTY
+    # blob e69de29b and this checker exited 0 on it, because every leg above asks
+    # "is the NAME present" and none asks "is there an INSTRUMENT". The tool's own
+    # --self-test also exited 0, and so did a live run: `python3 <empty file>` exits
+    # 0 under every runtime, since there is no statement to fail. Three green checks
+    # over nothing.
+    #
+    # ⇒ The floor is > 0 BYTES, and the reason for that specific floor is that it is
+    # THE ONLY ONE THAT NEEDS NO JUSTIFICATION. Any larger N — 10 bytes, 5 lines, "has
+    # a shebang" — is a number chosen by whoever wrote the check, which is the
+    # calibration-wearing-the-grammar-of-a-rule defect this repository keeps filing.
+    # Zero is not a threshold; it is the boundary between a file and no file.
+    #
+    # ⚠ STATED, so nobody reads this as more than it is. It does NOT catch: a 1-byte
+    # file, a file of only comments, or a syntactically valid no-op. Those are real and
+    # a bigger arbitrary number would not honestly cover them either — it would only
+    # move the line to a place with no argument behind it. Naming the gap beats
+    # inventing a constant.
+    empty = [n for n in actual if (tools_dir / n).stat().st_size == 0]
+    if empty:
+        failed = True
+        out.append(f"  FAIL  indexed but EMPTY (0 bytes): {', '.join(empty)}"
+                   f" — the index verified the FILENAME, not the instrument")
+    else:
+        out.append(f"  ok    every indexed tool is non-empty ({len(actual)})")
+
     m = COUNT.search(text)
     if not m:
         head = text.split("\n\n")[0] + "\n\n" + (text.split("\n\n") + [""])[1]
@@ -197,6 +225,22 @@ def selftest():
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  known-negative: a new tool with no row exits 1 and "
               f"names it (got {rc})")
+
+        (t / "gamma.py").unlink()
+
+        # ⛔ the byte-floor's own known-negative: an INDEXED tool truncated to 0 bytes.
+        # This is the #226 case reproduced — every name is present and the file is empty.
+        (t / "alpha.py").write_text("")
+        rc, lines, _ = check(root)
+        hit = rc == 1 and any("EMPTY" in l and "alpha.py" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  byte-floor: an indexed 0-byte tool exits 1 and "
+              f"names it (got {rc})")
+        (t / "alpha.py").write_text("#\n")
+        # ⚠ restore gamma: a later case in this same fixture deletes it, and removing
+        # it here made that case fail on a file I had already unlinked. The fixture is
+        # shared state and my insertion is not the last reader of it.
+        (t / "gamma.py").write_text("#\n")
 
         # ⛔ an UNGUARDED count must not read as NO count — the third state
         (t / "gamma.py").unlink()

@@ -40,6 +40,150 @@ FLEET_ROLES = ("TEAMLEAD", "ARCHITECT", "DEVOPS", "DX",
                "DEV1", "DEV2", "DEV3", "DEV4", "DEV5")
 
 
+def classify_series(window):
+    """single | compaction-step | interleaved, from the ORDER of depth readings.
+
+    ⛔ EXTRACTED SO IT CAN CARRY A CONTROL. The rule this implements was fixed
+    against a real fleet transcript — `e4a7769d`, a window with 14 crossings between
+    a ~350k and an ~850k series — and THAT TRANSCRIPT NO LONGER EXISTS. Not aged out
+    of a scan window: the file is gone.
+
+    ⇒ So "0 SHARED FILE flags" today establishes that the false positives stopped and
+    establishes NOTHING about whether a genuine shared file would still be flagged.
+    The comment at the call site warns that silencing a false positive by creating a
+    false negative is the worse trade — and its own control evaporated with the
+    session that produced it. A live-real fixture decaying, exactly as
+    `stranded-branches.py` found when both its known-positives went to zero inside an
+    hour.
+
+    ⇒ The control is now CAPTURED-REAL and frozen in self_test(): both shapes come
+    from the measured incident, cannot decay, and depend on no transcript surviving.
+
+        compaction  H H H H l l l l l l      one crossing, and never back
+        interleaved H H l H l l H H l H      many crossings, both series still live
+    """
+    if len(window) < 8:
+        return "single"
+    lo, hi = min(window), max(window)
+    if hi - lo <= 100_000:
+        return "single"
+    mid = (lo + hi) / 2
+    side = [v >= mid for v in window]
+    if side.count(True) < 3 or side.count(False) < 3:
+        return "single"
+    crossings = sum(1 for i in range(1, len(side)) if side[i] != side[i - 1])
+    # A step down taken once is a compaction: the last reading is then the CORRECT
+    # post-compaction depth and must be reported, not suppressed. Returning to the
+    # high cluster after leaving it is what no single session does.
+    return "interleaved" if crossings >= 3 else "compaction-step"
+
+
+def depth_bands(series, recent=60, min_gap=150_000):
+    """The SET of depths in a shared transcript, when the assignment is not recoverable.
+
+    ⛔ WHY A SET AND NOT AN ATTRIBUTION. A shared file was reported as one number —
+    `85.5%` — which is wrong for at least one of its two writers. The obvious repair is to
+    pair each usage reading with the nearest preceding name record and attribute it.
+
+    **That was tested and REFUTED.** Measured on `e4a7769d`, last 60 readings in order:
+
+        D423 D423 D423 D847 D847 D847 T425 T848 T426 T854 T854 T854 ...
+
+    The readings are cleanly bimodal — 423-444k and 847-884k, no overlap — but **both
+    names appear in BOTH bands.** ⇒ The name record does not identify which agent produced
+    the adjacent reading, so nearest-name attribution assigns depth at chance.
+
+    ★ The bands themselves are real and recoverable. So report *"two agents, one near 44%
+    and one near 88%"* and refuse to say which. That is strictly better than one number
+    that is wrong for somebody, and strictly more honest than a coin-flip attribution.
+
+    ⛔ THREE OUTCOMES, NOT TWO — and the first version of this function had only two.
+
+        None   CANNOT TELL. Fewer than `recent` readings to work with. No claim is possible.
+        []     LOOKED, AND THERE IS ONE. Unimodal, or the split is a lone outlier.
+        [lo,hi] two bands.
+
+    ⇒ The first version returned `[]` for all three, so **a barely-started session rendered
+    identically to a confirmed single-writer one** — and this function exists precisely because
+    one depth number described two agents. **The instrument built to detect a two-states-one-output
+    collapse contained one**, and its docstring mentioned only the unimodal case.
+
+    ★ `None` vs `[]` is the same convention `exists-anywhere.py` uses for a failed search versus
+    a genuine absence. One convention across the tools, so a caller that gets `None` anywhere
+    knows it means *the question was not answered* rather than *the answer is nothing*.
+    """
+    vals = sorted(series[-recent:])
+    if len(vals) < 8:
+        return None                     # ⛔ cannot tell — NOT "one writer"
+    gaps = [(vals[i + 1] - vals[i], i) for i in range(len(vals) - 1)]
+    gap, at = max(gaps)
+    if gap < min_gap:
+        return []                       # unimodal: no separable bands
+    lo, hi = vals[: at + 1], vals[at + 1:]
+    if len(lo) < 3 or len(hi) < 3:
+        return []                       # a lone outlier is not a band
+    return [(min(lo), max(lo)), (min(hi), max(hi))]
+
+
+def classify_names(seq):
+    """A NAME HISTORY IS NOT A ROSTER. Which is this?
+
+    ⛔ This function exists because its absence produced a chain of wrong conclusions in one
+    session. `⚠name-ambiguous(IMPLEMENTER4/DEV4)` and `⚠name-ambiguous(TEAMLEAD/DEV2)` printed
+    identically, and they are **opposite situations**:
+
+        rename        A A A A B B B B        one agent, renamed. The last name is CURRENT.
+        concurrent    A B A B A A B A        two agents interleaved. No name is current.
+
+    Measured, and the two are cleanly separable by ORDER — the same insight `classify_series`
+    applies to depths:
+
+        b00d725a   IMPLEMENTER4 lines 5541..6795, then DEV4 from 6808 and never again -> RENAME
+        e4a7769d   TEAMLEAD/DEV2 alternating for ~1800 records                    -> CONCURRENT
+
+    ⇒ Reading the rename as ambiguity cost a full detour: I concluded a third, unaddressable
+    writer existed, published that on a Blazing-Back issue, and only found it false by checking
+    the roster — 78 live sessions, no IMPLEMENTER anywhere. **A name that appears in one
+    contiguous early block and never returns is a rename, and the current name is knowable.**
+
+    ⚠ Two states behind one warning string is the collapse this fleet catalogued five instances
+    of in one toolchain the same day. This one was mine.
+
+    ⛔ AND THIS ANSWERS A NAME QUESTION, NOT A WRITER QUESTION. Measured on `6150ffb2`: this
+    returns **single** — only `ARCHITECT` ever wrote a name record — while the depth series is
+    unmistakably interleaved, `428 → 77 → 431 → 82 → … → 433`, with the high series still live
+    in the last two readings.
+
+    ⇒ **Two writers, one name.** So `single` here does NOT mean one agent, and reading it that
+    way is a mistake I made and nearly shipped a "fix" for: I inferred *one name ⇒ one writer ⇒
+    the second band must be a compaction*, and went looking for a defect in `depth_bands` that
+    was not there. The data refuted it in one look.
+
+    ★ **A writer that never emits a name record is invisible to every name-based mechanism** —
+    the roster, the obligation dedupe, ask-routing — while being fully visible in the depth
+    series. That is the residual hole in fleet addressing, and it is not closable from here:
+    nothing in the transcript gives it an address.
+    """
+    seen, order = set(), []
+    for n in seq:
+        if n not in seen:
+            seen.add(n)
+            order.append(n)
+    if len(order) < 2:
+        return "single"
+    # A rename never returns to an earlier name. Any recurrence means interleaving.
+    last_index = {}
+    for i, n in enumerate(seq):
+        last_index[n] = i
+    first_index = {}
+    for i, n in enumerate(seq):
+        first_index.setdefault(n, i)
+    for a, b in zip(order, order[1:]):
+        if last_index[a] > first_index[b]:
+            return "concurrent"
+    return "rename"
+
+
 def session_depth(path):
     """Context depth = the prompt size of the LAST COMPLETED assistant turn.
 
@@ -65,7 +209,10 @@ def session_depth(path):
 
     Returns (names, depth); names is an ordered list of every title seen.
     """
-    names, last, recent = [], None, []
+    # ⚠ `names` is the DISTINCT set (order of first appearance); `name_seq` is EVERY
+    # record in order. classify_names needs the sequence — the distinct set cannot
+    # tell a rename from an interleave, which is the whole distinction it draws.
+    names, name_seq, last, recent = [], [], None, []
     with open(path, errors="replace") as fh:
         for line in fh:
             try:
@@ -76,6 +223,8 @@ def session_depth(path):
                 n = rec.get("customTitle") or rec.get("agentName")
                 if n and n not in names:      # distinct set: these records ALTERNATE
                     names.append(n)
+                if n:
+                    name_seq.append(n)
             msg = rec.get("message")
             if isinstance(msg, dict) and msg.get("role") == "assistant" and msg.get("usage"):
                 u = msg["usage"]
@@ -93,7 +242,7 @@ def session_depth(path):
                 last = total
                 recent.append(total)
     if last is None:
-        return names, None, "no-reading"
+        return names, None, "no-reading", [], "single"
 
     # ⛔ One transcript file is NOT one agent. Measured: two panes wrote to a single
     # .jsonl under one consistent sessionId, producing two interleaved depth series —
@@ -117,22 +266,9 @@ def session_depth(path):
     # with 14 crossings between a ~350k and an ~850k series. Any replacement must keep
     # flagging that one — silencing a false positive by creating a false negative is
     # the worse trade, because an unattributable depth then reports as a fact.
-    window = recent[-40:]
-    shape = "single"
-    if len(window) >= 8:
-        lo, hi = min(window), max(window)
-        if hi - lo > 100_000:
-            mid = (lo + hi) / 2
-            side = [v >= mid for v in window]
-            if side.count(True) >= 3 and side.count(False) >= 3:
-                crossings = sum(1 for i in range(1, len(side)) if side[i] != side[i - 1])
-                # A step down, taken once, is a compaction: the last reading is then the
-                # CORRECT post-compaction depth and must be reported, not suppressed.
-                # Returning to the high cluster after leaving it is what no single
-                # session does.
-                shape = "interleaved" if crossings >= 3 else "compaction-step"
+    shape = classify_series(recent[-40:])
 
-    return names, last, shape
+    return names, last, shape, depth_bands(recent), classify_names(name_seq)
 
 
 def scan(active_within_s, limit):
@@ -152,7 +288,7 @@ def scan(active_within_s, limit):
                 idle_s = time.time() - os.path.getmtime(path)
                 if idle_s > active_within_s:
                     continue
-                names, depth, shape = session_depth(path)
+                names, depth, shape, bands, name_kind = session_depth(path)
             except Exception:
                 unreadable += 1
                 continue
@@ -162,6 +298,8 @@ def scan(active_within_s, limit):
                 continue
             rows.append({"shared_file": shape == "interleaved",
                          "shape": shape,
+                         "bands": bands,
+                         "name_kind": name_kind,
                          "name": (names[-1] if names else "(unnamed)"),
                          "names": names,
                          "ambiguous": len(names) > 1,
@@ -173,8 +311,82 @@ def scan(active_within_s, limit):
     return sorted(rows, key=lambda r: -r["depth"]), unreadable, len(roots), no_reading
 
 
+def self_test():
+    """⛔ CAPTURED-REAL, because the live control evaporated.
+
+    `e4a7769d` — the transcript this rule was fixed against — no longer exists, so a
+    scan reporting zero flags cannot distinguish *the false positives stopped* from
+    *the detector can no longer fire*. Those are opposite, and the second is the
+    worse one: an unattributable depth then reports as a fact.
+
+    Both series below are the measured shapes from that incident, frozen.
+    """
+    H, L = 850_000, 350_000
+    compaction  = [H]*5 + [L]*5                      # one crossing, never back
+    interleaved = [H, H, L, H, L, L, H, H, L, H]     # many crossings, both live
+    flat        = [H - i*1000 for i in range(10)]    # one series, no cluster split
+    short       = [H, L, H]                          # too few readings to claim anything
+
+    got = {n: classify_series(w) for n, w in
+           (("compaction", compaction), ("interleaved", interleaved),
+            ("flat", flat), ("short", short))}
+    want = {"compaction": "compaction-step", "interleaved": "interleaved",
+            "flat": "single", "short": "single"}
+    for n in want:
+        mark = "ok  " if got[n] == want[n] else "FAIL"
+        print(f"  {mark} {n:<12} -> {got[n]:<16} (want {want[n]})")
+    ok = got == want
+    print("  ⇒ the interleaved case is the one that matters: it is the FALSE-NEGATIVE\n"
+          "    direction, and the live transcript that used to prove it is gone.",
+          file=sys.stderr)
+    print("\nselftest PASS" if ok else "\nselftest FAIL")
+    return 0 if ok else 2
+
+
 def main():
+    if "--self-test" in sys.argv:
+        return self_test()
     ap = argparse.ArgumentParser()
+    # ⛔⛔ A FLATLINE ROW IS ABOUT A FILE, NOT AN AGENT — measured the hard way.
+    #
+    # This scan's population is "transcripts on this machine". An agent that moves to
+    # another session or another machine leaves its old transcript behind, and the
+    # corpse keeps reporting as a live row at whatever depth it died at.
+    #
+    # Measured 2026-08-20: DEV1 was reported FLATLINE for six hours at an unchanged
+    # 804,593 — and merged two pull requests during that window, from a session this
+    # machine has no transcript for. Every "DEV1 dropped out / could not be asked /
+    # consuming nothing" I published was about an abandoned file.
+    #
+    # ★ Same root as the SHARED FILE case, from the opposite side. There, one FILE held
+    # two agents. Here, one AGENT held two files and the scan tracked the dead one.
+    # ⇒ The agent↔transcript relation is neither injective nor surjective, and every
+    # obligation this tool feeds assumed it was a bijection.
+    #
+    # ⚠ ABSENT FROM THIS SCAN IS NOT UNREACHABLE. The roster is a different population
+    # and it had DEV1 the whole time. Check it before concluding anything about a
+    # missing or flatlining row.
+    #
+    # ⛔ FLATLINE IS DERIVABLE, WHICH IS THE WHOLE POINT OF PUTTING IT HERE.
+    # An agent that has run dry is supposed to send a message saying so. That
+    # protocol reaches sessions started after it — and a prompt amendment does not
+    # reach a running agent (measured: the STATE-line requirement landed 2026-08-19
+    # 18:08 and every session predated it; 7 of 8 have never emitted one in up to
+    # 2,884 turns). So the protocol needs a backstop that requires NO adoption.
+    #
+    # Transcript mtime and the usage series already exist on every pane. A session
+    # consuming no tokens for N minutes is visible without anyone agreeing to
+    # anything. Measured 2026-08-20: 3 of 14 sessions flat over 30 minutes, one at
+    # 210 — the same session that had declared BLOCKED ~15 times in its own pane
+    # while nothing aggregated it.
+    #
+    # ⚠ AND IT MUST NOT SAY WHY. Flat is finished, blocked, crashed, or waiting, and
+    # this cannot tell them apart. A prior version of this class condemned a LIVE
+    # session by defining `dead = (not alive) or idle > N`. FLATLINE is a prompt to
+    # ASK, never a conclusion — the remedy is a message, not a verdict.
+    ap.add_argument("--flatline", type=float, default=0.0, metavar="MINUTES",
+                    help="flag sessions idle this long. 0 disables. A FLATLINE row is "
+                         "UNEXPLAINED, not dead: ask the pane, do not conclude.")
     ap.add_argument("--threshold", type=float, default=80.0,
                     help="percent at which a session is reported as due (default 80). "
                          "80 rather than 90 because the binding cost of a friction report "
@@ -288,9 +500,37 @@ def main():
             mark = "  <-- DUE" if r["pct"] >= args.threshold else ""
             # A name this session also answered to earlier. Printing only the last
             # one turns a guess into an assertion.
-            warn = f"  ⚠name-ambiguous({'/'.join(r['names'])})" if r["ambiguous"] else ""
+            # ⛔ A RENAME IS NOT AN AMBIGUITY. `IMPLEMENTER4/DEV4` and `TEAMLEAD/DEV2`
+            # printed identically and are opposite: the first is one agent whose current
+            # name is knowable, the second is two agents where no name is current.
+            kind = r.get("name_kind")
+            if r["ambiguous"] and kind == "rename":
+                warn = f"  ↻renamed({'→'.join(r['names'])}) — current name is the last"
+            elif r["ambiguous"]:
+                warn = f"  ⚠name-ambiguous({'/'.join(r['names'])})"
+            else:
+                warn = ""
             if r.get("shared_file"):
                 warn += "  ⛔SHARED FILE — two agents, depth UNATTRIBUTABLE"
+                # ★ The assignment is unrecoverable; the SET is not. Printing both bands
+                # turns "this number is wrong for somebody" into "one of these two agents
+                # is deep, ask both" — which is an action a reader can take.
+                b = r.get("bands")
+                if b is None:
+                    # ⛔ Not silence. Silence here would read as "one writer", which is the
+                    # collapse this whole row exists to prevent.
+                    warn += (" — and the depth series is TOO SHORT to separate: "
+                             "ESTABLISHED NOTHING about how many agents, not 'one'.")
+                    b = []
+                if len(b) == 2:
+                    warn += (f" — but the readings SEPARATE: one agent near "
+                             f"{b[0][1] / 10000:.0f}%, one near {b[1][1] / 10000:.0f}%. "
+                             f"ASK BOTH; do not attribute.")
+            elif args.flatline and r["idle_min"] >= args.flatline:
+                warn += (f"  ⛔FLATLINE {r['idle_min']}m — this FILE is consuming nothing. "
+                         f"Finished, blocked, crashed, waiting, OR THE AGENT MOVED and left "
+                         f"this transcript behind; this cannot tell which. ASK IT — and if it "
+                         f"does not answer, check the ROSTER before concluding it is gone.")
             elif r.get("shape") == "compaction-step":
                 warn += "  ↻compacted in-window — depth is the POST-compaction figure"
             print(f"{r['depth']:>9,} {r['pct']:>6.1f}%  {r['name']:<14} {r['session']}  "
@@ -309,6 +549,12 @@ def main():
                   + (f" {stepped} compacted mid-window (NOT shared: a step down, taken "
                      "once, is one agent — their depth stands)." if stepped else ""),
                   file=sys.stderr)
+        if args.flatline:
+            flat = [r for r in rows if r["idle_min"] >= args.flatline]
+            print(f"⛔ {len(flat)} of {len(rows)} session(s) flat for >={args.flatline:.0f}m. "
+                  f"That is a prompt to ASK, not a verdict — one such session had declared "
+                  f"BLOCKED ~15 times in its own pane while nothing aggregated it, and a "
+                  f"declaration in a pane requires someone to be looking.", file=sys.stderr)
         if no_reading:
             print(f"⚠ {no_reading} active session(s) produced no usable reading — their "
                   "depth is UNKNOWN, and UNKNOWN is not 0%", file=sys.stderr)

@@ -1,0 +1,162 @@
+# ⛔ THIS REPOSITORY HAD NO CI AT ALL UNTIL THIS FILE.
+#
+# Measured 2026-08-20: `gh run list` returned nothing — zero workflow runs, ever. Every
+# "all checks green" on every pull request has been **CodeRabbit + Socket Security**, a
+# review bot and a dependency scanner. Neither runs a test. So 23 instruments and 19 test
+# suites had never executed in CI once, and every PR merged on a green board was merged
+# with zero test execution, including six of mine on the day this was written.
+#
+# ★ That is the defect this repository's own tools were built to find, in this repository:
+#   #1267 a convention naming an enforcement path that does not exist
+#   #1268 the cluster-spec guard, in-tree and wired into no workflow
+#   #1269 "a gate that never refuses looks identical to one that does not exist"
+#
+# ⚠ THE SPLIT BELOW IS LOAD-BEARING, NOT TIDINESS. Some suites pass on a developer machine
+# and FAIL on a runner, because they assert on output that only exists when a real corpus
+# is present — "names its scope", "prints project dir count". The tools are right; those
+# tests conflated *the tool works* with *this machine has a fleet*. Gating on all of them
+# would ship a born-red guard: exactly the finding in #1268.
+#
+# ⛔ AND THE FIRST VERSION OF THIS FILE GOT THE SPLIT WRONG, MEASURED BY ITS OWN FIRST RUN.
+# It said "7 of 19 fail on a runner", derived from re-running under an empty HOME. Run
+# 32345860216 reported **6**: `test_grant_check` PASSED. Its local failure was
+# `git fetch origin` finding no credentials — and a runner with actions/checkout HAS them.
+#
+# ⇒ An empty HOME is a proxy for a runner, and it conflates TWO causes: no fleet corpus
+# and no network. One of the seven was network. **A real number attached to the wrong
+# population**, the defect this repository has catalogued all week, committed in the
+# classification of the fix for it. The counts below are now from the CI run, not the proxy.
+#
+# ★ THREE OF THE SEVEN ARE NOW GATED, by giving them a fixture instead of the developer's
+# corpus (`tools/test_corpus_fixture.py`). Their assertions were about OUTPUT SHAPE all
+# along; reading the live corpus meant they passed according to what this machine happened
+# to hold, which is a green tick over "a working set is not a sample".
+
+name: tools
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  hermetic:
+    name: hermetic suites (gating)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # ⛔ Enumerated, not globbed. A glob would silently absorb a new machine-dependent
+      # suite and turn this gate red for a reason that is not a defect — and the fleet has
+      # measured that a guard which cries wolf is one people route around. Adding a suite
+      # here is a deliberate act, and the cost is that a new hermetic suite is ungated
+      # until someone adds it. `unlisted` below makes that visible rather than silent.
+      - name: hermetic test suites
+        run: |
+          set -euo pipefail
+          fail=0
+          for t in \
+            test_ci_log_clean test_corpus_fixture test_daintree_control \
+            test_discriminates test_doctrine_watch test_exists_anywhere test_fleet_context \
+            test_fleet_identity \
+            test_fleet_identity_exact test_fleet_state test_gh_complete \
+            test_marker_reachability test_memory_index_check \
+            test_named_referent_check test_pane_binding test_pipe_exit_scan \
+            test_pointer_verified test_pretooluse_guard test_transition_report \
+            test_use_not_mention test_wake_yield ; do
+            echo "── $t"
+            python3 "tools/$t.py" || { echo "  ⛔ $t FAILED"; fail=1; }
+          done
+          exit $fail
+
+      - name: repo scripts
+        run: |
+          set -euo pipefail
+          for s in scripts/check-tools-index.py scripts/validate-recipe.py \
+                   scripts/check-goal-conformance.py scripts/check-orientation.py ; do
+            echo "── $s"
+            python3 "$s"
+          done
+
+      # ⚠ A suite that exists and is listed nowhere is the defect this file is about,
+      # committed inside the fix for it. This step names them; it does not fail the build,
+      # because a new suite arriving is not itself a regression.
+      - name: unlisted suites (report only)
+        if: always()
+        run: |
+          listed="test_ci_log_clean test_corpus_fixture test_daintree_control
+            test_discriminates test_doctrine_watch test_exists_anywhere test_fleet_context
+            test_fleet_identity
+            test_fleet_identity_exact test_fleet_state test_gh_complete
+            test_marker_reachability test_memory_index_check
+            test_named_referent_check test_pane_binding test_pipe_exit_scan
+            test_pointer_verified test_pretooluse_guard test_transition_report
+            test_use_not_mention test_wake_yield
+            test_bootstrap_audit test_grant_check test_reference_check
+            test_runmarker test_stranded_branches"
+          # ⛔ COLLAPSE THE NEWLINES FIRST. The list above is written multi-line for
+          # readability, so a name at a line end is followed by "\n  ", not " ", and a
+          # `case " $listed " in *" $n "*` match misses it. Measured before this fix: it
+          # flagged 6 of 19 suites that WERE listed — a guard crying wolf on a third of its
+          # population, in the very file arguing that such a guard gets routed around.
+          listed=$(echo $listed | tr -s "[:space:]" " ")
+          missing=0
+          for f in tools/test_*.py; do
+            n=$(basename "$f" .py)
+            case " $listed " in
+              *" $n "*) ;;
+              *) echo "⚠ UNLISTED, therefore UNRUN: $n"; missing=1 ;;
+            esac
+          done
+          # ⚠ Only claim completeness when it holds. Printing the reassurance
+          # unconditionally, after the warnings, is how a skimmed log reads as clean.
+          [ "$missing" -eq 0 ] && echo "✓ every suite in tools/ is accounted for"
+
+  fleet-dependent:
+    name: fleet-dependent suites (reported, NOT gating)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # ⛔ READ A FAILURE HERE AS "CI HAS NO FLEET", NOT AS A BROKEN TOOL — and read a PASS
+      # as nothing at all. These assert on a live ~/.claude/projects corpus, which a runner
+      # does not have. They are run so their status is VISIBLE rather than assumed; the
+      # correct fix is to make them hermetic with fixtures. ⚠ THAT IS NOT TRACKED ANYWHERE
+      # AS THIS IS WRITTEN — saying "tracked separately" would be a claim with no referent,
+      # which is the defect `tools/named-referent-check.py` exists to find. It is stated
+      # here as an open, unowned gap so the sentence is true.
+      - name: fleet-dependent suites
+        run: |
+          # ⛔ A REASON PER SUITE, because the blanket line this replaced said "expected
+          # without a fleet corpus" for `test_grant_check`, which then PASSED — and for two
+          # others whose dependency is the NETWORK, not the corpus. A guard that explains
+          # every failure with one sentence is a guard that has stopped distinguishing.
+          reason_bootstrap="needs a live Daintree pane registry; a fake would make its control pass without the thing it controls for"
+          reason_runmarker="injects a crash into pane-binding, which exits 2 on an empty registry BEFORE reaching the injection"
+          reason_reference="resolves a git blob sha — network"
+          reason_stranded="queries the gh API — network plus auth"
+          reason_grant="git fetch origin — MEASURED PASSING on a runner (run 32345860216); listed here only because a network-dependent gate is a flake source"
+          for t in test_bootstrap_audit test_grant_check test_reference_check \
+                   test_runmarker test_stranded_branches ; do
+            case "$t" in
+              test_bootstrap_audit)   why="$reason_bootstrap" ;;
+              test_runmarker)         why="$reason_runmarker" ;;
+              test_reference_check)   why="$reason_reference" ;;
+              test_stranded_branches) why="$reason_stranded" ;;
+              test_grant_check)       why="$reason_grant" ;;
+            esac
+            echo "── $t"
+            python3 "tools/$t.py" && echo "  ok" || echo "  ⚠ failed — $why"
+          done
+          echo
+          echo "⛔ This job is continue-on-error. Its green is NOT evidence."

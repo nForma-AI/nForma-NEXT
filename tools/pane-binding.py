@@ -46,6 +46,52 @@ fleet role is among the BOUND:
     ARCHITECT 6150ffb2 -> ARCHITECT   DEV5   96827e4b -> DEV5
     TEAMLEAD  e4a7769d -> DEV2        <- see below
 
+⚠⚠ NOT REPRODUCIBLE FROM THIS PANE, 2026-08-20 07:28Z. Recorded rather than
+resolved, because I cannot establish which reading is right and deleting either
+would be the defect this file exists to document. Measured against the SAME source
+this tool reads, with its default paths:
+
+    project state files      4
+    panes total             10        <- the claim above says 58
+    with agentSessionId      1        <- the claim above says 13
+    fleet roles BOUND        0        <- the claim above says all of them
+    fleet state file mtime   0 min ago  <- LIVE, not a stale read
+
+    the claimed DEV3 binding ec0d07f0 -> no registry row, no transcript file
+
+⇒ Runtime output right now is BOUND=1 UNBOUND=9, every fleet role UNBOUND.
+
+⛔ AND THAT IS THIS FILE'S OWN DEFECT, INVERTED. #147 is filed because a docstring
+told every reader a question was OPEN that had been measured. The paragraph below
+tells every reader a question is CLOSED that this tool's own runtime output says is
+open -- introduced by the fix for the first one, in the same file, one day later.
+
+⚠ THE RELAUNCH HYPOTHESIS WAS TESTED AND IS REFUTED. I proposed "a fleet relaunch
+since the reading" as the explanation -- two correct measurements of two different
+fleets. Measured 2026-08-20 15:2xZ, after the pids changed:
+
+    every role kept its session id across the restart
+      DEV3 5acc9d9e  DEV4 a10daa24  DEVOPS ac436615  DX 741d2cb1
+      DEV1 d9ce506d  ARCHITECT c83ecf77  DEV5 9b64bb35  DEV2 bd19196d
+
+⇒ The processes restarted and RESUMED THE SAME SESSIONS. So no "different DEV3"
+took the 58-pane reading, and the relaunch does not explain the disagreement.
+
+⛔ AND ec0d07f0 -- the DEV3 binding the 58-pane reading claims -- corresponds to NO
+SESSION ON THIS MACHINE: 0 registry rows, 0 transcript files, before or after the
+restart. It is not a stale id; it is not an id this registry has ever held.
+
+⚠ SO THE DISAGREEMENT IS STILL UNEXPLAINED, and it is recorded as unexplained
+rather than closed with the first plausible cause. What IS established now:
+
+    TEAMLEAD                        0 registry rows, no socket -- the role is gone
+    two DEV4 PROCESSES              pids 3471 and 3482 share ONE session a10daa24
+                                    9 registry rows, 8 distinct sessions
+
+★ That last row is this tool's own subject arriving live: TWO PANES, ONE SESSION.
+The verdict vocabulary here is per-pane and cannot express it -- BOUND says a pane
+resolves to a session, and says nothing about a session resolving to two panes.
+
 ★ THE CONTROL FIRED POSITIVE AND NOBODY READ IT. This file's own stated purpose is
 "the known-positive control for the launcher fix: run it before and after adding
 --session-id, and BOUND rows appearing is the evidence the fix worked." The rows
@@ -55,6 +101,32 @@ the self-test's rationale ("today the live population contains no BOUND").
 ⇒ A control that detects the thing it was built for, and whose surrounding prose is
 never updated, reports a solved problem as open for as long as anyone reads the prose
 instead of running it.
+
+★ AND THE RESUME QUESTION IS ANSWERED — it was measured on 2026-08-19 and the
+answer INVERTS the hazard this file used to print. Measured, two arms, fresh uuids
+only, no live pane touched:
+
+    --session-id <FRESH>   new session; transcript written at exactly <uuid>.jsonl
+    --session-id <SAME>    exit 1, "Session ID ... is already in use"
+                           transcript byte-identical, nothing written, nothing resumed
+
+⛔ "IN USE" MEANS EXISTS, NOT RUNNING -- the first process had exited and nothing
+held the id. A uuid is consumed permanently by first use. Resuming is a separate
+flag (--resume), which is why this one never does it.
+
+⇒ So the hazard is NOT silent context accumulation. It is that per-role uuids
+committed to .daintree/recipes/ would work EXACTLY ONCE and then fail all nine
+panes on every relaunch. ★ That failure is LOUD and NON-DESTRUCTIVE, which is
+strictly better than the silent version -- and still a launcher that cannot
+restart. Generate per launch; the recipe cannot carry them.
+
+⚠ The line this file printed for nineteen hours -- "may resume the previous
+session (UNTESTED, and the load-bearing unknown)" -- was not a conservative
+default. It was a WRONG READING WITH A CONSERVATIVE TONE, and a reader who
+trusted it treated a fixed-uuid recipe as more dangerous than it is. ⛔ The
+measurement that refuted it was committed 49 seconds AFTER its own PR merged and
+never reached main; the recovery PR took the file from a branch that predated it.
+(#147, #52, #62)
 
 ★★ AND THE EXACT JOIN ANSWERS A QUESTION ANOTHER TOOL HAS BEEN REPORTING AS
 UNANSWERABLE. `fleet-context.py` prints on every sweep:
@@ -94,6 +166,9 @@ import glob
 import json
 import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from runmarker import guard, result  # noqa: E402
 import tempfile
 
 DAINTREE = os.path.expanduser("~/Library/Application Support/Daintree/projects")
@@ -187,8 +262,10 @@ def report(root_d, root_s, role=None):
     if unbound_named:
         print(f"\n⚠ {len(unbound_named)} explicitly-titled pane(s) are UNBOUND — leg A is missing.")
         print("  Fix is at LAUNCH, not here: pass --session-id <fresh-uuid> per pane so Daintree")
-        print("  records agentSessionId. ⛔ Generate per launch; a uuid committed to the recipe")
-        print("  may resume the previous session (UNTESTED, and the load-bearing unknown).")
+        print("  records agentSessionId. ⛔ GENERATE PER LAUNCH — measured 2026-08-19:")
+        print("  --session-id is CREATE-ONLY. A reused uuid exits 1 (\"already in use\"),")
+        print("  writes nothing, resumes nothing. So per-role uuids committed to the recipe")
+        print("  would launch ONCE and then fail every pane on relaunch — loud, not silent.")
 
     # Leg B in aggregate: registry rows nothing claims. Reported, not diagnosed --
     # a session with no pane is normal (any terminal outside Daintree).
@@ -274,6 +351,16 @@ def cmd_self_test():
     return 0
 
 
+
+def _mark(rc):
+    """Map the tool's own exit code to a terminal marker. ⛔ Every controlled path
+    goes through here — a path returning without a marker is indistinguishable from
+    a crash, and that reading is only correct if it actually crashed."""
+    result({0: "OK", 1: "FINDING", 2: "ESTABLISHED-NOTHING",
+            3: "SELF-TEST-FAILED"}.get(rc, f"EXIT-{rc}"))
+    return rc
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--role", help="only the pane with this title")
@@ -283,13 +370,14 @@ def main():
     args = ap.parse_args()
     try:
         if args.self_test:
-            return cmd_self_test()
-        return report(args.daintree, args.sessions, args.role)
+            return _mark(cmd_self_test())
+        return _mark(report(args.daintree, args.sessions, args.role))
     except Void as exc:
         print(f"VOID: {exc}", file=sys.stderr)
         print("⛔ established nothing — this is NOT 'no pane is bound'.", file=sys.stderr)
+        result("ESTABLISHED-NOTHING")
         return 2
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(guard("pane-binding", main))

@@ -67,6 +67,10 @@ this file.
 
 Exit: 0 clean · 1 findings · 2 established nothing (no files scanned).
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from runmarker import guard, result  # noqa: E402
+
 import glob, json, os, re, subprocess, sys, time
 
 # `cmd | cmd ; echo $?`  — the status read belongs to the LAST pipeline element.
@@ -343,7 +347,7 @@ def main():
               "corpus holds prose mentions of this exact idiom, including this repo's own "
               "convention documenting it, and a text scan over it over-reports by ~56%.",
               file=sys.stderr)
-        return 1 if hits else 0
+        _rc = 1 if hits else 0
     files = tracked()
     if not files:
         print("⛔ no tracked files — ESTABLISHED NOTHING, not clean. "
@@ -406,5 +410,17 @@ def main():
     return 1 if findings else 0
 
 
+def _entry():
+    """Emit the terminal state for every path this tool controls.
+
+    guard() covers only the argparse SystemExit path, where the tool never regains
+    control. Without this, a successful run emits NFORMA-RUN and no NFORMA-RESULT —
+    which reads as STARTED-AND-NEVER-FINISHED, the collapse #58 exists to prevent.
+    """
+    rc = main()
+    result({0: "OK", 1: "FINDING", 2: "ESTABLISHED-NOTHING", 3: "CONTROL-FAILED"}.get(rc, f"EXIT-{rc}"))
+    return rc
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(guard("pipe-exit-scan", _entry))

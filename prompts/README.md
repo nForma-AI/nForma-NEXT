@@ -1,5 +1,73 @@
 # Role prompts — the current, hand-run version
 
+## ⇒ Installing the fleet recipe — hand this to a coding agent
+
+**Copy everything between the rules into a coding agent working in the repository you want the
+fleet to run in.** It installs `.daintree/recipes/`, and it is written to fail loudly rather than
+install something that loads cleanly and does not do what it says.
+
+---
+
+> Install the nForma fleet recipe into this repository.
+>
+> **1. Recipes are read IN-REPO.** Daintree loads `.daintree/recipes/*.json` from the repository
+> root. It does **not** read `~/.daintree` — that holds only `cli.sock` and `cli-control.json`.
+> Create `.daintree/recipes/` here; do not install anything into the home directory.
+>
+> **2. Copy TWO files from `nForma-AI/nForma-NEXT`, not one:**
+> - `.daintree/recipes/nforma-fleet.json` — adapt the role names, the `NFORMA_ROLE_PROMPT` paths
+>   and the pane count to this repo. **Keep the shape.**
+> - `scripts/validate-recipe.py` — ⛔ **step 4 runs this. Without it that step silently does
+>   nothing and you proceed on an unvalidated recipe.** If you cannot bring it across, say so
+>   explicitly and treat step 5 as the minimum bar rather than skipping validation quietly.
+>
+> **3. ⛔ `args` MUST be a JSON string, never a list.** `"args": "-n DEV1"` is correct.
+> `"args": ["-n", "DEV1"]` is schema-valid, loads without an error, and **silently discards the
+> entire pane**. This is the single most expensive mistake available here — an approved list-form
+> edit would have deleted nine panes at once and reported success.
+>
+> **4. Run the validator and require exit 0:**
+> ```
+> test -f scripts/validate-recipe.py || echo "⛔ VALIDATOR ABSENT — step 4 established nothing"
+> python3 scripts/validate-recipe.py .daintree/recipes/*.json ; echo "exit=$?"
+> ```
+> ⚠ Read the exit code **without a pipe**. `| tail` returns tail's status, not the validator's.
+> The validator exists because Daintree's normalizer returns a fixed field set: **schema-valid
+> fields are silently dropped, and malformed ones silently drop the pane.** A recipe can be 100%
+> valid JSON, load with no error, and still not do what it says.
+>
+> **5. Assert these, and print each count rather than asserting it passed:**
+> ```
+> python3 - <<'EOF'
+> import json, glob, os, sys
+> for f in glob.glob(".daintree/recipes/*.json"):
+>     t = json.load(open(f))["terminals"]
+>     agents = [x for x in t if x.get("type") == "claude"]
+>     print(f, len(t), "panes,", len(agents), "agent panes")
+>     assert all(isinstance(x.get("args"), str) for x in agents), "args must be a STRING"
+>     assert all(x.get("initialPrompt") for x in agents), "every agent pane needs an initialPrompt"
+>     for x in agents:
+>         pr = (x.get("env") or {}).get("NFORMA_ROLE_PROMPT")
+>         assert pr and os.path.exists(pr), f"missing prompt file: {pr}"
+>     print("  NFORMA_GOAL set on", sum(1 for x in agents if (x.get("env") or {}).get("NFORMA_GOAL")), "of", len(agents))
+>     print("  panes with their own cwd/worktree:", sum(1 for x in t if x.get("cwd") or x.get("worktree")))
+> EOF
+> ```
+>
+> **6. Two known gaps in the reference recipe. Decide each deliberately; do not copy them by
+> default.**
+> - **`NFORMA_GOAL` is set on 1 of 9 agent panes.** A pane without it has no standing objective at
+>   launch, and an agent woken with no objective consumes context and mutates nothing.
+> - **No pane declares its own `cwd` or worktree**, so every pane shares one working tree. A
+>   `git checkout` in any pane rewrites every other pane's files, including the role prompts they
+>   are operating on.
+>
+> **7. Report what you installed as counts, not as "done":** panes, agent panes, prompt files
+> resolved, `NFORMA_GOAL` coverage, validator exit code. ⛔ Do not report success from the
+> validator's silence — report the number it printed.
+
+---
+
 These are the five role prompts as they exist **today**, running by hand across Daintree panes.
 They are the artifact `docs/FOUNDING-THESIS.md` is written about: the thesis is derived from
 operating this exact set, not from speculation about what such a set might need.
