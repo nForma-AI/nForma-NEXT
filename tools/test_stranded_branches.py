@@ -128,6 +128,25 @@ def main():
     f += not check("banner present", "TRUNCATED SWEEP" in out, True)
     f += not check("does not exit clean", rc != 0, True)
 
+    print("an unrecognised flag is REFUSED, not discarded:")
+    # ⛔ `"--self-test" in argv` is MEMBERSHIP: it accepts the flag without rejecting
+    # anything else, so `--zzz` was silently dropped and this tool went on to run a full
+    # NETWORK sweep — answering a question nobody asked, at real cost. A control whose
+    # invocation cannot fail is not being invoked. (#321's shape.)
+    # ⛔ NAME THE FLAG IN THE ASSERTION, not just the exit code. Mutation-testing the
+    # sibling suite showed exit 2 is reachable by a SECOND cause — a tool that ignores the
+    # bad flag can exit 2 as VOID from an empty population — so a code-only check passes
+    # while the defect is live.
+    rc, out = run("--zzz-not-a-flag")
+    f += not check("unknown flag refused, by name",
+                   (rc, "unrecognised flag" in out and "--zzz-not-a-flag" in out), (2, True))
+    rc, _ = run("--self-test", "--zzz-not-a-flag")
+    # ⚠ The combination is the nasty one: a REAL flag plus a typo used to exit 0, so the
+    # caller got a clean control result that had silently ignored half its invocation.
+    f += not check("self-test + garbage still refused", rc, 2)
+    rc, _ = run("--self-test")
+    f += not check("and the real flag still works", rc, 0)
+
     print("--limit needs a number:")
     rc, out = run("--limit", "abc")
     f += not check("exit", rc, 2)

@@ -7,6 +7,7 @@ been shown to run. That is criterion 4, and it is the leg usually faked.
 """
 import importlib.util
 import os
+import subprocess
 import sys
 
 _here = os.path.dirname(os.path.abspath(__file__))
@@ -16,6 +17,15 @@ ep = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(ep)
 
 FAILED = 0
+
+
+def run_tool(*args):
+    """Invoke the tool itself. ⚠ An execution surface — deliberately only this ONE tool,
+    which I own, and which refuses before doing any git or network work."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    p = subprocess.run([sys.executable, os.path.join(here, "estate-provenance.py")] + list(args),
+                       capture_output=True, text=True, cwd=here)
+    return p.returncode, p.stderr
 
 
 def check(name, got, want):
@@ -57,6 +67,24 @@ def main():
 
     # a number that is not an issue cite must not create provenance
     check("bare digits are not a citation", v("x = 1226\n"), "UNCLAIMED")
+
+    # ⛔ An unrecognised flag must be REFUSED, not discarded. `"--self-test" in argv` is
+    # membership: it accepts the flag without rejecting anything else, so `--zzz` fell
+    # through the target filter and the tool scanned the DEFAULT population — returning an
+    # exit code the caller reads as an answer to a question they never asked. (#321's shape.)
+    # ⛔ THE EXIT CODE ALONE IS NOT ENOUGH, and a mutation test is what showed it. Run from
+    # tools/, a tool that IGNORES the bad flag scans an empty population and exits 2 as VOID
+    # — the same code, a different cause. So the assertion names the FLAG in the message:
+    # two causes cannot both satisfy it.
+    rc, err = run_tool("--zzz-not-a-flag")
+    check("unknown flag refused, by name",
+          (rc, "unrecognised flag" in err and "--zzz-not-a-flag" in err), (2, True))
+    # ⚠ The combination is the nastier state: a REAL flag plus a typo used to exit 0, so a
+    # caller got a clean control result that had silently ignored half its invocation.
+    rc, err = run_tool("--self-test", "--zzz-not-a-flag")
+    check("self-test + garbage refused, by name",
+          (rc, "--zzz-not-a-flag" in err), (2, True))
+    check("and the real flag still works", run_tool("--self-test")[0], 0)
 
     print("NFORMA-RESULT %s" % ("OK" if FAILED == 0 else "FAIL"))
     return 0 if FAILED == 0 else 1

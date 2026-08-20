@@ -318,8 +318,20 @@ def verdict_exit(n_unmatched, truncated):
     return 2 if truncated else 0
 
 
+KNOWN_FLAGS = {"--self-test", "--limit"}
+
+
 def main():
-    if "--self-test" in sys.argv:
+    # ⛔ EQUALITY OVER A KNOWN SET. Membership accepts a flag without rejecting anything
+    # else: `--zzz` was discarded and this tool went on to run a FULL NETWORK SWEEP,
+    # answering a question nobody asked at real cost. (#321's shape; measured 2026-08-21.)
+    unknown = [a for a in sys.argv[1:] if a.startswith("-") and a not in KNOWN_FLAGS]
+    if unknown:
+        print("⛔ unrecognised flag(s): %s. ESTABLISHED NOTHING — no sweep was run. "
+              "Known flags: %s" % (", ".join(unknown), ", ".join(sorted(KNOWN_FLAGS))),
+              file=sys.stderr)
+        return 2
+    if "--self-test" in sys.argv[1:]:
         return self_test()
     sh("git", "fetch", "-q", "--prune", "origin")
     limit = DEFAULT_LIMIT
