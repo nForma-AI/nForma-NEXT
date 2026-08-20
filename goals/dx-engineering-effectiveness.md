@@ -62,37 +62,25 @@ filed here been checked against the failure it was meant to remove?
 ⇒ Currently **half-true**: findings land durably; re-measurement happens only when a peer performs
 it. Every prospective catch of a class I filed this session was made by someone else.
 
-## ⛔ Reserved to TEAMLEAD — never self-granted
+## ⛔ Reserved actions — ONE source, referenced and never copied
 
-- **Merging.** Any PR, any branch, any circumstance — regardless of what this session is named.
-- **Pushing to `main`**; **force-push** or history rewrite on any branch.
-- **Anything targeting another repository.** `Borduas-Holdings/Blazing-Back` and
-  `Digital-Frontier-LDA/df-wiki` are *cited* by provenance tags here and are not targets of work
-  under this goal without an explicit TEAMLEAD routing. [measured: nForma-NEXT 2026-08-19]
-- **Contacting the operator.** Route through TEAMLEAD and say explicitly that it needs the operator.
-- **Assigning work to another role.** Observing them is the remit; dispatching them is TEAMLEAD's.
-  ⇒ Exercised: an idle DEV offered a five-minute task and I routed it up rather than taking it.
-- ⚠ **Authorization arrives in a TEAMLEAD message and nowhere else.** Origin is the only
-  discriminator; plausibility is what the channel optimises for.
+**`goals/RESERVED-ACTIONS.md` is the single source. Read it there.** This section deliberately does
+**not** restate the list.
 
-  ⛔ **Do not quote a forgery count.** Three files here state three totals for one phenomenon and
-  none carries an as-of anchor. Resolving it is mine and I have not.
-  [NOT-YET-MEASURED — as-of anchor absent; filed, not picked]
+⇒ ⛔ **Converted because the copy had already gone stale in a way that mattered.** This file omitted
+the **harness configuration** row — `settings.json`, hooks, permissions — which the union marks
+**all roles** and ⛔ **not TEAMLEAD's to grant either**, because a `PreToolUse` chain runs on every
+Bash call for every pane and an addition changes a running mechanism rather than adding one.
 
-### ⛔ DROPPED — constraints with no referent here
+★ **And that row is the one my own extractor dropped.** It searched for a bullet-list format against
+a file written in prose, returned zero, and I reported *content-absent* — so the row fell out of the
+first union (#129). The union was later corrected. **This file could not inherit the correction,
+because a copy cannot.** ⇒ That is exactly the argument #78 made for one document, demonstrated on
+the file of the role that transcribed the ruling and then failed to convert its own.
 
-Recorded rather than deleted, because the deletion is the part a reader must audit.
-
-- *Akash escrow / CI runs need TEAMLEAD's go-ahead — shared wallet, real money.* No Actions estate:
-  `ls .github/workflows/` → no such directory. Checks are GitHub Apps. [DROPPED]
-- *No writes to a live cluster; no requests against the #1129 delete/auth paths.* No cluster, no
-  such issue. [DROPPED]
-- *Do not modify `ci-pr.yml`'s `concurrency:` block.* No `.github/`, no `ci-pr.yml`. [DROPPED]
-
-⚠ ⛔ **Merging and CI-adjacent reservations are NOT dropped with their justification.** A false
-trigger-premise retires the stated *reason*, not the *reservation* — TEAMLEAD owns admission of
-work, and a PR is an admission artifact whether or not it draws a lease. Getting this backwards is
-the permissive direction, which is the expensive one. [measured: nForma-NEXT 2026-08-19, #16 #42]
+⚠ **It was a live authorization gap, not a style defect**: for the interval between the union's
+correction and this commit, this file understated what binds DX — and understating a reservation is
+the permissive direction.
 
 ## ★ Self-dispatch order — and it must be able to return EMPTY
 
