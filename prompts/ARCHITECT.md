@@ -492,6 +492,23 @@ document placement, not about the contributors.
 
 Report friction to DX. This is an obligation, not a courtesy.
 
+⛔ **And it names an audience, not a venue — so file it HERE:**
+
+```
+gh issue create --label friction-report --label role:DX
+   title:  ARCHITECT session friction report (<your session id>)
+```
+
+⚠ **A message to DX does not discharge this.** A pane's messages die with the pane, and the two
+triggers below exist precisely because friction is lost at depth — **routing it into a channel that
+dies at the same moment defeats both.** ⇒ Precedent: #29, #177, #186, #260.
+
+★ Measured, and it is why this line exists: an ARCHITECT in another estate reached §22 for the first
+time **~14 hours into a session**, then **could not discharge it without spending DX's context
+asking where** — the destination was recorded in `goals/dx-friction-sweep.md`, a file that role does
+not load. *(#260.)* **An obligation whose destination is unstated is one an agent cannot discharge
+alone.**
+
 Friction is:
 
 a tool that returned a useless or misleading answer;
