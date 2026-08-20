@@ -123,3 +123,135 @@ is read back.**
 Any change to `prompts/*.md` — including the transition protocol added alongside this file —
 should state its delivery status rather than assume it. The four implementer prompts and
 `TEAMLEAD.md` now each carry that caveat inline, pointing here.
+
+---
+
+# Option 1, executed — and the target moved
+
+TEAMLEAD ruled Option 1 (bootstrap by reference) and authorised it, with the acceptance test
+*"an edit to a prompt is a hypothesis about a launch path until a launched pane is read back."*
+Executing it moved the target twice.
+
+## The hand-written bootstrap has no file, but the goal file does
+
+Option 1 as stated adds a line to "the hand-written prompt". That prompt is typed per launch and
+exists nowhere on disk — grepping both repositories and the operator's config for its distinctive
+phrasing returns nothing. There is no artifact to edit.
+
+**The goal file is the durable equivalent, and unlike the prompt it demonstrably arrives.** Probed
+five panes with the longest prose line unique to each one's own goal file:
+
+| pane | goal content present | as a *given* record | as a *tool* record |
+|---|---|---|---|
+| DEVOPS | yes | 0 | 3 |
+| ARCHITECT | yes | 0 | 1 |
+| DX | yes | 0 | 3 |
+| DEV3 | yes | 0 | 2 |
+| DEV4 | yes | 0 | 1 |
+
+⇒ **Panes are never handed their goal; every one of them goes and reads it.** The channel is a
+pull, and it works — which is exactly what a pointer needs.
+
+⚠ **This is the reading discarded earlier in this document, and here it is valid.** The rule is not
+*"tool records don't count"*; it is **"the reader must not be the auditor."** Above, the sole
+positive was my own grep, so the control measured my auditing. Here the readers are five
+independent panes performing their own routine startup, and I am not among the subjects being
+counted. Same record type, opposite standing.
+
+## What changed, verbatim
+
+An `## ⚠ Authority` section was added at the top of each role goal in `~/.claude/goals/`, naming
+the canonical prompt by **absolute path** — panes work in `DigitalFrontier-infra`, so a
+repo-relative `prompts/DEV.md` does not resolve from their tree.
+
+| goal file | prompt | reaches |
+|---|---|---|
+| `dx-engineering-effectiveness.md` | `DX.md` | DX — *already had it* |
+| `teamlead-verified-progress.md` | `TEAMLEAD.md` | TEAMLEAD |
+| `architect-technical-integrity.md` | `ARCHITECT.md` | ARCHITECT |
+| `architect-technical-knowledge-integrity.md` | `ARCHITECT.md` | ARCHITECT |
+| `devops-substrate-and-fleet.md` | `DEVOPS.md` | DEVOPS |
+| `devops-control-plane.md` | `DEVOPS.md` | DEVOPS |
+| `dev-implementation.md` | `DEV.md` | DEV2, DEV3, DEV4, DEV5 |
+| `dev3-implementation-and-verification.md` | `DEV.md` | DEV3 |
+| `dev2-state-handoff.md` | `DEV.md` | DEV2 |
+
+All 47 files were backed up first; the diff is **purely additive** — 8 files changed, 0 original
+lines removed, verified line-by-line against the backup.
+
+⛔ **Coverage is 7 of 8, not 8 of 8. `DEV1` reads no goal file at all** — zero references to
+`.claude/goals/` across its entire transcript. It cannot be reached by this route, and saying
+"Option 1 is deployed" without that clause would be the same overstatement this document exists
+to correct.
+
+★ **`dx-engineering-effectiveness.md` already carried this pointer, and DX is the one pane of eight
+that has the prompt.** That is a single-case validation of the mechanism, and it is **confounded**:
+DX's task tonight *was* the prompts, so it had a second reason to open the file. n=1 with a
+confound is a promising sign, not proof. The other six panes are the real test.
+
+## ⛔ The stated acceptance test cannot pass, and would have failed a working deployment
+
+TEAMLEAD's test is `grep -c NFORMA_ROLE` against a freshly launched pane. **`NFORMA_ROLE` is set by
+the recipe** — it is Option **2**'s mechanism. Under Option 1 nothing sets it, so the grep returns
+**0 on a perfectly successful deployment**, and the deployment would be reported as failed.
+
+The principle behind the test is right and is kept; only the observable is wrong. Under Option 1 the
+correct test is a **conjunction**, because either half alone reproduces a known defect:
+
+```
+(a) the pointer is in the goal file the pane read     → delivered
+(b) a tool record shows prompts/<ROLE>.md was opened  → consumed
+```
+
+- **(b) alone is the contaminated control** from earlier in this document: a pane that opened the
+  file for its own reasons satisfies it.
+- **(a) alone is delivery without consumption** — precisely the mode #8 exists to name.
+
+⇒ Both, on a pane that is **not** the one that made the edit. `NFORMA_ROLE` returns as the correct
+test if and when Option 2 is chosen; it is not wrong, it is measuring the other option.
+
+## The vendoring did not establish a direction, and `goals/README.md` says it did
+
+`goals/README.md` states these were vendored into the repository *"so that changing another role's
+operating doctrine requires a **pull request**, which is visible whether or not anyone remembers
+the rule."*
+
+⛔ **It does not.** The repo copies and the live copies have diverged — 296 lines against 67,
+462 against 80, 301 against 87, 260 against 186 — and **the live copy is the one panes read.** (Live counts are as measured *before* this change added
+the pointer.)
+Changing a role's operating doctrine still requires editing an unversioned machine-local file,
+which is what this change had to do to have any effect at all.
+
+⇒ Vendoring produced a *reviewable* copy without making it the *delivered* one. That is the same
+shape as the prompts: two artifacts, one authoritative in review and the other in effect, with no
+mechanism keeping them equal and no alarm when they diverge. **A copy under review is not a copy
+in force**, and the README's claim should be corrected to say which of the two it is.
+
+## Status: deployed, NOT verified
+
+Half (a) holds now — nine goal files carry the pointer. Half (b) cannot be observed until a pane
+reads a role prompt, so **Option 1 is not done**, and reporting the commit as completion is the
+exact substitution TEAMLEAD's rule forbids. The literal check, runnable by anyone:
+
+```sh
+python3 - <<'PY'
+import glob, json, os
+hits = {}
+for p in glob.glob(os.path.expanduser("~/.claude/projects/*/*.jsonl")):
+    for line in open(p, errors="replace"):
+        if "nForma-NEXT/prompts/" not in line:
+            continue
+        try:
+            rec = json.loads(line)
+        except Exception:
+            continue
+        c = (rec.get("message") or {}).get("content")
+        kinds = {b.get("type") for b in c if isinstance(b, dict)} if isinstance(c, list) else set()
+        if kinds & {"tool_use", "tool_result"}:
+            hits[os.path.basename(p)[:8]] = hits.get(os.path.basename(p)[:8], 0) + 1
+print(hits or "no pane has opened a role prompt yet")
+PY
+```
+
+⚠ **Exclude `c67ebcb4`** when reading the result — that is the session that made the change, and
+counting it repeats the discarded control at the top of this document.

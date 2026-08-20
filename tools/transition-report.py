@@ -137,7 +137,17 @@ def audit(decls, sends):
 
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    # ⛔ The asymmetry belongs in --help, not only in the docstring and the PR. The person
+    # who quotes the notified count as a compliance rate is, by construction, someone who
+    # did not read either of those. Ratified by TEAMLEAD 2026-08-20.
+    ap = argparse.ArgumentParser(
+        description=__doc__.splitlines()[0],
+        epilog=(
+            "MISSED is strong (nothing was sent, so this channel cannot have carried it); "
+            "notified is WEAK (a message exists; intent is unreadable). "
+            "It finds omissions. It is not a compliance rate and must not be quoted as one. "
+            "A MISSED row is a CANDIDATE: a pane can also be spoken to directly."),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--active-hours", type=float, default=6.0)
     ap.add_argument("--missed-only", action="store_true",
                     help="print only transitions this channel carried nothing for")
