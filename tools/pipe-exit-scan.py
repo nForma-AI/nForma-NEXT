@@ -103,6 +103,107 @@ def pipeline_status_read(line):
             return True
     return False
 # `${PIPESTATUS[n]}` — bash-only. Empty in zsh, and empty is not zero.
+
+# ── Lost VARIABLE STATE, the sibling defect ──────────────────────────────────
+#
+# ⛔ `cmd | while read ...; done` runs the loop body in a SUBSHELL. Every
+# assignment inside dies when the subshell exits, so the loop can print N verdicts
+# and increment a counter N times while the caller still reads 0.
+#
+# Measured in this repository: fleet-preflight.sh printed 8 worktree FAILs and its
+# summary said `1 fail`. The matcher above scanned that file and reported nothing,
+# because nothing was wrong with an EXIT CODE — the loss was variable state.
+#
+# ★ The body often assigns NOTHING ITSELF. That instance called `bad "$r ..."`, and
+# `bad()` was defined at the top of the file and did the increment. A matcher that
+# reads only the loop body is blind to exactly the case worth catching, so function
+# bodies are resolved one level deep.
+#
+# ⚠ Deliberately NOT flagged, because both are harmless and common:
+#   · a loop whose only effect is printing
+#   · a loop whose variables are never read after `done`
+# Flagging those would produce a count that reads as work-to-do, which this file's
+# own selftest calls worse than no scanner at all.
+PIPE_INTO_WHILE = re.compile(r"\|\s*while\b")
+FUNC_DEF = re.compile(r"^\s*(?:function\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*\)\s*\{")
+ASSIGN = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*(?:=(?!=)|\+=)")
+ARITH = re.compile(r"\(\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?:\+\+|--|[-+*/%]?=)")
+
+
+def _assigned_in(lines):
+    """Variable names assigned anywhere in these lines."""
+    out = set()
+    for ln in lines:
+        code = strip_comment(ln)
+        for m in ASSIGN.finditer(code):
+            out.add(m.group(1))
+        for m in ARITH.finditer(code):
+            out.add(m.group(1))
+    return out
+
+
+def _function_assignments(lines):
+    """name -> variables it assigns. Brace-depth scan; good enough for shell that
+    indents, and it UNDER-reports rather than over-reports on shell that does not."""
+    funcs, i, n = {}, 0, len(lines)
+    while i < n:
+        m = FUNC_DEF.match(strip_comment(lines[i]))
+        if not m:
+            i += 1
+            continue
+        name, depth, body, j = m.group(1), 0, [], i
+        while j < n:
+            code = strip_comment(lines[j])
+            depth += code.count("{") - code.count("}")
+            body.append(lines[j])
+            j += 1
+            if depth <= 0:
+                break
+        funcs[name] = _assigned_in(body)
+        i = j
+    return funcs
+
+
+def scan_shell_subshell(path):
+    """Pipes into `while` whose body mutates state the caller reads afterwards."""
+    hits = []
+    try:
+        lines = open(path, errors="replace").read().splitlines()
+    except OSError:
+        return hits
+    funcs = _function_assignments(lines)
+    for n0, raw in enumerate(lines):
+        code = strip_comment(raw)
+        if not PIPE_INTO_WHILE.search(code):
+            continue
+        # body runs to the matching `done`
+        depth, j, body = 0, n0, []
+        while j < len(lines):
+            c = strip_comment(lines[j])
+            depth += len(re.findall(r"\b(?:do|if|case)\b", c))
+            depth -= len(re.findall(r"\b(?:done|fi|esac)\b", c))
+            body.append(lines[j])
+            j += 1
+            if depth <= 0 and j > n0:
+                break
+        mutated = _assigned_in(body[1:])
+        for name, assigned in funcs.items():
+            if re.search(r"(?:^|[\s;&|(])" + re.escape(name) + r"(?:[\s;&|)]|$)",
+                         " ".join(strip_comment(b) for b in body[1:])):
+                mutated |= assigned
+        # ⚠ A variable the loop declares and never exports is not state the caller
+        # loses — only names read AFTER `done` count.
+        after = "\n".join(strip_comment(l) for l in lines[j:])
+        leaked = sorted(v for v in mutated
+                        if re.search(r"\$\{?" + re.escape(v) + r"\b", after))
+        if leaked:
+            hits.append((n0 + 1, raw.strip(),
+                         "`cmd | while` runs the body in a SUBSHELL — "
+                         f"{', '.join(leaked[:4])} is assigned there and read after `done`, "
+                         "so the caller sees the pre-loop value. Use `done < <(cmd)`"))
+    return hits
+
+
 PIPESTATUS = re.compile(r"\$\{PIPESTATUS\[")
 FENCE = re.compile(r"^\s*```\s*(bash|sh|shell|console)\s*$", re.I)
 FENCE_END = re.compile(r"^\s*```\s*$")
@@ -231,6 +332,11 @@ def scan_shell(path):
             hits.append((n, raw.strip(), "$? read after a pipeline — that is the LAST element's status"))
         elif PIPESTATUS.search(code):
             hits.append((n, raw.strip(), "PIPESTATUS — bash-only; expands EMPTY in zsh, and empty is not zero"))
+    # ⛔ Second matcher, second defect. Kept as its own pass because it needs the
+    # WHOLE file (function bodies, and what is read after the loop), which the
+    # line-at-a-time loop above structurally cannot see.
+    hits.extend(scan_shell_subshell(path))
+    hits.sort(key=lambda h: h[0])
     return hits
 
 
@@ -259,6 +365,9 @@ def scan_markdown(path):
 
 
 SELFTEST_POSITIVE = "tools/testdata/pipe-exit-positive.sh"
+# ⛔ Its own fixture, holding POSITIVES AND NEGATIVES together: a fixture of only
+# positives cannot distinguish "detects the defect" from "fires on every while loop".
+SELFTEST_SUBSHELL = "tools/testdata/subshell-positive.sh"
 SELFTEST_NEGATIVE = "tools/README.md"
 
 
@@ -292,6 +401,20 @@ def selftest():
     else:
         print(f"  FAIL  known-negative: fired on prose about the trap — {neg}")
         ok = False
+    # ── the subshell matcher, both directions in one fixture ─────────────────
+    sub = scan_shell_subshell(SELFTEST_SUBSHELL)
+    if len(sub) == 3:
+        print(f"  ok    subshell known-positive: 3 findings in {SELFTEST_SUBSHELL}")
+        for n, s_, _ in sub:
+            print(f"          L{n}: {s_[:64]}")
+        print("  ok    subshell known-negative: 0 of 3 negatives fired "
+              "(process substitution, print-only loop, unread variable)")
+    else:
+        print(f"  FAIL  subshell matcher: {len(sub)} findings, expected exactly 3. "
+              f"Fewer means the failing path does not fire; more means it fires on a "
+              f"loop that loses nothing, which is the worse direction.")
+        ok = False
+
     cmt = [h for h in pos if h[0] < 12]
     if cmt:
         print(f"  FAIL  fired inside a comment block — comment-stripping regressed: {cmt}")
