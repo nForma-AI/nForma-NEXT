@@ -49,14 +49,29 @@ while true; do
   git fetch -q --prune origin 2>/dev/null
 
   # ⛔ Control first. A scan whose instrument cannot fire is not a clean scan.
+  # ⛔ A CONTROL GATES ONLY ITS OWN SUBJECT. This block used `continue`, which
+  # restarted the loop and silently skipped the fleet-worktree scan below — so a
+  # stranded-branches control failure suppressed a DIFFERENT population's findings,
+  # and the VOID line named only stranded-branches. A reader could not tell that
+  # worktree checking had been skipped at all.
+  #
+  # ⚠ Latent, not live: --self-test exits 0 today. Reachable, not occurring.
+  #
+  # ★ #164 item 2 warns that "a merge that silently drops one population's findings
+  # is worse than two watchers" — and that was ALREADY TRUE between this file's own
+  # two subjects, one level below where the requirement was aimed. `continue` was
+  # doing double duty as *skip this check* and *skip this iteration*. Found by DEV1
+  # reading the source; I wrote it.
+  sb_ok=1
   if ! python3 tools/stranded-branches.py --self-test >/dev/null 2>&1; then
-    emit "VOID merge-watch: stranded-branches --self-test FAILED at ${sha:0:7} — its scan below would establish nothing. No finding is emitted from a broken instrument."
-    continue
+    emit "VOID merge-watch: stranded-branches --self-test FAILED at ${sha:0:7} — its scan is suppressed and establishes nothing. ⚠ The fleet-worktree scan below STILL RAN; its findings are unaffected."
+    sb_ok=0
   fi
 
-  out=$(python3 tools/stranded-branches.py 2>&1); rc=$?
-  case "$rc" in
-    0) : ;;
+  out=""; rc=0
+  if [ "$sb_ok" = 1 ]; then out=$(python3 tools/stranded-branches.py 2>&1); rc=$?; fi
+  case "$([ "$sb_ok" = 1 ] && echo "$rc" || echo skip)" in
+    skip|0) : ;;
     1) printf '%s\n' "$out" | grep '^NO-UPSTREAM-MATCH' | while read -r _ ref rest; do
          row="stranded:$ref"; case "$seen" in *"$row"*) ;; *) emit "$tag: $ref has commits with no upstream patch-match. NOT proof of loss — recovery-by-recommit reads identically."; seen="$seen|$row" ;; esac
        done ;;
