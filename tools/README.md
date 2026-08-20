@@ -623,6 +623,27 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
   assertions and printed nothing. It now resolves that function with `getattr` and a fallback to
   the OLD behaviour, so the break **fails on the assertion** instead of dying. Check that a break
   produced output before believing it.
+- ⛔ **A list endpoint answers "more than exists" with everything and "less" with a silent
+  prefix.** `stranded-branches.py` asked `gh pr list --limit 100`. Measured 2026-08-20:
+
+  | repo | merged PRs | seen |
+  | --- | --- | --- |
+  | nForma-NEXT | 69 | 69 |
+  | df-wiki | 178 | **100** |
+  | Blazing-Back | **775** | **100** |
+
+  ⇒ On the repository with the actual branch churn it swept **13% of the population** and
+  reported `0 stranded, exit 0` about the rest. Its own docstring says *"a denominator that
+  silently excludes part of its population is how '0 stranded' gets believed"* — correct, and
+  one level too shallow. It guarded the **error** path and left **truncation** open.
+- ★ **Apply the tool's asymmetry to its population, not just its verdicts.** A positive finding
+  survives a partial sweep — a ref found stranded in the prefix is still stranded. A negative
+  does not. `verdict_exit(n, truncated)` is extracted precisely so the branch that matters —
+  *truncated and nothing found* — can be tested without a repository; it is the hardest state
+  to produce against a live remote, which is how it shipped unwritten.
+- ⛔ **A break that stops early under-reports — the quieter cousin of one that prints nothing.**
+  This suite's first break aborted on a `TypeError` from an older signature and showed 2 of the
+  5 real failures. Guard every call that a previous version cannot satisfy.
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
@@ -639,6 +660,7 @@ python3 tools/test_daintree_control.py
 python3 tools/test_pretooluse_guard.py
 python3 tools/test_grant_check.py
 python3 tools/test_pipe_exit_scan.py
+python3 tools/test_stranded_branches.py
 ```
 
 ⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only
