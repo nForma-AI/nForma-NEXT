@@ -89,7 +89,11 @@ import argparse
 import datetime as dt
 import re
 import subprocess
+import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from runmarker import guard, result  # noqa: E402
 
 CAPABILITIES = {
     "merge", "ci-run", "push-pr-branch", "pr-create",
@@ -376,6 +380,16 @@ def cmd_self_test(args):
     return 0
 
 
+
+def _mark(rc):
+    """Map the tool's own exit code to a terminal marker. ⛔ Every controlled path
+    goes through here — a path returning without a marker is indistinguishable from
+    a crash, and that reading is only correct if it actually crashed."""
+    result({0: "OK", 1: "FINDING", 2: "ESTABLISHED-NOTHING",
+            3: "SELF-TEST-FAILED"}.get(rc, f"EXIT-{rc}"))
+    return rc
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--grantee", help="role name, e.g. DEV3")
@@ -392,18 +406,19 @@ def main():
 
     try:
         if args.self_test:
-            return cmd_self_test(args)
+            return _mark(cmd_self_test(args))
         if args.list:
-            return cmd_list(args)
+            return _mark(cmd_list(args))
         if not args.grantee or not args.capability:
             ap.error("--grantee and --capability are required (or use --list / --self-test)")
-        return cmd_query(args)
+        return _mark(cmd_query(args))
     except Void as e:
         print(f"VOID: {e}", file=sys.stderr)
         print("⛔ established nothing — this is NOT 'no grant' and NOT 'authorized'.",
               file=sys.stderr)
+        result("ESTABLISHED-NOTHING")
         return 2
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(guard("grant-check", main))
