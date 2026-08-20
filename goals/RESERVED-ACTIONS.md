@@ -365,7 +365,12 @@ Make the completed state **readable before the work starts** and three panes con
 > and stop. Do not open a PR.**
 
 ⚠ **The marker already exists and needs nothing built.** `goals/devops-substrate-and-fleet.md`
-carries it: `## ⛔ Reserved actions — ONE source, referenced and never copied`. **A converted file
+carries it. ⚠ ⛔ **The MARKER IS THE POINTER, NOT THE HEADING** — measured, the four converted
+files use **three different headings** and only two carry that exact string, while **all four
+reference `goals/RESERVED-ACTIONS.md`**. An agent matching the heading would find `architect` and
+`dev` unconverted and **re-convert them, regenerating the collision this rule prevents.**
+
+⇒ **Test:** `grep -c 'RESERVED-ACTIONS' <goal file>` — non-zero means converted. **A converted file
 announces its own state**, which is the property the instruction should have relied on from the
 start.
 
