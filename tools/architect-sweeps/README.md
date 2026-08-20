@@ -9,8 +9,15 @@ control, applied to a measurement rather than to a tool.
 ⚠ **These are sweeps, not instruments.** They answer a question once and print what they did not
 establish. None is a control, none has a known-negative, and they are deliberately **not** in
 `tools/` — that directory's rows carry the incident that produced them and a proven failure path.
-These carry neither. `scripts/check-tools-index.py` indexes `tools/*.py`; this directory is
-outside its population by construction and should stay there.
+These carry neither, and they must **not** be promoted into `tools/`'s table.
+
+⚠ **Updated 2026-08-20 (#307).** This paragraph used to end *"`scripts/check-tools-index.py`
+indexes `tools/*.py`; this directory is outside its population by construction and should stay
+there."* That was true and it was also how 22 unrelated files in `tools/teamlead/` stayed
+invisible — one glob served as both a deliberate exclusion and an accidental blind spot, and
+nothing could tell the two apart. The checker now recurses. ⇒ **The distinction survives as a
+contract rather than as a glob:** these three are *named* in this README and are held to
+nothing else — no row, no prose entry, no count, and no claim that any of them is a control.
 
 ## Provenance — which figure came from which script
 

@@ -133,7 +133,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `doctrine-watch.py` | which roles' doctrine moved under them, and who has not read it? | 0 nothing to tell · 1 a role is behind · **2 established nothing** |
 | `label-exists.py` | does the label you are about to query actually exist? | 0 all exist · 1 one is absent · **2 established nothing** |
-| `verdict-census.py` | has each indexed instrument ever produced a verdict? | 0 all classified · 1 a never-run, slow, or undocumented instrument · **2 established nothing** |
+| `verdict-census.py` | has each indexed instrument ever produced a verdict? (`--ledger` keeps the record · `--stale-check` asks in 0.1s whether it is current) | 0 no finding · 1 a finding · **2 established nothing** · ⚠ `--stale-check`'s 0 means *the record is current*, NOT *they all produce verdicts* |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `estate-provenance.py` | does the evidence place this file in THIS estate? | 0 no FOREIGN rows · 1 FOREIGN found · **2 established nothing** |
 | `branch-census.py` | which remote branches are finished, live, or work that died quietly? | 0 discriminated · **2 no refs, or every branch in one bucket** |
@@ -166,7 +166,132 @@ of them, which is why it is stated here rather than in a docstring.
 | `memory-index-check.py` | does the memory index cover the memory files, and can it be loaded whole? | 0 covered · 1 orphans/dangling/oversize · **2 established nothing** |
 | `marker-reachability.py` | can any CI invocation actually collect this test? | 0 all reachable · 1 unreachable found · **2 established nothing** |
 | `close-condition-scan.py` | which open issues carry no close condition — and which hide one in a comment? | 0 every open issue has one **in its body** · 1 `NONE` or `BURIED` found · **2 established nothing (failed query, empty board, or a truncated reading)** · **3 known-positive failed** · `--self-test` `--states` |
+| `truncation-guard.py` | can we show this reading was not truncated by a page bound? | 0 **SAFE** (bound known AND count strictly below it) · 1 **TRUNCATED** (count == bound) · **2 UNKNOWN — no bound determinable; ⛔ never read as SAFE** · **3 known-positive failed** · `--self-test` `--quiet` |
 | `merge-watch.sh` | did a merge leave work behind, or drift the worktrees? | emits FINDING · VOID · UNDOCUMENTED; silence means ran-and-found-nothing |
+
+## Subdirectories — findable, and QUARANTINED where they are not ours
+
+⛔ **`tools/*.py` did not recurse, and 22 instruments sat in the blind spot.** #307: the index
+that exists to make instruments findable saw **32** files while **84** were on disk, and three
+successive TEAMLEADs hand-rolled work `teamlead/waker.py` had already measured and committed —
+including *"a literal `/compact` executes; text in a pane is not an action taken"*, which was
+re-derived from scratch an hour after being merged. ⇒ `scripts/check-tools-index.py` now
+enumerates `tools/**/*.py` **and `*.sh`**; nothing under `tools/` is outside its population.
+
+⚠ **These directories are held to a WEAKER contract than the table above, on purpose.** A
+subdirectory instrument must be **named in its own directory's `README.md`**, and the directory
+must be named here. That is *findable*. It is **not** a row, **not** a prose entry, and **not a
+claim that anyone has run the file.** The three-surface contract is not extended downward,
+because widening a population is not the same as adopting its contents.
+
+| directory | what it holds |
+|---|---|
+| `teamlead/` | 22 scripts lifted **byte-identical** from a TEAMLEAD scratchpad (#138) — the fleet monitors that had been running untracked. Load-bearing: `waker.py`, `guard.py`, `classify_fleet.py`; running continuously at copy time: `fleetwatch.sh`, `mergeready.py`, `repowatch.py`. |
+| `architect-sweeps/` | 3 one-shot ARCHITECT measurements, made reproducible after their inline heredocs died with the pane. ⚠ **Sweeps, not instruments** — none is a control, none has a known-negative. |
+
+## ⛔ QUARANTINE — and why the gate is red on purpose
+
+**The operator has ruled quarantine on `tools/teamlead/`: not indexed, not silenced, not
+deleted.** Commit `ac6a946` promoted 22 files wholesale out of a `/private/tmp/claude-501/…`
+scratch directory that **more than one estate wrote to**. `w1226.py` line 1 is
+`# control-plane/api/handlers/workloads.py` — another product's application source.
+
+### ⛔ The marker is a FILE, not an exit code — and here is why that changed
+
+The first version of this made quarantine **exit 1**, so the gate would stay red. Two things
+killed it, both measured:
+
+1. ⛔ **The red was never real.** On `main` this checker globbed `tools/*.py` **non-recursively**,
+   so `tools/teamlead/` was never in its population and all four `scripts/*.py` exited 0. **The
+   gate had been green the entire time it was being cited as the marker.**
+2. ⛔ **A marker that cannot be committed is not a marker.** `hermetic suites (gating)` is a
+   *required* check. The instrument that would produce the red could not merge, because its own
+   finding blocked it — and had it merged, **every subsequent PR from all nine panes would hit
+   the same exit 1 and freeze the merge queue.** (DEV2 measured the required-check leg.)
+
+⇒ **`tools/QUARANTINE.txt`.** Determinism belongs in the substrate, not in an exit code. A
+tracked file survives compaction — prose in nine pane contexts does not — and it names who
+recorded what, when.
+
+```
+held and LISTED there      ->  reported LOUDLY on every run, exit 0, summary "HELD — not clean"
+held and NOT listed        ->  exit 1.  New contamination, or a ruling nobody wrote down.
+listed but no longer held  ->  exit 1.  Deleted or repaired, and the file did not move.
+parses to ZERO entries     ->  exit 1, named as a FORMAT CHANGE, never as "nothing is held"
+```
+
+⛔ **This is not silencing, and the third rule is why.** An allowlist only ever subtracts, and
+nothing ever tells you it has stopped describing its subject. This one **rots loudly**. Full
+discriminating power is kept over the thing that matters: **a new estate appearing reds
+immediately.**
+
+★ And exit 1 here means **the acknowledgement file has drifted from the tree** — the same drift
+semantic this checker has always had, on a third surface. It never means *these files do not
+belong*; nothing here can establish that. ⚠ **DEV2 is why:** the output said *"NOT reported as
+undocumented"* while the exit code said `DRIFTED` — **the verdict contradicted the message.**
+
+★ **A complete index of a contaminated directory is a more confident wrong answer than an
+incomplete one**, so quarantine is evaluated **before** the documented/undocumented split: a
+quarantined file is never reported as missing a row, because the repair for *"missing a row"*
+is to **add** one — and an index row is an **assertion that the file belongs here.**
+
+⚠ **The obvious predicate does not work, and this is the part worth carrying elsewhere.** A
+content grep for the estate's vocabulary — `akash|blazing|Blazing-Back|#1[0-2]\d\d` — matches
+**8 of 63 files in `tools/` itself**: `reference-check.py`, `fleet-context.py`,
+`marker-reachability.py`, `named-referent-check.py`. Those instruments **exist because of those
+incidents** and cite them in their docstrings. ⇒ **A grep cannot separate a tool that MENTIONS
+another estate from a tool that BELONGS to one** — `tools/use-not-mention.py`'s question, asked
+about estates instead of commands.
+
+⇒ So the predicate is **position, not vocabulary**: an estate identifier in an executable
+string literal — a path a tool opens, a repo a tool queries — never in a docstring or comment.
+
+```
+tools/ top-level          1 of 33     memory-index-check.py, a default path
+tools/teamlead/          10 of 19
+tools/architect-sweeps/   0 of  3     <- the control: the predicate is not matching everything
+```
+
+### ⛔ UNCLAIMED is not LOCAL — and a content scan cannot tell them apart
+
+`docs/ESTATE-BOUNDARY.md` names four states and rules that **`UNCLAIMED` must never be collapsed
+into `LOCAL`** — that collapse is the only thing between this reading and a confident wrong
+answer. ⚠ **A content predicate cannot detect `UNCLAIMED`: it is the ABSENCE of provenance
+evidence, and absence has no string to match.**
+
+★ `boxwatch.py` is the specimen. Four hardcoded terminal UUIDs under the role names
+`IMPLEMENTER`…`IMPLEMENTER5` — **another estate's role names** — and *no* estate identifier a scan
+can find. The position predicate calls it clean, and the index then requires it to be named,
+which **asserts it is ours.**
+
+⇒ **The signal that is not in the content is in the HISTORY**, measured at `280ac70`:
+
+```
+tools/                    65 files added across 51 commits   accreted, file by file
+tools/teamlead/           22 files added across  1 commit    WHOLESALE (ac6a946)
+tools/architect-sweeps/    3 files across         2 commits   accreted
+```
+
+A directory that arrived in **one** commit out of a shared scratch directory has **one**
+provenance question, not N — which is why the operator ruled quarantine on the *directory* and
+not on the ten files a scan happened to catch. ⇒ So a wholesale-imported directory with any
+foreign marker holds **every** file: 10 `FOREIGN`, 9 `UNCLAIMED`, none required to be indexed.
+
+⚠ **The leg never guesses.** If git cannot answer it reports **NOT CHECKED**, because defaulting
+to *accreted* converts an unmeasured directory into an asserted-local one — the same collapse,
+arriving through the error path.
+
+⚠ **It is not a verdict about ownership, and no exemption list is offered** — an exemption list
+is the silencing mechanism this ruling refuses. Each hit is **a question for a human.** The one
+top-level hit is real and is **named rather than tuned away**, because a threshold that clears
+it is a number chosen to make the output comfortable.
+
+⛔ **DO NOT PROMOTE EITHER DIRECTORY INTO THE TABLE ABOVE**, and do not investigate the other
+estate's repositories from here — no standing.
+
+⚠ `testdata/` is excluded **by directory**, and the exclusion is printed on every run. An input a
+tool reads is not a tool — and demanding a README for a fixture directory is how a fixture
+directory stops being distinguishable from an instrument one.
 
 ## What each one is for
 
@@ -336,6 +461,44 @@ labelled a 45s instrument never-run, which is a statement about the caller's par
 tool. Its known-positive is a set of **synthetic fixtures outside `tools/`**, one per state, so repairing
 any real instrument cannot silence it.
 
+⚠ **2026-08-20: the census was consulted by nobody, and the cause was its price.** ARCHITECT found
+`SELFTEST-DECLARED 1` in its output — a real defect it had caught — only after independently writing the
+fix, believing nothing had detected it. ⇒ **A verdict nobody can afford to read is indistinguishable from a
+verdict nobody produced**, which is #2's own property arrived at from the other side. ★ The remedy turns on
+#2 asking a **monotone** question: *has this instrument EVER produced a verdict* — and a verdict that
+happened cannot un-happen. So `--ledger` keeps `tools/verdict-ledger.json`, keyed on each instrument's **git
+blob**, and re-runs only what the record cannot already answer. ⛔ **This is a stored calibration, which
+this repository forbids by default** (#149, #183: *derive, never store*) — permitted here for a checked
+reason, not an assumed one: `doctrine-watch`'s watermark stored a **position**, and a position moves both
+ways, so it decayed. An ever-predicate has no second direction. Only the confirmed-positive-with-unchanged-
+bytes case is ever skipped.
+
+⛔ **"Negative" was itself a collapsed pair, and splitting it was worth 7 re-runs a cycle.**
+`NO-VERDICT-VOCAB` is read out of the instrument's own docstring — a function of the bytes, so it cannot
+flip while the blob holds. `ESTABLISHED-NOTHING` · `NO-VERDICT-IN-TIME` · `NEVER-RUN` flip with **no edit at
+all**: `gh-complete.py` exits 2 while `gh` is unauthenticated, `stranded-branches.py` exceeds a 90s bound and
+concludes under a longer one. Only the environmental kind is re-measured unconditionally.
+
+⚠ **And the saving was measured, not predicted — the prediction was wrong, and the correct number is
+sharper than the first one.** A warm refresh **skipped 23 of 32 instruments — 72% of the population — and
+still took 3m16s against a 4m20s cold run.** ★ **Skipping 72% of the work bought 25% of the time.** The cost
+is not spread across the population; it is concentrated entirely in the rows the design refuses to skip. An
+instrument that concluded is fast *because* it concluded; the expensive rows are the ones that timed out or
+refused, and those are exactly what a refresh must re-run. ⇒ **The skip is anti-correlated with the cost,
+and no amount of further skipping fixes that.** ⇒ Three minutes is still past a reader's attention, so the
+affordable mode is not a cheaper refresh but `--stale-check`, which **runs nothing** and reports in
+**0.085s** whether a refresh could say anything new. ⛔ Its exit code tracks **staleness only**: eight
+standing environmental negatives are true *continuously*, and letting them drive the code would pin it to
+`1` forever and destroy the trigger. They are printed on every run, including on `0`, so a `0` cannot be
+read as *every instrument produces verdicts*. **Measured 2026-08-20 at `af6a4e2`: 17 of 35 indexed
+instruments have ever produced a verdict.** Re-measure before relying on it.
+
+⚠ **And a live instance of why `⛔ NEVER` is not `broken`, from an author who knows.** `label-exists.py`
+records `ESTABLISHED-NOTHING` — a bare run names no label, and refusing is the correct answer to *"is
+nothing a label?"*. ★ The row is **right**, the tool is **healthy**, and reading the column as a defect list
+would condemn it. Every instrument here is run with **no arguments**; the `NEVER` set is a statement about
+what a bare invocation establishes, which is #2's premise made measurable — not a verdict on anyone's tool.
+
 **`wake-yield.py`** — pairs an interruption's cost with its yield. Cost alone is
 uninterpretable: an agent woken into useful work and one woken into churn consume context
 identically.
@@ -423,6 +586,7 @@ for six hours while merging two PRs from a transcript this machine does not hold
 **`close-condition-scan.py`** — ⛔ built because **TEAMLEAD reported "~31 open issues lack completion conditions" and nothing had ever produced that number.** Measured on the first run: **61 of 85**, roughly double. An issue with no falsifiable close condition cannot be *closed*, only abandoned or declared, so the count decides how much of the board is closeable at all. ★ **The second state is why this is a tool and not a grep.** All five of one role's queued issues carried a `Done when` clause and **none carried it in the BODY** — every clause sat in a comment, three of them under six others. A closer who opens the issue and reads it sees no condition. ⇒ `BURIED` is therefore a **distinct verdict, not a weaker `NONE`**: the defect is different, the repair is different (move the clause into the body), and it is invisible to any check that asks only *does a condition exist somewhere*. Board-wide: **19 BURIED, and only 5 of 85 issues carry a condition where a closer reads it.** ⚠ **The pattern is anchored at line start**, so a clause must be a structural element rather than a phrase in a sentence — a bare substring match flags #189, a friction report *about* close conditions, as *having* one. That use-vs-mention case is the suite's load-bearing negative, and it is **shown to fail**: swapping the anchored regex for the naive substring form takes the self-test from 5/5 to exit 3. ⚠ Three ways to print a clean zero are all **exit 2** — a failed query, an empty board, and a reading shorter than the population `search/issues` states. ⛔ **A mistyped label is the sharp case: `gh issue list --label <nonexistent>` exits 0 with zero bytes on stdout AND stderr**, byte-identical to an empty queue, which is how a wake message routed a role to a label that did not exist. ⛔⛔ **THE BOUND: it detects PRESENCE, never FALSIFIABILITY.** `## Done when: it feels done` passes. Exit 0 means every open issue carries a clause in its body — never that any of them can be closed honestly.
 
 **`api-budget.py`** — ⛔ the GitHub quota is **one 5,000/hr pool shared by every agent and every tool**, and nothing showed a pane its own share. Measured 2026-08-20 while the pool sat at **0/5000 with 42 minutes to reset** and every pane's `gh` call 403ing: **10,214 invocations across nine live transcripts in one session**, 4,553 from a single role, **3,352 of them bare `gh api`**. ⚠⚠ **One invocation is not one API call** — `--limit`/`--paginate` paginate, `run view --log` downloads an archive, and `gh api graphql` costs by node count — so the count is a **lower bound on spend and is never reported as the spend**; the tool flags which invocations used a multi-call flag and refuses to guess a multiplier. ★ **The cost lands on whoever asks NEXT**: a pane that made no calls all session gets the 403, which is why per-role attribution is the useful output. ⛔ A failed `rate_limit` read is **`None`, never a full pool** — that endpoint is *exempt* from the quota it reports, so a failure there is network or auth and printing a number would blame the wrong thing.
+**`truncation-guard.py`** — ⛔ built because **one role took the same wrong reading twice in one day, six hours apart, with the first instance already written into `DEFECT-CLASSES.md`.** `gh issue list … --jq 'length'` reported **30 against a population of 85**; `gh run list --limit 5` reported **5 against a real 100**. ★ **The mechanism is why knowing about it did not help: `gh`'s default page size is 30, so when the population exceeds the page, THE CAP AND THE RETURNED COUNT ARE THE SAME NUMBER.** A full page and a complete set are byte-identical in the output — there is nothing to notice, and no amount of care substitutes for arithmetic. ⇒ A defect whose signature is *the output looks correct* cannot be remedied by a reader who has been told about it, which is why this is an instrument and the catalogue entry was not enough. ⛔⛔ **Three states, and the third is the whole design.** `SAFE` requires a bound to be KNOWN and the count strictly below it; `TRUNCATED` is count == bound; **`UNKNOWN` is exit 2 and must never collapse into `SAFE`** — an unstated limit is the COMMON case and *probably fine* is precisely the reading that produced both instances. ⚠ The **effective** bound is the MINIMUM of everything that applies, so `--limit 1000 | head -30` is bounded at 30 and reporting the 1000 would report the bound that does not bind; `per_page=1000` is scored at **100**, because GitHub clamps it silently — this tool's own defect class one layer down. ⚠ A count that EXCEEDS its own bound is `UNKNOWN`, not a guess: the count and the command are not describing each other, and picking a side would be the confident wrong measurement this exists to prevent. ★ **It analyses a reading and never performs one** — input is a string plus an integer, no network, no subprocess, no clock. That is what let it be built and fully verified with the API budget at 0/5000. ⛔ **Criterion 4, by execution on the real specimens**: the two literal commands above produce **opposite verdicts from the same command family** (exit 1 and exit 0), and `git log --oneline | wc -l` produces exit 2. Three deliberate breaks are shown to FAIL the suite — collapsing `UNKNOWN` into `SAFE`, dropping the implicit-default table, and taking the max of bounds instead of the min. The second is load-bearing: **without the implicit table the real specimen reads `UNKNOWN` instead of `TRUNCATED`**, so the table is what makes the guard work on the actual measured defect. ⚠⚠ **THE BOUND, and it is printed on every run rather than left in this file: it rules out exactly ONE mechanism, the client-side page bound.** It is silent on server-side filtering before paging — a permission-scoped list, a lagging search index, an endpoint dropping what the caller cannot see — all of which return short, honest-looking readings it calls `SAFE`. ⇒ **`SAFE` means *not truncated by a page bound*, never *complete*.** ⚠ And a count of **zero** is `SAFE` here while carrying its own note: zero has a different failure mode (a filter naming nothing — a mistyped label exits 0 with zero bytes, #317) which this guard does not cover, and conflating them would overclaim.
 
 **`transition-report.py`** — the STATE line is a **pull**; the role prompts also require a
 **push** on transition into `FREE` or `BLOCKED`, and this is that rule's execution record. Built
