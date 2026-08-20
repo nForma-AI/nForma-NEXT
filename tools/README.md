@@ -98,6 +98,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `named-referent-check.py` | does a requirement sentence name an identifier that does not exist? | 0 none · 1 candidates · **2 established nothing** |
 | `exists-anywhere.py` | does this name exist at ANY ref, or only on the one checked out? | 0 on the ref · 1 exists unmerged · 2 absent everywhere · **3 established nothing** |
 | `memory-index-check.py` | does the memory index cover the memory files, and can it be loaded whole? | 0 covered · 1 orphans/dangling/oversize · **2 established nothing** |
+| `marker-reachability.py` | can any CI invocation actually collect this test? | 0 all reachable · 1 unreachable found · **2 established nothing** |
 | `merge-watch.sh` | did a merge leave work behind, or drift the worktrees? | emits FINDING · VOID · UNDOCUMENTED; silence means ran-and-found-nothing |
 
 ## What each one is for
@@ -402,6 +403,19 @@ are different defects with different remedies, **a wrong sentence versus an unme
 and **not** a `pretooluse-guard` rule: the wrong reading is not a wrong command, it is a correct
 command answering a narrower question than the one asked, so a guard would fire on the correct use
 — which this repository has already shipped once.
+**`marker-reachability.py`** — the static half of #2. #2 specifies five states from RUN
+HISTORY, and a test excluded by every `-m` selector generates no runs to query: ⇒ **you cannot
+ask "has this gate ever spoken?" about something you do not know exists.** This supplies that
+population from the repository alone — no API, no rate limit, gates in CI. ⛔ Its known positive
+is `tests/test_cluster_spec_drift.py`, reported by two agents and filed as Blazing-Back#1115:
+`pytestmark = pytest.mark.network`, and the only selector covering `tests/` is
+`-m "not e2e and not network"`. ★ **Its first working version reported 870 files, 0 unreachable,
+and missed that guard** — because it matched `pytest` inside COMMENTS, and those mis-parses
+yielded `paths=[] -m=None`, which the rule reads as *collects everything*. **One comment marked
+the whole repository reachable.** ⚠ Three states, and `UNKNOWN-PATH` (a `${var}` path) is counted
+in neither column: resolving it either way would overstate the evidence. A direct
+`python3 e2e/test_x.py` counts as run — asking "can pytest collect it" gave a *true answer to the
+wrong question* for 11 e2e files.
 
 **`named-referent-check.py`** — converted from a **convergence**, not from one report: two
 agents, different subsystems, no contact, within one hour found a named enforcement mechanism
