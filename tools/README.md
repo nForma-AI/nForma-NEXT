@@ -89,6 +89,8 @@ of them, which is why it is stated here rather than in a docstring.
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
 | `runmarker.py` | ⚠ **a module, not an instrument** — the two stderr markers every tool emits | n/a, it is imported |
 | `ci-log-clean.py` | is this CI log's text OUTPUT, or the echoed script? | 0 cleaned · **2 established nothing** |
+| `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
+| `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
 
 ## What each one is for
@@ -310,6 +312,21 @@ diagnosing that class. A count without its sha is not comparable to the same cou
 known-positive and **both went to zero within the hour** as their follow-up PRs merged — #26
 instance 3, realised rather than hypothetical: a control propped up by a defect queued for repair
 stops being a control the moment the defect is fixed.
+
+**`gh-complete.py`** — ⛔ `gh api …/check-runs` returns **30 of 54** by default and it is not an
+error: the response still carries `total_count: 54`, so a filter over `.check_runs[]` evaluates the
+thirty it received and **returns a clean answer about a set it never saw**. Measured: it hid a
+required-check failure, and made two instruments by one author contradict each other about one PR.
+⚠ `per_page=100` is the reflex and **it is not the check** — it fails silently the moment a
+population exceeds it. This compares the stated total against what arrived and refuses the reading
+when they differ.
+
+**`reference-check.py`** — answers the one question a curated list cannot answer about itself:
+**has any of it moved?** ⇒ Built because a 249-line root-cause investigation of a failure this fleet
+re-derived from CI logs overnight had been on this machine for a month, and the standing rule that
+pointed at it existed while nobody opened its `docs/`. ⚠ And searching is not the remedy — 304
+repositories under `~/code` and 14,517 markdown files mention *exec*, so a keyword sweep returns a
+haystack. `reference-implementations.md` is therefore CURATED, and this watches the curation.
 
 **`pretooluse-guard.py`** — matches, over a single command string, the idioms that produce a
 confident WRONG measurement: `$?` read after a pipeline, `${PIPESTATUS[n]}` under zsh, and a
