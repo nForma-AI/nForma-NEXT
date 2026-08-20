@@ -109,6 +109,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
 | `issue-coverage.py` | which open issues has NOBODY opened? | 0 all covered · 1 untouched found · **2 established nothing (empty board, failed query, or no transcripts)** |
 | `prompt-delivery.py` | did a role prompt REACH a pane — and by which channel? | 0 measured · **2 no transcript held a launch prompt** |
+| `text-provenance.py` | which session first PRODUCED this text — or is every hit my own reading? | 0 attributed · 1 present, unauthored here · **2 established nothing** · **3 own-reading only, verdict refused** |
 | `transition-report.py` | did the fleet ANNOUNCE its transitions, or only declare them? | 0 audited · **2 the control failed** |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |
@@ -345,6 +346,19 @@ wrote it **itself**). ⚠ **`PULLED` is not delivery** — the session with the 
 was the one that wrote the pointer into the goal files. ★ And a transcript whose head holds a wake
 rather than a launch prompt **establishes nothing** about how that pane was launched; that is its
 own verdict, never a `no`.
+**`text-provenance.py`** — ⛔ built after the same mistake **twice in one day**: a search for a
+distinctive string returned hits that were **entirely this session's own tool records**, and the
+count was read as reach. Six hits for a rule's text were six `tool_use` records *searching for the
+rule*; fifteen hits for a measurement quoted in a PR closure were `tool_result`s from my own
+`gh pr view`. **The hits were real, the string was right, and the conclusion inverted — because grep
+counts OCCURRENCES and the question was AUTHORSHIP.** ⇒ So it never reports a count: every hit is
+`AUTHORED` (an assistant record), `FETCHED` (a tool_result — the session went and got it),
+`RECEIVED` (an inbound turn) or `OTHER`. ★ **And it refuses a verdict when every hit belongs to the
+asker** — exit 3, the shape of a failed control, not of "no author found". ⚠⚠ **A local absence is
+not an absence**: a session that authored the text on another machine and one that never authored it
+produce an identical empty result here, which is not hypothetical — a peer was reported `FLATLINE`
+for six hours while merging two PRs from a transcript this machine does not hold. Zero hits is
+**exit 2**, never "nobody wrote it".
 
 **`transition-report.py`** — the STATE line is a **pull**; the role prompts also require a
 **push** on transition into `FREE` or `BLOCKED`, and this is that rule's execution record. Built
