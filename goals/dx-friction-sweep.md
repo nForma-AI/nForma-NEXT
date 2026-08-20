@@ -96,6 +96,17 @@ Repeat reports pay when the window contained **instrument-building**, not when i
 long. DEVOPS had the *"this was a using-window, nothing new"* sentence **drafted** and discarded
 it only after looking.
 
+⛔ **CORRECTED by the third reporter, and the correction is narrower than the rule it fixes:** it
+pays when the window built instruments **AND THE INSTRUMENTS WERE CHECKED**. Its seven
+near-misses were reportable only because something forced each one to be tested.
+
+⇒ **A window of UNCHECKED instrument-building produces a confident, empty report** — an author
+who believes their tools worked, listing nothing, in good faith. That is worse than the "no",
+because it reads as coverage. So when offering the refusal, offer it in this shape:
+
+> *"Little new"* is first-class. So is *"I built things and never tested them, so I cannot tell
+> you whether they were wrong."* The second is more useful than a clean report.
+
 ⇒ Keep offering that answer as **first-class**. A padded second report is worse than a one-line
 refusal, and the refusal is the measurement — it falsifies the obligation for that shape of
 window.
