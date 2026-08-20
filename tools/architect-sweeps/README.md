@@ -78,6 +78,29 @@ the property #26 is about:
 which holds `tools/` and no `.git`. **Same verdict, different causes, and the tool is right to
 refuse rather than score either.**
 
+## `prior-art.py` — has anyone already written this, in a channel that could hold the answer?
+
+```
+python3 tools/architect-sweeps/prior-art.py "<the phrase you are about to write about>"
+```
+
+**Measured defect, three panes, one night:** DEV2 opened #353 at `22:56:00Z`; DEV3 opened #356 at
+`22:59:25Z` on the same ruling; ARCHITECT then ruled on the question twice. **All three checked
+`main`.** ⇒ An open PR is not on `main`, so the probe's corpus **structurally could not contain the
+answer.**
+
+★ **Its first run produced the sharper reading:** `main-tree` finds *"positive control"* in 16
+files, so checking `main` was **not empty — it was answering a different question.** *"Does this
+exist?"* and *"is someone writing it right now?"* both come back as *"prior art"*, and **only the
+open-PR channel answers the second.** ⇒ The tool reports **per channel and refuses to aggregate.**
+
+⛔ **Controls are two-sided and run before every query** (DEV2, #353): a term certain to be present
+must be **FOUND**, and a **per-run uuid nonce** must be found **nowhere**. A one-sided control
+catches a false ABSENT and is blind to a predicate matching everything.
+
+⚠ **Three channels only** — it says nothing about peer messages, transcripts, or another estate's
+board, and the bound is printed on every run.
+
 ## What is NOT here
 
 - ⛔ **The activity-burst analysis** (5 bursts, gaps of 49/4/72/72 minutes — the evidence that a
