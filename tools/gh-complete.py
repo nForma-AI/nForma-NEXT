@@ -43,7 +43,10 @@ COUNT_KEYS = ("total_count",)
 
 
 def run_gh(path, extra=None):
-    cmd = ["gh", "api", path] + (extra or [])
+    # ⛔ `-i` so the response HEADERS come back. Without them the Link-header
+    # completeness path below is unreachable — a code path with no caller, added in
+    # the tool whose whole subject is readings that were never checked.
+    cmd = ["gh", "api", "-i", path] + (extra or [])
     try:
         p = subprocess.run(cmd, capture_output=True, text=True)
     except OSError as exc:
@@ -52,8 +55,16 @@ def run_gh(path, extra=None):
         raise RuntimeError(f"gh exited {p.returncode}: {(p.stderr or '').strip()[:200]}")
     if not p.stdout.strip():
         raise RuntimeError("gh returned no output — that is not an empty list")
+    head, _, body = p.stdout.partition("\n\n")
+    headers = {}
+    for ln in head.splitlines()[1:]:
+        k, _, v = ln.partition(":")
+        if v:
+            headers[k.strip().lower()] = v.strip()
+    if not body.strip():
+        raise RuntimeError("gh returned headers but no body — that is not an empty list")
     try:
-        return json.loads(p.stdout)
+        return json.loads(body), headers
     except ValueError as exc:
         raise RuntimeError(f"response is not JSON: {exc}")
 
@@ -73,12 +84,38 @@ def array_key(doc, override=None):
     return lists[0]
 
 
-def assess(doc, key=None):
+def link_complete(headers):
+    """★ A SECOND checkable signal, for the endpoints that state no total.
+
+    ⛔ The bare-array refusal below was read as "completeness cannot be established
+    for list endpoints" — including by the author of the rule, who concluded the
+    caller was UNAVAILABLE for routing queries and recommended a bare `--limit`
+    instead. Measured, and the premise is narrower than that:
+
+        GET /repos/{o}/{r}/issues?per_page=1     Link: <…page=2>; rel="next"
+        GET /repos/{o}/{r}/issues?per_page=100   NO Link header at all   (33 open)
+
+    ⇒ The list endpoints state no COUNT and they do state COMPLETENESS. Absence of
+    `rel="next"` is a proof that nothing was withheld, and it needs no total. A
+    different input, not no input.
+
+    ⚠ It proves *this page is the last*, which is weaker than a total: it says
+    nothing about how many pages preceded it. For a single unpaginated request that
+    is exactly the question, which is the case routing queries are in.
+    """
+    link = headers.get("link") or headers.get("Link") or ""
+    return 'rel="next"' not in link
+
+
+def assess(doc, key=None, headers=None):
     """(complete, stated, received, key). Raises when the shape is not a counted list."""
     if not isinstance(doc, dict):
+        if headers is not None and link_complete(headers):
+            return True, len(doc), len(doc), "(bare array, complete by absent rel=next)"
         raise RuntimeError(
-            "response is a bare array, so it carries no stated total and completeness "
-            "CANNOT be established from it — this tool refuses rather than assuming"
+            "response is a bare array with a `rel=\"next\"` Link, so it IS a prefix — "
+            "or headers were not supplied, in which case completeness CANNOT be "
+            "established and this tool refuses rather than assuming"
         )
     stated = next((doc[k] for k in COUNT_KEYS if isinstance(doc.get(k), int)), None)
     if stated is None:
@@ -112,8 +149,8 @@ def main():
         passthrough = ["--jq", args[i + 1]]
 
     try:
-        doc = run_gh(path)
-        complete, stated, received, k = assess(doc, key)
+        doc, headers = run_gh(path)
+        complete, stated, received, k = assess(doc, key, headers)
     except RuntimeError as exc:
         print(f"⛔ VOID: {exc}", file=sys.stderr)
         print("   established nothing — this is NOT an empty list and NOT a complete one.",

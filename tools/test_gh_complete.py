@@ -57,6 +57,8 @@ def main():
     f += not check("received", received, 30)
     f += not check("key derived, not assumed", key, "check_runs")
 
+    f += link_checks()
+
     print("a whole reading passes:")
     doc = {"total_count": 9, "check_runs": [{} for _ in range(9)]}
     f += not check("complete", ghc.assess(doc)[0], True)
@@ -94,5 +96,64 @@ def main():
     return 0
 
 
+def link_checks():
+    """⛔ Registered explicitly, because main() lists its checks and does not discover
+    them. The first version of these tests was appended as bare defs and NEVER RAN —
+    a sabotage run exited 0 and I read the zero as a pass. A test file that discovers
+    nothing turns every added test into decoration."""
+    f = 0
+    print("Link-header completeness — the second checkable signal:")
+    f += not check("no Link at all == complete", ghc.link_complete({}), True)
+    f += not check('rel="last" only == complete',
+                   ghc.link_complete({"link": '<...>; rel="last"'}), True)
+    f += not check('rel="next" == prefix',
+                   ghc.link_complete({"link": '<...>; rel="next", <...>; rel="last"'}), False)
+    ok, stated, received, _ = ghc.assess([1, 2, 3], headers={})
+    f += not check("bare array + complete Link passes", (ok, stated, received), (True, 3, 3))
+    for label, hdrs in (("bare array + rel=next refuses", {"link": '<>; rel="next"'}),
+                        ("bare array + NO headers refuses", None)):
+        try:
+            ghc.assess([1, 2, 3], headers=hdrs)
+            f += not check(label, "passed", "refused")
+        except RuntimeError:
+            f += not check(label, "refused", "refused")
+    return f
+
+
 if __name__ == "__main__":
     sys.exit(main())
+
+# --- Link-header completeness, added with the path it exercises -----------------
+# ⛔ The bare-array refusal was read as "completeness cannot be established for list
+# endpoints", and that conclusion recommended a bare `--limit` instead. Measured:
+# the list endpoints state no COUNT and DO state COMPLETENESS. A different input,
+# not no input.
+
+def test_link_absent_means_complete():
+    assert ghc.link_complete({}) is True
+    assert ghc.link_complete({"link": '<...page=3>; rel="last"'}) is True
+
+
+def test_link_next_means_prefix():
+    assert ghc.link_complete({"link": '<...page=2>; rel="next", <...>; rel="last"'}) is False
+
+
+def test_bare_array_passes_only_with_a_complete_link():
+    # complete: no rel=next
+    ok, stated, received, key = ghc.assess([1, 2, 3], headers={})
+    assert ok and stated == 3 and received == 3
+    # prefix: refuses rather than assuming
+    try:
+        ghc.assess([1, 2, 3], headers={"link": '<...>; rel="next"'})
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("a bare array WITH rel=next must refuse, not pass")
+    # ⚠ no headers at all is still a refusal — absence of evidence, not evidence
+    try:
+        ghc.assess([1, 2, 3])
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("a bare array with NO headers must refuse")
+
