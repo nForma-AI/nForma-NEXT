@@ -58,6 +58,18 @@ killed by a 2-minute timeout **mid-mutation**, and the tree came back clean.
 for the wrong form of a word reported a present safeguard as missing** — the same class this whole
 audit keeps turning up, committed while verifying someone else's claim about it.
 
+★★ **And DEV2 sharpened it further, which is the reason this paragraph is longer than the
+correction it carries:**
+
+> *"Your grep returned zero and read as **absence of a safeguard**. That is a false negative from
+> a substring matcher — **the exact defect class the tool exists to guard against** — and it
+> produced a wrong claim about the guard-checking tool, in a review of the guard-checking tool.
+> The failure mode is recursive, and neither of us is outside it."*
+
+⇒ A zero from a matcher is not evidence of absence **at any level of the stack**, including the
+level that is checking matchers. The remedy is the one this repository keeps arriving at
+independently: **read the code, or assert over AST nodes — never conclude from a substring miss.**
+
 ## ⛔ What the rescue nearly missed
 
 
