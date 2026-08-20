@@ -25,6 +25,36 @@ agent running old doctrine is exactly the party least able to report that it is.
 it resolves, and any session that read a prompt must appear. If the sweep yields zero
 readings, that is the instrument failing, not a fleet running current doctrine.
 
+⛔ AND IT HAS YIELDED ZERO SINCE IT SHIPPED. Two separate causes, measured 2026-08-20.
+
+  1. FIXED — the population was selected by the audited repo's NAME. Both selectors assume
+     the repo whose prompts are audited is the repo the agents WORK in. It never is: the
+     fleet works in one checkout and `cat`s its prompts out of another.
+
+         project dirs whose name contains "nForma-NEXT"            0
+         prompt-read records under -…-code-DigitalFrontier-infra  60
+
+     ⇒ The matcher excluded the only directory that could answer, by construction. The guard
+     fired correctly every time — VOID, exit 2, "that is the instrument failing" — so it
+     never lied; it simply could not see. Now: when no directory matches the name, ALL are
+     swept. The blob match is the discriminator, so a foreign directory cannot produce a
+     false reading — only a slower sweep. Scoping by name was correct derivation over the
+     wrong set.
+
+  2. ⛔ STILL OPEN, and handed over with its evidence rather than guessed at. Over the
+     CORRECTED population the sweep still recovers **zero prompt reads**, while a
+     distinctive line from `prompts/DX.md` demonstrably appears in one transcript. So the
+     content is present and the recovery step does not find it. Two candidate causes,
+     neither confirmed: the recovery may inspect record types that do not carry it, or no
+     WHOLE-FILE blob may exist in any transcript (only fragments), in which case exact
+     containment can never match and the resolution predicate itself needs rethinking.
+     [NOT-YET-MEASURED]
+
+     ⚠ Do not read the fix in (1) as making this tool operational. It is not. It is now
+     looking in the right place and still finding nothing, which is a better failure than
+     looking in the wrong place — but it is still a failure, and the fleet-wide doctrine
+     staleness this tool exists to detect remains unmeasured.
+
 ⛔ Two versions of one prompt can only be told apart if neither is a substring of the other.
 That is checked FIRST, per `discriminates.py`: a session matching two mutually-contained
 versions is reported AMBIGUOUS and never resolved to the convenient one.
@@ -239,12 +269,43 @@ def main():
         if d.is_dir() and d not in found and \
                 Path(repo).name.replace(".", "-").lower() in d.name.lower():
             found[d] = "name"
+
+    # ⛔ THE DIRECTORY NAME WAS A PROXY FOR THE POPULATION, AND THE WRONG ONE.
+    # Both selectors above assume the repo whose prompts are audited is the repo the
+    # agents WORK in. It never is: the fleet works in one checkout and `cat`s its
+    # prompts out of another, so every prompt read lands in the WORKING repo's
+    # transcript directory. Measured 2026-08-20:
+    #
+    #     project dirs whose name contains "nForma-NEXT"          0
+    #     prompt-read records under -…-code-DigitalFrontier-infra 60
+    #
+    # ⇒ This tool has never produced a reading. Its guard fired correctly every time
+    # — VOID, exit 2, "that is the instrument failing" — so it never lied; it simply
+    # could not see, and the fleet-wide staleness it exists to detect went unmeasured
+    # for as long as it shipped.
+    #
+    # ★ The fix is to stop scoping by name at all. The DISCRIMINATOR is exact
+    # containment of a historical blob in recovered output — a foreign project
+    # directory cannot produce a false match, only a slower sweep. Deriving the
+    # population from a name was correct derivation over the wrong set.
+    scanned_all = False
+    if not found:
+        scanned_all = True
+        for d in root.glob("*"):
+            if d.is_dir():
+                found[d] = "all"
     dirs = list(found)
     if not dirs:
-        print(f"\nVOID  no transcript directory under {root} matches {Path(repo).name}",
+        print(f"\nVOID  no transcript directories at all under {root}",
               file=sys.stderr)
         print("      established nothing about any agent's loaded doctrine", file=sys.stderr)
         return 2
+    if scanned_all:
+        print(f"⚠ no transcript directory matches {Path(repo).name!r}, so ALL {len(dirs)} "
+              f"were swept. That is correct — the fleet works in one checkout and reads its "
+              f"prompts out of another — and it is slower. The blob match is the "
+              f"discriminator; a foreign directory cannot produce a false reading.",
+              file=sys.stderr)
 
     by_git = sum(1 for m in found.values() if m == "git")
     print(f"\nSwept {len(dirs)} transcript director{'y' if len(dirs) == 1 else 'ies'} "
