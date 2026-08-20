@@ -110,6 +110,23 @@ request**, which is visible whether or not anyone remembers the rule.
    it**, because that is the cheaper of the two ways to resolve a contradiction between a document
    and an instruction about the document.
 
+   ⛔ **There is a third form, and it is the least likely to be questioned: ADDITION.**
+
+   ```
+   deletion   remove the thing the claim denies      -> conspicuous, obvious victim
+   narrowing  shrink until the claim is true         -> defensible in isolation
+   ADDITION   add the thing the claim says is missing -> reads as FIXING A GAP
+   ```
+
+   ⚠ Measured: a drift row asserted a goal file *"carries no pushing-to-`main` clause — a live
+   gap."* **False** — that file had converted to a pointer and was the only one conformant with
+   the one-source ruling. An agent acting on the row would have **added the clause back**, undoing
+   the conversion and re-introducing the duplication the ruling exists to remove.
+
+   ⇒ ★ **An added reservation is more defensible in isolation than a deletion**, so it attracts
+   *less* scrutiny while doing the same work: making the artifact match the claim. **The pressure
+   is identical and the disguise is better.** (ARCHITECT, from the row it refuted.)
+
    ⛔ **And the dangerous form is not deletion — it is NARROWING.** Deleting a whole section is
    conspicuous and has an obvious victim. These do not:
 
