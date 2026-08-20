@@ -52,9 +52,9 @@ WORDS = {w: i for i, w in enumerate(
 # unless a reader can see what was removed. (Found by TEAMLEAD, running it by hand after a merge.)
 NOT_AN_INSTRUMENT = re.compile(r"^(?:test_.+|.+_test)\.py$")
 
-ROW = re.compile(r"^\|\s*`([A-Za-z0-9_.-]+\.py)`\s*\|", re.M)
+ROW = re.compile(r"^\|\s*`([A-Za-z0-9_./-]+\.py)`\s*\|", re.M)
 # `**`name.py`** — …` — a prose entry opening the "what each one is for" paragraph.
-PROSE = re.compile(r"^\*\*`([A-Za-z0-9_.-]+\.py)`\*\*", re.M)
+PROSE = re.compile(r"^\*\*`([A-Za-z0-9_./-]+\.py)`\*\*", re.M)
 # The hand-maintained count in the opening sentence: "Six tools, each built because …"
 # ⛔ The alternation is built from WORDS, never from `[A-Za-z]+`. A permissive word match makes
 # this leg conditional on deleting the NOUN rather than the COUNT: "The tools, …" would match,
@@ -93,9 +93,16 @@ def check(root):
     if not index.is_file():
         return 2, [f"  VOID  {index} is not readable — established nothing"], True
 
-    every = sorted(p.name for p in tools_dir.glob("*.py"))
-    actual = [n for n in every if not NOT_AN_INSTRUMENT.match(n)]
-    excluded = [n for n in every if NOT_AN_INSTRUMENT.match(n)]
+    # ⛔ rglob, not glob. `tools/*.py` saw 32 instruments while the tree held 51: every file
+    # under tools/teamlead/ was invisible to the index that claims to list "every instrument
+    # the directory actually holds" (#307). A checker whose POPULATION is narrower than its
+    # CLAIM reports clean about a set it never enumerated — the same defect this file exists
+    # against, in the file itself.
+    # ⚠ Identity is the path RELATIVE TO tools/, not the bare name: two instruments may share
+    # a basename across directories, and a row saying `waker.py` would not say WHERE.
+    every = sorted(str(q.relative_to(tools_dir)) for q in tools_dir.rglob("*.py"))
+    actual = [n for n in every if not NOT_AN_INSTRUMENT.match(n.rsplit("/", 1)[-1])]
+    excluded = [n for n in every if NOT_AN_INSTRUMENT.match(n.rsplit("/", 1)[-1])]
     text = index.read_text(encoding="utf-8")
     rows = ROW.findall(text)
     prose = PROSE.findall(text)
@@ -179,7 +186,8 @@ def check(root):
     # Every tool prints what its numbers do NOT establish, on every run.
     out.append("  note  this checks PRESENCE of a row, never whether the row is ACCURATE —"
                " a wrong description passes")
-    out.append("  note  only tools/*.py is indexed; a shell or non-.py instrument is invisible here")
+    out.append("  note  tools/**/*.py is indexed (paths relative to tools/); a shell or "
+               "non-.py instrument is still invisible here")
     # ⛔ The SUMMARY WORD must not assert more than the run measured. `clean` folds VERIFIED
     # together with ESTABLISHED-NOTHING, which is criterion 3's defect in goals/README.md — and
     # printing the unchecked leg above does not fix it, because a reader takes the summary.
@@ -288,6 +296,37 @@ def selftest():
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  an unchecked leg reports PARTIAL, not clean "
               f"(got rc={rc} partial={partial})")
+
+        # ⛔ #307: `tools/*.py` saw 32 instruments while the tree held 51 — everything under
+        # tools/teamlead/ and tools/architect-sweeps/ was invisible to the index that claims to
+        # list "every instrument the directory actually holds". A checker whose POPULATION is
+        # narrower than its CLAIM reports clean about a set it never enumerated. Measured on the
+        # real repo: the old glob exited 0 with an instrument planted two levels deep.
+        # ⚠ BOTH directions are asserted. Detection alone would still pass if ROW/PROSE rejected
+        # a path — which would make a subdirectory tool impossible to index, and a check that can
+        # only ever fail is not a control either.
+        (t / "README.md").write_text(good)
+        sub = t / "sub"
+        sub.mkdir()
+        (sub / "delta.py").write_text("#\n")
+        rc, lines, _ = check(root)
+        hit = rc == 1 and any("sub/delta.py" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a subdirectory tool with no row exits 1 and names "
+              f"it BY PATH (got {rc})")
+
+        (t / "README.md").write_text(
+            good.replace("Two tools", "Three tools")
+                .replace("| `beta.py` | q | 0 |", "| `beta.py` | q | 0 |\n| `sub/delta.py` | q | 0 |")
+                .replace("**`beta.py`** — b.", "**`beta.py`** — b.\n\n**`sub/delta.py`** — d."))
+        rc, lines, _ = check(root)
+        ok &= (rc == 0)
+        print(f"  {'ok  ' if rc == 0 else 'FAIL'}  a subdirectory tool CAN be indexed by its "
+              f"relative path (got {rc})")
+
+        (sub / "delta.py").unlink()
+        sub.rmdir()
+        (t / "README.md").write_text(good)
 
         # instrument failure must not read as a pass
         (t / "README.md").write_text("# Fleet instruments\n\nnothing here\n")
