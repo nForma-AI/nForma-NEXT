@@ -91,17 +91,33 @@ below is the only thing that remembers that. A sweep reading depth alone would a
 | `6fc2dca8` DEVOPS | 75.5% | #1250 | 9 instruments built/changed, **6 defective** |
 | `ec0d07f0` DEV3 | 77.2% | #1256 | 7 wrong-answer instruments, **6 gave a CLEAN total** |
 | `c67ebcb4` DX | self-filed | #1257 | 13 tools audited, **13 defective** |
-| `b00d725a` DEV4 | 87.8% | ⛔ **MISSED** | asked 06:34:13, compacted 06:35:34 — never answered |
+| `b00d725a` DEV4 | 87.8% | #1263 ⚠ **DEGRADED** | asked 06:34:13, compacted 06:35:34, answered anyway |
 
-⛔ **`MISSED` is a third state and the table needs it.** A row with no issue number is otherwise
-read two ways — *asked and still writing* versus *asked and the window is gone* — and only the
-first is worth waiting on. DEV4's pre-ask window is now ORPHANED by the rule above, so **do not
-re-ask it**: the answer it could give would be reconstructed from a compaction summary, which is
-the thing the ask exists to get ahead of. Its next genuine obligation is a *new* window at ≥75%.
+⛔ **I RECORDED THIS ROW AS `MISSED` AND IT WAS WRONG WITHIN THE HOUR.** DEV4 answered — a full
+seven-section report — from its compaction summary. **A compacted session is not a silent one**,
+and predicting silence from a depth reading is the same overconfidence as predicting runway from
+one. The row states what happened, not what I expected.
 
-⚠ **A MISSED row must not be silently retried, and must not be dropped either.** Dropping it
-restores the session to "never asked" and the next sweep re-asks immediately; retrying it buys a
-summary. Leave it listed, with the state visible.
+⇒ **`DEGRADED` is the state the table actually needed**, and it is more useful than `MISSED`
+because it is the common case. The report arrived; what did not arrive is §1 — the small,
+unfiled workarounds that every prior report ranked highest. **A summary keeps conclusions and
+drops the evidence they rest on**, so the sections that survive are the ones already written as
+conclusions.
+
+★ **DEV4 labelled every claim itself — `[re-verified]` or `[from summary]` — and that practice
+should be requested in the ask, not hoped for.** It turns a degraded report from something you
+must discount wholesale into something you can read line by line: `[from summary]` means *the
+conclusion survived and its evidence did not*, which is a precise and checkable claim.
+
+⚠ **DEV4 also judged 87.8% "too late for this shape of session" and put the trigger nearer 75%.
+That is corroboration of the judgement, NOT of the numbers** — the 81 seconds and the two
+comparison rows came from me, in the ask. Only the verdict is independent. Do not cite it as a
+second measurement.
+
+⛔ **A DEGRADED row must not be silently retried, and must not be dropped either.** Dropping it
+restores the session to "never asked" and the next sweep re-asks immediately; retrying buys
+another summary of the same lost window. Leave it listed, with the state visible. Its next
+genuine obligation is a *new* window at ≥75%.
 
 ### ★ The predictor — confirmed twice, and *checked* the second time
 
