@@ -295,10 +295,30 @@ files and zero `*.yml`/`*.yaml` across all **19** remote refs, so neither comman
 ⛔ **THAT MEASUREMENT EXPIRED THE SAME DAY. Re-measured at `f7b343f`, 2026-08-20:**
 
 ```
-.github/workflows/tools.yml   EXISTS        gh run list -> 5 runs, all completed/success
+.github/workflows/tools.yml   EXISTS
+first run ever                2026-08-20T07:49:09Z   (pull_request)
+runs since                    100
 on: pull_request              <- gh pr create STARTS A RUNNER
     push: branches: [main]    <- a push to a non-main branch does not
 ```
+
+⛔ **The exposure window, and it is the measurement that matters:**
+
+```
+this claim published on main   2026-08-19 21:15   <- TRUE when written
+CI began running               2026-08-20 07:49   <- FALSE from here
+now                            2026-08-20 14:24
+                               -> 6h35m false while published, across 100 runs
+```
+
+⚠ **And the PR carrying this correction drew a runner itself** — `dev4/ci-premise-inverted`,
+`pull_request`, 14:19:06, success. **The document asserting that PRs draw no runner was
+corrected by a PR that drew one.**
+
+⛔ **My first re-measurement of this said "5 runs". It was `gh run list --limit 5`** — the
+default-truncation defect, in the paragraph about a decayed measurement, by the author who
+filed the truncation finding. ⇒ *A reading is checkable only when the response carries its own
+total*, and `gh run list` does not.
 
 ⇒ **The correct split is neither the original clause nor its removal.** The clause said push *and*
 PR were spend; #42 removed both on the no-CI ground; **today the PR half is true again and the
