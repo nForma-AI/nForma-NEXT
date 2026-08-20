@@ -41,19 +41,46 @@ readings, that is the instrument failing, not a fleet running current doctrine.
      false reading — only a slower sweep. Scoping by name was correct derivation over the
      wrong set.
 
-  2. ⛔ STILL OPEN, and handed over with its evidence rather than guessed at. Over the
-     CORRECTED population the sweep still recovers **zero prompt reads**, while a
-     distinctive line from `prompts/DX.md` demonstrably appears in one transcript. So the
-     content is present and the recovery step does not find it. Two candidate causes,
-     neither confirmed: the recovery may inspect record types that do not carry it, or no
-     WHOLE-FILE blob may exist in any transcript (only fragments), in which case exact
-     containment can never match and the resolution predicate itself needs rethinking.
-     [NOT-YET-MEASURED]
+  2. ⛔ RESOLVED 2026-08-20, and it is the second of the two candidates: **no whole-file
+     blob exists in any transcript.** Measured against all five historical versions of
+     `prompts/DX.md`, over the 172 records that mention it:
 
-     ⚠ Do not read the fix in (1) as making this tool operational. It is not. It is now
-     looking in the right place and still finding nothing, which is a better failure than
-     looking in the wrong place — but it is still a failure, and the fleet-wide doctrine
-     staleness this tool exists to detect remains unmeasured.
+         longest contiguous prefix of any version found in one record   0 chars
+         control — records containing the known bootstrap sentence     28
+
+     ⚠ The first attempt at that measurement was itself wrong: it compared the blob's REAL
+     newlines against a JSONL line that stores them ESCAPED, so it could not have matched
+     anything. Re-run with `json.dumps` escaping — still 0, with the control proving the
+     search reaches the records. **The encoding rewrote the query, and the answer only
+     counts because the control was run.**
+
+     ⇒ The bootstrap delivers a SHORT INSTRUCTION referencing the prompt (about 1 KB:
+     *"You are DX, an IMPLEMENTER reporting to TEAMLEAD. Repo: …"*), not the prompt's
+     11-15 KB of content. The evidence this tool's predicate needs is never produced, so
+     exact containment can never match — in this fleet, at any population.
+
+     ⛔ THE FIX IS NOT TO WEAKEN THE PREDICATE. This file already forbids that: two
+     versions can only be told apart if neither contains the other, and a fuzzy match
+     resolves to the convenient version. A weaker predicate would make the tool answer,
+     and answer wrongly.
+
+     ★ THE PREREQUISITE, stated so somebody can act on it cheaply: the bootstrap must emit
+     something version-bearing. A **hash** beats a `cat` — `sha256(prompt)` is 64 bytes
+     rather than 15 KB, it cannot be partially captured, and it turns resolution from
+     containment into exact lookup. That is a bootstrap change and belongs to whoever owns
+     the bootstrap; this file cannot make itself measurable.
+     [UNMEASURABLE-UNTIL: the bootstrap records a prompt version or hash]
+
+     ⚠ Do not read the fix in (1) as making this tool operational. It is not, and now the
+     reason is known rather than open: it is looking in the right place, and the thing it
+     looks for was never written down. The fleet-wide doctrine staleness this tool exists
+     to detect remains unmeasured, and will until the bootstrap changes.
+
+     ★ Which matters more than the tool: the same fleet was independently shown to be
+     running prompts amended AFTER every session started. That was established by comparing
+     session start times against commit dates — a cruder method that worked, on evidence
+     that exists. When the designed instrument cannot see, the crude one that can is not a
+     consolation prize.
 
 ⛔ Two versions of one prompt can only be told apart if neither is a substring of the other.
 That is checked FIRST, per `discriminates.py`: a session matching two mutually-contained
