@@ -186,6 +186,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 every resolvable transcript current · 1 currency **UNPROVEN** for at least one (`LAUNCH-ONLY` or `SAW-LATER`) — ⚠ **not "stale"** · **2 established nothing** · ⇒ `--states` emits the list |
 | `pane-binding.py` | which panes join to a session, and which leg is missing? | 0 reported · **2 established nothing** |
 | `index-watch.py` | did the tools index drift when `main` last moved? | 0 quiet · 1 finding · **2 established nothing** |
+| `pane-census.py` | how many panes are in this fleet — and is that number ESTABLISHED? | 0 sources agree · 1 a divergence is NAMED · **2 established nothing** |
 | `stranded-branches.py` | has any merged PR's branch got commits with no equivalent change upstream — and if so, are its bytes upstream anyway? | 0 none · 1 unmatched commits · **2 established nothing** |
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
 | `readd-scan.py` | is this diff RESTORING a line a commit deliberately removed? | 0 none · 1 re-additions · **2 established nothing** |
@@ -765,6 +766,8 @@ a control of the form *"the repo has a drift right now"* is silenced by repairin
 **finding**, never a task and never a grant — a scheduled job that re-enters an agent with a plausible
 instruction has genuine provenance, which is harder to catch than a forgery. Armed under the operator's
 read-only monitor grant in `goals/RESERVED-ACTIONS.md`.
+
+**`pane-census.py`** — refuses a fleet count when its sources disagree. Built for #310, where a monitor named eight panes for hours against a pane count of nine and never said it was short. Measured over its full 197-line output: `LIVE-PANES` reached 9 **zero** times, ranged 4–8, and `IDLE>5m` fell or held on **13 of 13** occasions the population shrank. ⇒ The set is filtered BY activity, so a pane going quiet leaves it — **the idle count falls exactly when idleness rises.** ⛔ Liveness is the thing being measured, so it cannot also be the membership test: population comes from `terminal.list`, never from activity, and the identity key is the pane id rather than the display name. ⚠ It never returns a bare number, and per #353 it demonstrates on every run that it can report **both** a gap and agreement — a probe that cannot say no is as broken as one that wrongly says no, and harder to notice.
 
 **`stranded-branches.py`** — commits sitting on a branch whose PR already merged. Found 2 of 15 by
 hand; the mechanism (`git for-each-ref` + `git rev-list --count`) already existed and **had no
