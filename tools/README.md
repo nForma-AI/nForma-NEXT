@@ -491,6 +491,18 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
   (14 crossings, recorded from a transcript two panes actually shared) *and* a real
   compaction step, and both were verified to fail against a deliberately broken detector —
   over-firing is caught by the negative control, under-firing only by the positive one.
+- **A per-turn signal read as a per-session property is almost never true.** `fleet-state.py`
+  asked whether an agent's *latest* turn ended in a `STATE:` declaration. One session had
+  emitted **61**, all positionally last, and the fleet reported **none** — its newest turn was
+  mid-work, and a working agent is by definition between reports. The reader now walks back to
+  the most recent turn that declared and **ages** it, because *declared two turns ago*,
+  *never declared*, and *declared this turn* are three states and the middle one was being
+  rendered as the second.
+- ⚠ **Check that a known-positive is positive.** The fixture pinning that parser's positional
+  rule quoted the token *mid-line*; the anchored regex rejects it on its own, so breaking the
+  parser into a full keyword scan left the test green. **A control that cannot fail is not
+  measuring the thing you named it after** — break the implementation and watch the specific
+  case go red before believing it.
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
@@ -499,6 +511,7 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
 
 ```
 python3 tools/test_fleet_context.py     # exit 0 = pass, 1 = a control failed
+python3 tools/test_fleet_state.py
 ```
 
 ⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only

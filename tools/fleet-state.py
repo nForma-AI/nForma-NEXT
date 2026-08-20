@@ -32,9 +32,21 @@ FLEET_ROLES = ("TEAMLEAD", "ARCHITECT", "DEVOPS", "DX",
                "DEV1", "DEV2", "DEV3", "DEV4", "DEV5")
 
 
-def last_assistant_text(path):
-    """The final text emitted by the assistant, and the names the file answers to."""
-    names, text = [], None
+def assistant_texts(path):
+    """EVERY non-empty assistant text turn, in order, and the names the file answers to.
+
+    ⛔ This used to return only the LAST one, and that was a category error measured on the
+    live fleet: one session had emitted **61** STATE lines, every one of them positionally
+    last in its turn, and the tool reported the whole fleet as carrying none. Its most recent
+    turn was mid-work — tool calls and narration — so the declaration from the turn before was
+    invisible.
+
+    **The STATE line is a per-TURN declaration. Reading only the newest turn turns it into a
+    per-SESSION property that almost never holds**, because an agent that is working is, by
+    definition, between reports. "Did not declare on its latest turn" and "has never declared"
+    are different states and only the second is silence.
+    """
+    names, texts = [], []
     for line in open(path, errors="replace"):
         if '"custom-title"' in line or '"agent-name"' in line:
             try:
@@ -60,8 +72,22 @@ def last_assistant_text(path):
         blocks = [b.get("text", "") for b in content
                   if isinstance(b, dict) and b.get("type") == "text" and b.get("text", "").strip()]
         if blocks:
-            text = "\n".join(blocks)
-    return names, text
+            texts.append("\n".join(blocks))
+    return names, texts
+
+
+def latest_declaration(texts):
+    """The most recent turn that DECLARED, and how many turns back it was.
+
+    Returns (state, detail, turns_ago); turns_ago == 0 means the latest turn declared.
+    A declaration two turns old is stale, not absent — and an agent cannot be asked to
+    re-declare if the instrument reports it as never having spoken.
+    """
+    for back, text in enumerate(reversed(texts)):
+        state, detail = declared_state(text)
+        if state:
+            return state, detail, back
+    return None, "", None
 
 
 def declared_state(text):
@@ -88,12 +114,13 @@ def main():
         for path in glob.glob(os.path.join(proj, "*.jsonl")):
             if time.time() - os.path.getmtime(path) > args.active_hours * 3600:
                 continue
-            names, text = last_assistant_text(path)
+            names, texts = assistant_texts(path)
             if not any(n in FLEET_ROLES for n in names):
                 continue
-            state, detail = declared_state(text)
+            state, detail, back = latest_declaration(texts)
             rows.append({"session": os.path.basename(path)[:8],
-                         "names": names, "state": state, "detail": detail})
+                         "names": names, "state": state, "detail": detail,
+                         "turns_ago": back, "turns": len(texts)})
 
     # ★ Known-positive control: this tool is invoked BY an agent required to declare, so at
     # least one session must carry a parseable STATE line. If none does, the parser is
@@ -111,14 +138,26 @@ def main():
     for r in sorted(rows, key=lambda r: (r["state"] or "zzz")):
         if args.blocked_only and r["state"] != "BLOCKED":
             continue
-        label = r["state"] or "— none declared"
+        label = r["state"] or "— never declared"
         mark = "  ⛔ SKIP WAKES until this state MOVES" if r["state"] == "BLOCKED" else ""
-        print(f"{r['session']:<10}{'/'.join(r['names'])[:26]:<26}{label:<16}"
-              f"{r['detail'][:60]}{mark}")
+        # ⚠ Age the declaration. A BLOCKED from 40 turns ago is a claim about a
+        # situation the agent has had 40 turns to change; presenting it identically to
+        # one made this turn is how a stale blocker becomes a permanent one.
+        if r["turns_ago"] == 0:
+            age = "this turn"
+        elif r["turns_ago"] is None:
+            age = f"0 of {r['turns']} turns"
+        else:
+            age = f"{r['turns_ago']} turns ago"
+        print(f"{r['session']:<10}{'/'.join(r['names'])[:26]:<27}{label:<18}"
+              f"{age:<14}{r['detail'][:50]}{mark}")
 
     declared = sum(1 for r in rows if r["state"])
-    print(f"\n{declared} of {len(rows)} fleet sessions declared a state. "
-          f"⚠ Undeclared is UNKNOWN, not free.", file=sys.stderr)
+    current = sum(1 for r in rows if r["turns_ago"] == 0)
+    print(f"\n{declared} of {len(rows)} fleet sessions have declared a state at all; "
+          f"{current} declared on their latest turn. ⚠ Never-declared is UNKNOWN, not free — "
+          f"and a declaration N turns old is a claim the agent has had N turns to invalidate.",
+          file=sys.stderr)
     return 0
 
 
