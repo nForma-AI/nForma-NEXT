@@ -365,7 +365,26 @@ def main():
               f"   ADDABLE — FIXABLE HERE: run from the repository root.", file=sys.stderr)
         return 2
 
-    print(f"goal conformance at {rev or '?'} (working tree, not a cached PR view)")
+    # ⛔ NAMING THE REV IS NOT ENOUGH — SAY WHETHER IT IS THE ONE THE READER MEANS.
+    # Nine panes share one working tree, so `git rev-parse HEAD` is whatever branch
+    # the last pane left checked out. Measured live: the tree reported `branch=main`
+    # while HEAD was three merges behind origin/main, and a file that DOES exist on
+    # origin/main was absent from disk. A conformance verdict "at <rev>" reads as a
+    # fact about the repository; it is a fact about a tree other panes control.
+    #
+    # ⚠ This line already said "working tree, not a cached PR view" — written to
+    # guard against reading a DIFF. That guard is still right and it understated a
+    # different problem: the working tree may not be the ref anyone means.
+    beh = subprocess.run(["git", "rev-list", "--count", "HEAD..origin/main"],
+                         capture_output=True, text=True).stdout.strip()
+    drift = ""
+    if beh.isdigit() and int(beh) > 0:
+        drift = (f"  ⛔ {beh} commit(s) BEHIND origin/main — this verdict is about a tree "
+                 f"nine panes share, not about the repository. Re-run after `git fetch` "
+                 f"and a pinned read if it matters.")
+    elif not beh.isdigit():
+        drift = "  ⚠ could not compare to origin/main — drift UNMEASURED, not zero."
+    print(f"goal conformance at {rev or '?'} (working tree, not a cached PR view){drift}")
     print(f"this repository, from `git remote get-url origin`: "
           f"{mine[0] + '/' + mine[1] if mine else '⛔ UNREADABLE'}")
     print(f"population: {len(roster)} agent roles DECLARED by {RECIPE} "
