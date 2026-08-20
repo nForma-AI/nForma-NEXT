@@ -194,7 +194,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
 | `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
 | `use-not-mention.py` | does this file CALL `<pattern>`, or merely TALK ABOUT calling it? | 0 no call · 1 at least one CALL · **2 established nothing** |
-| `population-leg.py` | does each `--self-test` consult anything its author did not write? | 0 all consult something outside · 1 a DRAWN control · **2 established nothing** |
+| `population-leg.py` | does each `--self-test` consult anything outside the repository? | 0 all do · 1 a NO-REPO-INPUT control · **2 established nothing** · ⚠ NO-REPO-INPUT is a CANDIDATE for criterion 5, not a verdict |
 | `pointer-verified.py` | did this pane READ the artifact a pointer NAMED, before acting? | 0 all read · 1 at least one not · **2 established nothing** · **3 control failed** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
 | `named-referent-check.py` | does a requirement sentence name an identifier that does not exist? | 0 none · 1 candidates · **2 established nothing** |
@@ -501,8 +501,17 @@ credits**, which is why the correction is recorded here: 7 of 35 tools came back
 shared cause — a sibling import broken by relocation, an artifact of the method — and every one of those
 **credited a tool with a population leg it may not have had**. Sibling *source* is now copied on demand;
 repository *content* still is not, and the seven moved into the finding. **Measured 2026-08-20 at
-`bb7e6fe`: of 37 indexed instruments, 28 carry a `--self-test` — 22 DRAWN, 6 UNDRAWN; the other 9 have
-no self-test at all.** ⚠ `UNDRAWN`
+`bb7e6fe`: of 37 indexed instruments, 28 carry a `--self-test` — 22 with no repository input, 6 UNDRAWN; the
+other 9 have no self-test at all.**
+
+⛔ **2026-08-21: the positive state was named for the criterion it serves rather than for what the method
+measures, and that is a use/mention slip.** Relocation removes the **repository**. It does not remove the
+network, the clock, or the environment. ★ **Counter-example measured on the author's own other tool within
+the hour:** `label-exists.py` reads the forge's **27 real labels** in its self-test — an undrawn population
+by any reading — and still scored the positive state, because `gh label list` does not care what directory
+it runs in. ⇒ Renamed **`NO-REPO-INPUT`**: a finding about **repository dependence**, which is real and
+checkable, and a **candidate** for criterion 5 — never a verdict that a control drew its own population.
+The blind spot is now *demonstrated* by a control rather than claimed in a comment. ⚠ `UNDRAWN`
 means a population leg **exists**, not that it is a good one; `DRAWN` is a statement about a tool's
 **control**, not a defect in the tool, and where an undrawn population is genuinely unaffordable the answer
 is a **stated exception with a reason**. ★ Its own control is DRAWN, and it reports itself as such — a tool

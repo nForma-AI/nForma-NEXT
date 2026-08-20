@@ -518,6 +518,58 @@ def self_test():
         print(f"  {'ok  ' if hit else 'FAIL'}  an indexed-but-absent instrument is ⛔ NEVER and "
               f"exits 1, not skipped (rc={rc})")
 
+
+    # ==================================================================================
+    # ⛔ A POPULATION THIS AUTHOR DID NOT DRAW, AND A STATED EXCEPTION FOR THE PART THAT CANNOT
+    # HAVE ONE — criterion 5's population leg (#164 item 1). `population-leg.py` scored this tool
+    # DRAWN, and I wrote the sentence saying a DRAWN control wants a real leg or an exception
+    # WITH A REASON. On inspection the exception is NARROWER than I claimed when I wrote it:
+    #
+    #   classify() / selftest_state()   need a SUBPROCESS PER INSTRUMENT. Exercising them against
+    #                                   an undrawn population means running the real tools — the
+    #                                   ~4-minute cost that made #2 unreadable to begin with.
+    #                                   ⇒ EXCEPTION STATED. Its undrawn population is `--ledger`
+    #                                     and `--stale-check`, which are live runs, not controls.
+    #   documented_codes()              is a PURE FUNCTION OVER SOURCE TEXT. Running it across
+    #                                   every real instrument costs a file read each.
+    #                                   ⇒ NO EXCEPTION AVAILABLE. It gets a real leg, below.
+    #
+    # ⚠ I asserted the whole tool was unaffordable in PR #352's body. That was wrong by exactly
+    # this much, and a claim of unaffordability that nobody re-checks is how a stated exception
+    # decays into an excuse.
+    # ==================================================================================
+    real = sorted((ROOT / "tools").glob("*.py"))
+    if not real:
+        print("  ----  NOT ESTABLISHED  no real instruments found, so the undrawn population was"
+              " NOT exercised. ⛔ Untested, not correct.")
+    else:
+        bad = []
+        for f in real:
+            try:
+                codes = documented_codes(f.read_text(encoding="utf-8", errors="replace"))
+            except OSError:
+                continue
+            # ⛔ THE ASSERTION ONLY REAL DOCSTRINGS CAN MAKE. Every fixture above documents its
+            # exit codes in the one shape I thought of. A parser that returned an EMPTY SET on a
+            # docstring it did not understand would classify that tool NO-VERDICT-VOCAB — a
+            # confident wrong answer about someone else's tool, from my own parser, and no
+            # invented fixture would ever show it.
+            if codes is not None and not codes:
+                bad.append(f.name)
+        ok &= not bad
+        print(f"  {'ok  ' if not bad else 'FAIL'}  documented_codes parsed {len(real)} REAL"
+              f" instrument docstrings with no empty-set results — a population I did not draw"
+              f"{'' if not bad else ' — EMPTY: ' + str(bad)}")
+
+        seen = sum(1 for f in real
+                   if documented_codes(f.read_text(encoding="utf-8", errors="replace")))
+        ok &= seen > 0
+        print(f"  {'ok  ' if seen else 'FAIL'}  and it EXTRACTED codes from {seen} of them — the"
+              f" line above is not passing by parsing nothing")
+        print("  ----  EXCEPTION STATED  classify() and selftest_state() have NO population leg:"
+              " exercising them on an undrawn population means running every real instrument"
+              " (~4m). Their undrawn population is --ledger / --stale-check, which are live runs.")
+
     return 0 if ok else 3
 
 
