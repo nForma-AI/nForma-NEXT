@@ -212,12 +212,20 @@ selftest() {
     return $ok
 }
 
+# ⛔ $# IS CHECKED, NOT JUST $1. `case "${1:-}"` matched the flag and IGNORED everything after
+# it, so `--self-test --zzz-not-a-flag` ran the control and exited 0 — a caller could pass a real
+# flag and a typo together and read a clean control result that silently dropped half the
+# invocation. That is membership-not-equality in a `case`, the same defect this PR fixes in two
+# Python checkers, committed in the gate that checks for it. (Found by DEV5, on their own files
+# first; I had only ever tested the garbage flag ALONE, so my gate would have passed this.)
 case "${1:-}" in
     --self-test|--selftest)
+        [ "$#" -eq 1 ] || { echo "  VOID  unrecognised argument(s) after $1: ${*:2} — established nothing" >&2; exit 2; }
         selftest
         exit $?
         ;;
     -h|--help)
+        [ "$#" -eq 1 ] || { echo "  VOID  unrecognised argument(s) after $1: ${*:2} — established nothing" >&2; exit 2; }
         sed -n '2,46p' "$0"
         exit 0
         ;;

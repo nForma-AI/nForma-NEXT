@@ -110,6 +110,22 @@ gate() {
             continue
         fi
 
+        # ⛔ THE THIRD INVOCATION, and it is a state I did not have until DEV5 measured it on
+        # their own files: a real flag AND a typo together. A `case "$1"` or an `in argv`
+        # membership test accepts the flag and silently drops the rest, so the caller reads a
+        # clean control result for an invocation half of which was ignored. Testing the garbage
+        # flag ALONE cannot see it — and my own two gates failed this when I checked.
+        run_it "$FLAG" "$GARBAGE"
+        brc=$?
+        if [ "$brc" -eq 0 ]; then
+            unver=$((unver + 1))
+            unver_names="$unver_names $b"
+            echo "  ⚠ $b UNVERIFIABLE — \`$FLAG $GARBAGE\` exits 0."
+            echo "     ⛔ The flag is matched and the rest DISCARDED, so a control result here"
+            echo "        describes an invocation that was only half read."
+            continue
+        fi
+
         run_it "$FLAG"
         rc=$?
         if [ "$rc" -eq 124 ]; then
@@ -201,6 +217,18 @@ selftest() {
     check "a subject with NO self-test is UNESTABLISHED and blocks, never a silent pass" 2 \
           "UNESTABLISHED" "BLOCKING"
 
+    # ⛔ THE THIRD INVOCATION, CONTROLLED. A subject that REFUSES garbage alone but accepts the
+    # flag PLUS garbage passes every other leg here — it was the shape my own two gates had.
+    printf '#!/usr/bin/env python3\nimport sys\na=sys.argv[1:]\nif a and a[0]=="--self-test": sys.exit(0)\nif a: sys.exit(2)\nsys.exit(0)\n' > "$d/f_half_read.py"
+    out=$(gate "$d" 'f_half_read.py' 2>&1); rc=$?
+    check "a subject accepting FLAG+garbage is UNVERIFIABLE, even though garbage ALONE is refused" 2 \
+          "only half read"
+    case "$out" in
+        *"1 control(s) passed"*) echo "  FAIL  a half-reading subject was counted as a PASS"; ok=1 ;;
+        *) echo "  ok    known-negative: refusing garbage alone is NOT sufficient to pass" ;;
+    esac
+    rm -f "$d/f_half_read.py"
+
     # ⛔ THE TIMEOUT STATE, CONTROLLED — it exists because it FIRED on the real population, not
     # because it was imagined: pointing this gate at scripts/*.sh hung for over two minutes on
     # `fleet-preflight.sh --zzz-not-a-flag`. An untested timeout path in a gate that executes
@@ -224,6 +252,12 @@ selftest() {
     return $ok
 }
 
+# ⛔ $# CHECKED, NOT JUST $1 — see the identical note in exit-code-gate.sh. `--self-test` plus a
+# typo ran the control and exited 0, in the very gate whose job is to refuse exactly that.
+case "${1:-}" in
+    --self-test|--selftest|-h|--help)
+        [ "$#" -eq 1 ] || { echo "  VOID  unrecognised argument(s) after $1: ${*:2} — established nothing" >&2; exit 2; } ;;
+esac
 case "${1:-}" in
     --self-test|--selftest) selftest; exit $? ;;
     -h|--help) sed -n '2,44p' "$0"; exit 0 ;;
