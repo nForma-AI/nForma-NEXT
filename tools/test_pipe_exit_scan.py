@@ -50,13 +50,25 @@ def hits(line):
                 or pes.PIPESTATUS.search(code))
 
 
+import importlib.util as _ilu
+_fx_spec = _ilu.spec_from_file_location(
+    "corpus_fixture", os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   "test_corpus_fixture.py"))
+_fx = _ilu.module_from_spec(_fx_spec)
+_fx_spec.loader.exec_module(_fx)
+FIXTURE_ENV = _fx.env()
+
+
 def run(*args):
     # ⚠ cwd is the REPO ROOT, not tools/. The tool resolves `git ls-files` paths and
     # its own fixture relative to the root; running it from tools/ made the self-test
     # exit 2 and read as a defect. Harness, not code — the second time in this suite
     # family that a portability bug in the test presented as a finding.
+    # ⛔ AND a fixture HOME, for the same reason as the cwd note above: the "warns when
+    # unscoped" assertion needs a corpus spanning two project dirs, and reading the
+    # developer's real one made this suite pass here and fail on a clean runner.
     p = subprocess.run([sys.executable, TOOL, *args], capture_output=True, text=True,
-                       cwd=os.path.dirname(_here))
+                       cwd=os.path.dirname(_here), env=FIXTURE_ENV)
     return p.returncode, p.stdout + p.stderr
 
 
