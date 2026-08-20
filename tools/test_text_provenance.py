@@ -259,13 +259,13 @@ check("git log is reading",
 # and "never ran" are the SAME observation. So the ✅ leg gets a positive control:
 # a corpus containing a deliberately unknown tool must come back 4.
 check("an empty corpus is ESTABLISHED NOTHING, not ✅",
-      tp.audit_verdict(0, {}, [])[0], 2)
+      tp.audit_verdict(0, {}, [], 0)[0], 2)
 check("...and files>0 with no tools is too (the reader ran, the parse did not)",
-      tp.audit_verdict(9, {}, [])[0], 2)
+      tp.audit_verdict(9, {}, [], 0)[0], 2)
 check("CONTROL FOR THE CONTROL: an unknown tool in the corpus comes back 4",
-      tp.audit_verdict(3, {"Bash": 5, "SomeNewSender": 1}, ["SomeNewSender"])[0], 4)
+      tp.audit_verdict(3, {"Bash": 5, "SomeNewSender": 1}, ["SomeNewSender"], 3)[0], 4)
 check("...and only then does a real ✅ mean anything",
-      tp.audit_verdict(3, {"Bash": 5, "Read": 2}, [])[0], 0)
+      tp.audit_verdict(3, {"Bash": 5, "Read": 2}, [], 3)[0], 0)
 
 with tempfile.TemporaryDirectory() as tmp:
     d = os.path.join(tmp, "proj"); os.makedirs(d)
@@ -274,10 +274,37 @@ with tempfile.TemporaryDirectory() as tmp:
             {"type": "tool_use", "name": "SomeNewSender", "input": {"t": "x"}}]}}) + "\n")
         f.write(json.dumps({"type": "assistant", "message": {"content": [
             {"type": "tool_use", "name": "Read", "input": {"t": "x"}}]}}) + "\n")
-    files, seen, unknown = tp.audit(os.path.join(d, "*.jsonl"), 3600)
+    files, seen, unknown, contributors = tp.audit(os.path.join(d, "*.jsonl"), 3600)
     check("end-to-end: the audit READS a corpus and finds the planted unknown",
-          (files, unknown), (1, ["SomeNewSender"]))
+          (files, unknown, contributors), (1, ["SomeNewSender"], 1))
     check("...and the known one is not reported", "Read" in seen and "Read" not in unknown, True)
+
+
+# ── non-empty is not representative ──────────────────────────────────────────
+# ⛔ A corpus of ONE transcript enumerates one SESSION'S habits. Fully classified,
+# non-vacuous, and answering a different question than "what does this fleet use".
+# The provenance side already refuses a population of one (exit 3); this is the
+# same shape. A floor on COUNT does not establish DIVERSITY.
+check("one transcript is ESTABLISHED NOTHING about the fleet",
+      tp.audit_verdict(1, {"Bash": 5, "Read": 2}, [], 1)[0], 2)
+check("...and the message says what it DOES establish, not just what it does not",
+      "one session's habits" in tp.audit_verdict(1, {"Bash": 5}, [], 1)[1], True)
+check("two transcripts clear the floor", tp.audit_verdict(2, {"Bash": 5}, [], 2)[0], 0)
+check("KNOWN-BAD control: without the contributor count it reads as ✅",
+      tp.audit_verdict(1, {"Bash": 5, "Read": 2}, [])[0], 0)
+check("⚠ an UNKNOWN tool still reports 4 from a single transcript — a real finding "
+      "is not suppressed by a weak population",
+      tp.audit_verdict(1, {"NewSender": 1}, ["NewSender"], 1)[0], 4)
+
+with tempfile.TemporaryDirectory() as tmp:
+    d = os.path.join(tmp, "proj"); os.makedirs(d)
+    for sid in ("aaaaaaaa", "bbbbbbbb"):
+        with open(os.path.join(d, sid + "-x.jsonl"), "w") as f:
+            f.write(json.dumps({"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "name": "Bash", "input": {}}]}}) + "\n")
+    files, seen, unknown, contributors = tp.audit(os.path.join(d, "*.jsonl"), 3600)
+    check("end-to-end: contributors counts TRANSCRIPTS, not tool_uses",
+          (files, contributors), (2, 2))
 
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)

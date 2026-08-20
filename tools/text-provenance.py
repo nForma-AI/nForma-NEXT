@@ -36,6 +36,11 @@ all at one timestamp, all my message plus its own search for it. So the same
 question returns different answers depending on how much you have investigated
 it, and the spread looks like distribution while being your own footprints.
 
+⚠ ON MUTATION-TESTING THIS FILE: assert the replacement string's LENGTH, never
+eyeball it. A one-byte mutation that does not apply reads as a clean SURVIVED on
+the very check written to prevent clean SURVIVEDs -- measured four times here in
+one day, once on `or` -> `and`.
+
 ⇒ Two consequences, both implemented rather than noted:
 
   INSTRUMENT is a FOURTH CLASS. A needle inside a tool_use input is the session
@@ -282,7 +287,7 @@ def audit(root, within_s):
     """
     import time
     now = time.time()
-    seen, files = {}, 0
+    seen, files, contributors = {}, 0, set()
     for p in glob.glob(os.path.expanduser(root)):
         try:
             if now - os.path.getmtime(p) > within_s:
@@ -302,14 +307,15 @@ def audit(root, within_s):
                     for b in c:
                         if isinstance(b, dict) and b.get("type") == "tool_use":
                             seen[b.get("name") or "?"] = seen.get(b.get("name") or "?", 0) + 1
+                            contributors.add(os.path.basename(p)[:8])
         except OSError:
             continue
     known = PUBLISHING_TOOLS | READING_TOOLS | {"Bash"}
     unknown = sorted((n for n in seen if n not in known), key=lambda n: -seen[n])
-    return files, seen, unknown
+    return files, seen, unknown, len(contributors)
 
 
-def audit_verdict(files, seen, unknown):
+def audit_verdict(files, seen, unknown, contributors=None):
     """0 all classified · 2 established nothing · 4 something needs deciding.
 
     ⛔ "Every tool present is classified" is VACUOUSLY TRUE over an empty set. The
@@ -326,7 +332,18 @@ def audit_verdict(files, seen, unknown):
         return 4, (f"⛔ {len(unknown)} tool(s) nothing classifies: " + ", ".join(unknown)
                    + "\n   Each is a DECISION. Until made, a needle carried through one "
                      "is UNCLASSIFIED — not silently INSTRUMENT.")
-    return 0, f"✅ every one of the {len(seen)} tool(s) present is classified"
+    # ⛔ NON-EMPTY IS NOT REPRESENTATIVE. A corpus of one transcript enumerates ONE
+    # SESSION'S HABITS, and a ✅ over it certifies the table as though it had
+    # enumerated the fleet. The provenance side already refuses a population of one
+    # (exit 3); this is the same shape, and a floor on COUNT does not establish
+    # DIVERSITY.
+    if contributors is not None and contributors < 2:
+        return 2, (f"⛔ ESTABLISHED NOTHING ABOUT THE FLEET — all {len(seen)} tool(s) "
+                   f"came from {contributors} transcript(s). Every one is classified, "
+                   "and that is a fact about one session's habits. A tool this fleet "
+                   "uses and this session does not cannot appear here.")
+    return 0, (f"✅ every one of the {len(seen)} tool(s) present is classified"
+               + (f", across {contributors} transcript(s)" if contributors else ""))
 
 
 def main():
@@ -349,15 +366,15 @@ def main():
     a = ap.parse_args()
 
     if a.audit:
-        files, seen, unknown = audit(a.root, a.audit_hours * 3600)
+        files, seen, unknown, contributors = audit(a.root, a.audit_hours * 3600)
         print(f"── AUDIT ── {files} transcript(s) touched in {a.audit_hours:g}h, "
-              f"{len(seen)} distinct tool(s)")
+              f"{contributors} of them using tools, {len(seen)} distinct tool(s)")
         for n in sorted(seen, key=lambda n: -seen[n]):
             mark = ("PUBLISHES" if n in PUBLISHING_TOOLS else
                     "reads    " if n in READING_TOOLS else
                     "by verb  " if n == "Bash" else "⛔ UNCLASSIFIED")
             print(f"  {seen[n]:7d}  {mark}  {n}")
-        code, why = audit_verdict(files, seen, unknown)
+        code, why = audit_verdict(files, seen, unknown, contributors)
         print("\n" + why)
         return code
 
