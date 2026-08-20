@@ -125,6 +125,8 @@ def pipeline_status_read(line):
 # Flagging those would produce a count that reads as work-to-do, which this file's
 # own selftest calls worse than no scanner at all.
 PIPE_INTO_WHILE = re.compile(r"\|\s*while\b")
+# Quoted text is a mention; only unquoted `| while` is a pipeline.
+QUOTED_SPAN = re.compile(r"'[^']*'|\"[^\"]*\"")
 FUNC_DEF = re.compile(r"^\s*(?:function\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*\)\s*\{")
 ASSIGN = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*(?:=(?!=)|\+=)")
 ARITH = re.compile(r"\(\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?:\+\+|--|[-+*/%]?=)")
@@ -174,7 +176,16 @@ def scan_shell_subshell(path):
     funcs = _function_assignments(lines)
     for n0, raw in enumerate(lines):
         code = strip_comment(raw)
-        if not PIPE_INTO_WHILE.search(code):
+        # ⛔ STRIP QUOTED SPANS BEFORE DECIDING THIS IS A PIPELINE. A grep pattern
+        # containing `| while` is a MENTION of the defect, not an instance of it —
+        # and files that TEST for this defect necessarily quote it, so the
+        # population of false positives is created by the remedy (#36). Measured on
+        # origin/main: scripts/test-fleet-preflight-counts.sh:56 reported a hit for
+        #     if grep -q 'fleet-worktree.sh check 2>&1 | while' "$TARGET"; then
+        # ⚠ Pre-existing, not introduced by the one-liner fix below. Same rule as
+        # use-not-mention.py and check-orientation.py: a quotation cannot survive
+        # its own removal.
+        if not PIPE_INTO_WHILE.search(QUOTED_SPAN.sub(" ", code)):
             continue
         # body runs to the matching `done`
         depth, j, body = 0, n0, []
@@ -186,10 +197,28 @@ def scan_shell_subshell(path):
             j += 1
             if depth <= 0 and j > n0:
                 break
-        mutated = _assigned_in(body[1:])
+        # ⛔ NOT body[1:]. That assumes the loop body starts on the line AFTER the
+        # pipe, which is true of a multi-line loop and FALSE of a one-liner:
+        #
+        #     emit | while read -r x; do bad; done      <- body is on THIS line
+        #
+        # Measured: this matcher returned 0 on #266's own canonical repro, which
+        # is a one-liner, while catching the identical defect written across
+        # several lines. ⇒ Its fixture was a single multi-line file, so the sample
+        # never varied on the one property that decides the answer — a predicate
+        # validated on a homogeneous sample has been validated on the sample's
+        # homogeneity.
+        #
+        # ★ And the failure direction is the dangerous one: a control that passes
+        # its own known-positive while missing the case it was built for.
+        m_do = re.search(r"\bdo\b", code)
+        first_tail = code[m_do.end():] if m_do else ""
+        body_text = [first_tail] + body[1:] if first_tail.strip() else body[1:]
+
+        mutated = _assigned_in(body_text)
+        joined = " ".join(strip_comment(b) for b in body_text)
         for name, assigned in funcs.items():
-            if re.search(r"(?:^|[\s;&|(])" + re.escape(name) + r"(?:[\s;&|)]|$)",
-                         " ".join(strip_comment(b) for b in body[1:])):
+            if re.search(r"(?:^|[\s;&|(])" + re.escape(name) + r"(?:[\s;&|)]|$)", joined):
                 mutated |= assigned
         # ⚠ A variable the loop declares and never exports is not state the caller
         # loses — only names read AFTER `done` count.
