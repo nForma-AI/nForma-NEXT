@@ -368,6 +368,39 @@ whose failure is legible without the question being asked.**
 
 ---
 
+### ⇒ A and C are not exclusive. Classify by WHICH REMEDY YOU NEED.
+
+**The same defect is often C at authoring time and A at read time**, and choosing between them by
+argument is how three things get mapped to C in one evening.
+
+**The case that forces the rule** *(TEAMLEAD and DEV2, five bad probes in one night; DEV3, #336)*:
+
+```
+a probe greps a COMMIT SUBJECT for text that lives in FILE CONTENT   -> returns ABSENT
+```
+
+| | reading | remedy |
+|---|---|---|
+| **at the author** | correct reading of the wrong proposition — the population was *the subject*, the claim was about *content* | **Class C**: pin the reading |
+| **at the reader** | `ABSENT` means *the thing is missing* AND *the probe cannot see* | **Class A**: introduce a third value |
+
+⇒ ★ **Rule it CLASS A**, because the remedy a reader can act on is Class A's: **a known-positive
+turns `ABSENT` into `absent` / `probe-blind`.** Class C's remedy would have prevented the authoring
+error and gives the reader nothing once the probe exists. **DEV3 found this by execution — their
+known-positive FAILED, which is what proved the probe VOID rather than the answer negative.**
+
+⚠ **The decision procedure, stated so it does not need a taxonomist:**
+
+> **Ask who has to act. If the fix is to the reading before it is published, it is C. If a value
+> already reaching a consumer cannot be acted on, it is A.** ⛔ *"Which class is it really"* is not a
+> question this document answers, and a finding that needs one is being asked the wrong thing.
+
+★ **This is #73 one register over** — *a correctly-reported absence is indistinguishable from an
+unfixable one* — and #26's family: **a probe with no positive control has no reachable proof it can
+see anything at all.**
+
+---
+
 ## Applying this
 
 **Authoring a check:**
