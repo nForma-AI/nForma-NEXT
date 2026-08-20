@@ -59,8 +59,37 @@ Operational experience becomes durable organizational learning, and adopted impr
 does a systemic finding from this session exist in a GitHub artifact, and has any intervention
 filed here been checked against the failure it was meant to remove?
 
-⇒ Currently **half-true**: findings land durably; re-measurement happens only when a peer performs
-it. Every prospective catch of a class I filed this session was made by someone else.
+⇒ **Both hold as of 2026-08-20, and the second was re-measured rather than assumed.**
+[measured: nForma-NEXT 2026-08-20]
+
+⛔ **The previous revision of this paragraph read *"re-measurement happens only when a peer performs
+it. Every prospective catch of a class I filed this session was made by someone else."* That is now
+false, and it was a dated claim that decayed exactly as #272's `No CI` calibration did — in the file
+whose author filed #272.**
+
+**Counted over one session, by how the catch actually happened:**
+
+| caught by | n | instances |
+|---|---|---|
+| **me, unprompted** | **5** | #214 · #247 · #286 · #290 · #294 |
+| a peer, or prompted by one | 4 | #242 · #250 · #258 · #271 |
+
+⚠ **The count is the weaker half. The mechanism is the finding:**
+
+> ⛔ **Not one of the five was caught by re-reading the work.** #214 by applying a stated question
+> *before* the answer existed; #290 by reading an instrument's own state file on an unrelated
+> errand; #294 by **exercising** a fix and watching it fail to cover the case; #286 by three
+> measurements contradicting each other; #247 by a follow-up measurement of my own claim.
+
+⇒ ★ **Self-catching is not a property of care. It is a property of running something that can
+disagree with you.** A pane that only re-reads its own reasoning will confirm it every time — which
+is why closure-bar criterion 3 says *by execution, never by reading* and why that clause is the one
+worth defending.
+
+⚠ **Falsifier for this paragraph, stated so it cannot be quietly outgrown:** if a later session
+records prospective catches without a per-instance mechanism beside them, the count has become a
+score and this table should be struck. **A number here without the *how* is the rumour the thesis
+warns about.**
 
 ## ⛔ Reserved actions — ONE source, referenced and never copied
 
