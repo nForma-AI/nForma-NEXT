@@ -258,8 +258,30 @@ parses to ZERO entries     ->  exit 1, named as a FORMAT CHANGE, never as "nothi
 
 ⛔ **This is not silencing, and the third rule is why.** An allowlist only ever subtracts, and
 nothing ever tells you it has stopped describing its subject. This one **rots loudly**. Full
-discriminating power is kept over the thing that matters: **a new estate appearing reds
-immediately.**
+discriminating power is kept over **a new FILE from a KNOWN estate**.
+
+⛔ **AND NOT OVER A NEW ESTATE. That sentence used to say "a new estate appearing reds
+immediately" and it was FALSE.** TEAMLEAD refuted it by execution — a fifth control, after four
+passed:
+
+```
+FOURTH_ESTATE = "/Users/jonathanborduas/code/Contoso-Widgets/state"
+planted in tools/wake-yield.py, executable position, not a docstring   ->  exit 0
+```
+
+`ESTATE` is a **closed list of five names**. ⇒ It catches new *files* from *known* estates, never
+a new estate. ⚠ **And no control of mine could have found it, because every one of them plants a
+name drawn FROM the list** — a control built out of the enumeration cannot test whether the
+enumeration is complete. That is the same shape as `architect-sweeps 0 of 3` and `13 of 13`: a
+reading that cannot take the value that would refute it.
+
+⚠ TEAMLEAD also reports **two of their four passing controls passed for the wrong reason** — the
+unlisted plant reddened because its *directory* was unindexed, so the estate predicate was never
+exercised at all. That is why the gap survived two reviews.
+
+⇒ #348, routed to DEV5: **derive the vocabulary, do not enumerate it.** The limit is
+`--self-test`-demonstrated here in the meantime — a control asserts a novel estate name is NOT
+caught, so the day the derivation lands **that control fails** and someone reads this paragraph.
 
 ★ And exit 1 here means **the acknowledgement file has drifted from the tree** — the same drift
 semantic this checker has always had, on a third surface. It never means *these files do not

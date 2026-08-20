@@ -10,7 +10,9 @@
 # ⛔ THIS IS NOT AN ALLOWLIST, and the third rule is why. scripts/check-tools-index.py checks it
 # in BOTH directions:
 #     held and listed here      -> reported LOUDLY on every run, does not fail
-#     held and NOT listed       -> exit 1. New contamination, or a ruling nobody wrote down.
+#     held and NOT listed       -> exit 1. A new FILE from a KNOWN estate, or a ruling nobody
+#                                  wrote down. ⛔ NOT a new ESTATE — see #348; the vocabulary is
+#                                  a closed list and a novel estate name is not detected.
 #     listed but no longer held -> exit 1. Deleted, or repaired, and this file did not move.
 # An allowlist only ever subtracts. This one rots loudly, which is the only thing keeping it
 # honest — and a format change that parses to zero entries is exit 2, never a pass.
