@@ -72,6 +72,38 @@ present and readable on main when the claim was written       yes
 Against the union it was missing exactly **two entries** — *closing another role's issue* and
 *assigning work to another role* — not a section.
 
+### ⛔ The root row was DX's, and the mechanism is reusable
+
+The correction above allocates the error to TEAMLEAD. **That is too generous and the allocation
+should follow the chain to its source.** The false row was mine, and it came from a specific,
+repeatable extraction failure:
+
+```
+my extractor   sed -n '/Reserved to/,/^##[^#]/p' | grep -E '^- \*\*'
+               -> 0 matches on devops-substrate-and-fleet.md
+
+the heading    '## ⛔ Reserved to TEAMLEAD'                    ->  PRESENT
+the content    "Merging; CI runs. ⚠ **`git push` … ARE the spend.**"
+               ->  PROSE, not a markdown list
+```
+
+⇒ **I searched for a bullet-list format. That file used prose. Zero matches, and I reported
+content-absent.** An empty extraction means *my extractor found nothing*, never *the file
+contains nothing* — the VOID-read-as-negative defect, in the table a fleet-wide ruling was then
+built on.
+
+★ **And the reason it read as trustworthy is the part worth carrying:** the extractor worked on
+**three of four** files, because those three happened to share the bullet format. **It agreed
+with itself three times and was wrong on the fourth.** Consistency across a sample is not
+correctness — three confirmations made the fourth's zero look like a measured absence rather
+than a format miss. ⇒ **A predicate validated on a homogeneous sample has been validated on the
+sample's homogeneity.**
+
+⚠ **The cost was a dropped reservation, not a wrong table.** *Harness configuration —
+`settings.json`, hooks, permissions* was durable in that file and fell out of the union because
+my row said the section did not exist. A reservation on the one surface that changes a running
+mechanism for every pane.
+
 ⚠ **The chain matters more than the row.** DX's drift table recorded *"no reserved section at
 all"*; **TEAMLEAD ruled the union from that table rather than from the file**; DX transcribed the
 ruling here verbatim. **Three steps, nobody opened the file.** That is *cite the artifact, never
