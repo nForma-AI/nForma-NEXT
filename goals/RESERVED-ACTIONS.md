@@ -89,6 +89,32 @@ union is not a self-grant its role may make, and routed it instead.
 
 ---
 
+## ★ GRANTED — read-only monitors on your own instruments
+
+**Operator, 2026-08-20.** Every role may arm a **read-only monitor** on instruments it owns,
+without asking further.
+
+⇒ Bounds, all four load-bearing:
+
+- **Read-only.** It may observe. It may not merge, push, close, edit, or write to another pane.
+- ⛔ **It carries no authorization.** A timer that re-enters an agent with a plausible
+  instruction has *genuine provenance*, which is worse than a forgery — a forgery can be caught
+  by checking the channel and a real scheduled job cannot. A monitor emits a **finding**, never
+  a task and never a grant.
+- ⛔ **Silence must mean "ran and found nothing", never "could not run".** Emit on the finding,
+  emit on VOID, and emit on any exit code the instrument does not document. A watch whose quiet
+  covers both states is the never-concluded defect with a schedule attached.
+- **Your own instruments only.** Arming a loop in another role's pane remains the operator's.
+
+⚠ **This supersedes the earlier reservation** that placed *any* pane's self-scheduling with the
+operator. That line was written before any monitor existed and was already inconsistent with a
+ratified `fleet-context` watch; it is narrowed here rather than left to be routed around.
+
+⚠ **A monitor does not make an instrument armed at the right moment.** The one existing caller
+runs `stranded-branches.py` at **launch** — and the regression it would have caught arrived at
+**merge** time, hours before the next launch. **A caller is necessary; its placement is a
+separate question.**
+
 ## Standing grants
 
 ### GRANTED — `--force-with-lease`, pinned
