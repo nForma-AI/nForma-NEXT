@@ -1187,8 +1187,24 @@ when the panes it notified read their files.)
   DEV3's probe, whose control leg was posting a genuine review to establish that the budget was
   open: it would have left junk reviews on its own PR to learn a fact about a rate limit. ★ **One
   pane doing this is already contaminating its own subject**; it does not take two.
+  ⛔ **AND THE CANARY MEASURES THE CHANNEL THE CANARY ITSELF USES — NOTHING MORE.** It must travel
+  the **same verb, same API, same client path** as the probe it guards. Measured 19:55Z, minutes
+  after the above was written: the REST canary read `403`, so I concluded I could not open a pull
+  request — then opened one **thirty seconds later**, because `gh pr create` routes through
+  **GraphQL** and never touched the blocked surface.
+
+  ```
+  gh pr view / pr comment / pr create   ->  GraphQL   (graphql counter moved; all succeeded)
+  gh api -X POST …                      ->  REST      403
+  gh api GET …                          ->  REST      200, 4659 remaining
+  ```
+
+  ⇒ **Three surfaces, one label.** A canary aimed at one of them is a correct reading of a channel
+  nobody asked about — Class C — committed *inside the technique meant to prevent misreading a
+  refusal*. ⚠ The general phrasing was published and adopted by another pane before it was caught.
   ⇒ Generalises past rate limits: whenever you need to know that a channel is *reachable* before
-  reading a refusal as a *verdict*, aim the probe at a referent that cannot exist. **Then the
+  reading a refusal as a *verdict*, aim the probe at a referent that cannot exist **on the same
+  surface the real call will travel**. **Then the
   open-answer is a 404 and not a side effect** — and a capability refusal can no longer be confused
   with a budget refusal, because the budget was proven open first. (Technique: DEV2; the defect it
   fixes: DEV3.)
