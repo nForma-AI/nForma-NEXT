@@ -50,11 +50,13 @@ WORDS = {w: i for i, w in enumerate(
 # see is how a checker's population quietly stops matching its subject, which is the defect this
 # file exists against — and a real instrument mis-named `test_*.py` would be silently dropped
 # unless a reader can see what was removed. (Found by TEAMLEAD, running it by hand after a merge.)
-NOT_AN_INSTRUMENT = re.compile(r"^(?:test_.+|.+_test)\.py$")
+# ⚠ Matches on the BASENAME: the population is now paths like `teamlead/foo.py`,
+# and `^test_` would stop matching a test that lives in a subdirectory.
+NOT_AN_INSTRUMENT = re.compile(r"^(?:.*/)?(?:test_.+|.+_test)\.py$")
 
-ROW = re.compile(r"^\|\s*`([A-Za-z0-9_.-]+\.py)`\s*\|", re.M)
+ROW = re.compile(r"^\|\s*`([A-Za-z0-9_./-]+\.py)`\s*\|", re.M)
 # `**`name.py`** — …` — a prose entry opening the "what each one is for" paragraph.
-PROSE = re.compile(r"^\*\*`([A-Za-z0-9_.-]+\.py)`\*\*", re.M)
+PROSE = re.compile(r"^\*\*`([A-Za-z0-9_./-]+\.py)`\*\*", re.M)
 # The hand-maintained count in the opening sentence: "Six tools, each built because …"
 # ⛔ The alternation is built from WORDS, never from `[A-Za-z]+`. A permissive word match makes
 # this leg conditional on deleting the NOUN rather than the COUNT: "The tools, …" would match,
@@ -93,7 +95,13 @@ def check(root):
     if not index.is_file():
         return 2, [f"  VOID  {index} is not readable — established nothing"], True
 
-    every = sorted(p.name for p in tools_dir.glob("*.py"))
+    # ⛔ rglob, not glob. `glob("*.py")` saw only the TOP LEVEL: 32 of 51 instruments,
+    # with all 19 under tools/teamlead/ and tools/architect-sweeps/ invisible — and the
+    # checker reported "every tool has a row" while nineteen had none. An enumeration
+    # that silently excludes a subdirectory reports CLEAN about the part it can see. (#307)
+    # Identified by path relative to tools/, so `teamlead/foo.py` and a top-level
+    # `foo.py` are two instruments and never collapse into one.
+    every = sorted(str(p.relative_to(tools_dir)) for p in tools_dir.rglob("*.py"))
     actual = [n for n in every if not NOT_AN_INSTRUMENT.match(n)]
     excluded = [n for n in every if NOT_AN_INSTRUMENT.match(n)]
     text = index.read_text(encoding="utf-8")
@@ -227,6 +235,38 @@ def selftest():
               f"names it (got {rc})")
 
         (t / "gamma.py").unlink()
+
+        # ⛔ #307's regression guard. glob("*.py") saw 32 of 51 instruments and reported
+        # "every tool has a table row" while 19 under tools/teamlead/ and
+        # tools/architect-sweeps/ had none. A control that only ever builds TOP-LEVEL
+        # fixtures cannot fail on the defect that shipped — the fixture shared the
+        # enumeration's blind spot, so the suite passed for the same reason the tool did.
+        (t / "teamlead").mkdir()
+        (t / "teamlead" / "delta.py").write_text("x = 1\n")
+        rc, lines, _ = check(root)
+        hit = rc == 1 and any("teamlead/delta.py" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  subdirectory: an UNINDEXED tool under "
+              f"tools/<sub>/ exits 1 and names it BY PATH (got {rc})")
+
+        # ...and indexing it BY THAT PATH clears it, proving the row is matched on the
+        # same identifier the enumeration emits rather than on a bare basename.
+        readme = t / "README.md"
+        readme.write_text(readme.read_text()
+                          + "\n| `teamlead/delta.py` | d | e |\n\n**`teamlead/delta.py`** — d\n")
+        rc, lines, _ = check(root)
+        # ⚠ Assert the SPECIFIC finding is gone, not that the run is clean: adding a third
+        # instrument also breaks the fixture's hand-maintained count, and asserting rc==0
+        # would fail for a reason unrelated to the property under test.
+        hit2 = not any("teamlead/delta.py" in l and ("no table row" in l or "no prose" in l)
+                       for l in lines)
+        ok &= hit2
+        print(f"  {'ok  ' if hit2 else 'FAIL'}  subdirectory: indexing BY PATH clears the "
+              f"row/prose finding (got {rc})")
+        readme.write_text(good)
+        (t / "teamlead" / "delta.py").unlink()
+        (t / "teamlead").rmdir()
+
 
         # ⛔ the byte-floor's own known-negative: an INDEXED tool truncated to 0 bytes.
         # This is the #226 case reproduced — every name is present and the file is empty.
