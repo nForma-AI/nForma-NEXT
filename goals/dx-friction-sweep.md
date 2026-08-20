@@ -89,6 +89,42 @@ below is the only thing that remembers that. A sweep reading depth alone would a
 | --- | --- | --- | --- |
 | `4358eeaa` DEV1 | 77.9% | #1248 | 5 guards built, **4 defective** |
 | `6fc2dca8` DEVOPS | 75.5% | #1250 | 9 instruments built/changed, **6 defective** |
+| `ec0d07f0` DEV3 | 77.2% | #1256 | 7 wrong-answer instruments, **6 gave a CLEAN total** |
+| `c67ebcb4` DX | self-filed | #1257 | 13 tools audited, **13 defective** |
+| `b00d725a` DEV4 | 87.8% | #1263 ⚠ **DEGRADED** | asked 06:34:13, compacted 06:35:34, answered anyway |
+| `96827e4b` DEV5 | 89.1% | *awaiting* | asked with a **short** prompt — see the note below |
+
+★ **The ask's own length is a cost borne by the session least able to pay it.** DEV4 received a
+long, seven-section ask at 87.8% and compacted 81 seconds later; reading it consumed budget it
+needed to answer. DEV5's version at 89.1% is a quarter the size and opens with *"if you are about
+to compact, answer §1 and stop"* — §1 being the only section a summary never preserves. **Above
+about 85%, shorten the ask rather than sharpen it.**
+
+⛔ **I RECORDED THIS ROW AS `MISSED` AND IT WAS WRONG WITHIN THE HOUR.** DEV4 answered — a full
+seven-section report — from its compaction summary. **A compacted session is not a silent one**,
+and predicting silence from a depth reading is the same overconfidence as predicting runway from
+one. The row states what happened, not what I expected.
+
+⇒ **`DEGRADED` is the state the table actually needed**, and it is more useful than `MISSED`
+because it is the common case. The report arrived; what did not arrive is §1 — the small,
+unfiled workarounds that every prior report ranked highest. **A summary keeps conclusions and
+drops the evidence they rest on**, so the sections that survive are the ones already written as
+conclusions.
+
+★ **DEV4 labelled every claim itself — `[re-verified]` or `[from summary]` — and that practice
+should be requested in the ask, not hoped for.** It turns a degraded report from something you
+must discount wholesale into something you can read line by line: `[from summary]` means *the
+conclusion survived and its evidence did not*, which is a precise and checkable claim.
+
+⚠ **DEV4 also judged 87.8% "too late for this shape of session" and put the trigger nearer 75%.
+That is corroboration of the judgement, NOT of the numbers** — the 81 seconds and the two
+comparison rows came from me, in the ask. Only the verdict is independent. Do not cite it as a
+second measurement.
+
+⛔ **A DEGRADED row must not be silently retried, and must not be dropped either.** Dropping it
+restores the session to "never asked" and the next sweep re-asks immediately; retrying buys
+another summary of the same lost window. Leave it listed, with the state visible. Its next
+genuine obligation is a *new* window at ≥75%.
 
 ### ★ The predictor — confirmed twice, and *checked* the second time
 
@@ -124,12 +160,37 @@ reasons, neither filing it. **The convergence is the finding; either alone reads
   together in one sweep.
 - ⚠ **75 is measured, and the margin it buys is now measured too — from both ends.**
 
-  | asked at | sweeps of runway after answering | outcome |
+  | asked at | runway after the ask | outcome |
   | --- | --- | --- |
-  | **85.4%** | **1** | answered, then compacted the next cycle. Made it by one. |
-  | **75.5%** | **5** | answered, worked five more sweeps, compacted at 87.4% with the report already filed |
+  | **75.5%** | **5 sweeps** | answered, worked five more sweeps, compacted at 87.4% with the report already filed |
+  | **85.4%** | **1 sweep** | answered, then compacted the next cycle. Made it by one. |
+  | **87.8%** | **81 SECONDS** | ⛔ the ask landed at 06:34:13, the compaction step at 06:35:34 |
 
-  ⇒ The second case settles it. DEVOPS filed `#1250` at 75.5%, was asked once, and went over the
+  ⛔ **THE THIRD ROW BREAKS THE MODEL, AND IT IS THE ONLY ONE MEASURED IN SECONDS.** DEV4's ask
+  arrived 81 seconds before its context stepped 878,363 → 73,193. The window the report was
+  *about* was compacted before a reply was possible; anything it sends now is reconstructed from
+  a summary, which is not what the ask is for.
+
+  ⚠ **Depth does not predict remaining time near the top, and the error is not small.** At the
+  fleet's measured burn — DEV5 consumed 156,610 tokens in 46 minutes, **20.6 points/hour** — a
+  linear model gives a session at 87.8% about **36 minutes**. DEV4 got **1.4**. That is a **25×
+  overestimate**, because compaction does not fire at a depth; it fires on the next request that
+  would not fit, and one large request is enough.
+
+  ⇒ ★ **So "buy margin, not precision" is right for a stronger reason than it was written for.**
+  Above roughly 85% the runway is not merely short — it is **unpredictable per session**, so
+  asking early is not a preference for a tidier report. It is the only setting under which the
+  answer arrives at all.
+
+  ⛔ **And the one-ask-per-sweep cap is now the binding constraint, not the trigger.** Three
+  sessions were at/over 80% this sweep. At 20.6 points/hour a session crosses 75% → compaction in
+  about 73 minutes, so a fleet of eight cannot be covered one-per-sweep at any sweep cadence this
+  cron runs. **The cap was set to avoid synchronising the fleet, not to ration coverage**, and it
+  is now doing the second thing. Whether to raise it is a judgement about interrupt cost, and it
+  belongs to whoever owns that cost — but the next sweep should not treat "one per sweep" as
+  free.
+
+  ⇒ The 75.5% case still settles the lower bound. DEVOPS filed `#1250` at 75.5%, was asked once, and went over the
   edge five sweeps later **with its report in hand** — the obligation working end to end rather
   than surviving by a cycle.
 
@@ -167,6 +228,42 @@ Read it as a delivery gap, not disobedience.
 ⛔ **Consequence, measured:** DEV1 sat BLOCKED on one push decision for ~15 wakes and nothing
 surfaced it, because the instrument built for that job depends on a signal no pane emits.
 
+## 5b. The Option-1 conjunction check — report the first non-DX hit
+
+TEAMLEAD ruled Option 1 (each role goal points at its canonical `prompts/<ROLE>.md`) and wants the
+result reported **when the first pane that did not make the edit opens a role prompt**. Baseline
+2026-08-20: **NONE YET**, which is the correct reading minutes after deployment.
+
+```sh
+python3 - <<'EOF'
+import glob, json, os
+hits = {}
+for p in glob.glob(os.path.expanduser("~/.claude/projects/*/*.jsonl")):
+    for line in open(p, errors="replace"):
+        if "nForma-NEXT/prompts/" not in line and "nForma-NEXT:prompts/" not in line:
+            continue
+        try:
+            rec = json.loads(line)
+        except Exception:
+            continue
+        c = (rec.get("message") or {}).get("content")
+        kinds = {b.get("type") for b in c if isinstance(b, dict)} if isinstance(c, list) else set()
+        if kinds & {"tool_use", "tool_result"}:
+            k = os.path.basename(p)[:8]
+            hits[k] = hits.get(k, 0) + 1
+hits.pop("c67ebcb4", None)          # the session that made the edit
+print(hits or "NONE YET")
+EOF
+```
+
+⛔ **`c67ebcb4` must stay excluded.** It is the session that wrote the pointer, and counting it
+reproduces the void control in `docs/prompt-delivery-gap.md` exactly: *the reader must not be the
+auditor.* A hit there measures this sweep, not the fleet.
+
+⚠ A hit is half the test. The other half is that the pane's own goal file carries the pointer —
+present ⇒ delivered, opened ⇒ consumed, and only both together mean anything. `DEV1` can never
+satisfy it: it reads no goal file at all, and TEAMLEAD has taken that gap by another route.
+
 ## 6. Monitor liveness
 
 ```sh
@@ -190,9 +287,18 @@ the same event every run; one compaction was reported as news four sweeps runnin
 
 ## Standing hazards for anything this sweep runs
 
-- ⚠ **A `gh` list endpoint pages at 30.** Compare `.total_count` against the array length and
-  refuse the reading if they differ. A truncated list once **hid a required-check failure**.
-  `per_page=100` is a reflex, not a check — it fails silently past 100.
+- ⚠ **A `gh` list endpoint pages at 30, and the completeness check DEPENDS ON THE FAMILY.**
+  Endpoints with a total (`check-runs`, `search/issues`) — compare `.total_count` against the
+  array length and refuse if they differ; a truncated list once **hid a required-check failure**.
+  Plain list endpoints (`issues`, `pulls`) return a **bare array with no total**, and for those
+  the check is the header: `gh api -i …` and refuse if `Link: … rel="next"` is present. **Absence
+  of `rel="next"` proves nothing was withheld.**
+  ⛔ **Measured, and it outranks both:** `per_page=150` returns **100**, silently, no error. Every
+  list endpoint clamps at 100, so raising a `--limit` past it is a number that cannot be honoured.
+  `per_page=100` is a reflex, not a check.
+  ★ Corrected 2026-08-20 by a peer (#161) after my version named `.total_count` on endpoints that
+  do not have one — which reads as "completeness is unassessable here" and is how `--limit 200`
+  came to replace a real check.
 - ⚠ **zsh does not word-split.** `set -- $var` and `cmd $FILES` pass one argument, not many.
 - ⚠ **A job log contains the `run:` block that produced it**, cyan-bold. Drop the echoed block
   **before** stripping ANSI — the escape is the only discriminator and stripping destroys it.

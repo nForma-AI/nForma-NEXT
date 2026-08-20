@@ -81,6 +81,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
+| `transition-report.py` | did the fleet ANNOUNCE its transitions, or only declare them? | 0 audited · **2 the control failed** |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 all current · 1 an agent is stale · **2 established nothing** |
 | `pane-binding.py` | which panes join to a session, and which leg is missing? | 0 reported · **2 established nothing** |
@@ -271,6 +272,19 @@ wake that cannot hear its own answer is a drain, not a nudge.* ★ Parsed **posi
 final non-empty line of the last assistant turn — never by searching for the token anywhere in
 the text, because a keyword scan is tripped by any turn *discussing* blockage and this fleet
 produced five such instances in one session. A quoted example is never the last line.
+
+**`transition-report.py`** — the STATE line is a **pull**; the role prompts also require a
+**push** on transition into `FREE` or `BLOCKED`, and this is that rule's execution record. Built
+the same day as the rule, because `prompts/README.md` names the alternative: a rule asking a
+reader to check something mechanical is *"a check with no execution record: its compliance is
+unobservable, so its violation rate is unmeasurable."* ★ **Its two directions are not equally
+strong.** `MISSED` is strong — no message at all between your previous declaration and this one,
+so this channel cannot have carried it. `notified` is weak — a message exists in the window and
+the tool cannot read what it was about. ⇒ It finds omissions; it is not a compliance rate, and
+quoting the notified count as one is the way to misuse it. ⚠ A `MISSED` row is a **candidate**:
+a pane can also be spoken to directly. It imports `fleet-state.py`'s parser rather than
+re-implementing it, so the positional rule has one home and two readings can never corroborate
+each other by both being wrong.
 
 **`doctrine-version.py`** — answers which version of its role prompt each agent is actually
 running. `ROLE-READY` proves the prompt file was *reachable*; it never says which version was
