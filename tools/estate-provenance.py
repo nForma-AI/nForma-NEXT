@@ -1,0 +1,208 @@
+#!/usr/bin/env python3
+"""Does the evidence place a file in THIS estate, or another one?
+
+⛔ THE INCIDENT. `tools/teamlead/` was committed wholesale at `ac6a946` — "22 instruments
+out of a temp directory and into version control" — from a temp directory more than one
+estate had written to. 11 of 19 files carry issue numbers #1066-#1243 while this repo is
+in the 300s, plus `akash` / `blazing` / `Borduas-Holdings/Blazing-Back` /
+`/worker-blazing-rpg/exec`. One file, `w1226.py`, opens
+`# control-plane/api/handlers/workloads.py` and is another product's application source.
+
+⇒ This generalises the one-off grep that found it into a reading with a stated
+POPULATION, PREDICATE and CHANNEL.
+
+★ THE ISSUE RANGE IS DERIVED, NEVER HARDCODED. Hardcoding "this repo is under 400"
+silently reclassifies every file on the day we reach #1000 — a calibration that decays
+into a false verdict with no error. Instead the local vocabulary is read from this
+repository's own history (`git log` subjects and bodies), sorted, and cut at its largest
+interior gap. The dense run from #1 upward is what this estate demonstrably talks about;
+anything beyond the gap is an outlier the repo has barely touched.
+
+⚠ Measured 2026-08-20: 276 distinct issue numbers cited, 259 at or below 400, 17 above —
+and the outliers are exactly the foreign citations. The gap does the work, not the number.
+
+⛔ THREE STATES, NOT TWO. `UNCLAIMED` is not a convenience:
+
+    LOCAL      positive evidence of this estate      -> in-range citations, no foreign vocabulary
+    FOREIGN    positive evidence of another estate   -> out-of-range citations OR foreign vocabulary
+    UNCLAIMED  NO provenance evidence either way     -> neither; the file simply does not say
+
+A two-state reading forces UNCLAIMED into LOCAL, which is the collapse this repository
+keeps filing: absence of a foreign marker is not presence of a local one. `boxwatch.py` is
+the specimen — no foreign markers and no README row either.
+
+⛔ AND IT CANNOT ESTABLISH DIRECTION. A file citing #1177 may be another estate's committed
+here, or ours written *about* that estate, or genuinely dual-use. This tool reports that a
+file's provenance evidence points elsewhere; it does NOT report who wrote it or where it
+belongs. That limit is printed on every run, not buried in a README, because a verdict read
+without its limit is the defect this exists to find.
+
+Exit codes:
+  0  no FOREIGN rows                (LOCAL and/or UNCLAIMED only)
+  1  at least one FOREIGN row       (a finding)
+  2  ESTABLISHED NOTHING            never read as clean
+"""
+import os
+import re
+import subprocess
+import sys
+
+FOREIGN_VOCAB = [
+    "borduas-holdings", "blazing-back", "blazing", "akash", "worker-blazing-rpg",
+    "control-plane/api", "tron", "digitalfrontier-infra",
+]
+ISSUE_RE = re.compile(r"#(\d{1,6})\b")
+TEXT_EXT = {".py", ".sh", ".md", ".json", ".yml", ".yaml", ".txt", ""}
+
+
+def sh(*args):
+    try:
+        p = subprocess.run(args, capture_output=True, text=True, timeout=120)
+        return p.returncode, p.stdout, p.stderr
+    except Exception as e:                        # noqa: BLE001
+        return 1, "", str(e)
+
+
+def local_issue_range(root):
+    """The issue numbers THIS repository's own history talks about.
+
+    ⛔ Derived, not declared. Returns (lo, hi, n_distinct) or None when the history
+    yields no vocabulary at all — which is ESTABLISHED NOTHING, not "range is empty".
+    """
+    rc, out, _ = sh("git", "-C", root, "log", "--format=%s%n%b")
+    if rc != 0 or not out.strip():
+        return None
+    nums = sorted({int(m) for m in ISSUE_RE.findall(out)})
+    if len(nums) < 8:            # too little vocabulary to cut a gap in
+        return None
+    # largest interior gap: the dense run below it is this estate's range
+    gaps = [(nums[i + 1] - nums[i], i) for i in range(len(nums) - 1)]
+    span, idx = max(gaps)
+    if span < 50:                # no separable outlier population
+        return nums[0], nums[-1], len(nums)
+    return nums[0], nums[idx], len(nums)
+
+
+def classify(text, lo, hi):
+    """(verdict, reasons) for one file's content."""
+    low = text.lower()
+    foreign_terms = sorted({v for v in FOREIGN_VOCAB if v in low})
+    cited = sorted({int(m) for m in ISSUE_RE.findall(text)})
+    out_of_range = [n for n in cited if n > hi]
+    in_range = [n for n in cited if lo <= n <= hi]
+
+    reasons = []
+    if foreign_terms:
+        reasons.append("vocabulary=" + ",".join(foreign_terms[:3]))
+    if out_of_range:
+        reasons.append("cites>%d: %s" % (hi, ",".join(str(n) for n in out_of_range[:4])))
+    if foreign_terms or out_of_range:
+        return "FOREIGN", reasons
+    if in_range:
+        return "LOCAL", ["cites in-range: " + ",".join(str(n) for n in in_range[:4])]
+    return "UNCLAIMED", ["no provenance evidence either way"]
+
+
+def files_under(root, path):
+    rc, out, _ = sh("git", "-C", root, "ls-tree", "-r", "--name-only", "HEAD", path)
+    if rc != 0:
+        return None
+    keep = []
+    for f in out.splitlines():
+        if os.path.splitext(f)[1] in TEXT_EXT:
+            keep.append(f)
+    return keep
+
+
+def void(msg):
+    print("⛔ VOID: %s" % msg, file=sys.stderr)
+    print("   established NOTHING about provenance — this is UNKNOWN, never 'local'.",
+          file=sys.stderr)
+    return 2
+
+
+def main(argv):
+    if "--self-test" in argv:
+        return self_test()
+    root = os.environ.get("EP_ROOT") or os.getcwd()
+    targets = [a for a in argv[1:] if not a.startswith("-")] or ["tools/"]
+
+    rc, _, _ = sh("git", "-C", root, "rev-parse", "--git-dir")
+    if rc != 0:
+        return void("not a git repository (root=%s)" % root)
+
+    rng = local_issue_range(root)
+    if rng is None:
+        return void("could not derive a local issue range from this repo's history")
+    lo, hi, n = rng
+    print("local issue vocabulary: %d distinct, range #%d-#%d (derived from git log, "
+          "cut at largest gap)" % (n, lo, hi))
+
+    rows, found = [], False
+    for t in targets:
+        fs = files_under(root, t)
+        if fs is None:
+            return void("git ls-tree failed for %s" % t)
+        if not fs:
+            return void("population is EMPTY for %s — nothing was examined" % t)
+        for f in fs:
+            rc2, blob, _ = sh("git", "-C", root, "show", "HEAD:./%s" % f)
+            if rc2 != 0:
+                rows.append(("UNREADABLE", f, ["git show failed"]))
+                continue
+            v, why = classify(blob, lo, hi)
+            rows.append((v, f, why))
+            if v == "FOREIGN":
+                found = True
+
+    for v, f, why in rows:
+        mark = "⛔ " if v == "FOREIGN" else "   "
+        print("%s%-10s %-46s %s" % (mark, v, f, "; ".join(why)))
+
+    counts = {}
+    for v, _, _ in rows:
+        counts[v] = counts.get(v, 0) + 1
+    print("\n" + " · ".join("%s %d" % (k, counts[k]) for k in sorted(counts)))
+    print("⛔ DIRECTION IS NOT ESTABLISHED. FOREIGN means this file's provenance evidence "
+          "points at another estate. It does NOT say whether it was written there and "
+          "committed here, written here ABOUT there, or is genuinely dual-use.")
+    print("⚠ UNCLAIMED is not LOCAL. It is the count of files carrying no provenance "
+          "evidence in either direction.")
+    return 1 if found else 0
+
+
+def self_test():
+    """Hermetic: no git, no network, no fleet. Drives classify() over synthetic content."""
+    lo, hi = 1, 400
+    cases = [
+        ("in-range citation only",        "see #319 and #291",                  "LOCAL"),
+        ("out-of-range citation",         "fixes #1226 in the handler",         "FOREIGN"),
+        ("foreign vocabulary only",       "deploy to Akash provider",           "FOREIGN"),
+        ("foreign path marker",           "# control-plane/api/handlers/x.py",  "FOREIGN"),
+        ("no evidence either way",        "def main():\n    return 0\n",        "UNCLAIMED"),
+        ("in-range AND foreign vocab",    "#319 for Borduas-Holdings",          "FOREIGN"),
+        ("boundary: exactly hi",          "see #400",                           "LOCAL"),
+        ("boundary: hi+1",                "see #401",                           "FOREIGN"),
+    ]
+    ok = True
+    for name, text, want in cases:
+        got, _ = classify(text, lo, hi)
+        flag = "PASS" if got == want else "FAIL"
+        if got != want:
+            ok = False
+        print("  %-4s %-30s got=%-9s want=%s" % (flag, name, got, want))
+
+    # ⛔ known-negative for the RANGE DERIVATION: too little vocabulary must refuse,
+    # not invent a range. A deriver that always returns a range cannot report VOID.
+    empty = local_issue_range("/nonexistent-path-for-selftest")
+    print("  %-4s %-30s got=%s want=None" % ("PASS" if empty is None else "FAIL",
+                                             "no repo -> refuses a range", empty))
+    if empty is not None:
+        ok = False
+
+    print("\nall checks passed" if ok else "\n⛔ SELF-TEST FAILED")
+    return 0 if ok else 3
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

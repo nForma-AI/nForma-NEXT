@@ -134,6 +134,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `doctrine-watch.py` | which roles' doctrine moved under them, and who has not read it? | 0 nothing to tell · 1 a role is behind · **2 established nothing** |
 | `verdict-census.py` | has each indexed instrument ever produced a verdict? | 0 all classified · 1 a never-run, slow, or undocumented instrument · **2 established nothing** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
+| `estate-provenance.py` | does the evidence place this file in THIS estate? | 0 no FOREIGN rows · 1 FOREIGN found · **2 established nothing** |
 | `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
 | `issue-coverage.py` | which open issues has NOBODY opened? | 0 all covered · 1 untouched found · **2 established nothing (empty board, failed query, or no transcripts)** |
@@ -1134,3 +1135,5 @@ every PR.** A suite NOT in that list is still unrun, and is reported `UNLISTED, 
 rather than as an error. The suite is a control that only
 fires when someone invokes it, which is the failure mode it was written to catch. Run it after
 any change under `tools/`.
+
+**`estate-provenance.py`** — reads a path and asks whether its provenance evidence points at this estate or another. ⛔ The issue range is **derived** from this repo's own `git log`, cut at its largest interior gap — hardcoding a ceiling silently reclassifies every file the day the repo reaches it. Reports **three** states: `LOCAL` · `FOREIGN` · `UNCLAIMED`, because absence of a foreign marker is not presence of a local one. ⚠ **It cannot establish DIRECTION** — a file citing another estate's issue may be theirs committed here, ours written about theirs, or dual-use — and it prints that limit on every run rather than only here.
