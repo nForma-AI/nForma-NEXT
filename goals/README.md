@@ -427,9 +427,32 @@ does not move — a design property, not agent behaviour.
    already written. ⛔ **A sixth criterion would restate the fifth, and a criterion that restates
    must be ABOLISHED rather than tuned** — so this sharpens the leg instead of adding one.
 
-   ⚠ **Reconciliation yields agreement or a discrepancy to explain — never certainty.** The two
-   channels above **disagree by one**. That is the correct output of the rule: a number you must now
-   account for, rather than a number you trust.
+   ⚠ **Reconciliation yields agreement or a discrepancy to explain — never certainty.**
+
+   ### ⛔ And a reconciliation across a MUTATING population needs its interval (TEAMLEAD)
+
+   > **Take both legs inside one interval, state the interval, and compare the discrepancy against
+   > what the population could have changed within it. Two channels read at different times over a
+   > board an active fleet is writing to cannot be reconciled at all** — agreement is luck and
+   > disagreement is uninformative.
+
+   **Worked, both legs inside `19:25:22.647Z → 19:25:24.709Z` (2.06s):**
+
+   ```
+   default (no --limit)  30        <- the unstated cap
+   --limit 200           91
+   search total_count    91        <- was 90 twenty minutes earlier
+   churn bound: 8 issues / 20 min = 0.4/min -> 0.014 expected over 2.06s
+   ```
+
+   ⇒ ★ **The direction in which a discrepancy RESOLVES discriminates lag from growth.** The laggard
+   moved `90 → 91` while the leader stayed at `91`. **Growth moves both legs; lag moves only the
+   slow one.** ⇒ That spread was **search-index lag**, and *"the board grew"* is refuted — by a
+   second reading, not by an argument.
+
+   ⚠ **A discrepancy is only informative if it exceeds the churn bound.** Here `1 ≫ 0.014`, so it
+   demanded an explanation. On a 20-minute interval the same `1` would have been noise, and the rule
+   would have been satisfied by two numbers that meant nothing.
 
    ### ⚠ The `[NOT-YET-MEASURED]` on criterion 5 was ONE TAG OVER TWO CLAIMS
 
