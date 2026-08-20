@@ -88,6 +88,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `index-watch.py` | did the tools index drift when `main` last moved? | 0 quiet · 1 finding · **2 established nothing** |
 | `stranded-branches.py` | has any merged PR's branch got commits with no equivalent change upstream? | 0 none · 1 unmatched commits · **2 established nothing** |
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
+| `readd-scan.py` | is this diff RESTORING a line a commit deliberately removed? | 0 none · 1 re-additions · **2 established nothing** |
 | `runmarker.py` | ⚠ **a module, not an instrument** — the two stderr markers every tool emits | n/a, it is imported |
 | `ci-log-clean.py` | is this CI log's text OUTPUT, or the echoed script? | 0 cleaned · **2 established nothing** |
 | `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
@@ -159,6 +160,30 @@ library module**, and the population rule has no clause for one.
 It provides `begin()` / `result()` / `guard()` — the `NFORMA-RUN` and `NFORMA-RESULT` markers
 described in the exit-code convention above. See #58 for why the exit code could not carry this
 alone, and `test_runmarker.py` for the three-producer demonstration.
+
+**`readd-scan.py`** — flags an added line that an earlier commit **deliberately removed**, and
+prints *that commit's own subject* next to it. ⛔ Built for the **ADDITION** failure mode (#220):
+of the three ways to resolve a contradiction between a document and a claim about it — deletion,
+narrowing, addition — **the third attracts the least scrutiny while doing identical work.** A
+deletion has an obvious victim; an addition *reads as fixing a gap*. Measured case: a drift row
+asserted a goal file *"carries no pushing-to-`main` clause — a live gap."* It had converted to a
+pointer and was the only conformant file; acting on the row would have undone the conversion.
+
+⇒ **It does not judge.** A revert is a legitimate re-addition. It puts the earlier decision in
+front of the person reversing it — *"you are adding a line that `988d932` removed, saying: convert
+Reserved to a pointer"* — so the reversal is a **choice** rather than an omission.
+
+⛔ **The obvious mechanic is wrong and was measured wrong before this shipped.** `git log -S'<line>'
+-- <path>` finds the **add** and **misses the removal**; so does `--full-history -m`; without a
+pathspec it answers about other files. All three reported *no prior removal* for a line provably
+absent from `main` and removed in `988d932`. ⇒ It **presence-walks** the file's history instead —
+one pass per file, O(commits) rather than O(commits × lines). ★ A detector built on the pickaxe
+would have returned a clean scan for the exact case it exists to catch.
+
+⚠ `MIN_LEN = 24` is a stated calibration: short lines (```` ``` ````, `---`) recur across unrelated
+edits and would bury the finding in noise. ⚠ Its known-positive is **constructed**, not sampled —
+the live repo's re-additions are whatever exists today, and a control anchored to them goes silent
+when they are resolved (#26).
 
 **`grant-check.py`** — answers *"is `<role>` authorized to do `<capability>` here, right now?"*
 from a record in `grants/`, never from the message that asked. Built after seven forged
