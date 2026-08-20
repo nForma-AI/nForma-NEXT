@@ -1,0 +1,188 @@
+{
+  "bootstrap-audit.py": {
+    "blob": "b18725bf9dc5fa232340b0bd1f1afe61f368b3e9",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
+  "ci-log-clean.py": {
+    "blob": "d600398881d76be8b64f76762c09ba7a53a40375",
+    "ever_verdict": false,
+    "selftest": "NO-SELF-TEST",
+    "state": "ESTABLISHED-NOTHING"
+  },
+  "daintree-control.py": {
+    "blob": "f4279e20616d8227625ab7ea0a993c36a57fe3b4",
+    "ever_verdict": true,
+    "selftest": "NO-SELF-TEST",
+    "state": "VERDICT-SEEN"
+  },
+  "discriminates.py": {
+    "blob": "9426861cd10f6a1b49b7bae16d376b039b1e21e7",
+    "ever_verdict": false,
+    "selftest": "SELFTEST-PASS",
+    "state": "ESTABLISHED-NOTHING"
+  },
+  "doctrine-version.py": {
+    "blob": "38060abd9fd765a96a643ab615d9a4454533a4ed",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
+  "doctrine-watch.py": {
+    "blob": "18e0a55a5efb5494b52459298b91d6ed171143ea",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
+  "exists-anywhere.py": {
+    "blob": "559434d7d0b2448f1c38d41451806e74cba4797a",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
+  "fleet-context.py": {
+    "blob": "c5fad7bdb1b2eb5546bf32866bf8b980e9c04574",
+    "ever_verdict": false,
+    "selftest": "SELFTEST-PASS",
+    "state": "NO-VERDICT-VOCAB"
+  },
+  "fleet-identity.py": {
+    "blob": "63b8bbe9044e4b9694408747b3c192338b3584d1",
+    "ever_verdict": false,
+    "selftest": "NO-SELF-TEST",
+    "state": "NO-VERDICT-VOCAB"
+  },
+  "fleet-state.py": {
+    "blob": "e9adf2874c3717f35ac51ef793a5720ac0d1b2d8",
+    "ever_verdict": true,
+    "selftest": "NO-SELF-TEST",
+    "state": "VERDICT-SEEN"
+  },
+  "gh-complete.py": {
+    "blob": "e8b8b5125024adb823985f86dd6f10029b27ad41",
+    "ever_verdict": false,
+    "selftest": "NO-SELF-TEST",
+    "state": "ESTABLISHED-NOTHING"
+  },
+  "grant-check.py": {
+    "blob": "356071e96222821025a42811f350dcc5cb65ecbc",
+    "ever_verdict": false,
+    "selftest": "SELFTEST-PASS",
+    "state": "ESTABLISHED-NOTHING"
+  },
+  "index-watch.py": {
+    "blob": "f04f94088ee2dcc66fcf241e5f4254b529ba2e61",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
+  "issue-coverage.py": {
+    "blob": "b176341dcead745ead13e781d96b610fe00a88ac",
+    "ever_verdict": false,
+    "selftest": "NO-SELF-TEST",
+    "state": "NO-VERDICT-VOCAB"
+  },
+  "marker-reachability.py": {
+    "blob": "dea45f2392a4c7c6cddb9950e841fbb0fdf51cff",
+    "ever_verdict": false,
+    "selftest": "SELFTEST-PASS",
+    "state": "ESTABLISHED-NOTHING"
+  },
+  "memory-index-check.py": {
+    "blob": "f76c14e21d8a6059e6198582717a2d856581388b",
+    "ever_verdict": false,
+    "selftest": "SELFTEST-PASS",
+    "state": "ESTABLISHED-NOTHING"
+  },
+  "named-referent-check.py": {
+    "blob": "20382aad12dd303931c1a3b80fe5b12ae42fe34b",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
+  "pane-binding.py": {
+    "blob": "edc0c057c7ac39d6101a305229702738e7217c47",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
+  "pipe-exit-scan.py": {
+    "blob": "91e449f81640bd125a820c1310486ab50f200ff4",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
+  "pointer-verified.py": {
+    "blob": "097600a0ab71d6755c179424ba93002e5c07962a",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
+  "pr-stack.py": {
+    "blob": "fa51b631b43e558c58202d9ce2aced96031b0176",
+    "ever_verdict": false,
+    "selftest": "NO-SELF-TEST",
+    "state": "NO-VERDICT-VOCAB"
+  },
+  "pretooluse-guard.py": {
+    "blob": "defe3b4457542d8ea48ef0b065a7e8a72810c78a",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
+  "prompt-delivery.py": {
+    "blob": "3eaf07038dd9c92cf8cb3078a7ee1d2f5d104a9e",
+    "ever_verdict": false,
+    "selftest": "NO-SELF-TEST",
+    "state": "NO-VERDICT-VOCAB"
+  },
+  "readd-scan.py": {
+    "blob": "4874be84e5971d41b4b6dc7c122f9e1fe233e98b",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
+  "reference-check.py": {
+    "blob": "aa01610d5cbea0e147601b455441f485aebb89c9",
+    "ever_verdict": true,
+    "selftest": "NO-SELF-TEST",
+    "state": "VERDICT-SEEN"
+  },
+  "runmarker.py": {
+    "blob": "4f47f68514e968c8541a3bfa6b4b14638670ff90",
+    "ever_verdict": false,
+    "selftest": "NO-SELF-TEST",
+    "state": "NO-VERDICT-VOCAB"
+  },
+  "stranded-branches.py": {
+    "blob": "a6b154193b2859fb78fe72eb28091b723f60267d",
+    "ever_verdict": false,
+    "selftest": "NO-SELF-TEST",
+    "state": "NO-VERDICT-IN-TIME"
+  },
+  "text-provenance.py": {
+    "blob": "67dca60d81f07a3ddca8dc56bb4e9250e7cc33e6",
+    "ever_verdict": false,
+    "selftest": "NO-SELF-TEST",
+    "state": "NO-VERDICT-VOCAB"
+  },
+  "transition-report.py": {
+    "blob": "0782b2e572bfa67cef2132c5aec9e5975915748f",
+    "ever_verdict": true,
+    "selftest": "NO-SELF-TEST",
+    "state": "VERDICT-SEEN"
+  },
+  "use-not-mention.py": {
+    "blob": "1a86d4930e14e4cda043d5d80092869a29e9b322",
+    "ever_verdict": false,
+    "selftest": "SELFTEST-PASS",
+    "state": "ESTABLISHED-NOTHING"
+  },
+  "wake-yield.py": {
+    "blob": "33ada38109c450174b932df76ca0a95b7fc64e6a",
+    "ever_verdict": false,
+    "selftest": "NO-SELF-TEST",
+    "state": "NO-VERDICT-VOCAB"
+  }
+}

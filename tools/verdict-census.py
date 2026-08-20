@@ -35,9 +35,34 @@ verdict was CORRECT. It runs each instrument with no arguments and a timeout: an
 real verdict needs flags may report ESTABLISHED-NOTHING here and be healthy in use, which is
 reported rather than hidden.
 
-Exit: 0 every indexed instrument classified, none NEVER-RUN
-      1 at least one NEVER-RUN or NO-VERDICT-VOCAB — a finding
-      2 established nothing (the index could not be read, or it named no instruments)
+⛔ THREE MODES, AND THEIR EXIT CODES ARE NOT INTERCHANGEABLE — #2 is answered by the second,
+not the first, and the third is not a verdict about anything.
+
+    (bare)          FULL CENSUS. Runs every indexed instrument. Answers "what is true now."
+                    Measured on this repository: 4m20s cold.
+    --ledger        THE RECORD #2 ASKS FOR. Same question restricted to "has this instrument EVER
+                    produced a verdict" — a monotone predicate, so a confirmed verdict from
+                    unchanged bytes is taken from `tools/verdict-ledger.json` rather than re-run.
+                    ⚠ Measured 3m05s warm against 4m20s cold: a 29% saving, NOT a collapse. ★ The
+                    skip is ANTI-CORRELATED WITH THE COST — an instrument that concluded is fast
+                    *because* it concluded, while the expensive rows are the ones that timed out
+                    or refused, and those are re-run every time by design.
+    --stale-check   Does the record still cover the index? RUNS NOTHING. Measured 0.085s.
+                    ⇒ This is the mode that is affordable on a merge cadence. It exists because
+                    a 3-minute refresh is past the attention a reader has, and an instrument
+                    nobody can afford to consult is indistinguishable from one that never spoke —
+                    which is this issue's own property, reached from the opposite side
+                    (ARCHITECT, #2).
+
+⛔ THE CODES MEAN DIFFERENT THINGS PER MODE. Reading one as the other is the whole defect class:
+      bare / --ledger   0 every indexed instrument concluded (or has a verdict on record)
+                        1 at least one has NOT — ⛔ this is #2's finding
+                        2 established nothing (the index was unreadable or named nothing)
+      --stale-check     0 THE RECORD IS CURRENT. ⚠ NOT "every instrument produces verdicts."
+                        1 the indexed population moved — a name or a blob the record lacks
+                        2 established nothing
+
+Exit: 0 no finding · 1 a finding · 2 established nothing
 """
 import argparse
 import re
@@ -48,6 +73,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INDEX = ROOT / "tools" / "README.md"
+LEDGER = ROOT / "tools" / "verdict-ledger.json"
 ROW = re.compile(r"^\|\s*`([A-Za-z0-9_.-]+\.py)`\s*\|", re.M)
 # "Exit: 0 clean · 1 findings · 2 established nothing"  ->  {0,1,2}
 EXIT_DOC = re.compile(r"^Exit(?:\s+codes)?:\s*(.+?)(?:\n\n|\n\"\"\")", re.M | re.S)
@@ -364,13 +390,402 @@ def self_test():
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  an index naming no instruments exits 2 VOID, not 0"
               f" (got {rc})")
+
+        # ------------------------------------------------------------------
+        # LEDGER — the controls below target the ONE place cost is saved, because a saving is
+        # the only place a wrong answer becomes invisible. A ledger that skipped too much would
+        # still print a clean report; nothing else in this file would notice.
+        # ------------------------------------------------------------------
+        import json
+        ld = Path(d) / "ledger-tools"
+        ld.mkdir()
+        _fixture(ld, "good.py", "raise SystemExit(0)", True)
+        lidx = Path(d) / "LEDGER-README.md"
+        lidx.write_text("| `good.py` | a fixture |\n")
+        lpath = Path(d) / "rec.json"
+
+        rc, _, rec = ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
+        hit = rc == 0 and rec["good.py"]["ever_verdict"] is True
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a fixture that concludes is recorded EVER (rc={rc})")
+
+        rc, lines, _ = ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
+        hit = rc == 0 and not any(l.startswith("  ran   ") for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a confirmed verdict from unchanged bytes is NOT "
+              f"re-run — this is the whole saving")
+
+        # ⛔ THE CONTROL THAT MATTERS MOST. A stored NEGATIVE must be re-measured even when the
+        # bytes are identical, because a negative flips without an edit: an absent credential, an
+        # unreachable forge, a raised --timeout. Skipping it would freeze a NEVER-RUN forever and
+        # the report would look no different.
+        stale = json.loads(lpath.read_text())
+        stale["good.py"]["ever_verdict"] = False
+        stale["good.py"]["state"] = NEVERRUN
+        lpath.write_text(json.dumps(stale))
+        rc, lines, rec = ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
+        hit = rc == 0 and rec["good.py"]["ever_verdict"] is True and any("ran   good.py" in l
+                                                                        for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a recorded NEGATIVE is re-run despite identical "
+              f"bytes, and flips (rc={rc})")
+
+        # ⛔ BOTH DIRECTIONS OF THE NEGATIVE SPLIT. Getting either backwards leaves the report
+        # looking identical, so neither is observable except here.
+        vocab = _fixture(ld, "novocab.py", "raise SystemExit(0)", False)
+        lidx.write_text("| `good.py` | f |\n| `novocab.py` | f |\n")
+        lpath.unlink()
+        ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
+        _, lines, _ = ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
+        hit = not any("ran   novocab.py" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  NO-VERDICT-VOCAB is keyed on the blob — a TEXTUAL "
+              f"negative is not re-run while the bytes hold")
+
+        vocab.write_text(vocab.read_text().replace("No exit documentation.",
+                                                   "Exit: 0 a verdict."))
+        _, lines, rec = ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
+        hit = any("ran   novocab.py" in l for l in lines) and rec["novocab.py"]["ever_verdict"]
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  documenting the exit codes changes the blob, which "
+              f"re-runs it, which flips it to EVER")
+
+        env = _fixture(ld, "envneg.py", "raise SystemExit(2)", True)
+        lidx.write_text("| `envneg.py` | f |\n")
+        lpath.unlink()
+        ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
+        _, lines, _ = ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
+        hit = any("ran   envneg.py" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  ESTABLISHED-NOTHING is re-run despite unchanged "
+              f"bytes — an ENVIRONMENTAL negative is never taken from the record")
+        lidx.write_text("| `good.py` | a fixture |\n")
+        lpath.unlink()
+        ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)  # reseed for the blob case below
+
+        # ⚠ a positive whose recorded blob does not match the file on disk is not trusted
+        tampered = json.loads(lpath.read_text())
+        tampered["good.py"]["blob"] = "0" * 40
+        lpath.write_text(json.dumps(tampered))
+        _, lines, _ = ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
+        hit = any("bytes changed" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a recorded verdict whose blob no longer matches "
+              f"the file is re-run, not believed")
+
+        # ⛔ a record that cannot be parsed is VOID — and must NOT be overwritten. Reading a
+        # corrupt ledger as "nothing recorded yet" would destroy the only history there is.
+        lpath.write_text("{ this is not json")
+        rc, _, _ = ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
+        hit = rc == 2 and lpath.read_text() == "{ this is not json"
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  an unreadable record exits 2 VOID and is left "
+              f"intact, not silently replaced (rc={rc})")
+
+        # ⛔ THE TRIGGER MUST NOT BE A CONSTANT. A standing environmental negative is true
+        # continuously; if it drove the exit code, --stale-check would return 1 forever and
+        # could never signal that anything happened.
+        lidx.write_text("| `good.py` | f |\n| `envneg.py` | f |\n")
+        lpath.unlink()
+        ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
+        rc, lines = stale_check(index=lidx, tools_dir=ld, path=lpath)
+        hit = rc == 0 and any("STANDING" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a standing environmental negative is REPORTED but "
+              f"does not make --stale-check a constant 1 (rc={rc})")
+
+        (ld / "good.py").write_text((ld / "good.py").read_text() + "\n# edited\n")
+        rc, _ = stale_check(index=lidx, tools_dir=ld, path=lpath)
+        ok &= rc == 1
+        print(f"  {'ok  ' if rc == 1 else 'FAIL'}  editing an instrument's bytes DOES move "
+              f"--stale-check to 1 — it is an event detector (rc={rc})")
+
+        rc, lines = stale_check(index=lidx, tools_dir=ld, path=Path(d) / "no-such.json")
+        hit = rc == 1 and not any("VOID" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  no record at all is STALE (1), not VOID (rc={rc})")
+
+        # ⛔ an instrument indexed but absent is a FINDING, never an omission
+        lpath.unlink()
+        lidx.write_text("| `good.py` | a fixture |\n| `ghost.py` | indexed, never written |\n")
+        rc, _, rec = ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
+        hit = rc == 1 and rec["ghost.py"]["ever_verdict"] is False
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  an indexed-but-absent instrument is ⛔ NEVER and "
+              f"exits 1, not skipped (rc={rc})")
+
     return 0 if ok else 3
+
+
+# ---------------------------------------------------------------------------
+# LEDGER MODE — the record #2 asks for, and the reason it is affordable to keep
+# ---------------------------------------------------------------------------
+# ⛔ A FULL CENSUS ANSWERS THE WRONG QUESTION FOR THE COST IT CHARGES. It re-runs every indexed
+# instrument three times (bare · --self-test · a length-matched bogus flag) and takes over two
+# minutes — measured by ARCHITECT on #2, whose finding is the mirror of the issue: the census
+# DID emit `SELFTEST-DECLARED 1`, and nobody read it, because the reader had to spend two
+# minutes to find out whether there was anything to read. A verdict nobody can afford to consult
+# is indistinguishable from a verdict nobody produced.
+#
+# ★ #2 does not ask "what is true now". It asks whether each instrument has **EVER** produced a
+# verdict — and EVER IS MONOTONE. An instrument that concluded once cannot un-conclude. So a
+# CONFIRMED POSITIVE, keyed to the exact bytes that produced it, never needs re-running.
+#
+# ⚠ THIS IS A STORED CALIBRATION AND THIS REPOSITORY HAS A STANDING RULE AGAINST THOSE (#183,
+# #149: derive, never store — a stored value decays silently). The rule is not suspended here;
+# it is SATISFIED, and the argument has to be checked rather than assumed:
+#
+#     stored POSITIVE, blob unchanged  → cannot become false. Monotone. SKIPPED. ← the saving
+#     stored POSITIVE, blob CHANGED    → could become false. Re-run. ← keyed on content, not time
+#     stored NEGATIVE, any blob        → could become false without the file changing at all
+#                                        (gh-complete.py exits 2 when `gh` is unauthenticated;
+#                                        authenticate and it flips). ALWAYS re-run.
+#     no record                        → new to the index. Run.
+#
+# ⇒ The ONLY thing ever skipped is the one direction that cannot rot. `doctrine-watch.py`'s
+# watermark stores a POSITION, and a position moves both ways — which is why it decayed into the
+# defect it replaced (#183). An ever-predicate has no second direction to decay in.
+#
+# ⛔ AND THE RECORD IS KEYED ON CONTENT, NOT ON A DATE OR A SHA OF main. `git hash-object` of the
+# instrument's own bytes: the same value git stores, so a reader can `git cat-file -p <blob>` and
+# see exactly which text produced the verdict. WHEN it was taken is derived from the ledger
+# file's own `git log` — never written into it, because a written date is the thing that rots.
+
+
+def blob_id(data):
+    """git's own blob hash of `data`, so the key is checkable with `git cat-file -p`."""
+    import hashlib
+    h = hashlib.sha1()
+    h.update(b"blob %d\0" % len(data))
+    h.update(data)
+    return h.hexdigest()
+
+
+def _rerun_reason(rec, blob):
+    """Why this instrument must be run now, or None if the record already answers #2.
+
+    ⛔ Returning None is the ONLY place cost is saved, so it is the only place a wrong answer
+    becomes invisible. It is reachable for exactly one shape: a confirmed verdict, from these
+    exact bytes, whose self-test did not fail.
+    """
+    if rec is None:
+        return "new to the index"
+    if rec.get("blob") != blob:
+        return "the instrument's bytes changed since the record was taken"
+    if not rec.get("ever_verdict"):
+        # ⛔ "NEGATIVE" IS ITSELF A COLLAPSED PAIR, and treating it as one state costs a re-run
+        # per cycle for information that cannot have changed.
+        #
+        #   TEXTUAL     NO-VERDICT-VOCAB is read out of the instrument's OWN DOCSTRING by
+        #               documented_codes(). It is a function of the bytes. While the blob holds,
+        #               re-running it can only produce the answer already on record.
+        #   ENVIRONMENTAL  ESTABLISHED-NOTHING · NO-VERDICT-IN-TIME · NEVER-RUN all flip with NO
+        #               EDIT: gh-complete.py exits 2 while `gh` is unauthenticated and 0 after;
+        #               stranded-branches.py exceeds a 90s bound and concludes under a longer one;
+        #               a crash can be an absent import rather than a defect in the file.
+        #
+        # ⇒ Only the environmental ones are re-measured unconditionally. Getting this backwards
+        #   is invisible in the report either way, which is why both directions are controlled
+        #   in self_test().
+        if rec.get("state") == NOVOCAB:
+            return None
+        return ("recorded negative for an ENVIRONMENTAL reason — it can flip with no edit, so it"
+                " is never taken from the record")
+    if rec.get("selftest") in (STFAIL, STDECL):
+        return "recorded with a broken or merely-declared known-positive (#151)"
+    return None
+
+
+def stale_check(index=None, tools_dir=None, path=None):
+    """Does the record still describe the indexed population? NO SUBPROCESSES. Sub-second.
+
+    ⛔ WHY THIS IS A SEPARATE MODE, and the measurement that forced it. The monotone skip was
+    supposed to make a refresh cheap. Measured on this repository: a cold refresh took 4m20s and
+    a warm one 3m05s — a 29% saving, NOT a collapse. ★ THE SKIP IS ANTI-CORRELATED WITH THE COST.
+    An instrument that CONCLUDED is fast *because* it concluded; the expensive rows are the ones
+    that timed out or refused, and those are precisely the environmental negatives a refresh must
+    re-run. stranded-branches.py alone spends 90s per probe against the bound.
+    ⇒ Three minutes still exceeds the attention a reader has (ARCHITECT, #2: an instrument whose
+      cost exceeds the attention available is not consulted, and an unconsulted verdict is
+      indistinguishable from one that was never produced).
+
+    ★ So the affordable thing is not a cheaper refresh — it is a cheap way to know whether a
+    refresh would say anything new. Every reason to re-run is either a NAME the record has not
+    seen or a BLOB it no longer matches, and both are readable off the disk. This answers that
+    and nothing else: it never claims a verdict, only whether the record is answerable.
+
+    Exit-shaped return: 0 the record covers the index · 1 it does not · 2 established nothing.
+    """
+    import json
+    index = index or INDEX
+    tools_dir = tools_dir or (ROOT / "tools")
+    path = path or LEDGER
+    try:
+        names = sorted(set(ROW.findall(index.read_text(encoding="utf-8"))))
+    except OSError as e:
+        return 2, [f"  VOID  cannot read {index}: {e} — established nothing"]
+    if not names:
+        return 2, ["  VOID  the index named no instruments — established nothing"]
+    try:
+        rec = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(rec, dict):
+            raise ValueError("not an object")
+    except FileNotFoundError:
+        return 1, [f"  ⛔ STALE  no record at {path} — nothing has ever been recorded",
+                   f"  ----  refresh with: python3 {Path(__file__).name} --ledger"]
+    except (OSError, ValueError) as e:
+        return 2, [f"  VOID  {path} could not be read as a record ({e}) — established nothing"]
+
+    # ⛔ TWO QUESTIONS, AND FOLDING THEM INTO ONE EXIT CODE DESTROYS THE MODE. First draft did:
+    #
+    #   STALE    the indexed population MOVED — a new name, changed bytes, a file gone. An event.
+    #   STANDING an environmental negative is on record, so a refresh could still change it. NOT
+    #            an event: it is true continuously until someone fixes the instrument.
+    #
+    # ⇒ Eight instruments are standing negatives here, so a code keyed on "could a refresh say
+    #   anything new" returns 1 UNCONDITIONALLY — which is precisely useless as the trigger this
+    #   mode exists to be. The exit code tracks STALE only; STANDING is printed every time,
+    #   including on exit 0, so nobody can read a 0 as "they all produce verdicts".
+    #
+    # ⚠ AND STATE THE OTHER HALF, because the codes are close enough to swap by accident:
+    #   exit 0 HERE means "the record is current". It does NOT mean every instrument has a
+    #   verdict. That finding is --ledger's exit code, and it is 1.
+    me = Path(__file__).name
+    covered = [n for n in names if n != me]
+    stale, standing = [], []
+    for n in covered:
+        r = rec.get(n)
+        if r is None:
+            stale.append((n, "in the index, absent from the record"))
+            continue
+        try:
+            blob = blob_id((tools_dir / n).read_bytes())
+        except OSError:
+            stale.append((n, "indexed, and not on disk"))
+            continue
+        if r.get("blob") != blob:
+            stale.append((n, f"bytes changed since the record ({str(r.get('blob'))[:8]}"
+                             f" -> {blob[:8]})"))
+        elif not r.get("ever_verdict") and r.get("state") != NOVOCAB:
+            standing.append((n, str(r.get("state"))))
+    gone = sorted(set(rec) - set(names))
+    out = [f"  {'⛔ STALE' if stale or gone else 'current'}  the record answers"
+           f" {len(covered) - len(stale)} of {len(covered)} indexed instruments"
+           f"  (verdict-census.py excluded — it does not census itself)"]
+    out += [f"  ⛔ {n}: {why}" for n, why in stale]
+    out += [f"  ⛔ recorded but no longer indexed: {n}" for n in gone]
+    if standing:
+        out.append(f"  ⚠ {len(standing)} STANDING environmental negative(s) — on record, and a"
+                   f" refresh could still change any of them. NOT staleness, and NOT counted in"
+                   f" the exit code: this is true continuously, not an event.")
+        out += [f"      {st:<20} {n}" for n, st in standing]
+    out.append("  note  NOTHING WAS RUN. This reports whether the RECORD is current. It is not a"
+               " verdict about any instrument, and exit 0 here does NOT mean every instrument has"
+               " produced one — that finding is `--ledger`'s exit code.")
+    if stale or gone:
+        out.append(f"  ----  refresh with: python3 {Path(__file__).name} --ledger")
+    return (1 if (stale or gone) else 0), out
+
+
+def ledger(index=None, tools_dir=None, timeout=TIMEOUT, path=None, write=True):
+    """Bring the ever-produced-a-verdict record up to date, running only what needs running.
+
+    Returns (rc, lines, record).
+    """
+    import json
+    index = index or INDEX
+    tools_dir = tools_dir or (ROOT / "tools")
+    path = path or LEDGER
+    out = []
+    try:
+        text = index.read_text(encoding="utf-8")
+    except OSError as e:
+        return 2, [f"  VOID  cannot read {index}: {e} — established nothing"], {}
+    names = sorted(set(ROW.findall(text)))
+    if not names:
+        return 2, ["  VOID  the index named no instruments — the table format changed, or it is"
+                   " gone. Established nothing."], {}
+
+    try:
+        prior = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(prior, dict):
+            raise ValueError("not an object")
+    except FileNotFoundError:
+        prior = {}
+    except (OSError, ValueError) as e:
+        # ⛔ NOT an empty ledger. A corrupt record read as "nothing recorded yet" would silently
+        # re-run everything and then OVERWRITE the only history with today's reading.
+        return 2, [f"  VOID  {path} exists but could not be read as a record ({e}) —"
+                   " refusing to overwrite it. Established nothing."], {}
+
+    me = Path(__file__).name
+    record, rows = {}, []
+    for n in names:
+        if n == me:
+            continue  # the census does not census itself — a nested run terminates only by timeout
+        p = tools_dir / n
+        try:
+            blob = blob_id(p.read_bytes())
+        except OSError:
+            blob = None  # indexed but absent; classify() reports it, and it must never be skipped
+        rec = prior.get(n)
+        why = _rerun_reason(rec, blob) if blob else "indexed but absent from the directory"
+        if why is None:
+            record[n] = rec
+            rows.append((n, rec.get("state"), rec.get("selftest"), "kept", "record stands"))
+            continue
+        st, detail = classify(p, timeout) if blob else (NEVERRUN, "indexed but absent")
+        sst, _ = selftest_state(p, timeout) if blob else (STNONE, "absent")
+        ever = bool(rec and rec.get("ever_verdict")) or st == VERDICT
+        record[n] = {"ever_verdict": ever, "blob": blob, "state": st, "selftest": sst}
+        rows.append((n, st, sst, "RAN", why))
+
+    dropped = sorted(set(prior) - set(record))
+    width = max([len(n) for n, *_ in rows] + [1])
+    for n, st, sst, mark in ((r[0], r[1], r[2], r[3]) for r in rows):
+        ever = record[n].get("ever_verdict")
+        out.append(f"  {'EVER' if ever else '⛔ NEVER':<9} {str(st):<20} {str(sst):<18}"
+                   f" {n:<{width}}  [{mark}]")
+    ran = sum(1 for r in rows if r[3] == "RAN")
+    out.append("")
+    out.append(f"  {sum(1 for n in record if record[n].get('ever_verdict'))} of {len(rows)}"
+               f" indexed instruments carry a verdict ever recorded · {ran} run now,"
+               f" {len(rows) - ran} answered from the record")
+    for n, _, _, mark, why in rows:
+        if mark == "RAN":
+            out.append(f"  ran   {n}: {why}")
+    if dropped:
+        # ⛔ NAMED, not silently deleted. An instrument leaving the index is a fact about the
+        # index; dropping its row without saying so would make a removal look like it never was.
+        out.append(f"  ⚠ dropped from the record — no longer in the index: {', '.join(dropped)}")
+    out.append("  note  a KEPT row was NOT re-run. It is a confirmed verdict from bytes that have"
+               " not changed, and 'has ever produced a verdict' cannot become false.")
+    out.append("  note  ENVIRONMENTAL negatives (exit 2 · timed out · crashed) are re-run every"
+               " time — they flip with no edit. NO-VERDICT-VOCAB is read from the docstring, so"
+               " it is keyed on the blob like a verdict: it cannot change while the bytes do not.")
+    out.append("  note  WHEN a row was taken is derived from this file's `git log`, never stored"
+               " in it. A written date is the part that rots.")
+    if write:
+        path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        out.append(f"  ----  wrote {path}")
+    else:
+        out.append("  ----  --dry-run: the record on disk was NOT updated")
+    never = [n for n in record if not record[n].get("ever_verdict")]
+    rc = 1 if never else 0
+    return rc, out, record
 
 
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--self-test", action="store_true")
     ap.add_argument("--timeout", type=int, default=TIMEOUT)
+    ap.add_argument("--ledger", action="store_true",
+                    help="update the ever-produced-a-verdict record, running only what the "
+                         "record cannot already answer")
+    ap.add_argument("--stale-check", action="store_true",
+                    help="does the record still cover the index? Runs NOTHING; sub-second.")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="with --ledger: report, but do not write the record")
     try:
         a = ap.parse_args(argv[1:])
     except SystemExit:
@@ -378,6 +793,25 @@ def main(argv):
         return 2
     if a.self_test:
         return self_test()
+    if a.stale_check:
+        rc, lines = stale_check()
+        print("\nverdict ledger — is the record still answerable for the indexed population?")
+        for l in lines:
+            print(l)
+        print({0: "  the record is CURRENT for the index — not a claim that any instrument"
+                  " produced a verdict",
+               1: "  FINDING — the indexed population moved; the record no longer answers it",
+               2: "  VOID"}[rc])
+        return rc
+    if a.ledger:
+        rc, lines, _ = ledger(timeout=a.timeout, write=not a.dry_run)
+        print("\nverdict ledger — has each indexed instrument EVER produced a verdict?")
+        for l in lines:
+            print(l)
+        print({0: "  every indexed instrument has a verdict on record",
+               1: "  FINDING — at least one has never produced a verdict",
+               2: "  VOID"}[rc])
+        return rc
     rc, lines, _ = census(timeout=a.timeout)
     print("\nverdict census — tools/README.md's index, measured by running it")
     for l in lines:

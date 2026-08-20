@@ -133,7 +133,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `doctrine-watch.py` | which roles' doctrine moved under them, and who has not read it? | 0 nothing to tell · 1 a role is behind · **2 established nothing** |
 | `label-exists.py` | does the label you are about to query actually exist? | 0 all exist · 1 one is absent · **2 established nothing** |
-| `verdict-census.py` | has each indexed instrument ever produced a verdict? | 0 all classified · 1 a never-run, slow, or undocumented instrument · **2 established nothing** |
+| `verdict-census.py` | has each indexed instrument ever produced a verdict? (`--ledger` keeps the record · `--stale-check` asks in 0.1s whether it is current) | 0 no finding · 1 a finding · **2 established nothing** · ⚠ `--stale-check`'s 0 means *the record is current*, NOT *they all produce verdicts* |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `estate-provenance.py` | does the evidence place this file in THIS estate? | 0 no FOREIGN rows · 1 FOREIGN found · **2 established nothing** |
 | `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
@@ -334,6 +334,35 @@ conclusion. ⚠ A timeout is reported as `NO-VERDICT-IN-TIME`, never `NEVER-RUN`
 labelled a 45s instrument never-run, which is a statement about the caller's parameter rather than the
 tool. Its known-positive is a set of **synthetic fixtures outside `tools/`**, one per state, so repairing
 any real instrument cannot silence it.
+
+⚠ **2026-08-20: the census was consulted by nobody, and the cause was its price.** ARCHITECT found
+`SELFTEST-DECLARED 1` in its output — a real defect it had caught — only after independently writing the
+fix, believing nothing had detected it. ⇒ **A verdict nobody can afford to read is indistinguishable from a
+verdict nobody produced**, which is #2's own property arrived at from the other side. ★ The remedy turns on
+#2 asking a **monotone** question: *has this instrument EVER produced a verdict* — and a verdict that
+happened cannot un-happen. So `--ledger` keeps `tools/verdict-ledger.json`, keyed on each instrument's **git
+blob**, and re-runs only what the record cannot already answer. ⛔ **This is a stored calibration, which
+this repository forbids by default** (#149, #183: *derive, never store*) — permitted here for a checked
+reason, not an assumed one: `doctrine-watch`'s watermark stored a **position**, and a position moves both
+ways, so it decayed. An ever-predicate has no second direction. Only the confirmed-positive-with-unchanged-
+bytes case is ever skipped.
+
+⛔ **"Negative" was itself a collapsed pair, and splitting it was worth 7 re-runs a cycle.**
+`NO-VERDICT-VOCAB` is read out of the instrument's own docstring — a function of the bytes, so it cannot
+flip while the blob holds. `ESTABLISHED-NOTHING` · `NO-VERDICT-IN-TIME` · `NEVER-RUN` flip with **no edit at
+all**: `gh-complete.py` exits 2 while `gh` is unauthenticated, `stranded-branches.py` exceeds a 90s bound and
+concludes under a longer one. Only the environmental kind is re-measured unconditionally.
+
+⚠ **And the saving was measured, not predicted — the prediction was wrong.** Cold refresh **4m20s**, warm
+**3m05s**: **29%, not a collapse.** ★ **The skip is anti-correlated with the cost.** An instrument that
+concluded is fast *because* it concluded; the expensive rows are the ones that timed out or refused, and
+those are exactly what a refresh must re-run. ⇒ Three minutes is still past a reader's attention, so the
+affordable mode is not a cheaper refresh but `--stale-check`, which **runs nothing** and reports in
+**0.085s** whether a refresh could say anything new. ⛔ Its exit code tracks **staleness only**: eight
+standing environmental negatives are true *continuously*, and letting them drive the code would pin it to
+`1` forever and destroy the trigger. They are printed on every run, including on `0`, so a `0` cannot be
+read as *every instrument produces verdicts*. **Measured 2026-08-20 at `280ac70`: 15 of 31 indexed
+instruments have ever produced a verdict.** Re-measure before relying on it.
 
 **`wake-yield.py`** — pairs an interruption's cost with its yield. Cost alone is
 uninterpretable: an agent woken into useful work and one woken into churn consume context
