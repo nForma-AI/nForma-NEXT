@@ -290,8 +290,31 @@ TEAMLEAD as the competent grantor. ⇒ **AUTHORISED.**
 
 ⚠ **The reservation's stated _reason_ is false in this repository, and the verdict survives it
 anyway — which is the part worth keeping.** Measured while writing this file: **zero** workflow
-files and zero `*.yml`/`*.yaml` across all **19** remote refs. There is no pipeline here, so
-`git push` and `gh pr create` draw no metered lease and are not CI spend. That justification was
+files and zero `*.yml`/`*.yaml` across all **19** remote refs, so neither command drew a lease.
+
+⛔ **THAT MEASUREMENT EXPIRED THE SAME DAY. Re-measured at `f7b343f`, 2026-08-20:**
+
+```
+.github/workflows/tools.yml   EXISTS        gh run list -> 5 runs, all completed/success
+on: pull_request              <- gh pr create STARTS A RUNNER
+    push: branches: [main]    <- a push to a non-main branch does not
+```
+
+⇒ **The correct split is neither the original clause nor its removal.** The clause said push *and*
+PR were spend; #42 removed both on the no-CI ground; **today the PR half is true again and the
+branch-push half is not.**
+
+★ **This is the rolling-baseline defect landing on a RESERVATION rather than on a number, and
+that is the reason it belongs in this file.** A decayed count yields a stale figure. **A decayed
+reservation yields an unmetered action** — and it is silent in *both* directions: over-restriction
+produces no error signal (`goals/README.md`), and under-restriction produces none either, because
+nothing goes red when an agent spends a runner it was told was free.
+
+⚠ **The example above therefore survives on its own terms and its FOOTNOTE does not.** The verdict
+is still AUTHORISED and still by R2 — TEAMLEAD is the named grantor under any rationale — which is
+exactly the property this example was kept to demonstrate: **the procedure keys on WHO MAY GRANT,
+not on why the thing was reserved.** ⇒ The rationale inverted twice in one day and the resolution
+never moved. That justification was
 carried over from another estate and did not transfer — [#42](https://github.com/nForma-AI/nForma-NEXT/issues/42)
 established it for ARCHITECT's goal file and re-based the reservation on *reserved because
 TEAMLEAD admits work*; the DEV file still carries the untransferred wording ([#16](https://github.com/nForma-AI/nForma-NEXT/issues/16)'s
