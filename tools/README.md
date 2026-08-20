@@ -582,6 +582,29 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
   on** — 50 project dirs, of which the fleet held **14.3%** and the largest single contributor
   was an unrelated project at **19.6%**. The docstring had corrected an earlier rate for being
   quoted without its denominator, and its replacement was mis-denominated the other way.
+- ⛔ **A bound the bounded party can raise is not a bound — including when it is a flag.**
+  `grant-check.py` states as non-optional that it reads `origin/main` after fetching, *never*
+  the working tree, because *"an agent could resurrect an expired or revoked grant by checking
+  out an older commit."* It then shipped `--ref`, honoured by the query, warned about only in
+  help text. Demonstrated with **no forgery and no local edit** — just naming the parent of the
+  commit that revoked a grant, on the remote's own history:
+
+  ```
+  --ref <tip>     NO LIVE GRANT  REVOKED demo-001   exit 1
+  --ref <tip~1>   LIVE  demo-001  DEMO may merge …  exit 0
+  ```
+
+  ⇒ The checkout route was closed and an identical one left open on the command line. **The
+  bounded party is the one typing the command.** A redemption query now takes no ref; `--list`
+  keeps it, because a listing authorizes nothing.
+- ⚠ **A required field that nothing enforces reads as a live budget.** `uses:` is mandatory in
+  every grant record and is counted by no one — redemption is not observable to the checker.
+  It is now printed with `NOT ENFORCED` beside it rather than bare.
+- ⛔ **A break test can fail for a harness reason and read as a defect.** The suite above ran the
+  tool's own self-test from a path derived from the tool's location; when the break copies the
+  tool elsewhere, that path has no `grants/` store, and the resulting failure looked like a
+  sixth defect. It was a portability bug in the test. **Check what a red actually proves before
+  counting it** — 6 became 5.
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
@@ -596,6 +619,7 @@ python3 tools/test_discriminates.py
 python3 tools/test_wake_yield.py
 python3 tools/test_daintree_control.py
 python3 tools/test_pretooluse_guard.py
+python3 tools/test_grant_check.py
 ```
 
 ⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only

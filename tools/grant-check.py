@@ -42,6 +42,20 @@ This tool is that test, mechanised. It never looks at the message.
     reads an agent-controlled source is worse than no answer, because it looks like
     an answer.
 
+    ⛔ AND THIS PROPERTY SHIPPED DEFEATED BY A FLAG. `--ref` accepted any value and
+    the query honoured it, so the checkout route was closed and an equivalent one
+    was left open on the command line, warned about only in help text. Demonstrated
+    end to end, no forgery and no local edit — just naming the parent of the commit
+    that revoked a grant, on the remote's own history:
+
+        --ref <tip>       NO LIVE GRANT   REVOKED demo-001    exit 1
+        --ref <tip~1>     LIVE  demo-001  DEMO may merge …    exit 0
+
+    The bounded party is the one typing the command. ⇒ A redemption query now takes
+    NO ref: passing --ref with --grantee/--capability is a Void. `--list` keeps it,
+    because inspecting history is a real diagnostic need and a listing authorizes
+    nothing.
+
 2.  IT EXITS 2 WHEN IT ESTABLISHES NOTHING, per tools/README.md.
 
     "No live grant" and "I could not reach the grant store" are different answers.
@@ -234,25 +248,42 @@ def query(grantee, capability, ref, repo, include_fixtures=False):
     return results
 
 
+QUERY_REF = "origin/main"
+
+
 def cmd_query(args):
+    # ⛔ Not args.ref. See the module docstring: a bound the bounded agent can raise
+    # is not a bound, and --ref was exactly that — an agent could name the parent of
+    # the revoking commit and redeem a revoked grant without touching anything.
+    if args.ref is not None:
+        raise Void("--ref is not accepted for a redemption query. The ref IS the bound: "
+                   "a caller who chooses it can name the parent of the commit that "
+                   "revoked or expired a grant and read it back as LIVE, on untouched "
+                   "remote history. Use --list --ref <x> to inspect; a listing "
+                   "authorizes nothing.")
     fetch()
     repo = args.scope or origin_repo()
     if args.capability not in CAPABILITIES:
         raise Void(f"capability {args.capability!r} is not in the closed vocabulary "
                    f"({', '.join(sorted(CAPABILITIES))})")
 
-    results = query(args.grantee, args.capability, args.ref, repo)
+    results = query(args.grantee, args.capability, QUERY_REF, repo)
     live = [r for r in results if r[0] == "LIVE"]
 
     if live:
         for _, rec in live:
+            # ⚠ `uses` is REQUIRED in a record and ENFORCED BY NOBODY. Redemption is
+            # not observable to this tool, so it cannot count them. Printing the
+            # number bare invites the reader to believe it is a live budget.
             print(f"LIVE  {rec['id']}  {rec['grantee']} may {rec['capability']} in "
-                  f"{rec['scope']} until {rec['expires-at']}  (uses: {rec['uses']})")
+                  f"{rec['scope']} until {rec['expires-at']}")
+            print(f"      uses: {rec['uses']}  ⚠ NOT ENFORCED — this tool cannot see "
+                  f"redemptions and does not count them; expiry is the only bound it applies")
             print(f"      granted-by {rec['granted-by']} · evidence: "
                   f"{rec.get('evidence', '(none recorded)')}")
         return 0
 
-    print(f"NO LIVE GRANT  {args.grantee} · {args.capability} · {repo}  (at {args.ref})")
+    print(f"NO LIVE GRANT  {args.grantee} · {args.capability} · {repo}  (at {QUERY_REF})")
     for v, rec in results:
         print(f"      {v}  {rec['id']}  expires-at {rec['expires-at']}"
               + (f"  revoked-at {rec['revoked-at']}" if rec['revoked-at'] else ""))
@@ -263,9 +294,10 @@ def cmd_query(args):
 
 def cmd_list(args):
     fetch()
+    ref = args.ref or QUERY_REF
     now = now_utc()
     rows = [(verdict(r, now), r) for r in
-            (read_record(args.ref, p) for p in list_records(args.ref, True))]
+            (read_record(ref, p) for p in list_records(ref, True))]
     if not rows:
         print("(no records)")
         return 1
@@ -301,12 +333,12 @@ def cmd_self_test(args):
             path = f"grants/fixtures/{fixture}.md"
             try:
                 check(f"fixture {fixture} -> {want}",
-                      verdict(read_record(args.ref, path), now), want)
+                      verdict(read_record(args.ref or QUERY_REF, path), now), want)
             except Void as e:
                 check(f"fixture {fixture} -> {want}", f"VOID({e})", want)
 
         # (d) fixtures must be invisible to a real query, or a fixture is a grant.
-        real = query("FIXTURE", "merge", args.ref, repo, include_fixtures=False)
+        real = query("FIXTURE", "merge", args.ref or QUERY_REF, repo, include_fixtures=False)
         check("fixtures excluded from real queries", len(real), 0)
 
         # (e) the VOID path must be reachable, not merely written.
@@ -349,9 +381,10 @@ def main():
     ap.add_argument("--grantee", help="role name, e.g. DEV3")
     ap.add_argument("--capability", help=f"one of: {', '.join(sorted(CAPABILITIES))}")
     ap.add_argument("--scope", help="owner/name; default is this repo's origin")
-    ap.add_argument("--ref", default="origin/main",
-                    help="⛔ default origin/main. Pointing this at a local ref defeats "
-                         "the property that makes the check meaningful.")
+    ap.add_argument("--ref", default=None,
+                    help="⛔ DIAGNOSTIC ONLY, valid with --list. A redemption query "
+                         "always reads origin/main and REFUSES a caller-supplied ref: "
+                         "choosing the ref is choosing the answer.")
     ap.add_argument("--list", action="store_true", help="show every record and its verdict")
     ap.add_argument("--self-test", action="store_true",
                     help="prove every verdict is reachable against the fixtures")
