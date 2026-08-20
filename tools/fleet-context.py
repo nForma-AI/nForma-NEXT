@@ -175,6 +175,26 @@ def scan(active_within_s, limit):
 
 def main():
     ap = argparse.ArgumentParser()
+    # ⛔ FLATLINE IS DERIVABLE, WHICH IS THE WHOLE POINT OF PUTTING IT HERE.
+    # An agent that has run dry is supposed to send a message saying so. That
+    # protocol reaches sessions started after it — and a prompt amendment does not
+    # reach a running agent (measured: the STATE-line requirement landed 2026-08-19
+    # 18:08 and every session predated it; 7 of 8 have never emitted one in up to
+    # 2,884 turns). So the protocol needs a backstop that requires NO adoption.
+    #
+    # Transcript mtime and the usage series already exist on every pane. A session
+    # consuming no tokens for N minutes is visible without anyone agreeing to
+    # anything. Measured 2026-08-20: 3 of 14 sessions flat over 30 minutes, one at
+    # 210 — the same session that had declared BLOCKED ~15 times in its own pane
+    # while nothing aggregated it.
+    #
+    # ⚠ AND IT MUST NOT SAY WHY. Flat is finished, blocked, crashed, or waiting, and
+    # this cannot tell them apart. A prior version of this class condemned a LIVE
+    # session by defining `dead = (not alive) or idle > N`. FLATLINE is a prompt to
+    # ASK, never a conclusion — the remedy is a message, not a verdict.
+    ap.add_argument("--flatline", type=float, default=0.0, metavar="MINUTES",
+                    help="flag sessions idle this long. 0 disables. A FLATLINE row is "
+                         "UNEXPLAINED, not dead: ask the pane, do not conclude.")
     ap.add_argument("--threshold", type=float, default=80.0,
                     help="percent at which a session is reported as due (default 80). "
                          "80 rather than 90 because the binding cost of a friction report "
@@ -291,6 +311,9 @@ def main():
             warn = f"  ⚠name-ambiguous({'/'.join(r['names'])})" if r["ambiguous"] else ""
             if r.get("shared_file"):
                 warn += "  ⛔SHARED FILE — two agents, depth UNATTRIBUTABLE"
+            elif args.flatline and r["idle_min"] >= args.flatline:
+                warn += (f"  ⛔FLATLINE {r['idle_min']}m — consuming nothing. Finished, "
+                         f"blocked, crashed or waiting; this cannot tell which. ASK IT.")
             elif r.get("shape") == "compaction-step":
                 warn += "  ↻compacted in-window — depth is the POST-compaction figure"
             print(f"{r['depth']:>9,} {r['pct']:>6.1f}%  {r['name']:<14} {r['session']}  "
@@ -309,6 +332,12 @@ def main():
                   + (f" {stepped} compacted mid-window (NOT shared: a step down, taken "
                      "once, is one agent — their depth stands)." if stepped else ""),
                   file=sys.stderr)
+        if args.flatline:
+            flat = [r for r in rows if r["idle_min"] >= args.flatline]
+            print(f"⛔ {len(flat)} of {len(rows)} session(s) flat for >={args.flatline:.0f}m. "
+                  f"That is a prompt to ASK, not a verdict — one such session had declared "
+                  f"BLOCKED ~15 times in its own pane while nothing aggregated it, and a "
+                  f"declaration in a pane requires someone to be looking.", file=sys.stderr)
         if no_reading:
             print(f"⚠ {no_reading} active session(s) produced no usable reading — their "
                   "depth is UNKNOWN, and UNKNOWN is not 0%", file=sys.stderr)
