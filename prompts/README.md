@@ -82,6 +82,35 @@ They are committed here as the **baseline**, for three reasons:
    to remember something a machine could check. Identifying which parts those are — and moving
    them into the substrate — is a large part of the work ahead.
 
+### ⛔ The baseline is a REF, not these files — and treating them as both has already cost it
+
+Reasons 2 and 3 ask these files to be a **captured specimen**. Reason 1 and every running pane ask
+them to be **live doctrine**. ⚠ **Nothing in a file says which reading applies**, so an edit that
+improves doctrine silently destroys the specimen (#16).
+
+**Measured — the specimen is already gone, and nothing reported it:**
+
+```
+                  first commit 2e4c9d2 (2026-08-19)   at origin/main
+ARCHITECT.md              459 lines             ->        660   (+44%)
+TEAMLEAD.md               724 lines             ->       1113   (+54%)
+DEV.md                    537 lines             ->        698   (+30%)
+```
+
+⇒ A reader opening `prompts/ARCHITECT.md` today to see *"what prose was asked to carry"* gets a file
+half again as long as the one that was asked to carry it. **The dual reading did not preserve the
+specimen. It made the loss invisible**, which is worse than deleting it, because a deletion is
+visible.
+
+> **The baseline is `2e4c9d2`. Doctrine is `origin/main`. A file is never both, and a claim about
+> the baseline that names no ref is a claim about whatever the file happens to say today.**
+
+★ **This costs nothing to adopt** — the specimen was never in the working file; it was always in the
+history, and this only writes down where. ⇒ It is this repo's own rule (*name the ref per claim*)
+applied to its own prompts, and it means an edit to a live prompt **no longer trades doctrine
+against provenance**. ⚠ An annotated tag would be the durable form; **the SHA above is durable
+whether or not one is ever cut.**
+
 | file | role | fundamental question |
 |---|---|---|
 | `TEAMLEAD.md` | orchestrator, sole USER interface | What should the team do next, and why? |
