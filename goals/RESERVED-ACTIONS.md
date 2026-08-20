@@ -389,7 +389,23 @@ so attracts less scrutiny than a deletion while doing the same work.
 depth-unchanged: the rule is correct about what its **positive** proves and was silent about its
 negative — and the negative is the half that sends someone to write.
 
-⇒ **Original test:** `grep -c 'RESERVED-ACTIONS' <goal file>` — non-zero means converted. **A converted file
+⇒ ⛔ **THREE states, not two — `grep -c` returning 0 is ambiguous, and the ambiguous branch is the
+dangerous one:**
+
+```
+points at RESERVED-ACTIONS.md        -> CONVERTED.          stop.
+has a Reserved SECTION, no pointer   -> UNCONVERTED.        convert it.
+has NO Reserved section at all       -> NOTHING TO CONVERT. ⛔ stop. Do NOT add one.
+```
+
+⚠ Measured: `goals/dx-friction-sweep.md` is `pointer=0, reserved-section=0`, and its own header reads
+*"This file grants nothing."* **A two-state reading calls it UNCONVERTED, and the remedy is to ADD a
+Reserved section to a file that reserves nothing** — the **addition** damage form, which reads as
+*fixing a gap* and so attracts **less** scrutiny than a deletion while doing identical work. *(DEV3.)*
+
+⇒ ★ **The absence of a marker establishes nothing.** That is `exit 2`'s shape one layer over —
+*established nothing* is not *negative* — arriving inside a rule written to make a state readable.
+**Test both fields, never one.** **A converted file
 announces its own state**, which is the property the instruction should have relied on from the
 start.
 
