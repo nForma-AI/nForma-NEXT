@@ -99,5 +99,55 @@ with tempfile.TemporaryDirectory() as tmp:
     h4, _, _ = tp.scan(["9 of 9, not 1 of 8 AND MORE TEXT"], root)
     check("a needle longer than any single record is simply absent", h4, [])
 
+
+# ── INSTRUMENT: a command carrying the string is not an assertion of it ───────
+# ⛔ Found by a PEER after this tool shipped: two of my three AUTHORED hits were a
+# search script with the needle as a literal argument. A confident false positive.
+def tool_use(name, inp, ts="2026-08-20T13:00:00Z"):
+    return {"type": "assistant", "timestamp": ts,
+            "message": {"content": [{"type": "tool_use", "name": name, "input": inp}]}}
+
+
+search = tool_use("Bash", {"command": f"python3 -c \"if '{NEEDLE}' in line: pass\""})
+check("a search command is INSTRUMENT, not AUTHORED",
+      tp.channel(search, [NEEDLE]), tp.INSTRUMENT)
+check("KNOWN-BAD control: a type-only classifier calls that same record AUTHORED",
+      search["type"] == "assistant", True)
+check("⚠ and the verb is NOT the discriminator — this one contains no grep/rg",
+      "grep" not in search["message"]["content"][0]["input"]["command"], True)
+
+check("SendMessage IS publishing: AUTHORED",
+      tp.channel(tool_use("SendMessage", {"to": "X", "message": NEEDLE}), [NEEDLE]), tp.AUTHORED)
+check("gh pr comment IS publishing: AUTHORED",
+      tp.channel(tool_use("Bash", {"command": f"gh pr comment 1 --body '{NEEDLE}'"}), [NEEDLE]),
+      tp.AUTHORED)
+check("prose in an assistant text block stays AUTHORED",
+      tp.channel(rec(tp.AUTHORED, NEEDLE), [NEEDLE]), tp.AUTHORED)
+
+# ── POST-DATES: you cannot be the origin of what you saw after me ─────────────
+early = [("2026-08-20T13:45:00Z", "aaaaaaaa", 1, tp.FETCHED)]
+late = [("2026-08-20T14:09:00Z", "bbbbbbbb", 2, tp.AUTHORED)]
+code, why = tp.verdict(early + late, "aaaaaaaa")
+check("a session that first saw it AFTER you is not the author", code, 1)
+# ⚠ asserted "POST-DATES" here first and it failed: the message reads "POST-DATE".
+# A substring assertion that is one character off reports a working feature broken —
+# the same matcher defect this repo has filed twice. Match the STEM.
+check("...and it is named as post-dating", ("bbbbbbbb" in why, "POST-DATE" in why), (True, True))
+check("KNOWN-BAD control: without the check it reads as attributed",
+      tp.verdict(early + late, None)[0], 0)
+
+earlier = [("2026-08-20T12:00:00Z", "bbbbbbbb", 2, tp.AUTHORED)]
+code, why = tp.verdict(early + earlier, "aaaaaaaa")
+check("a session that had it BEFORE you is attributed", (code, "bbbbbbbb" in why), (0, True))
+check("postdates with no self is None — NOT RUN, not an empty set",
+      tp.postdates(early + late, None), None)
+
+# ── the control cannot be omitted silently ───────────────────────────────────
+import subprocess
+tool = os.path.join(_here, "text-provenance.py")
+r = subprocess.run([sys.executable, tool, "x"], capture_output=True, text=True)
+check("omitting --self is an ERROR, not a quiet unchecked run", r.returncode != 0, True)
+check("...and the error names the escape hatch", "--no-self" in r.stderr, True)
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)
