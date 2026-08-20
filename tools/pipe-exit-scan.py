@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Find exit codes read through a pipe — the measurement that isn't one.
+# ⚠ r-string: this docstring contains `\$?`, which is an invalid escape in a
+# normal string and emits a SyntaxWarning on import — an error in a future Python.
+r"""Find exit codes read through a pipe — the measurement that isn't one.
 
 ⛔ THE INCIDENT, three times, in three roles, inside four hours:
 
@@ -68,7 +70,34 @@ Exit: 0 clean · 1 findings · 2 established nothing (no files scanned).
 import glob, json, os, re, subprocess, sys, time
 
 # `cmd | cmd ; echo $?`  — the status read belongs to the LAST pipeline element.
+#
+# ⛔ THIS PATTERN ALONE FIRES ON THE CORRECT IDIOM. `cmd | look; cmd >/dev/null; echo $?`
+# — run piped to see it, re-run redirected to measure it — is the RIGHT form, and the
+# regex spans both commands and reports it. Its sibling tools/pretooluse-guard.py already
+# had the refinement and this file did not: two matchers for one idiom in one directory,
+# disagreeing, with the naive one wired to the scanner people actually read.
+#
+# ⚠ A guard that fires on an agent doing the right thing is the worst kind: it teaches the
+# agent to stop doing it. So the regex is now a PREFILTER and the verdict comes from
+# reading segment order.
 AFTER_PIPE = re.compile(r"\|[^|&;]+[;&][^#\n]*\$\?")
+DOLLAR_Q = re.compile(r"\$\?")
+
+
+def pipeline_status_read(line):
+    """Does `$?` here read the status of a PIPELINE?
+
+    Split on separators and ask whether the segment IMMEDIATELY BEFORE the read is
+    piped. Ported from tools/pretooluse-guard.py, which had it first.
+    """
+    segs = re.split(r"(?<![|&])[;&](?![&|])|&&", line)
+    for i, seg in enumerate(segs):
+        if not DOLLAR_Q.search(seg):
+            continue
+        prev = next((s for s in reversed(segs[:i]) if s.strip()), "")
+        if "|" in prev:
+            return True
+    return False
 # `${PIPESTATUS[n]}` — bash-only. Empty in zsh, and empty is not zero.
 PIPESTATUS = re.compile(r"\$\{PIPESTATUS\[")
 FENCE = re.compile(r"^\s*```\s*(bash|sh|shell|console)\s*$", re.I)
@@ -93,7 +122,7 @@ def executable_part(cmd):
 TRANSCRIPTS = os.path.expanduser("~/.claude/projects")
 
 
-def scan_transcripts(limit_hours=None):
+def scan_transcripts(limit_hours=None, project=None):
     """The population the defect actually lives in: agent shell invocations.
 
     ⛔ Matches ONLY on `tool_use` records whose `name` is Bash, reading the
@@ -104,9 +133,27 @@ def scan_transcripts(limit_hours=None):
     Measured by DEV2 over this fleet's transcripts: 32 real invocations across 7 of
     9 sessions, against 18 prose mentions in the same corpus. A text scan would
     report 50 — a 56% over-report, every one of them a sentence about the trap.
+
+    ⛔ AND THAT NUMBER WAS TAKEN OVER A POPULATION THIS FUNCTION DOES NOT SCAN.
+    It globs ~/.claude/projects/* — EVERY repository this machine has worked on —
+    while the sentence above says "this fleet's transcripts". Re-measured 2026-08-20:
+
+        scope                          hits   sessions   project dirs
+        every project on the machine   1,317        82            27
+        this fleet's project dir         251        15             4
+
+    The largest single contributor is an unrelated project. ⇒ `--project SUBSTR`
+    scopes it, and every run now prints the scope and the population, because a rate
+    without its denominator is the defect two of this repository's own tools were
+    already caught quoting.
     """
     hits = []
+    per = {}
     for proj in glob.glob(os.path.join(TRANSCRIPTS, "*")):
+        base = os.path.basename(proj)
+        if project and project not in base:
+            continue
+        before = len(hits)
         for path in glob.glob(os.path.join(proj, "*.jsonl")):
             if limit_hours and time.time() - os.path.getmtime(path) > limit_hours * 3600:
                 continue
@@ -129,13 +176,15 @@ def scan_transcripts(limit_hours=None):
                     body = executable_part(cmd)
                     for src in body.splitlines():
                         code = strip_comment(src)
-                        if AFTER_PIPE.search(code):
+                        if AFTER_PIPE.search(code) and pipeline_status_read(code):
                             hits.append((os.path.basename(path)[:8], ln, src.strip(),
                                          "$? read after a pipeline, in an EXECUTED command"))
                         elif PIPESTATUS.search(code):
                             hits.append((os.path.basename(path)[:8], ln, src.strip(),
                                          "PIPESTATUS in an EXECUTED command"))
-    return hits
+        if len(hits) > before:
+            per[base] = len(hits) - before
+    return hits, per
 
 
 HEREDOC_HELP = "--transcripts    scan agent shell invocations instead of committed files"
@@ -174,7 +223,7 @@ def scan_shell(path):
         code = strip_comment(raw)
         if not code.strip():
             continue
-        if AFTER_PIPE.search(code):
+        if AFTER_PIPE.search(code) and pipeline_status_read(code):
             hits.append((n, raw.strip(), "$? read after a pipeline — that is the LAST element's status"))
         elif PIPESTATUS.search(code):
             hits.append((n, raw.strip(), "PIPESTATUS — bash-only; expands EMPTY in zsh, and empty is not zero"))
@@ -198,7 +247,7 @@ def scan_markdown(path):
             infence = False
             continue
         code = strip_comment(raw)
-        if AFTER_PIPE.search(code):
+        if AFTER_PIPE.search(code) and pipeline_status_read(code):
             hits.append((n, raw.strip(), "$? read after a pipeline, inside a ```bash block — docs teach this"))
         elif PIPESTATUS.search(code):
             hits.append((n, raw.strip(), "PIPESTATUS inside a ```bash block"))
@@ -258,11 +307,35 @@ def main():
     if "--self-test" in sys.argv or "--selftest" in sys.argv:
         return selftest()
     if "--transcripts" in sys.argv:
-        hits = scan_transcripts()
+        project = None
+        if "--project" in sys.argv:
+            i = sys.argv.index("--project")
+            if i + 1 >= len(sys.argv):
+                print("⛔ --project needs a value", file=sys.stderr)
+                return 2
+            project = sys.argv[i + 1]
+        hits, per = scan_transcripts(project=project)
+        if not per and project:
+            print(f"⛔ no project directory matched {project!r} — ESTABLISHED NOTHING, "
+                  f"not a clean scan.", file=sys.stderr)
+            return 2
         for sid, ln, src, why in hits:
             print(f"{sid}:{ln}\n    {src}\n    ⇒ {why}")
-        print(f"\n{len(hits)} occurrence(s) in EXECUTED commands across agent transcripts.",
+        # ⛔ Print the population. This function globs EVERY project on the machine,
+        # and the docstring above it called that "this fleet's transcripts" until
+        # 2026-08-20. A rate without its denominator is the defect this repository
+        # has now caught two of its own tools quoting.
+        top = max(per.items(), key=lambda kv: kv[1]) if per else ("-", 0)
+        print(f"\nscope                  {project or 'ALL PROJECTS on this machine'}",
               file=sys.stderr)
+        print(f"project dirs with hits {len(per)}", file=sys.stderr)
+        print(f"largest contributor    {top[1]}  {top[0][-44:]}", file=sys.stderr)
+        print(f"{len(hits)} occurrence(s) in EXECUTED commands across agent transcripts.",
+              file=sys.stderr)
+        if not project and len(per) > 1:
+            print(f"⚠ UNSCOPED — every repository this machine has worked on, not this "
+                  f"fleet. Pass --project SUBSTR to scope it, and quote the corpus and the "
+                  f"date beside any rate taken from it: this corpus grows.", file=sys.stderr)
         print("⚠ OCCURRENCES, not defects. Some will be in contexts where the exit code was "
               "not load-bearing; this establishes the rate, not that every one produced a "
               "wrong reading.", file=sys.stderr)
@@ -316,8 +389,14 @@ def main():
           "file. So `0 findings` means NO COMMITTED FILE CONTAINS IT. It is not evidence "
           "about the population the defect actually lives in, which this tool structurally "
           "cannot see. ⇒ ADDABLE — NEEDS A DIFFERENT INSTRUMENT: a PreToolUse hook is the "
-          "only surface where those commands exist; matcher committed at tools/pretooluse-guard.py, measured 1.5% fire fleet-wide (25 of 1720) and hand-classified 80% "
-          "precision, mechanism untested, not installed.", file=sys.stderr)
+          "only surface where those commands exist; matcher committed at "
+          "tools/pretooluse-guard.py. ⛔ ITS FIRE RATE CITATION IS RETRACTED: '1.5% "
+          "fleet-wide (25 of 1720)' was taken over every project on this machine, not "
+          "this fleet, and the 1,720 corpus does not reproduce (179,216 today). "
+          "Re-measured 2026-08-20: 0.70% scoped to this fleet, 0.59% unscoped. The 80% "
+          "precision was hand-classified 4-true/1-false on 204 commands from ONE "
+          "session and is a different, unrepaired denominator problem. Mechanism "
+          "untested, not installed.", file=sys.stderr)
     print("⚠ Matched on SHAPE after stripping comments and skipping non-fenced prose. "
           "Occurrences inside comments, and inline `PIPESTATUS` in prose, are MENTIONS and "
           "are deliberately not reported — this repo's own warning paragraph is one, and "

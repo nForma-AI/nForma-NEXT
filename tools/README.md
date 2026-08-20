@@ -605,6 +605,24 @@ them would be a remedy slot filled to look complete. **NOT swept:** tools owned 
   tool elsewhere, that path has no `grants/` store, and the resulting failure looked like a
   sixth defect. It was a portability bug in the test. **Check what a red actually proves before
   counting it** — 6 became 5.
+- ⛔ **Two matchers for one idiom, in one directory, disagreeing.** `pretooluse-guard.py` splits
+  a command on separators and asks whether the segment *immediately before* the `$?` is piped —
+  because `cmd | look; cmd >/dev/null; echo $?` is the **correct** idiom and firing on it teaches
+  an agent to stop doing the right thing. `pipe-exit-scan.py` had only the regex, and it is the
+  one wired to the scanner people read. Porting the refinement dropped the fleet-scoped count
+  from **251 to 159 — 37% of its findings were the correct form.**
+- ⛔ **A citation outlives the number it cites.** `pipe-exit-scan.py` quoted its sibling's
+  *"1.5% fire fleet-wide (25 of 1720)"* — a figure the sibling has since retracted as
+  mis-denominated over every project on the machine, with a corpus that no longer reproduces
+  (179,216 today). The citation is now marked retracted **in the tool that carries it**, not
+  only in the tool that issued it.
+- ⚠ **A docstring containing `\$?` needs an r-string.** It emitted a `SyntaxWarning` on every
+  import and would be an error in a future Python.
+- ⛔ **A break that crashes reads exactly like a clean pass — three times tonight.** The suite
+  above called a function the previous version does not have, so it aborted before its
+  assertions and printed nothing. It now resolves that function with `getattr` and a fallback to
+  the OLD behaviour, so the break **fails on the assertion** instead of dying. Check that a break
+  produced output before believing it.
 - **Zero is a value; unknown is not.** An assistant record can carry a usage block that is
   present and entirely zero. Summed blindly, one such record rendered a session as `0 tokens,
   0.0%` — the safest-looking row in the table, for a session whose depth was in fact unknown.
@@ -620,6 +638,7 @@ python3 tools/test_wake_yield.py
 python3 tools/test_daintree_control.py
 python3 tools/test_pretooluse_guard.py
 python3 tools/test_grant_check.py
+python3 tools/test_pipe_exit_scan.py
 ```
 
 ⚠ **Nothing runs this automatically** — this repo has no CI. The suite is a control that only
