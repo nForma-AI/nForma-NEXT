@@ -34,6 +34,9 @@ WAKE = re.compile(r"auto-wake|machine wake|Resume your goal's autonomous loop", 
 ROLE_RE = re.compile(r"You are (?:taking over as )?([A-Z][A-Z0-9]*)\b")
 # commands whose single invocation is KNOWN to cost more than one call
 MULTI = ("--limit", "--paginate", "run view", "--log", "graphql", "statusCheckRollup")
+# a fetch of ONE NAMED OBJECT — the only calls whose repetition is countable
+OBJ = re.compile(r"(?:^|[;|&]\s*|\$\(\s*|\n\s*|`|&&\s*)gh\s+(pr|issue|run)\s+"
+                 r"(?:view|checks|diff)\s+(\d+)")
 
 
 def bootstrap_role(path, window=40):
@@ -112,6 +115,7 @@ def scan(root, limit):
     paths = sorted(glob.glob(os.path.expanduser(root)),
                    key=lambda p: -os.path.getmtime(p))[:limit]
     per, subs, multi = collections.Counter(), collections.Counter(), collections.Counter()
+    objs = collections.Counter()
     unreadable = 0
     for p in paths:
         who = bootstrap_role(p) or os.path.basename(p)[:8]
@@ -139,9 +143,11 @@ def scan(root, limit):
                             subs[("gh " + a + " " + (bb or "")).strip()] += 1
                         if any(m in cmd for m in MULTI):
                             multi[who] += len(hits)
+                        for kind, num in OBJ.findall(cmd):
+                            objs[(kind, num)] += 1
         except OSError:
             unreadable += 1
-    return per, subs, multi, len(paths), unreadable
+    return per, subs, multi, objs, len(paths), unreadable
 
 
 def main():
@@ -173,7 +179,7 @@ def main():
                   " of them —\n     a read expressible as a GraphQL query spends from a"
                   " different pool.")
 
-    per, subs, multi, files, unreadable = scan(a.root, a.limit)
+    per, subs, multi, objs, files, unreadable = scan(a.root, a.limit)
     total = sum(per.values())
     print(f"\n── INVOCATIONS ── {files} transcript(s)"
           + (f", {unreadable} unreadable" if unreadable else ""))
@@ -189,6 +195,20 @@ def main():
     print("\n  most-called subcommands:")
     for k, n in subs.most_common(8):
         print(f"  {n:6d}  {k}")
+
+    total_obj, uniq = sum(objs.values()), len(objs)
+    if uniq:
+        print(f"\n── RE-FETCH ── {total_obj} fetches of {uniq} distinct object(s) "
+              f"— {total_obj / uniq:.1f}× each")
+        for (kind, num), c in objs.most_common(5):
+            print(f"  {c:4d}×  gh {kind} view {num}")
+        # ⚠ NOT "redundant". Polling a PR while its checks run REQUIRES re-fetching,
+        # and this cannot tell a poll from a re-read. What it establishes is that the
+        # REST spend is concentrated on a small set of objects — which is where a
+        # shared result or a backoff would pay, and nothing else here says that.
+        print("  ⚠ a repeat is not necessarily waste — polling a running PR must "
+              "re-fetch.\n     This says WHERE the spend is concentrated, not that it "
+              "was avoidable.")
 
     print("\n⚠⚠ ONE INVOCATION IS NOT ONE CALL. Pagination, `run view --log` and graphql")
     print("   each cost more than 1, so the true spend is higher than the count above and")

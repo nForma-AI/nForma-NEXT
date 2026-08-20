@@ -91,7 +91,7 @@ ab.subprocess.run = real
 
 # ── an empty corpus establishes nothing ──────────────────────────────────────
 with tempfile.TemporaryDirectory() as t:
-    per, subs, multi, files, unread = ab.scan(os.path.join(t, "*.jsonl"), 9)
+    per, subs, multi, objs, files, unread = ab.scan(os.path.join(t, "*.jsonl"), 9)
     check("no transcripts -> zero invocations and zero files",
           (sum(per.values()), files), (0, 0))
     d = os.path.join(t, "p"); os.makedirs(d)
@@ -99,8 +99,18 @@ with tempfile.TemporaryDirectory() as t:
         f.write(json.dumps({"type": "assistant", "message": {"content": [
             {"type": "tool_use", "name": "Bash",
              "input": {"command": "gh pr view 9 && echo 'gh pr view mentioned'"}}]}}) + "\n")
-    per, subs, multi, files, unread = ab.scan(os.path.join(d, "*.jsonl"), 9)
+    per, subs, multi, objs, files, unread = ab.scan(os.path.join(d, "*.jsonl"), 9)
     check("one real call plus one mention counts ONE", sum(per.values()), 1)
+    # ⚠ the object fetch is counted once, and the MENTION of the same fetch is not
+    check("the named object is counted once, the mention is not", dict(objs), {("pr", "9"): 1})
+
+# ── re-fetch concentration ───────────────────────────────────────────────────
+check("OBJ matches a named fetch", ab.OBJ.findall("gh pr view 1213"), [("pr", "1213")])
+check("OBJ matches after &&", ab.OBJ.findall("cd /x && gh issue view 7"), [("issue", "7")])
+check("OBJ does NOT match a list (no object named)", ab.OBJ.findall("gh pr list --limit 5"), [])
+check("OBJ does NOT match a mention",
+      ab.OBJ.findall('echo "run gh pr view 1213 again"'), [])
+check("...and the naive substring WOULD have", "gh pr view 1213" in 'echo "run gh pr view 1213 again"', True)
 
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)
