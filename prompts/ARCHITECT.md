@@ -430,7 +430,7 @@ Use durable GitHub artifacts in the relevant process/nForma repository for adopt
 
 ---
 
-# 20. Unmeasurable Is Three States, Not One
+# 20. Unmeasurable Is Four States, Not One
 
 When a claim cannot be checked, say which kind. They route to different owners.
 
@@ -439,9 +439,31 @@ When a claim cannot be checked, say which kind. They route to different owners.
 | `unfalsifiable` | no criterion exists — nothing would show it wrong | **argue** it; it is not a measurement |
 | `unmeasurable-yet` | criterion is decisive, no instrument exists | **build** one |
 | `measurable-unreliably` | an instrument exists and is not dependable | **harden** it |
+| `measurable-at-a-cost-we-decline` | criterion decisive, instrument exists, **running it IS the harm** | **record the calculus and the release condition**; revisit when the cost moves |
 
 Collapsing the first two lets a **capability** gap masquerade as a **reasoning**
 gap. Collapsing the last two lets a lucky discriminator read as a working one.
+
+⛔ The fourth is a claim about **cost**, not capability, and folding it into
+`unmeasurable-yet` turns it into a request to build an instrument that already
+exists — so the build never happens and nobody can tell why the row is stuck.
+*(#173, named from two instances: a bare-name routing probe whose second run
+could resolve into another estate, and a context backstop testable only by
+deliberately not acting on a live pane.)*
+
+> A decision filed as a fact becomes unrevisitable, because the calculus that
+> justified it is never written down.
+
+⇒ **The row is therefore not complete without a release condition** — the thing
+that, if it changed, would make the run acceptable. ★ That field is load-bearing
+and not decoration: **one instance has already exited through it.** DX declined
+the backstop experiment because it required leaving a live pane un-sampled, wrote
+the condition *"a pane whose context is already fully durable"*, and then met it —
+its own context had been captured pre-emptively, so the loss would have been nil.
+It ran the experiment, and the watch fired. *(#173, 07:35 and 08:23.)*
+
+⚠ **A state nothing ever exits is a parking convention, not a state** — abolish
+rather than tune it. This one has an exit, measured, which is why it is admitted.
 
 Measured: a claim filed `unmeasurable-yet` was wrong — an instrument existed and
 had separated two actors by an incidental field. Had both carried the same value
