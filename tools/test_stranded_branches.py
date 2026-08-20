@@ -103,11 +103,25 @@ def main():
         print(f"  FAIL  merged_refs has the old signature: {exc}")
         f += 1
 
-    print("the tool's own self-test still proves its three states reachable:")
+    print("the tool's own self-test still proves its four states reachable:")
     rc, out = run("--self-test")
     f += not check("exit", rc, 0)
     f += not check("known-positive stranded", "known-positive" in out, True)
     f += not check("unreadable is not zero", "unreadable is not zero" in out, True)
+    f += not check("content-state controlled", "content-state" in out, True)
+
+    print("the fourth state decides on counts alone, and refuses the vacuous case:")
+    # ⛔ The row that matters. all(...) over an empty path set is TRUE, so a tool that
+    # forgot this guard would report work as landed having compared nothing at all.
+    f += not check("all paths upstream -> LANDED", sb.content_state(2, 3, 3), "LANDED")
+    f += not check("one shared file vetoes", sb.content_state(2, 2, 3), "UNRESOLVED")
+    f += not check("zero paths is NOT landed", sb.content_state(2, 0, 0), "UNRESOLVED")
+    f += not check("nothing unmatched -> N/A", sb.content_state(0, 0, 0), "N/A")
+
+    print("absent-at-both-ends is EQUAL, so a landed deletion is not a strand:")
+    # A path deleted on the branch and deleted upstream reads None == None. Treating
+    # None as "unreadable" would strand every merged deletion permanently.
+    f += not check("absent path is None", sb.blob_at("HEAD", "no/such/file/here.md"), None)
 
     print("a truncated run says so, loudly, before any count:")
     rc, out = run("--limit", "5")
