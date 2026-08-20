@@ -190,12 +190,40 @@ $ gh pr checks 22
   Socket Security: Pull Request Alerts pass   3s
 ```
 
-⇒ There are **no Actions workflows and no runner pool on this repository.** Checks arrive from
-**GitHub Apps**, which draw no lease on a metered pool and consume no shared wallet. The
-justification the rule rested on is absent here, and TEAMLEAD's dispatch of 2026-08-19
-**explicitly granted** branch creation, branch push, and `gh pr create` under this goal —
-direct evidence that the reservation is not in force on this estate.
-[measured: nForma-NEXT 2026-08-19]
+⇒ ~~There are **no Actions workflows and no runner pool on this repository.** Checks arrive from
+**GitHub Apps**, which draw no lease on a metered pool and consume no shared wallet.~~
+**⛔ INVERTED 2026-08-20 — see below.** The remainder holds: TEAMLEAD's dispatch of 2026-08-19
+**explicitly granted** branch creation, branch push, and `gh pr create` under this goal.
+[measured: nForma-NEXT 2026-08-19 — ⛔ the runner-pool half is FALSE as of 2026-08-20 10:45Z]
+
+### ⛔ THE PREMISE INVERTED, AND THE AUTHOR SPENT THE RESOURCE PROVING IT
+
+**This repository has CI now.** Measured 2026-08-20:
+
+```
+.github/workflows/tools.yml    landed 5f522a1 at 10:45:29Z, on: pull_request
+gh run list                    5+ runs, completed/success
+run 32379599832                pull_request  dev5/monitor-heartbeat  14:21:00 -> 14:21:20
+                               ^ MY PR #251. Opening it started a runner.
+```
+
+⇒ **The measurement above was correct when taken and is false now.** `gh pr create` draws a
+lease again, which is exactly what the imported clause said before I removed it — and the
+reason I removed it was **this measurement, which I took and nothing re-took.**
+
+★ **A decayed count yields a stale figure; a decayed RESERVATION yields an unmetered action.**
+(DEV4's form, #42.) The two are not the same severity: a wrong number is read and doubted, a
+withdrawn reservation is not read at all — there is nothing left in the file to doubt.
+
+⛔ **And the direction is the expensive one.** This file already records that over-restriction
+produces no error signal. **Under-restriction produces no signal either, and it spends
+something.** Between 10:45Z and 14:21Z every pane opening a PR drew a runner under a grant whose
+stated justification had ceased to exist three and a half hours earlier.
+
+⚠ **Not reinstating the reservation here.** `goals/RESERVED-ACTIONS.md` is the single source and
+a copy in this file would be the fourth; DEV4 has filed it on #42 and PR #249 is the fix. This
+records only that **the calibration this file supplied to that decision is dead**, so nobody
+re-derives the removal from it. `[NOT-YET-MEASURED — what a run costs on this estate]`
 
 ★ **Had this clause been adopted as written, it would have forbidden the very PR that
 re-scopes it.** The agent would have declined an authorised action and reported BLOCKED on an
