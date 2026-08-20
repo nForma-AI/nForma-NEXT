@@ -148,6 +148,73 @@ def role_of(path):
         return None
     return None
 
+def last_read_ts(path, blob_paths):
+    """The NEWEST timestamp at which this session read any of these files, or None.
+
+    ★ Same matcher as `has_read` — the tool CALL, never prose — but it returns WHEN
+    rather than WHETHER. That distinction is the whole of #183: one stored watermark was
+    answering two questions with opposite optima.
+    """
+    import datetime
+    newest = None
+    try:
+        fh = open(path, errors="replace")
+    except OSError:
+        return None
+    with fh:
+        for line in fh:
+            if not any(bp in line for bp in blob_paths):
+                continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                continue
+            ts = rec.get("timestamp")
+            if not ts:
+                continue
+            msg = rec.get("message") or {}
+            content = msg.get("content")
+            if not isinstance(content, list):
+                continue
+            for b in content:
+                if not isinstance(b, dict) or b.get("type") != "tool_use":
+                    continue
+                inp = b.get("input") or {}
+                probe = f"{inp.get('command','')} {inp.get('file_path','')} {inp.get('pattern','')}"
+                if any(bp in probe for bp in blob_paths):
+                    try:
+                        when = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
+                    except Exception:
+                        continue
+                    if newest is None or when > newest:
+                        newest = when
+    return newest
+
+
+def derived_base(path, head, when, root):
+    """The commit this role has actually SEEN for `path` — derived, never stored.
+
+    ⛔ #183's ruling, from DEV1: a stored baseline is what decays. `changed_between` and
+    `changed_at_ts` WANT an old base — a stale one only widens the search and the max still
+    lands on the true last change, so BEHIND stays correct. `delta_for` wants a NEW base and
+    a stale one makes the delta cumulative, which is #151's targeting decaying back into the
+    defect it replaced.
+
+    ⇒ One value, two propositions, opposite optima. So the delta baseline is DERIVED per
+    role from that role's newest recorded read. A derived value cannot go stale.
+
+    Falls back to the path's previous commit, then to None (caller uses the watermark) —
+    correct for a role that has never read the file, because it needs everything.
+    """
+    if when is None:
+        return None
+    iso = __import__("datetime").datetime.utcfromtimestamp(when).strftime("%Y-%m-%dT%H:%M:%S")
+    rc, out, _ = git("log", "-1", f"--before={iso}", "--format=%H", head, "--", path, cwd=root)
+    if rc == 0 and out.strip():
+        return out.strip()
+    return None
+
+
 def has_read(path, blob_paths, changed_at):
     """Has this session READ any of these files SINCE the change landed?
 
@@ -280,7 +347,16 @@ def main():
     for r, paths in behind:
         print(f"  BEHIND     {r:<10} {', '.join(paths)}")
         for p in paths:
-            d = deltas.get(p)
+            # ⇒ #183: DERIVE this role's delta baseline from its newest recorded read.
+            # The watermark still drives detection above; it is allowed to be old there.
+            rbase = None
+            for sess in seen.get(r, []):
+                rbase = derived_base(p, head, last_read_ts(sess, [p]), root) or rbase
+            d = delta_for(rbase, head, p, root) if rbase else deltas.get(p)
+            if rbase and deltas.get(p) and d and d[:2] != deltas[p][:2]:
+                cum = deltas[p]
+                print(f"             ⚠ cumulative since the watermark: +{cum[0]}/-{cum[1]}"
+                      f" — the targeted delta below is what YOU have not seen")
             if d is None:
                 print(f"             ⚠ delta for {p} ESTABLISHED NOTHING — size unknown, not small")
                 continue
@@ -366,6 +442,54 @@ def synthetic_case(check):
         shutil.rmtree(base_dir, ignore_errors=True)
 
 
+def derived_delta_case(check):
+    """⛔ THE CONTROL FOR #183's FIX, and it must be synthetic because live data cannot show it.
+
+    A role that is BEHIND has by definition not read since the change, so its derived base
+    sits at or before the change point and the targeted delta EQUALS the cumulative one.
+    ⇒ The two diverge only where a role read the file AFTER the watermark and BEFORE the
+    latest change — a real case, and absent from this estate today.
+
+    ★ So a live run cannot distinguish the fix from a no-op. Measured: identical output
+    before and after, on every BEHIND row. This constructs the divergence instead.
+    """
+    import tempfile, shutil
+    base_dir = tempfile.mkdtemp(prefix="dw-derive-")
+    root = os.path.join(base_dir, REPO_MARK)
+    doc = "goals/RESERVED-ACTIONS.md"
+    try:
+        os.makedirs(os.path.join(root, "goals"))
+        def g(*a):
+            return subprocess.run(["git", *a], cwd=root, capture_output=True, text=True)
+        g("init", "-q"); g("config", "user.email", "s@l"); g("config", "user.name", "s")
+        t = os.path.join(root, doc)
+        open(t, "w").write("one\n"); g("add", "-A"); g("commit", "-q", "-m", "c1")
+        wm = g("rev-parse", "HEAD").stdout.strip()
+        open(t, "w").write("one\ntwo\n"); g("add", "-A"); g("commit", "-q", "-m", "c2")
+        mid = g("rev-parse", "HEAD").stdout.strip()
+        open(t, "w").write("one\ntwo\nthree\n"); g("add", "-A"); g("commit", "-q", "-m", "c3")
+        head = g("rev-parse", "HEAD").stdout.strip()
+
+        cum = delta_for(wm, head, doc, root)      # watermark base: spans c2 AND c3
+        tgt = delta_for(mid, head, doc, root)     # a role that read after c2: only c3
+        check("derived delta is NARROWER than cumulative", (cum[0] > tgt[0]), True)
+        check("cumulative spans both commits", cum[0], 2)
+        check("targeted spans only the unread one", tgt[0], 1)
+        # ⚠ [NOT-YET-MEASURED] THIS PROVES THE MECHANISM, NOT THE WIRING.
+        # It calls delta_for with two hand-chosen bases and shows a narrower base yields a
+        # narrower delta. It does NOT establish that the REPORT path actually reaches
+        # derived_base — that needs a fixture where a role is BEHIND *and* has a mid-history
+        # read, and this does not build one. ⇒ Sabotaging derived_base would leave these
+        # three controls green, which is the neighbouring-question defect this fleet keeps
+        # filing. Recorded rather than implied.
+        return cum[0] > tgt[0] and cum[0] == 2 and tgt[0] == 1
+    except Exception as exc:
+        print(f"  ----  derived-delta fixture could not be built ({exc}) — NOT exercised")
+        return False
+    finally:
+        shutil.rmtree(base_dir, ignore_errors=True)
+
+
 def self_test():
     """Controls. ⛔ Every one must be reachable in the REPAIRED state — a control that
     only fires while something is broken goes silent the moment it is fixed."""
@@ -405,6 +529,7 @@ def self_test():
     # changed. Repairing the real fleet cannot silence it, and neither can breaking it.
     synth = synthetic_case(check)
     ok = ok and synth
+    ok = derived_delta_case(check) and ok
     # VOID paths
     check("unresolvable baseline exits 2", run("--since", "definitely-not-a-ref"), 2)
     check("unresolvable head exits 2", run("--since", head, "--head", "nope/nope"), 2)
