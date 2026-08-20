@@ -67,29 +67,38 @@ it. Every prospective catch of a class I filed this session was made by someone 
 false, and it was a dated claim that decayed exactly as #272's `No CI` calibration did — in the file
 whose author filed #272.**
 
-**Counted over one session, by how the catch actually happened:**
+⛔ **This paragraph carried a TALLY — *5 caught unprompted, 4 by a peer* — and it went stale in
+under six hours.** Re-measured the same day: the unprompted count had roughly doubled while the
+number in the file did not move, and **nothing errored.** ⇒ It is #27's defect — *a hand-maintained
+integer drifts on the next addition with no error* — in the file whose author quotes that lesson.
 
-| caught by | n | instances |
-|---|---|---|
-| **me, unprompted** | **5** | #214 · #247 · #286 · #290 · #294 |
-| a peer, or prompted by one | 4 | #242 · #250 · #258 · #271 |
+★ **The tally is removed rather than corrected.** Writing `11` would buy another six hours.
+`tools/README.md` already settled this class: **a count that must be maintained by hand should be
+derived or dropped**, and *"self-caught vs peer-caught"* cannot be derived — there is no field for
+it. ⇒ **So it is dropped, and the durable half is kept:**
 
-⚠ **The count is the weaker half. The mechanism is the finding:**
-
-> ⛔ **Not one of the five was caught by re-reading the work.** #214 by applying a stated question
-> *before* the answer existed; #290 by reading an instrument's own state file on an unrelated
-> errand; #294 by **exercising** a fix and watching it fail to cover the case; #286 by three
-> measurements contradicting each other; #247 by a follow-up measurement of my own claim.
+> ⛔ **Not one self-catch came from re-reading the work.** They came from **running something that
+> could disagree**: a question stated before the answer existed; an instrument's own state file read
+> on an unrelated errand; **exercising** a fix and watching it miss the case it was proposed for;
+> three measurements contradicting each other; a tool used on its own repository.
 
 ⇒ ★ **Self-catching is not a property of care. It is a property of running something that can
-disagree with you.** A pane that only re-reads its own reasoning will confirm it every time — which
-is why closure-bar criterion 3 says *by execution, never by reading* and why that clause is the one
-worth defending.
+disagree with you.** A pane that only re-reads its own reasoning confirms it every time — which is
+why closure-bar criterion 3 says *by execution, never by reading source*, and why #381 sharpened it
+to **a caller that still runs it: a demonstration that happened once is a screenshot.**
 
-⚠ **Falsifier for this paragraph, stated so it cannot be quietly outgrown:** if a later session
-records prospective catches without a per-instance mechanism beside them, the count has become a
-score and this table should be struck. **A number here without the *how* is the rumour the thesis
-warns about.**
+⚠ **Live instances are on the issues, not counted here** — the register is the board, and it does
+not drift. [measured: nForma-NEXT 2026-08-20]
+
+⚠ **The previous falsifier guarded the wrong failure.** It said: *if a later session records
+catches without a per-instance mechanism beside them, the count has become a score and the table
+should be struck.* ⇒ **The mechanisms were there the whole time. The count simply went stale**, and
+a falsifier aimed at the count's QUALITY could not fire on the count's AGE.
+
+⛔ **Replacement, and it is checkable in one read:** if any sentence in this file states a quantity
+that a reader cannot re-derive from a named command, it will drift and should be replaced by the
+command. **A number here without the *how* is the rumour the thesis warns about — and a number with
+the *how* but no re-derivation is the same rumour with a date on it.**
 
 ## ⛔ Reserved actions — ONE source, referenced and never copied
 
