@@ -91,6 +91,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `ci-log-clean.py` | is this CI log's text OUTPUT, or the echoed script? | 0 cleaned · **2 established nothing** |
 | `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
 | `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
+| `use-not-mention.py` | does this file CALL `<pattern>`, or merely TALK ABOUT calling it? | 0 no call · 1 at least one CALL · **2 established nothing** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
 | `merge-watch.sh` | did a merge leave work behind, or drift the worktrees? | emits FINDING · VOID · UNDOCUMENTED; silence means ran-and-found-nothing |
 
@@ -328,6 +329,15 @@ re-derived from CI logs overnight had been on this machine for a month, and the 
 pointed at it existed while nobody opened its `docs/`. ⚠ And searching is not the remedy — 304
 repositories under `~/code` and 14,517 markdown files mention *exec*, so a keyword sweep returns a
 haystack. `reference-implementations.md` is therefore CURATED, and this watches the curation.
+
+**`use-not-mention.py`** — ⛔ a grep for a command finds every sentence *discussing* that command.
+Measured in a sweep its author wrote minutes after working on this exact class: two false
+positives, one a `print()` warning about the very defect being scanned for and one a fixture
+string inside a test of a different matcher. ★ **The sub-class that makes it worse over time:**
+correct handling *generates* mentions — a tool that documents the defect necessarily contains the
+pattern — so a *"does this code handle X"* scan gets **noisier as the estate improves**, with the
+noise concentrated in the files that are already right. ⇒ Resolves the **sink** rather than
+matching the text. (#36)
 
 **`pretooluse-guard.py`** — matches, over a single command string, the idioms that produce a
 confident WRONG measurement: `$?` read after a pipeline, `${PIPESTATUS[n]}` under zsh, and a
