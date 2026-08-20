@@ -27,6 +27,7 @@ disagree, the README wins and this file is the defect.
 
 | path | contents | its own doc |
 |---|---|---|
+| `./onboard.md` | **the entry point for a coding agent installing this fleet elsewhere** — hand it the one-line bootstrap and it reads this | — |
 | `docs/` | the thesis the rest is derived from | — |
 | `prompts/` | five role prompts (`TEAMLEAD` `ARCHITECT` `DEVOPS` `DX` `DEV`) | `prompts/README.md` |
 | `goals/` | per-role standing goals + the standard they must meet | `goals/README.md` |
@@ -61,6 +62,19 @@ Each is explained in full at the pointer; none of it is restated here.
   posts, so name yourself in the body of anything you file. *(issue #4.)*
 
 ⇒ Re-measure before relying on either. A number without a date is a rumour.
+
+---
+
+## Onboarding someone else's repository
+
+One line, handed to a coding agent — it is a **pointer, not a copy**, so it stays valid while the
+instructions change under it:
+
+> Clone https://github.com/nForma-AI/nForma-NEXT, then read `./onboard.md` at the root — it contains
+> your full instructions for onboarding me through this tool.
+
+⚠ `./onboard.md` installs **four things, not one**: the recipe, the prompts, `scripts/validate-recipe.py`,
+and the goals. ⛔ Without the validator its validation step establishes nothing and reports no error.
 
 ---
 
