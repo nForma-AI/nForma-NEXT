@@ -75,6 +75,33 @@ From `https://github.com/nForma-AI/nForma-NEXT`:
 **Adapt the recipe to this repo:** role names, `NFORMA_ROLE_PROMPT` paths, pane count. **Keep the
 shape.**
 
+### ⛔ Re-scope every goal file, or `check-goal-conformance.py` will correctly refuse them
+
+Each file in `goals/` carries a declaration naming the repository it was written **for**:
+
+```
+**Repository:** /path/to/nForma-NEXT → github.com/nForma-AI/nForma-NEXT
+```
+
+⇒ Copied unchanged into another repository, that line makes the file **vendored**, and the checker
+reports `⛔ scope: FOREIGN — declares nforma-ai/nforma-next, this repo is <yours>`.
+
+★ **That FAIL is the discriminator working, not breaking.** It exists because three of four goal
+files here were once scoped to a different product and a presence test passed anyway — a file can
+be *specimen* and *doctrine* at once with nothing to tell them apart. **Do not silence it.**
+
+**Fix each file you keep** — rewrite the `**Repository:**` line to this repo — **and delete the
+ones you do not.** A goal file you neither re-scoped nor deleted is a standing objective pointing
+at someone else's estate.
+
+```bash
+grep -n '^\*\*Repository:\*\*' goals/*.md      # every line here must name THIS repo
+```
+
+⚠ The same applies to `prompts/*.md` if they name a repository in their text, and to
+`tools/README.md` if you bring instruments across — a tool index inherited from another estate
+will report **your** tools as unindexed.
+
 ### ⛔ The one mistake that costs the most
 
 ```json
