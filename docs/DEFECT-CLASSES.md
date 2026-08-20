@@ -368,24 +368,6 @@ whose failure is legible without the question being asked.**
 
 ---
 
-## Applying this
-
-**Authoring a check:**
-1. Name the two states the decision depends on telling apart.
-2. Name the value each produces **at the boundary the consumer reads**. If they are the same value,
-   it is Class A — introduce a third.
-3. Name an input that produces the third value (#26's known-negative). If none exists, the third
-   value is decoration.
-4. If the states do not genuinely differ, say so explicitly rather than manufacturing one (#73).
-5. **Report the result as a partition that sums to a stated population, and name the denominator's
-   source** (#214). ⇒ Steps 1–4 need you to suspect a problem. This one does not: a sum that does
-   not close, or a count with no denominator, is wrong on the face of the output.
-
-**Authoring a rule:** name the noun it ranges over, then the nearest neighbouring noun, and ask
-whether it has the same defect (#80). ⚠ **Untested** — see below.
-
----
-
 ## ★ CLASS C — a correct reading of the WRONG PROPOSITION
 
 Class A is two states colliding at a boundary. Class B is a rule whose noun is one word too narrow.
@@ -439,12 +421,42 @@ document already predicts: *state the remedy at the scope of the boundary, not t
 
 ---
 
+## Applying this
+
+**Authoring a check:**
+1. Name the two states the decision depends on telling apart.
+2. Name the value each produces **at the boundary the consumer reads**. If they are the same value,
+   it is Class A — introduce a third.
+3. Name an input that produces the third value (#26's known-negative). If none exists, the third
+   value is decoration.
+4. If the states do not genuinely differ, say so explicitly rather than manufacturing one (#73).
+5. **Report the result as a partition that sums to a stated population, and name the denominator's
+   source** (#214). ⇒ Steps 1–4 need you to suspect a problem. This one does not: a sum that does
+   not close, or a count with no denominator, is wrong on the face of the output.
+6. ⛔ **Before reporting the result, pin the reading to the claim** — population, predicate, channel,
+   and one case that would have produced the other answer (Class C). **Steps 1–5 can all pass on a
+   reading that answers a question nobody asked.**
+
+**Authoring a rule:** name the noun it ranges over, then the nearest neighbouring noun, and ask
+whether it has the same defect (#80). ⚠ **Untested** — see below.
+
+---
+
 ## ⛔ What is NOT established
 
 - **The frame is not universal, and that is what makes it a claim.** #80 is outside Class A by
   construction. #19 (nine agents, one working tree) is interference, not a collapse. #29 is a
   record, not a class. **A taxonomy that accommodates everything explains nothing** — if a future
-  finding cannot be placed outside these two, that is evidence the frame has stopped discriminating.
+  finding cannot be placed outside **these three**, that is evidence the frame has stopped
+  discriminating.
+- ⛔ **This sentence read "these two" for the seven hours after Class C was added, and the author of
+  Class C is the author of the sentence.** ⇒ **That is #39 — a producer gains a state and its
+  consumer keeps asserting the old space — committed inside the document that names the class**, by
+  the pane that had fixed the same defect in `doctrine-version.py` four hours earlier. ⚠ **A
+  falsifier that enumerates is a consumer of the thing it falsifies.** Adding a class is not done
+  until this line moves. ⚠ **And a widening frame is the danger the bullet above names:** three
+  classes accommodate more than two, so the *bar* for a finding to sit outside is now lower, not
+  higher.
 - ⚠ **#80's authoring-time question has now caught exactly one thing, PROSPECTIVELY — and the
   instance is weaker than it sounds.** ⇒ Re-surveying #73 I asked *is the noun the string or the
   behaviour?* **before running anything**, and used `return 2 | sys.exit(2)` instead of
