@@ -89,9 +89,9 @@ def check(root):
     index = tools_dir / "README.md"
 
     if not tools_dir.is_dir():
-        return 2, [f"  VOID  no tools/ directory under {root} — established nothing"]
+        return 2, [f"  VOID  no tools/ directory under {root} — established nothing"], True
     if not index.is_file():
-        return 2, [f"  VOID  {index} is not readable — established nothing"]
+        return 2, [f"  VOID  {index} is not readable — established nothing"], True
 
     every = sorted(p.name for p in tools_dir.glob("*.py"))
     actual = [n for n in every if not NOT_AN_INSTRUMENT.match(n)]
@@ -103,12 +103,13 @@ def check(root):
     # ⛔ Absence of a finding must not be reported as a clean result.
     if not actual:
         return 2, [f"  VOID  tools/ holds no instrument .py files ({len(every)} file(s) present,"
-                   f" {len(excluded)} excluded as tests) — established nothing"]
+                   f" {len(excluded)} excluded as tests) — established nothing"], True
     if not rows:
         return 2, ["  VOID  no table rows matched in tools/README.md — the index format changed,"
-                   " or the table is gone. Established nothing."]
+                   " or the table is gone. Established nothing."], True
 
     failed = False
+    unchecked = []          # legs that established NOTHING, so the summary cannot claim them
     out.append(f"  instruments on disk: {len(actual)}  ({', '.join(actual)})")
     # Named, never merely counted — see NOT_AN_INSTRUMENT.
     out.append("  ----  excluded from the population as tests: "
@@ -136,6 +137,7 @@ def check(root):
             out.append(f"  FAIL  no anchored numeral, but {loose.group(0)!r} looks like a count this"
                        " check cannot verify — an UNGUARDED count is not the same as no count")
         else:
+            unchecked.append("header count")
             out.append("  ----  no hand-maintained numeral found — that leg NOT CHECKED"
                        " (dropping it is #27's other valid remedy, not a defect)")
     else:
@@ -150,7 +152,16 @@ def check(root):
     out.append("  note  this checks PRESENCE of a row, never whether the row is ACCURATE —"
                " a wrong description passes")
     out.append("  note  only tools/*.py is indexed; a shell or non-.py instrument is invisible here")
-    return (1 if failed else 0), out
+    # ⛔ The SUMMARY WORD must not assert more than the run measured. `clean` folds VERIFIED
+    # together with ESTABLISHED-NOTHING, which is criterion 3's defect in goals/README.md — and
+    # printing the unchecked leg above does not fix it, because a reader takes the summary.
+    # Same class as #8's "genuinely free": an instrument may report what it saw; it may not name
+    # a conclusion it did not measure. Exit stays 0 — nothing FAILED, and the run did establish
+    # something, so exit 2 (`established nothing`) would be the opposite overclaim.
+    if unchecked and not failed:
+        out.append(f"  PARTIAL  rows and prose verified; {len(unchecked)} leg(s) established"
+                   f" NOTHING: {', '.join(unchecked)} — not 'clean'")
+    return (1 if failed else 0), out, bool(unchecked)
 
 
 def selftest():
@@ -175,13 +186,13 @@ def selftest():
                 "## What each one is for\n\n**`alpha.py`** — a.\n\n**`beta.py`** — b.\n")
         (t / "README.md").write_text(good)
 
-        rc, _ = check(root)
+        rc, _, _ = check(root)
         ok &= (rc == 0)
         print(f"  {'ok  ' if rc == 0 else 'FAIL'}  known-positive: a correct index exits 0 (got {rc})")
 
         # the drift this exists to catch: a tool lands, the index does not move
         (t / "gamma.py").write_text("#\n")
-        rc, lines = check(root)
+        rc, lines, _ = check(root)
         hit = rc == 1 and any("gamma.py" in l for l in lines)
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  known-negative: a new tool with no row exits 1 and "
@@ -191,7 +202,7 @@ def selftest():
         (t / "gamma.py").unlink()
         (t / "README.md").write_text(good.replace(
             "Two tools, each built", "**Two** tools, each built"))
-        rc, lines = check(root)
+        rc, lines, _ = check(root)
         hit = rc == 1 and any("looks like a count" in l for l in lines)
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  third state: a count this check cannot anchor exits 1 "
@@ -199,7 +210,7 @@ def selftest():
 
         # ...and a genuinely absent count still reports NOT CHECKED and passes
         (t / "README.md").write_text(good.replace("Two tools, each built", "Each built"))
-        rc, lines = check(root)
+        rc, lines, _ = check(root)
         hit = rc == 0 and any("NOT CHECKED" in l for l in lines)
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  no count at all still exits 0 as NOT CHECKED (got {rc})")
@@ -207,7 +218,7 @@ def selftest():
         # ⛔ a TEST file must be excluded, not reported as an undocumented instrument
         (t / "README.md").write_text(good)
         (t / "test_alpha.py").write_text("#\n")
-        rc, lines = check(root)
+        rc, lines, _ = check(root)
         hit = rc == 0 and any("excluded from the population as tests: test_alpha.py" in l
                               for l in lines)
         ok &= hit
@@ -218,7 +229,7 @@ def selftest():
         # An empty population passing every check is #1's class: a guard aimed at nothing.
         for f in ("alpha.py", "beta.py"):
             (t / f).unlink()
-        rc, lines = check(root)
+        rc, lines, _ = check(root)
         hit = rc == 2 and any("established nothing" in l for l in lines)
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  an all-excluded population exits 2, not 0 (got {rc})")
@@ -226,9 +237,17 @@ def selftest():
             (t / f).write_text("#\n")
         (t / "test_alpha.py").unlink()
 
+        # ⛔ a run with an unchecked leg must not summarise as `clean`
+        (t / "README.md").write_text(good.replace("Two tools, each built", "Each built"))
+        rc, lines, partial = check(root)
+        hit = rc == 0 and partial and any("established" in l and "NOTHING" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  an unchecked leg reports PARTIAL, not clean "
+              f"(got rc={rc} partial={partial})")
+
         # instrument failure must not read as a pass
         (t / "README.md").write_text("# Fleet instruments\n\nnothing here\n")
-        rc, _ = check(root)
+        rc, _, _ = check(root)
         ok &= (rc == 2)
         print(f"  {'ok  ' if rc == 2 else 'FAIL'}  void: an unparseable index exits 2, not 0 (got {rc})")
     return 0 if ok else 3
@@ -244,11 +263,12 @@ def main(argv):
         print(f"  VOID  unrecognised argument(s): {' '.join(args)} — established nothing",
               file=sys.stderr)
         return 2
-    rc, lines = check(root)
+    rc, lines, partial = check(root)
     print("\ntools/README.md vs tools/")
     for l in lines:
         print(l)
-    print({0: "  clean", 1: "  DRIFTED", 2: "  VOID"}[rc])
+    print({0: "  clean" if not partial else "  clean-so-far (see PARTIAL)",
+           1: "  DRIFTED", 2: "  VOID"}[rc])
     return rc
 
 
