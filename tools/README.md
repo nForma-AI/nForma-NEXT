@@ -190,6 +190,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
 | `readd-scan.py` | is this diff RESTORING a line a commit deliberately removed? | 0 none · 1 re-additions · **2 established nothing** |
 | `runmarker.py` | ⚠ **a module, not an instrument** — the two stderr markers every tool emits | n/a, it is imported |
+| `estatenames.py` | ⚠ **a module, not an instrument** — does this string name an estate that is NOT this one? | n/a, it is imported |
 | `ci-log-clean.py` | is this CI log's text OUTPUT, or the echoed script? | 0 cleaned · **2 established nothing** |
 | `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
 | `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
@@ -400,6 +401,40 @@ the `##[group]Run `…`##[endgroup]` envelope (survives an ANSI strip, but `--lo
 fetch paths omit group markers). ⛔ **With neither present it refuses — exit 2 — rather than passing
 the log through**, because handing back an uncleaned log unchanged is exactly how a count of the
 script becomes a count of the output.
+
+**`estatenames.py`** — ⚠ **not an instrument; a module.** The estate predicate, shared so that
+`scripts/check-tools-index.py` and `tools/estate-provenance.py` cannot disagree about the same file.
+
+⛔ **It exists because a closed list cannot enumerate the future.** #348 proved by execution that a
+*sixth* estate reads clean: a real path, executable position, in an already-indexed and
+already-passing tool — `exit 0`. Both guards carried the same five names. The hard half, *mention vs.
+use* decided by executable position, was already solved and is untouched here; only the vocabulary
+moved.
+
+⇒ **The move is to invert the question.** Not *"is this one of the estates I know?"* but *"does this
+name an estate that is not THIS one?"* — comparing against `~/code/<X>`, the `.claude/projects` slug
+and the forge repo, each read from the tree at run time. A seventh estate is caught without an edit.
+
+⚠ **NOT a replacement for the name list — a union, and the measurement is why.** Derived-only takes
+`tools/teamlead/` from **9 detections to 5**: `ctxwatch.py`, `repowatch.py`, `t_sentinel.py` and
+`w1226.py` name an estate with **no path**, and a path-shaped predicate is blind to them. *(measured
+2026-08-20 at `0252d62`.)* A shrink is under-detection. `control-plane/` **is** dropped — zero unique
+detections in all three populations, and `w1226.py` matches `akash` independently.
+
+⛔ **`--show-toplevel` is the wrong call and cost a rewrite.** In a linked worktree it returns the
+WORKTREE path, so this repo's own name reads as foreign — and nine panes here work in worktrees,
+which is exactly where the damage would land. `--git-common-dir` points at the original clone from
+every worktree.
+
+★ **The known-negative is the whole flood control.** `/Users/o/code/nForma-NEXT/tools/x.py` is the
+same *shape* as a foreign path and must read clean; without that row nothing distinguishes this
+predicate from one that matches every path in the tree. It is asserted in `--self-test`.
+
+⚠ **What it cannot do — the proxy test.** A path-shaped predicate catches estates that leave PATHS.
+An estate present only as vendored source, with no path, no issue number and no name, still reads
+clean — `w1226.py` was nearly exactly that, identifiable only because line 1 kept a foreign file
+header. ⇒ Its silence is never "no foreign estate present", and `UNCLAIMED` must never collapse into
+`LOCAL` on it.
 
 **`runmarker.py`** — ⚠ **not an instrument; a module.** It is imported, never run, and has no
 exit codes of its own. It is indexed here only because `check-tools-index.py`'s population is
