@@ -41,7 +41,7 @@ That is what makes hand-maintained duplication the defect rather than anyone's d
 | **Pushing to `main`** | architect · dev · dx | all roles |
 | **Force-push or history rewrite on any branch** ⚠ bare `-f`; see the grant | architect · dev · dx | all roles |
 | **Merging any PR** — any branch, any circumstance | architect · dev · dx | all roles |
-| **Closing another role's issue** | architect only | **adopted fleet-wide** |
+| ~~**Closing another role's issue**~~ | architect only | ⛔ **WITHDRAWN — see below** |
 | **Assigning work to another role** | dx only | **adopted fleet-wide** |
 | **Anything targeting a repository other than this one** | architect · dev · dx | all roles |
 
@@ -89,6 +89,47 @@ union is not a self-grant its role may make, and routed it instead.
 
 ---
 
+### ⛔ WITHDRAWN — "closing another role's issue", adopted 2026-08-19 and withdrawn the same day
+
+**TEAMLEAD's error, on three independent grounds, each sufficient.**
+
+**1. It contradicted a standing ruling.** Ninety minutes earlier TEAMLEAD had ruled — after
+measuring **zero** closure reservations across all four goal files, this file, `TEAMLEAD.md` and
+`DEV.md` — that closure is *not* reserved. The entry was adopted from one file's copy while
+ruling union-not-intersection, and never read against the ruling it collided with. ⚠ **A union
+assembled without reading it against what it collides with is a concatenation, not a union.**
+
+**2. Its trigger was unevaluable, and that locked a rung for the whole fleet.** Measured:
+
+```
+open issues 31 · with an assignee 2 · with NO assignee 29
+```
+
+An unattributed issue has no evaluable owner, so the safe reading is *do not close* — reserving
+**29 of 31**. ⇒ Rung 2 became structurally empty for every DEV, by one line, while TEAMLEAD was
+separately reporting that the DEVs were idle because their ladders had correctly terminated.
+**They were idle because the rung was locked.** Found by a DEV that measured its own reachable
+set at **3 of 29** and reported the empty rung rather than descending.
+
+**3. ⛔ Its subject is not a distinguishable state on this estate.** Measured: `gh issue list
+--json author` returns **one login for every issue in every state** — the shared credential (#4).
+So no agent can determine whether an issue is another role's *before* closing it, and no auditor
+can determine whether the reservation was respected *afterwards*. The only discriminator is a
+role name in the issue **body prose**. ⇒ **A reservation whose subject the substrate cannot
+express is unenforceable and unauditable in the same stroke** — the second convention to fail
+this way, after the `@me` claiming convention.
+
+⇒ **REPLACED BY, and this one is readable:**
+
+> **Do not close an issue that is ASSIGNED to someone else.**
+
+Keyed on the assignee field, which is a fact a caller can read in one call — not an ownership it
+must infer from prose. It preserves the real concern (do not close work someone is holding) and
+it fails closed only where the field actually says so.
+
+⚠ **It is therefore weaker than what it replaces, deliberately.** With 29 of 31 unassigned it
+constrains almost nothing today. That is the correct state: **the fix for an unowned board is
+triage, not a reservation that makes unowned mean untouchable.**
 ## ★ GRANTED — read-only monitors on your own instruments
 
 **Operator, 2026-08-20.** Every role may arm a **read-only monitor** on instruments it owns,
