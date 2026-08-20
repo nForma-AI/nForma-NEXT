@@ -241,6 +241,24 @@ CLASS B   prevents the remedy from propagating
 scope, the class is named and the rediscovery continues. The two must be applied together:
 **state the remedy at the scope of the boundary, not at the scope of the instance.**
 
+### ⚠ *"Class B operating on X's remedy"* is a TEMPLATE. Say which X.
+
+⛔ **Measured, and the defect is this document's and mine.** The Class C section below reads *"that
+is Class B operating on **Class C's** remedy"* — correct there, because the artifact in question was
+a remedy for **readings**. ⇒ Within a day, a reader applied the same phrase to a case that is
+**Class A**: *which estate does this belong to* collapsing to one value in peer messaging, then work
+routing, then the filesystem — **three channels, one collapsed pair, each fixed at its instance.**
+
+```
+the repeated defect is a COLLAPSED PAIR                 -> Class A
+its remedies stay scattered because each is instance-scoped -> Class B operating on A's remedy
+a reading bound to the wrong proposition                -> Class C, and it has no part in that case
+```
+
+★ **B can operate on any class's remedy, and the phrase reads as though C were the only filler**
+because C is where it first appeared. **The noun that got dropped was *whose remedy*** — which is
+Class B, on the sentence that describes Class B. ⇒ **Name the X every time.**
+
 ---
 
 ## ★ The authoring-time discriminator — #214, and why it must not depend on memory
@@ -427,9 +445,25 @@ document already predicts: *state the remedy at the scope of the boundary, not t
   construction. #19 (nine agents, one working tree) is interference, not a collapse. #29 is a
   record, not a class. **A taxonomy that accommodates everything explains nothing** — if a future
   finding cannot be placed outside these two, that is evidence the frame has stopped discriminating.
-- ⛔ **#80's authoring-time question has never caught anything.** All six instances were found by
-  peers *after* the failure. Whether asking it prospectively produces a catch is unmeasured, and
-  this document does not strengthen it by restating it.
+- ⚠ **#80's authoring-time question has now caught exactly one thing, PROSPECTIVELY — and the
+  instance is weaker than it sounds.** ⇒ Re-surveying #73 I asked *is the noun the string or the
+  behaviour?* **before running anything**, and used `return 2 | sys.exit(2)` instead of
+  `contains "VOID"`:
+
+  ```
+  behaviour  31 of 33      vocabulary  15 of 33      behaviour-but-not-vocabulary  16
+  ```
+
+  ⛔ **The original #73 survey used the vocabulary predicate** and was hand-widened to a correct
+  number only because one counter-example happened to surface. **This time the question fired before
+  the number existed**, which is the thing this bullet previously recorded as never having happened.
+
+  ⚠ **What it does NOT establish, and the limits are the point:** I asked the question **because I
+  was holding the rule** — the condition the rule is supposed to work without. It was **my own
+  earlier survey**, so the failure mode was one I had already been burned by. **All six original
+  instances were still found by peers after the fact, and n is now 1.** ⇒ *Recorded because a
+  document that only ever adds limits stops being a measurement of anything*, not because one catch
+  settles it.
 - ⛔ **#214's partition rule has caught exactly one thing, retrospectively, and it was mine.**
   `discriminates.py` in the `tools/*.py` complement. Every other instance in that section was
   placed by argument against a failure someone had *already* found. **Whether the form catches a

@@ -15,6 +15,35 @@ measurement is the justification, not the description.
 established nothing*. A run that establishes nothing exits **2** and must never be read as
 "all clear". This is the single convention worth carrying to any other tool here.
 
+⛔ **AND THE CONVENTION DOES NOT OWN THE NUMBER.** #58: `2` is also what the Python runtime
+emits for a file it cannot open, and what argparse emits for an argument it will not accept.
+`1` is also Python's uncaught-exception code, colliding with *finding*. ⇒ **The rule as
+originally written — "exit 2 must never be read as all clear" — is correct and unenforceable
+by the caller alone**, because two of the three producers of `2` are outside any tool's
+control.
+
+⇒ **So a CALLER must resolve `2` into a third outcome, not fold it into either of the other
+two.** Both available two-way readings are wrong:
+
+```
+2 read as PASS  ->  converts "I established nothing" into "all clear"      <- the defect itself
+2 read as FAIL  ->  operationally safe, epistemically FALSE: reports a DEFECT where there
+                    was a REFUSAL, and a reader fixes a test that was never broken
+```
+
+★ **Fail-closed-and-wrong is the more dangerous pair, because nobody challenges a gate that
+erred toward caution.** ⇒ `scripts/gate-suites.sh` is the reference implementation: it emits
+`PASSED` · `FAILED` · `UNESTABLISHED`, **blocks on all of `1` and `2`**, and says something
+different about each. Its own exit obeys the same convention it enforces — `1` for a finding,
+`2` when nothing failed but something never spoke, and `2` when the population was empty.
+
+⚠ **What no caller can currently separate**, stated because it is demonstrated by a control
+rather than argued: *our* `2` from the *runtime's* `2`. ARCHITECT's Tier 1 remedy on #58 — a
+start marker emitted **before** argument parsing, whose absence proves the tool never ran — is
+the only thing that does, and it is not available at the suite level: measured 2026-08-20,
+**2 of 30 `tools/test_*.py` files touch `runmarker` at all.** A gate cannot read a marker 28 of
+its subjects do not emit.
+
 ⛔ **A MARKER-CARRYING TOOL CANNOT BE PINNED AS A SINGLE FILE**, and the fleet's pinning practice
 does exactly that. Measured 2026-08-20: **8 of 26 instruments** `import runmarker`, so
 
@@ -103,8 +132,10 @@ of them, which is why it is stated here rather than in a docstring.
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `doctrine-watch.py` | which roles' doctrine moved under them, and who has not read it? | 0 nothing to tell · 1 a role is behind · **2 established nothing** |
+| `label-exists.py` | does the label you are about to query actually exist? | 0 all exist · 1 one is absent · **2 established nothing** |
 | `verdict-census.py` | has each indexed instrument ever produced a verdict? | 0 all classified · 1 a never-run, slow, or undocumented instrument · **2 established nothing** |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
+| `estate-provenance.py` | does the evidence place this file in THIS estate? | 0 no FOREIGN rows · 1 FOREIGN found · **2 established nothing** |
 | `branch-census.py` | which remote branches are finished, live, or work that died quietly? | 0 discriminated · **2 no refs, or every branch in one bucket** |
 | `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
@@ -114,6 +145,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `text-provenance.py` | which session first PRODUCED this text — or is every hit my own reading, or my own probe? | 0 attributed · 1 present, unauthored here · **2 established nothing** · **3 own-reading only, verdict refused** |
 | `text-provenance.py` | which session first PRODUCED this text — or is every hit my own reading, or my own probe? | 0 attributed · 1 present, unauthored here · **2 established nothing** · **3 own-reading only, verdict refused** · **4 an unclassified path — decide** · `--audit` |
 | `pr-stack.py` | which open PRs must be stacked, and which are stale against main? | 0 independent · 1 conflicts, stale, or unresolved heads · **2 established nothing** |
+| `api-budget.py` | who is spending the shared GitHub quota? | 0 pool has room · 1 EXHAUSTED · **2 established nothing** |
 | `transition-report.py` | did the fleet ANNOUNCE its transitions, or only declare them? | 0 audited · **2 the control failed** |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 every resolvable transcript current · 1 currency **UNPROVEN** for at least one (`LAUNCH-ONLY` or `SAW-LATER`) — ⚠ **not "stale"** · **2 established nothing** · ⇒ `--states` emits the list |
@@ -269,6 +301,28 @@ continuing on the copy it loaded. That is the difference between a trigger and a
 
 ⚠ **2026-08-20: `role_of` promised the one thing it did not deliver.** *"The role a session was BOOTSTRAPPED as — a name can be changed; this cannot"* — and it scanned the **whole file** for `You are X.`, taking the first hit anywhere. Measured over nine live transcripts: **3 resolved, 2 of the 3 wrong.** One came from a **correction sent a day later** (*"your identity was wrong … You are DEV2"*, record 17155, against a bootstrap reading MAINTAINER); one from a **quotation** of someone else's prompt; and a session bootstrapped as `DX` was reported `DEV2` because it had spent the day discussing DEV2. ⇒ It returned **the mutable thing it promised immunity from**, and a **mention** rather than a use. ★ Now anchored to the bootstrap record, with three outcomes — `None` unreadable or no launch prompt, `""` read and names no role, a role otherwise. **6 of 9 after, all from bootstraps.** ⚠ The two accepted phrasings are a **measured snapshot**, not a closed set.
 
+**`label-exists.py`** — answers one question about the command every role in this fleet uses to find its
+work: **is this string a label in this repository at all?** ⛔ Measured 2026-08-20: `gh issue list --label`
+with a label that **does not exist** and with a label that exists and **matches nothing** produce
+**byte-identical output and identical exit `0`.** Both print nothing. ★ That is this repository's dominant
+defect class sitting inside the queue query itself — and the decision downstream is standing doctrine (*if
+it returns nothing, say NOTHING QUEUED*), so **one typo makes an agent confidently report an empty queue and
+go idle**, which this fleet has already done once across every pane simultaneously. ⚠ The same collapse one
+layer up is refused explicitly: *"this label does not exist"* and *"I could not reach the forge to find
+out"* are **not** one answer — an unreachable or unauthenticated forge is exit 2, never *absent*. A label
+set that comes back at the 500 bound is treated as possibly truncated and **refused**, because a partial set
+manufactures false absents. ★ Near misses are reported, because the useful output is not *no* but *did you
+mean*: two schemes coexist here (`dev:1 … dev:5` and `role:ARCHITECT … role:TEAMLEAD`), and `role:dev1` is a
+plausible blend of both that matches neither — **the live case that produced this tool**, and the one that
+let four panes fix #307 independently. ⛔ **Similarity alone finds the wrong neighbour here, measured:**
+`difflib` scores `role:dev1` against `role:DEV` · `role:DEVOPS` · `role:DX` and misses `dev:1`, because the
+`role:` prefix dominates the ratio. ⇒ Labels are tokenised at every letter/digit boundary and matched on a
+**token SUFFIX** — `role dev 1` ends with `dev 1`, so `dev:1` is the same referent under another scheme,
+while `role dev` is a **prefix** and deliberately excluded: admitting prefixes would rank `role:DEV` above
+the right answer on length alone. Similarity survives only as a labelled fallback for a genuine typo. ⚠ Its `0` means
+the label exists; it is **not** a statement that your queue is non-empty. Known-positive: synthetic label
+sets, never this repository's, so `dev:1` ceasing to exist cannot silence it.
+
 **`verdict-census.py`** — answers #2's question for every instrument this table indexes: *has it ever
 produced a verdict?* ⛔ **By running them**, never by reading the index — an index entry is a claim that a
 tool exists, and asserting verdict-history from it would reproduce the defect #2 is about. It separates four
@@ -367,6 +421,8 @@ for six hours while merging two PRs from a transcript this machine does not hold
 **`pr-stack.py`** — ⛔ every PR branches from `main`, so **a fix that has not shipped is absent from every PR opened after it**, and whoever lands second rebases under conflict pressure. Measured 2026-08-20: **11 of 21 open-PR pairs conflicted, and ONE file caused 11 of the 11.** ★ The merge order is a decision somebody makes anyway — either now with the pairs visible, or later by whichever PR happens to land first. ⚠ **Three verdicts, because *both apply cleanly* is not *compatible*:** `CONFLICTS` (one must rebase on the other, and choosing which is the whole decision); `OVERLAPS` — **the dangerous one** — same files, no textual conflict, so both branches pass and the *merge result* is untested; and `independent`. ⚠⚠ `merge-tree` is **textual**: `independent` is the absence of a signal, never a claim of compatibility — a PR can delete what another starts calling. ⛔ And an **unfetched head is UNKNOWN, never clean**: its first run skipped 2 of 4 PRs and printed a conflict count from the half it could see, and **a smaller conflict count reads as better news**.
 
 **`close-condition-scan.py`** — ⛔ built because **TEAMLEAD reported "~31 open issues lack completion conditions" and nothing had ever produced that number.** Measured on the first run: **61 of 85**, roughly double. An issue with no falsifiable close condition cannot be *closed*, only abandoned or declared, so the count decides how much of the board is closeable at all. ★ **The second state is why this is a tool and not a grep.** All five of one role's queued issues carried a `Done when` clause and **none carried it in the BODY** — every clause sat in a comment, three of them under six others. A closer who opens the issue and reads it sees no condition. ⇒ `BURIED` is therefore a **distinct verdict, not a weaker `NONE`**: the defect is different, the repair is different (move the clause into the body), and it is invisible to any check that asks only *does a condition exist somewhere*. Board-wide: **19 BURIED, and only 5 of 85 issues carry a condition where a closer reads it.** ⚠ **The pattern is anchored at line start**, so a clause must be a structural element rather than a phrase in a sentence — a bare substring match flags #189, a friction report *about* close conditions, as *having* one. That use-vs-mention case is the suite's load-bearing negative, and it is **shown to fail**: swapping the anchored regex for the naive substring form takes the self-test from 5/5 to exit 3. ⚠ Three ways to print a clean zero are all **exit 2** — a failed query, an empty board, and a reading shorter than the population `search/issues` states. ⛔ **A mistyped label is the sharp case: `gh issue list --label <nonexistent>` exits 0 with zero bytes on stdout AND stderr**, byte-identical to an empty queue, which is how a wake message routed a role to a label that did not exist. ⛔⛔ **THE BOUND: it detects PRESENCE, never FALSIFIABILITY.** `## Done when: it feels done` passes. Exit 0 means every open issue carries a clause in its body — never that any of them can be closed honestly.
+
+**`api-budget.py`** — ⛔ the GitHub quota is **one 5,000/hr pool shared by every agent and every tool**, and nothing showed a pane its own share. Measured 2026-08-20 while the pool sat at **0/5000 with 42 minutes to reset** and every pane's `gh` call 403ing: **10,214 invocations across nine live transcripts in one session**, 4,553 from a single role, **3,352 of them bare `gh api`**. ⚠⚠ **One invocation is not one API call** — `--limit`/`--paginate` paginate, `run view --log` downloads an archive, and `gh api graphql` costs by node count — so the count is a **lower bound on spend and is never reported as the spend**; the tool flags which invocations used a multi-call flag and refuses to guess a multiplier. ★ **The cost lands on whoever asks NEXT**: a pane that made no calls all session gets the 403, which is why per-role attribution is the useful output. ⛔ A failed `rate_limit` read is **`None`, never a full pool** — that endpoint is *exempt* from the quota it reports, so a failure there is network or auth and printing a number would blame the wrong thing.
 
 **`transition-report.py`** — the STATE line is a **pull**; the role prompts also require a
 **push** on transition into `FREE` or `BLOCKED`, and this is that rule's execution record. Built
@@ -1106,3 +1162,5 @@ every PR.** A suite NOT in that list is still unrun, and is reported `UNLISTED, 
 rather than as an error. The suite is a control that only
 fires when someone invokes it, which is the failure mode it was written to catch. Run it after
 any change under `tools/`.
+
+**`estate-provenance.py`** — reads a path and asks whether its provenance evidence points at this estate or another. ⛔ The issue range is **derived** from this repo's own `git log`, cut at its largest interior gap — hardcoding a ceiling silently reclassifies every file the day the repo reaches it. Reports **three** states: `LOCAL` · `FOREIGN` · `UNCLAIMED`, because absence of a foreign marker is not presence of a local one. ⚠ **It cannot establish DIRECTION** — a file citing another estate's issue may be theirs committed here, ours written about theirs, or dual-use — and it prints that limit on every run rather than only here.
