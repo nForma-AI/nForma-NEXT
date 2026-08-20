@@ -75,19 +75,46 @@ def significant(line):
 def removals_for(path, ref, cwd):
     """Every line ever removed from `path`, mapped to the commit that removed it.
 
-    ⛔ Presence-walk, not pickaxe -- see the docstring. One pass over the file's
-    history, so cost is O(commits) per file rather than O(commits x added lines)."""
-    commits = git(["log", "--reverse", "--format=%H", ref, "--", path], cwd).split()
-    removed, prev = {}, set()
-    for c in commits:
-        out = subprocess.run(["git", "show", f"{c}:{path}"], cwd=cwd,
-                             capture_output=True, text=True)
-        cur = set(out.stdout.splitlines()) if out.returncode == 0 else set()
+    ⛔ COMPARED AGAINST EACH COMMIT'S OWN PARENT, not against the previous entry in
+    the log. The first version walked `git log --reverse` and diffed consecutive
+    snapshots, which is correct ONLY on a linear history.
+
+    Measured on this repository (#226 follow-up): `git log --reverse` interleaves
+    sibling branches. `9a64ea8` and `0b378ca` are BOTH children of `eb22230`, and
+    are walked consecutively — so a line present on one branch and absent on the
+    other reads as removed-then-re-added. That produced 82 phantom findings across
+    18 doctrine files, every one attributing a removal to a commit whose own parent
+    did not contain the line either.
+
+    ★ The self-test did not catch it because the fixture is a LINEAR chain. A
+    control validated on a linear history has been validated on the history's
+    linearity — the homogeneous-sample defect, in the tool's own known-positive.
+
+    ⚠ Merges are compared against the FIRST parent. A line dropped on a side branch
+    and never on mainline is not "removed" from the reader's point of view, and
+    first-parent is the history that reader sees.
+    """
+    commits = git(["log", "--format=%H %P", ref, "--", path], cwd).splitlines()
+    removed = {}
+    for entry in commits:
+        parts = entry.split()
+        if not parts:
+            continue
+        c, parents = parts[0], parts[1:]
+        cur = _blob_lines(c, path, cwd)
+        if not parents:
+            continue                      # root commit adds; it removes nothing
+        prev = _blob_lines(parents[0], path, cwd)
         for line in prev - cur:
             if significant(line):
-                removed[line.strip()] = c
-        prev = cur
+                removed.setdefault(line.strip(), c)
     return removed
+
+
+def _blob_lines(commit, path, cwd):
+    out = subprocess.run(["git", "show", f"{commit}:{path}"], cwd=cwd,
+                         capture_output=True, text=True)
+    return set(out.stdout.splitlines()) if out.returncode == 0 else set()
 
 
 def added_lines(base, cwd):
@@ -197,6 +224,34 @@ def self_test():
         adds2 = added_lines(base, t)
         new = [l for l in adds2.get("f.md", []) if "brand new" in l]
         check("a genuinely new line is NOT flagged", any(l in rm for l in new), False)
+
+        # ⛔ BRANCHY known-positive — the case the linear fixture could not express,
+        # and the one that would have caught the sibling-walk bug (82 phantoms on the
+        # real repo, 0 after the parent-walk fix).
+        #
+        # main:  A(add L) -> C(remove L) -> M(merge side) -> E(re-add L)
+        # side:  A -------> B(unrelated) ------^
+        #
+        # B is a SIBLING of C. A walk that diffs consecutive log entries compares B
+        # against C and invents a removal; a parent-walk does not.
+        g("checkout", "-q", "-b", "side")
+        # ⛔ The sibling MUST touch the SAME FILE. A first attempt had it edit another
+        # file, and `git log -- f.md` filtered the sibling out of the walk entirely —
+        # so the control PASSED ON THE BROKEN VERSION and was decorative (#26). The
+        # bug needs two commits on one path with a common parent to reproduce.
+        open(f"{t}/f.md", "a").write("a line added only on the side branch, long enough\n")
+        g("add", "-A"); g("commit", "-qm", "unrelated work on a side branch")
+        g("checkout", "-q", "main")
+        open(f"{t}/f.md", "w").write("unrelated filler line of sufficient length here\n")
+        g("add", "-A"); g("commit", "-qm", "remove L on mainline")
+        g("merge", "-q", "--no-ff", "-m", "merge side", "side")
+        open(f"{t}/f.md", "w").write(f"{keep}\nunrelated filler line of sufficient length here\n")
+        g("add", "-A"); g("commit", "-qm", "re-add L after the merge")
+
+        rm2 = removals_for("f.md", "main", t)
+        check("branchy: the REAL removal is still found", keep in rm2, True)
+        phantom = [l for l in rm2 if "side branch" in l]
+        check("branchy: a sibling branch invents NO removal", phantom, [])
 
         # VOID path must execute
         try:
