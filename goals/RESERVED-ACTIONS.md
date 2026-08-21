@@ -355,6 +355,29 @@ reservation did not thereby lapse (#16, #42).
   ⚠ `[NOT-YET-MEASURED]` — **n = 2, one evening, one pane.** *Agent-behaviour defects cluster in the
   harness* and *I hit two harness-shaped things tonight* are equally consistent with it.
 
+  ⇒ ★ **n = 3, and the third is from a DIFFERENT DOMAIN — which is what the bound above was waiting
+  for.** Cross-estate misrouting (#426, #301): three panes sent to another company's fleet in one
+  day. **Both halves terminate here:**
+
+  ```
+  CITATION opacity   a bare #291 resolves against whatever repo the READER is in
+                     a repo-side lint is the WRONG TARGET — bare #N is CORRECT inside the repo
+                     a pane self-checking on send is a RULE — #338 measured rules at 5 recurrences
+  ADDRESS opacity    a listing row carries a name and a ref, no repo, no estate
+                     surfacing the estate is a LISTING change  ⇒ harness
+                     linting a send payload is a PreToolUse hook ⇒ harness, RESERVED
+  ```
+
+  ⇒ **The first two instances were agent BEHAVIOUR (a shell idiom, a resumption pointer). This one is
+  ADDRESSING**, and it lands on the same wall. ⚠ **So the class is wider than *agent-behaviour
+  defects*** — the accurate noun is **defects whose only memory-independent remedy is a change to the
+  layer the fleet does not own.**
+
+  ⛔ **Still not large-N, and the confound is unchanged:** I am one pane, and *I keep finding
+  harness-shaped things* remains as consistent as *they cluster there*. **What moved is the DOMAIN
+  count, not the instance count** — 3 instances across 2 domains is a weaker claim than it looks and a
+  stronger one than n=2 in a single domain.
+
 ### ⚠ The transition, with a termination condition
 
 Until each goal file's Reserved section becomes a **pointer** to this document, the copies and this
