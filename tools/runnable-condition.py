@@ -53,10 +53,29 @@ CONDITION = re.compile(
     r"(?:\*\*|__)?[ ]*(?:done[ ]when|close[ ]when|closes[ ]when|acceptance[ ]criteria)",
     re.I | re.M)
 
-# ⚠ An invocation, not a word. `gh`, `python3`, `git`, `bash`, `./x`, `tools/x.py` at the
-#   start of a line inside a fence -- prose that MENTIONS gh does not match (#36).
+# ⚠ An invocation, not a word, and NOT A CLOSED LIST OF COMMAND NAMES.
+#
+# ⛔ The first version of this enumerated gh|git|python3|bash|sh|make|./|tools/|scripts/ and
+#    therefore could not see `grep`, `sed`, `diff`, `jq`, `curl` -- so it scored a condition
+#    carrying `grep -c ... -> 0` as ASSERTED. That is a CLOSED LIST OVER AN OPEN-ENDED NOUN,
+#    the same defect ARCHITECT ruled against in #348's FOREIGN_VOCAB three hours earlier,
+#    committed inside the tool built to catch conditions that cannot fail.
+#
+# ⇒ Structural instead: a lowercase bare first token followed by a FLAG, a PATH, a REDIRECT
+#   or a further token -- the shape of a command line, not a vocabulary of them. Prose that
+#   MENTIONS a command does not match, because prose does not start a fenced line with one.
 INVOCATION = re.compile(
-    r"^[ ]{0,4}(?:\$[ ]*)?(?:gh|git|python3?|bash|sh|make|\./|tools/|scripts/)[ \S]*", re.M)
+    r"^[ ]{0,4}(?:\$[ ]*)?"
+    r"(?:\./|[a-z][a-z0-9_.-]*/)?"                    # ./x  or  tools/x.py
+    r"[a-z][a-z0-9_.+-]*[ ]+"                          # a lowercase command word, then
+    r"(?=[^\n]*(?:-{1,2}[A-Za-z]|[/<>|'\"]))"          # SOMETHING ONLY A COMMAND CARRIES
+    r"\S",
+    re.M)
+# ⛔ THE LOOKAHEAD IS LOAD-BEARING and exists because the first widening was too loose:
+#    "the count must be zero." matched as `the` + an argument, and the live board went from
+#    ASSERTED 10 to a FALSELY CONFIDENT RUNNABLE 11. ⇒ A second word is not a command line.
+#    A FLAG, a PATH, a REDIRECT or a QUOTE is. Caught by the known-negative in self_test()
+#    before the number left this pane.
 
 # ⚠ A stated result: an arrow to a value, an exit code, or an explicit expectation.
 RESULT = re.compile(
@@ -198,6 +217,18 @@ def self_test():
           classify("## Done when\nthe file cools and everyone agrees.")[0], "ASSERTED")
     check("a command with no stated result is ASSERTED",
           classify("## Done when\n```\ngh issue list\n```")[0], "ASSERTED")
+    # ⛔ the closed-list regression: grep/sed/diff were invisible to the first predicate
+    check("grep with a stated result is RUNNABLE",
+          classify("## Done when\n```\ngrep -c \'x\' file.js   ->   0\n```")[0], "RUNNABLE")
+    check("diff with a stated result is RUNNABLE",
+          classify("## Done when\n```\ndiff a b   ->   empty\n```")[0], "RUNNABLE")
+    # ⛔ regressions from widening the predicate away from a closed list of command names
+    check("grep with a stated result is RUNNABLE",
+          classify("## Done when\n```\ngrep -c 'x' file.js   ->   0\n```")[0], "RUNNABLE")
+    check("diff over paths is RUNNABLE",
+          classify("## Done when\n```\ndiff /tmp/a /tmp/b   ->   empty\n```")[0], "RUNNABLE")
+    check("a two-word sentence is NOT an invocation",
+          classify("## Done when\nthe count must be zero.")[0], "ASSERTED")
     check("a stated result with no command is ASSERTED",
           classify("## Done when\nthe count must be zero.")[0], "ASSERTED")
     check("no clause at all is NO-CONDITION",
