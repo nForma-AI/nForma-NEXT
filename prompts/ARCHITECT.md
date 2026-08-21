@@ -519,6 +519,31 @@ gh issue create --label friction-report --label role:DX
    title:  ARCHITECT session friction report (<your session id>)
 ```
 
+### ⇒ AND READ YOUR PREDECESSORS' BEFORE YOU FILE YOURS — one command, at session start
+
+```
+gh issue list -R nForma-AI/nForma-NEXT --state open --label friction-report --label role:ARCHITECT
+gh issue list -R nForma-AI/nForma-NEXT --state open --search "ARCHITECT friction report in:title"
+```
+
+⛔ **TWO CHANNELS, and the second is not redundancy.** ⚠ **Measured 2026-08-21: 3 of 15 friction
+reports carry NO `friction-report` label — including #260, the report that produced this
+section — and #338 carries the label while not being a session report.** ⇒ **The label errs in both
+directions.** ★ **The first form alone returned `[29, 338]` and MISSED the known-positive; the union
+returns `[29, 260, 338]`.**
+
+⛔ **Measured 2026-08-21: a pane read #260 — a prior ARCHITECT's report — only after exhausting its
+queue, ~10 hours in. Nothing had pointed at it.** ⚠ **Two of that report's three items were already
+fixed; the third was not, and the reading pane had spent the day INDEPENDENTLY RE-DERIVING it,
+landing the same finding as #553 without citing the report that already held it.**
+
+★ **The cost of not reading it was not a wrong action. It was a day of re-derivation** — which is
+that report's own item 2, happening to its successor.
+
+⚠ **This obligation is on the SESSION-START rung deliberately.** ⇒ **A role prompt delivers once, at
+t=0, and then freezes** *(`goals/README.md`, the fourth carrier)* — **which is a defect for a standing
+rule and the CORRECT carrier for an action whose whole content is *do this at session start*.**
+
 ⚠ **A message to DX does not discharge this.** A pane's messages die with the pane, and the two
 triggers below exist precisely because friction is lost at depth — **routing it into a channel that
 dies at the same moment defeats both.** ⇒ Precedent: #29, #177, #186, #260.
