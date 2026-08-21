@@ -127,7 +127,23 @@ def declared_clause(turns_ago, total_turns, detail):
         age = f"0 of {total_turns} turns"
     else:
         age = f"{turns_ago} turns ago"
-    return f'declared {age}: "{detail}"'
+    # ⛔ THE QUOTES ARE DOING THE BINDING, so a payload containing one makes the
+    # boundary ambiguous and destroys the property this function exists to give:
+    #     declared this turn: "said "done" already"      <- where does it end?
+    # ⚠ Reachable, not hypothetical — STATE lines are agent-written prose and panes
+    # quote each other constantly. (Found by DX in review of #417, after it merged.)
+    #
+    # ⛔ ESCAPE rather than "pick a delimiter that cannot appear". A rare delimiter
+    # is a CLOSED LIST over an open-ended noun — the defect this repo has now fixed
+    # five times — and «» is rare, not impossible.
+    safe = str(detail).replace("\\", "\\\\").replace('"', '\\"')
+    # ⚠ A newline would put the marker on one line and the payload on another,
+    # partially recreating the column defect. DX flagged this as PROBABLY MOOT —
+    # declared_state reads lines[-1], so a detail is one line by construction —
+    # and explicitly did NOT establish reachability. Collapsed anyway: the guard
+    # costs nothing and the parser may change.
+    safe = safe.replace("\r", " ").replace("\n", " ")
+    return f'declared {age}: "{safe}"'
 
 
 def latest_declaration(texts):

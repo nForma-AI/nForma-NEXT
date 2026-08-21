@@ -141,6 +141,19 @@ def test_freshness_marker_binds_to_the_payload():
                 fleet_state.declared_clause(14, 20, "x").startswith("declared 14 turns ago:"), True)
     ok &= check("never-declared is not 'this turn'",
                 "this turn" in fleet_state.declared_clause(None, 20, "x"), False)
+    # ⛔ DX's specimen, from review of #417 — the quotes DO the binding, so an
+    # unescaped inner quote destroys the boundary the function exists to give.
+    c2 = fleet_state.declared_clause(0, 9, 'said "done" already')
+    ok &= check("inner quote is escaped", '\\"done\\"' in c2, True)
+    ok &= check("exactly two UNESCAPED quotes remain",
+                len([i for i, ch in enumerate(c2)
+                     if ch == '"' and (i == 0 or c2[i-1] != "\\")]), 2)
+    # ⚠ DX flagged the newline case as PROBABLY MOOT and did not establish
+    # reachability. Guarded anyway; the guard costs nothing.
+    ok &= check("newline cannot split the clause",
+                "\n" in fleet_state.declared_clause(0, 9, "multi\nline"), False)
+    ok &= check("a backslash does not fake an escape",
+                fleet_state.declared_clause(0, 9, 'a\\b').endswith('"a\\\\b"'), True)
     return ok
 
 
