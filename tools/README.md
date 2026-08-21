@@ -346,6 +346,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
 | `use-not-mention.py` | does this file CALL `<pattern>`, or merely TALK ABOUT calling it? | 0 no call · 1 at least one CALL · **2 established nothing** |
 | `gated-caller.py` | whose `--self-test` does CI actually invoke, and whose **sweep** does? | 0 all have a gated caller · 1 one does not · **2 established nothing** |
+| `hermetic-check.py` | is a suite the gate CALLS hermetic actually hermetic? | 0 all hermetic · 1 a suite moves when `gh` is shadowed · **2 established nothing** · 3 control failed |
 | `population-leg.py` | does each `--self-test` consult anything outside the repository — or the forge? | 0 all do · 1 a NO-REPO-INPUT control · **2 established nothing** · ⚠ NO-REPO-INPUT is a CANDIDATE for criterion 5, not a verdict |
 | `pointer-verified.py` | did this pane READ the artifact a pointer NAMED, before acting? | 0 all read · 1 at least one not · **2 established nothing** · **3 control failed** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
@@ -751,6 +752,21 @@ revision, which is the condition being reported).
 continuing on the copy it loaded. That is the difference between a trigger and a guarantee.
 
 ⚠ **2026-08-20: `role_of` promised the one thing it did not deliver.** *"The role a session was BOOTSTRAPPED as — a name can be changed; this cannot"* — and it scanned the **whole file** for `You are X.`, taking the first hit anywhere. Measured over nine live transcripts: **3 resolved, 2 of the 3 wrong.** One came from a **correction sent a day later** (*"your identity was wrong … You are DEV2"*, record 17155, against a bootstrap reading MAINTAINER); one from a **quotation** of someone else's prompt; and a session bootstrapped as `DX` was reported `DEV2` because it had spent the day discussing DEV2. ⇒ It returned **the mutable thing it promised immunity from**, and a **mention** rather than a use. ★ Now anchored to the bootstrap record, with three outcomes — `None` unreadable or no launch prompt, `""` read and names no role, a role otherwise. **6 of 9 after, all from bootstraps.** ⚠ The two accepted phrasings are a **measured snapshot**, not a closed set.
+
+**`hermetic-check.py`** — the `hermetic suites (gating)` job decides membership by the **absence of a
+marker**: a suite is hermetic iff nobody wrote `# SUITE-DEPENDS` in it. ⛔ **Nothing verified the claim.**
+A suite that shells out to `gh` is declared hermetic by default, passes on every authenticated machine,
+and fails only on the runner — where it blocks a merge with an assertion that names neither `gh` nor the
+dependency. *(Instance: #499, `AssertionError: 2 != 0` from a `--states` DECLARE gated behind a network
+fetch thirty lines earlier.)* ⇒ Each declared-hermetic suite is run **twice, varying exactly one binary**;
+a suite whose exit code MOVES is not hermetic. ⚠ **Shadowing `gh`, not truncating `PATH`** — replacing
+`PATH` wholesale also drops homebrew, so a suite failing because `git` moved would score as a network
+leak; `git` and `python3` are asserted unmoved before anything is measured. ⛔ **No real `gh` is exit 2,
+never 0**: with nothing to shadow, every suite scores hermetic and the clean board is an artefact of the
+machine. *"There was no `gh`"* and *"no suite needs `gh`"* are two states the verdict depends on telling
+apart. ⚠ **With respect to `gh` only** — a suite reaching the network by `curl`, `urllib`, or a git remote
+is not covered and is not thereby clean. **44 of 44 hermetic at `41daed3`; the known-positive is drawn
+from `refs/pr/499`, outside the measured population.**
 
 **`gated-caller.py`** — criterion 4 as amended on 2026-08-21 (#381) made checkable: a control must be
 *"shown to FAIL on real data — **by a caller that still runs it**"*, and two issues carried a **count** of
