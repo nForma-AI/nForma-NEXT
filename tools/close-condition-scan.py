@@ -79,6 +79,26 @@ CONDITION = re.compile(
 )
 
 
+# ⇒ Printed BESIDE the finding, in the execution path, because a writer who has just
+# been told "no close condition" is one line away from being told what one looks like —
+# and that is the moment they need it. A rule stated only in a README is a rule you have
+# to already know to go and read.
+ACCEPTED_FORM = """
+    ⇒ WHAT COUNTS, and it is stricter than it looks:
+       · the clause must start a LINE — a heading, a bold lead-in, or a list item.
+         A sentence CONTAINING "done when" does not count and is not meant to:
+         prose ABOUT close conditions is not a close condition.
+       · it must be IN THE ISSUE BODY. A clause in a comment scores BURIED, not OK.
+       ✅ accepted:   ## Done when          ⇒ **Closes when** …        - **Done when:** …
+       ⛔ not:        "we should decide the completion condition for this someday"
+"""
+
+BURIED_REMEDY = """
+    ⇒ THE FIX IS A MOVE, NOT A REWRITE: copy the clause from the comment into the BODY,
+      verbatim. ⚠ Take it from the LAST comment carrying one — a corrected disposition
+      supersedes an earlier one, and promoting the first can promote a WITHDRAWN condition.
+"""
+
 class Void(Exception):
     """Established nothing. ⛔ Never collapse into a verdict."""
 
@@ -238,14 +258,24 @@ def main():
     else:
         print(f"open issues read: {len(issues)} of {total} stated"
               f"{f'   label={a.label}' if a.label else ''}\n")
-        for state, gloss in (
-            ("NONE", "no close condition anywhere — cannot be closed, only declared"),
-            ("BURIED", "condition exists ONLY in a comment — a body-reader sees none"),
+        for state, gloss, remedy in (
+            ("NONE", "no close condition anywhere — cannot be closed, only declared",
+             ACCEPTED_FORM),
+            ("BURIED", "condition exists ONLY in a comment — a body-reader sees none",
+             BURIED_REMEDY),
         ):
             rows = buckets[state]
             print(f"{state}  ({len(rows)})  {gloss}")
             for it in sorted(rows, key=lambda i: i["number"]):
                 print(f"    #{it['number']:<5} {it['title'][:88]}")
+            # ⛔ The remedy prints WITH the finding, not in a README. DEV2 met both
+            # requirements only by READING THE REGEX; nothing in the issue template,
+            # goals/README.md, or this tool's own output said a comment scores BURIED
+            # or that the pattern is line-anchored. ⇒ TEAMLEAD produced twelve BURIED
+            # and ARCHITECT four prose ones, neither carelessly: the requirement was
+            # discoverable only by reading an implementation.
+            if rows:
+                print(remedy)
             print()
         print(f"BODY    ({len(buckets['BODY'])})  condition is in the body, where a "
               f"closer reads it")
