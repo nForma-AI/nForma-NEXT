@@ -70,7 +70,14 @@ STUB = (
     "import os, sys\n"
     "_n = os.path.basename(__file__)\n"
     "_a = ' '.join(sys.argv[1:])\n"
-    "open(os.environ['GC_LOG'], 'a').write(_n + '|' + _a + chr(10))\n"
+    # ⛔ RECORD __name__. A bare SUBPROCESS run and an IMPORT both log an empty argv when the
+    # suite itself was invoked without arguments, so argv alone cannot separate them — and the
+    # first version filed both under "reached". ★ ARCHITECT named the consequence on #164: the
+    # fleet audits whether its CONTROLS run and has nothing auditing whether its SWEEPS run.
+    # ⇒ A subprocess run is __main__; an importlib import is not. The discriminator was already
+    #   flowing through this stub and was discarded at the bucket.
+    "_k = 'MAIN' if __name__ == '__main__' else 'IMPORT'\n"
+    "open(os.environ['GC_LOG'], 'a').write(_n + '|' + _k + '|' + _a + chr(10))\n"
     "if __name__ == '__main__':\n"
     "    raise SystemExit(0)\n"
 )
@@ -98,7 +105,7 @@ def probe(suites, tools_dir, instruments, timeout=120):
     Every instrument is stubbed at once; each suite runs ONCE. The stub records its own name, so
     one log attributes every call the suite made.
     """
-    seen = {n: {"selftest": [], "reached": []} for n in instruments}
+    seen = {n: {"selftest": [], "swept": [], "reached": []} for n in instruments}
     for suite in suites:
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d) / "tools"
@@ -119,10 +126,21 @@ def probe(suites, tools_dir, instruments, timeout=120):
             if not log.exists():
                 continue
             for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
-                name, _, argv = line.partition("|")
+                parts = line.split("|", 2)
+                if len(parts) != 3:
+                    continue                      # pre-__name__ format; not this run's
+                name, kind, argv = parts
                 if name not in seen:
                     continue
-                key = "selftest" if "--self-test" in argv else "reached"
+                # ⛔ THREE OUTCOMES, NOT TWO. A bare SUBPROCESS run is the SWEEP — the thing that
+                # produces findings. An IMPORT exercises the module in-process and produces none.
+                # Folding them lost exactly the distinction #164 asks about.
+                if "--self-test" in argv:
+                    key = "selftest"
+                elif kind == "MAIN":
+                    key = "swept"
+                else:
+                    key = "reached"
                 if suite.name not in seen[name][key]:
                     seen[name][key].append(suite.name)
     return seen
@@ -270,6 +288,22 @@ def census(tools_dir=None, timeout=120):
                f" DEDICATED suite running --self-test · {len(runner)} reached only by a"
                f" workflow-level runner · {len(reached)} imported but never self-tested ·"
                f" {len(orphan)} untouched")
+    # ⛔ THE SWEEP IS A SEPARATE AXIS, NOT A FIFTH RUNG — reported on its own line for that reason.
+    # ★ ARCHITECT, #164: the fleet audits whether its CONTROLS run and has nothing that audits
+    #   whether its MEASUREMENTS run. The rows above are a ladder of CONTROL strength; whether a
+    #   tool's sweep is ever invoked is independent of all four rungs. Folding it in would hide one
+    #   fact behind the other for any tool that is both — the collapsed pair, in the instrument
+    #   whose job is refusing collapses.
+    swept = [n for n in names if seen[n]["swept"]]
+    out.append(f"  {len(swept)} of {len(names)} have a gated caller that runs the SWEEP — invoked as a"
+               f" subprocess WITHOUT --self-test{': ' + ', '.join(swept) if swept else ''}")
+    if not swept:
+        out.append("  ⚠ NO INSTRUMENT'S SWEEP HAS A GATED CALLER. The gate runs --self-test over"
+                   " tools/ and nothing runs the MEASUREMENTS, so a sweep that silently stopped"
+                   " finding things would produce no failing check — only silence, and silence is"
+                   " indistinguishable from a clean board. This is NOT the same defect as an"
+                   " uninvoked control: a dead control yields a false all-clear, a dead sweep"
+                   " yields no signal at all.")
     out.append(tree_provenance())
     out.append("  ⚠ RUNNER is INVOCATION, not evidence. A blanket runner passes --self-test to"
                " every subject; whether a given tool's control DISCRIMINATES is a separate"
@@ -365,6 +399,27 @@ def self_test():
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  a suite that IMPORTS the subject without the flag "
               f"is REACHED, not NO-CALLER (selftest={r['selftest']}, reached={r['reached']})")
+
+        # ⛔ THE SWEEP IS A THIRD OUTCOME, and it needs a demonstrated instance in BOTH directions.
+        # ★ ARCHITECT on #164: the fleet audits whether its CONTROLS run and has nothing that
+        #   audits whether its MEASUREMENTS run. A control that never runs yields a false
+        #   all-clear; a sweep that never runs yields silence, which is cheaper to miss.
+        # ⚠ ASSERTED AS A PAIR ON PURPOSE. "the bare run is SWEPT" alone passes if every caller
+        #   were routed to swept; "the import is NOT swept" alone passes if swept were dead and
+        #   always empty. Neither half can fail on the defect. Both together pin both directions.
+        (td / "swept.py").write_text('import sys\nif "--self-test" in sys.argv:\n'
+                                     '    raise SystemExit(0)\nraise SystemExit(0)\n')
+        (td / "test_sweep.py").write_text(
+            "import subprocess, sys, os\n"
+            "here = os.path.dirname(os.path.abspath(__file__))\n"
+            "subprocess.run([sys.executable, os.path.join(here,'swept.py')])\n"
+            "raise SystemExit(0)\n")
+        rs = probe(gated_suites(td), td, ["swept.py", "imported.py"], timeout=60)
+        hit = bool(rs["swept.py"]["swept"]) and not rs["imported.py"]["swept"]
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a BARE subprocess run is SWEPT and an IMPORT is not"
+              f" (swept={rs['swept.py']['swept']}, import-swept={rs['imported.py']['swept']})"
+              f" — argv is empty for both; __name__ is what separates them")
 
         # ⛔ THE SELF ROW MUST BE NAMED. This tool omitted itself entirely, so "N of M" was
         # reported against a population the reader could not see had been narrowed — the defect

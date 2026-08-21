@@ -343,7 +343,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
 | `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
 | `use-not-mention.py` | does this file CALL `<pattern>`, or merely TALK ABOUT calling it? | 0 no call · 1 at least one CALL · **2 established nothing** |
-| `gated-caller.py` | whose `--self-test` does CI actually invoke? | 0 all have a gated caller · 1 one does not · **2 established nothing** |
+| `gated-caller.py` | whose `--self-test` does CI actually invoke, and whose **sweep** does? | 0 all have a gated caller · 1 one does not · **2 established nothing** |
 | `population-leg.py` | does each `--self-test` consult anything outside the repository — or the forge? | 0 all do · 1 a NO-REPO-INPUT control · **2 established nothing** · ⚠ NO-REPO-INPUT is a CANDIDATE for criterion 5, not a verdict |
 | `pointer-verified.py` | did this pane READ the artifact a pointer NAMED, before acting? | 0 all read · 1 at least one not · **2 established nothing** · **3 control failed** |
 | `pretooluse-guard.py` | would this command produce a confident wrong measurement? | 0 clean · 1 would warn · **2 established nothing** |
