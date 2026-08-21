@@ -25,6 +25,12 @@ reviewed from a session that has ended, or from a pane whose transcript lives
 elsewhere, reads as untouched -- a peer merged two PRs while being reported
 FLATLINE for six hours on exactly that basis. ⇒ The untouched count is an UPPER
 BOUND and the per-role counts are LOWER bounds. Never quote either as exact.
+
+⚠ THE SECOND BOUND, added with identity selection: a session that never declared
+a role IS NOT READ. Measured 2026-08-21, three such sessions had opened 25, 2 and
+2 issues. This is a bound worth paying -- it is FIXED and stateable, where the
+recency window it replaced varied with the clock -- but it is not free, and it is
+the reason `--recency` still exists as a cross-check rather than being deleted.
 """
 import argparse, collections, glob, json, os, re, subprocess, sys
 
@@ -123,12 +129,62 @@ def open_issues(repo=None):
     return {x["number"]: (x["createdAt"][:10], x["title"]) for x in rows}
 
 
+def select_panes(root, limit, recency=None):
+    """The transcripts that ARE the fleet, and a note about how they were chosen.
+
+    ⛔ THE DEFECT THIS REPLACES. Selection was `sorted(paths, key=-mtime)[:9]` --
+    the nine most recently-TYPING panes. Measured 2026-08-21, two runs 90s apart
+    against an unchanged board:
+
+        run 1   covered 153 · untouched 80 (34%)   TRIAGE contributed 41
+        run 2   covered 149 · untouched 84 (36%)   TRIAGE contributed  0
+
+    Nothing happened in between. TRIAGE fell out of the top nine by going quiet
+    for ~2 minutes, and its 41 issues reverted to "opened by NOBODY".
+
+    ★ SO THE INSTRUMENT DROPPED THE IDLE PANES -- which is the exact population
+    the question is usually about ("architect is idle, has it reviewed these?").
+    A rank cut over a clock puts the boundary where the churn is: at the moment
+    of measurement two slots were held by transcripts with ZERO issue contacts
+    while DEVOPS sat one rank outside.
+
+    ⇒ Identity, not recency. `bootstrap_role` already names the fleet, and it
+    reads 40 lines, so classifying ALL of them is cheap. Measured: 6,323
+    transcripts classified in 2.2s, of which 12 name a role -- 270MB to parse
+    against the 262MB the recency window was already parsing. Same cost.
+    """
+    all_paths = glob.glob(os.path.expanduser(root))
+    if recency is not None:
+        chosen = sorted(all_paths, key=lambda p: -os.path.getmtime(p))[:recency]
+        return chosen, ("⚠ --recency reproduces the OLD selection: the {} most recently\n"
+                        "   ACTIVE transcripts. A pane that is thinking or blocked leaves the\n"
+                        "   population and its issues revert to untouched. The counts below\n"
+                        "   are a function of WHEN you ran this.").format(recency)
+
+    named = [(bootstrap_role(p), p) for p in all_paths]
+    named = [(r, p) for r, p in named if r]
+    named.sort(key=lambda rp: -os.path.getmtime(rp[1]))
+    chosen = [p for _, p in named[:limit]]
+    note = "  selection: identity — {} of {} transcript(s) bootstrapped as a role".format(
+        len(named), len(all_paths))
+    if len(named) > limit:                      # the ceiling BOUND; say so, never silently
+        dropped = " · ".join(r for r, _ in named[limit:])
+        note += ("\n  ⛔ --limit {} BOUND: {} role-named pane(s) were NOT read: {}\n"
+                 "     Their issues are counted as untouched. Raise --limit.").format(
+            limit, len(named) - limit, dropped)
+    return chosen, note
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--repo", default=None)
     ap.add_argument("--root", default=TRANSCRIPTS)
-    ap.add_argument("--limit", type=int, default=9, help="freshest N transcripts")
+    ap.add_argument("--limit", type=int, default=64,
+                    help="ceiling on role-named transcripts read; reported when it binds")
+    ap.add_argument("--recency", type=int, default=None, metavar="N",
+                    help="OLD behaviour: the freshest N transcripts regardless of role. "
+                         "Drops idle panes — see select_panes.")
     ap.add_argument("--match", default=None,
                     help="regex over titles, to slice the untouched set by subject")
     ap.add_argument("--show", type=int, default=20)
@@ -141,11 +197,11 @@ def main():
               "coverage result.")
         return 2
 
-    paths = sorted(glob.glob(os.path.expanduser(a.root)),
-                   key=lambda p: -os.path.getmtime(p))[:a.limit]
+    paths, how = select_panes(a.root, a.limit, a.recency)
     if not paths:
-        print("⛔ ESTABLISHED NOTHING — no transcripts readable. Zero coverage and "
-              "zero visibility print the same table.")
+        print("⛔ ESTABLISHED NOTHING — no transcript names a role, so there is no "
+              "fleet to measure. Zero coverage and zero visibility print the same "
+              "table. (Pass --recency N to select by mtime instead.)")
         return 2
 
     touched, per_role, unreadable = collections.defaultdict(set), collections.Counter(), 0
@@ -163,6 +219,7 @@ def main():
     never = sorted(set(issues) - set(touched))
     print(f"── COVERAGE ── {len(issues)} open issue(s), {len(paths)} transcript(s)"
           + (f", {unreadable} unreadable" if unreadable else ""))
+    print(how)
     print(f"  opened by at least one pane   {len(touched):4d}")
     print(f"  opened by NOBODY              {len(never):4d}  "
           f"({100 * len(never) / len(issues):.0f}%)")
@@ -184,6 +241,10 @@ def main():
     print("⚠ Transcripts on THIS MACHINE only: a pane working from a transcript held "
           "elsewhere\n   reads as having opened nothing. The untouched count is an "
           "UPPER bound; per-pane counts are LOWER bounds.")
+    if a.recency is None:
+        print("⚠ Sessions that never declared a role are NOT read at all. Cross-check "
+              "with\n   --recency N, which reads the freshest N regardless of role — and "
+              "whose\n   own counts move as panes go idle.")
     return 1 if never else 0
 
 
