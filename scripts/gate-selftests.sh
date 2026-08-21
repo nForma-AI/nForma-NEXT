@@ -354,7 +354,17 @@ gate() {
     done
 
     echo
-    echo "  ran $ran subject(s): $pass control(s) passed · $broke FAILED · $unest UNESTABLISHED · $unver UNVERIFIABLE · $hung TIMED OUT"
+    # ⛔ THE ENVIRONMENT IS PART OF THE READING, AND WITHOUT IT THE SUMMARY WEARS A NOUN IT
+    # CANNOT CARRY. Measured 2026-08-21: the same commit and the same command produced
+    # `24 passed · 0 FAILED` locally and `23 passed · 1 FAILED` on a runner, with two further
+    # subjects moving between UNVERIFIABLE and UNESTABLISHED. A reader sees "23 passed" and takes
+    # it as a property of THE TOOLS. It is a property of the tools ON THAT MACHINE.
+    # ⇒ One word makes the disagreement visible instead of mysterious. (TEAMLEAD's remedy, and it
+    # is the cheapest rung: not a better probe, a label the reading always needed.)
+    local where="local"
+    [ -n "${CI:-}" ] && where="CI/${RUNNER_OS:-runner}"
+    [ -d "${HOME:-/nonexistent}/.claude/projects" ] || where="${where},no-fleet-corpus"
+    echo "  ran $ran subject(s) ON ${where}: $pass control(s) passed · $broke FAILED · $unest UNESTABLISHED · $unver UNVERIFIABLE · $hung TIMED OUT"
     echo "  declared NO self-test (skipped, COUNTED and NAMED, never silent):${declared_names:- none}"
     echo "  excluded as TESTS (a test IS the control, not a subject): $excluded"
 
@@ -379,7 +389,27 @@ gate() {
     if [ "$unver" -gt 0 ] || [ "$unest" -gt 0 ]; then
         [ -n "$unver_names" ] && echo "  ⚠ UNVERIFIABLE:$unver_names"
         [ -n "$unest_names" ] && echo "  ⚠ UNESTABLISHED:$unest_names"
+        # ⛔ A BASELINE, NOT AN EXEMPTION, AND THE DIFFERENCE IS THAT IT CANNOT GROW.
+        # Landing this gate over a population with 24 dead controls means either blocking every
+        # PR for nine panes until 24 subjects are repaired, or going green over 24 controls that
+        # establish nothing. ⇒ Neither. SUBJ_BASELINE records the count that existed when the
+        # gate landed; the run passes at or below it and REDS the moment it rises.
+        #
+        # ⚠ IT IS NOT `continue-on-error` AND IT IS NOT AN ALLOWLIST. Every non-passing subject
+        # is still NAMED on every run, a NEW one still reds, and the number is in the workflow
+        # where a reader meets it — not in a file that quietly grows. ⛔ And it rots in the other
+        # direction too: repairing subjects below the baseline without lowering it leaves a
+        # stated number that is no longer true, which is the stale-calibration defect this
+        # repository has filed three times. Lower it when you fix one.
+        local dead=$((unver + unest))
+        if [ -n "${SUBJ_BASELINE:-}" ] && [ "$dead" -le "$SUBJ_BASELINE" ]; then
+            echo "  ---- $dead control(s) establish NOTHING, at or below the recorded baseline of"
+            echo "       ${SUBJ_BASELINE}. ⛔ NOT a pass and NOT coverage — a recorded debt that reds if it"
+            echo "       GROWS. Lower the baseline when you repair one."
+            return 0
+        fi
         echo "  ⛔ BLOCKING. A gate whose control cannot be shown to run is a gate nobody has checked."
+        [ -n "${SUBJ_BASELINE:-}" ] && echo "     ⇒ $dead exceeds the recorded baseline of ${SUBJ_BASELINE}."
         return 2
     fi
     echo "  all controls reached and passing"
@@ -598,6 +628,25 @@ selftest() {
         *) echo "  ok    known-negative: a hung subject is never folded into pass or fail" ;;
     esac
     rm -f "$d/e_hangs.py"
+
+    # ⛔ THE BASELINE, BOTH DIRECTIONS — the second leg is what makes it a baseline rather than
+    # an exemption. A number that only ever subtracts is an allowlist; this one must RED when the
+    # debt grows, or it is `continue-on-error` with extra words.
+    plant_py "$d/j_ok.py" 'if a == ["--self-test"]: sys.exit(0)' 'if a: void()' 'sys.exit(0)'
+    plant_py "$d/k_dead.py" 'if a: void()' 'sys.exit(0)'
+    SUBJ_BASELINE=1 out=$(SUBJ_BASELINE=1 gate "$d" '[jk]_*.py' 2>&1); rc=$?
+    check "AT the baseline: reported as a recorded DEBT, and explicitly not a pass" 0 \
+          "establish NOTHING, at or below the recorded baseline" "NOT a pass and NOT coverage"
+
+    plant_py "$d/l_dead2.py" 'if a: void()' 'sys.exit(0)'
+    out=$(SUBJ_BASELINE=1 gate "$d" '[jkl]_*.py' 2>&1); rc=$?
+    check "ABOVE the baseline: REDS — a baseline that cannot grow is not an exemption" 2 \
+          "exceeds the recorded baseline"
+
+    out=$(gate "$d" '[jkl]_*.py' 2>&1); rc=$?
+    check "with NO baseline set, any dead control still BLOCKS as before" 2 \
+          "BLOCKING"
+    rm -f "$d/j_ok.py" "$d/k_dead.py" "$d/l_dead2.py"
 
     out=$(gate "$d" 'nothing_matches_*.py' 2>&1); rc=$?
     check "an empty population exits 2, not 0" 2 "ESTABLISHED NOTHING"
