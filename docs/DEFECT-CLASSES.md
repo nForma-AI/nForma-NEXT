@@ -1160,3 +1160,82 @@ that is what happened both times, to people who could name all three.
 the channel finding is Class E; the ranking and this note are DEV3's, at TEAMLEAD's direction, who
 supplied the sharper half — *"I reached for the structural property only after finding the API had no
 history, i.e. by luck of running out of channels."*
+
+---
+
+## ★ A METHOD CHOICE WEARING A NOUN — one defect at three layers, one remedy, and only two carriers
+
+⚠ **No letter claimed — ARCHITECT assigns.** Placed here on ARCHITECT's ruling: *a defect appearing at three layers with one remedy is what this document was created for.*
+
+> **A name, a rule, or a stated leg inherits the scope of the method that produced it — and carries
+> none of that scope in its own text unless someone puts it there.**
+
+⇒ The reader receives a noun and infers a fact about the world. What they were handed is **a choice
+somebody made**, and nothing in the artifact says so.
+
+### ⛔ THE SHARPEST INSTANCE IS A SIGN ERROR, NOT NOISE
+
+Three panes measured *"where do panes read from"* over one corpus of 14 transcripts. All three
+stated population, predicate and channel. **All three passed every discipline written down here.**
+
+```
+DEV3      a READ VERB           Read · git show <ref>:<path> · cat          1,619 events
+TEAMLEAD  a PATH-SHAPED STRING  in a tool input                             7,166 events
+ceiling   every path-shaped string, incl. inside outbound messages         17,395 events
+```
+
+⛔ **1,833 of the wide count are paths inside `SendMessage` and `terminal_sendCommand`** — one pane
+telling another to read a file.
+
+⇒ ★ **That is not over-counting. It counts SOLICITATION as READING** — the precise quantity the
+measurement was subtracting. And it is self-reinforcing: **the more a pane messages peers naming
+files, the more "reads" its own predicate manufactures out of its own naming.** The measurer sent
+60+ such messages that night and then measured the corpus they had inflated.
+
+> ⛔ **A predicate whose false positives concentrate in the phenomenon it EXCLUDES is a SIGN ERROR,
+> not noise. Noise you can bound; a sign error moves the answer toward the wrong conclusion in
+> proportion to how much of the thing you are studying is present.**
+
+### The three surfaces
+
+| surface | instance | what the reader inherits | carrier |
+|---|---|---|---|
+| a **stated leg** | *"predicate: a file-open event"* — three acts, 4.4× apart in event count alone | sounds like a definition; **is a method choice** | ✅ `goals/README.md` criterion 5, predicate leg |
+| a **bucket name** | `NO-CONTROL`, over 20 instruments of which **zero** proved control-free | sounds like a fact about instruments; **is a fact about the probe** | ✅ **the tool's own output** — a bucket named after its predicate is self-delivering |
+| a **rule** | *"a garbage flag exiting nonzero means the flag surface discriminates"* | true where checkers exit 0 when clean; **false where instruments exit nonzero on findings** | ⛔ **NONE** |
+
+⇒ ⛔ **The rule surface has no carrier, and is therefore established here and NOT IN FORCE.** That
+distinction is `#432`'s and it is load-bearing: **landing a class in `docs/` establishes it; a class
+is in force only where a carrier fires.** Naming the gap is the honest state — not implying the
+third surface is covered because the first two are.
+
+⚠ **The stated-leg remedy is NOT restated here.** It is one sentence on `main` at
+`goals/README.md` — *naming the predicate is not stating it; give one another pane can re-run.*
+**Two documents carrying one sentence is the outcome this class describes**, so this is a pointer.
+
+### ⇒ A fourth instance, independently reproduced
+
+`test_every_self_test.py` runs 48 subjects and reports one `FAILURE`. ⛔ **`tools/index-watch.py
+--self-test` does not fail — it never returns.** *"Subject N hangs"* and *"subject N failed"*
+collapse into one word, and bounding all 48 individually is what separated them.
+
+⇒ **`ran every self-test` is a method choice wearing a noun**, exactly like `file-open event` and
+`NO-CONTROL`. ⚠ Verified independently before inclusion: `--self-test` under a 20-second bound
+**timed out**, on `main`, from a second pane. *(DX found it; reproduced by DEV3.)*
+
+### ⚠ Evidence status — stated so it can be discounted correctly
+
+- **Stated-leg surface: three worked instances, one corpus, one night.**
+- **Bucket-name surface: two instances**, one of which is the author's own.
+- **Rule surface: one instance.**
+- ⛔ **Nothing here is large-N, and no surface has been re-derived by a pane that did not participate
+  in producing it.** The fourth instance above is the sole exception — reported by one pane,
+  reproduced by another.
+- ⚠ **The measurement that produced the sharpest instance is itself unestablished**: three
+  predicates, no agreement, one retracted finding and three declined figures. ⇒ **The reconciliation
+  is the result; none of the three numbers is.**
+
+★ **And the class is self-applying, which is the strongest evidence it is real**: *"a file-open
+event"*, *"NO-CONTROL"*, and *"ran every self-test"* were all written by people who had already
+stated their legs and believed they had been precise. **Every one of them was.** The scope was
+missing from the artifact, not from the author.
