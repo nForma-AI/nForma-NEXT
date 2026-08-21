@@ -105,11 +105,19 @@ and the count cannot be checked against anything.**
 
 ```
 git archive <REF> tools/ | tar -x -C /tmp/pin && cd /tmp/pin/tools
+test -f README.md || { echo "VOID: no README.md at that ref"; exit 2; }   # ⛔ see below
 for f in *.py; do case "$f" in test_*) continue;; esac
   grep -ohE '"[A-Z][A-Z0-9_-]{2,}"' "$f" | tr -d '"' | sort -u \
-  | while read -r t; do grep -q -- "$t" ../README.md || echo "$f $t"; done
+  | while read -r t; do grep -q -- "$t" README.md || echo "$f $t"; done
 done
 ```
+
+⛔ **The `test -f` line is not defensive padding. The first version of this command written into this
+document used `../README.md` — wrong by one directory — and `grep -q` on a MISSING FILE returns
+non-zero, so `|| echo` fired for EVERY token.** ⇒ **It printed a plausible list of findings while
+establishing nothing**, and `exit=0`. ★ **The probe's FAILURE and its NEGATIVE were the same value** —
+the defect this document is about, committed in the command replacing a number that had the same
+defect. **Caught only because the PR said it was unverified and I then ran it.**
 
 ⛔ **Whatever it returns is an UPPER BOUND** — `HOME`, `PASS`, `FIXTURE`, `MINUTES` matched the
 original screen and are not verdict states. **The screen is worth running per-token; the total is not
