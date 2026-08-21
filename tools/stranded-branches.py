@@ -86,6 +86,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from runmarker import guard, result  # noqa: E402
 
 import json, subprocess, sys
+from collections import Counter
 
 BASE = "origin/main"
 
@@ -167,11 +168,11 @@ def content_upstream(remote, shas):
     paths is the empty-population false pass this repository keeps re-learning: a
     control whose silence is indistinguishable from its success.
     """
-    same, total = path_agreement(remote, shas)
+    same, total, _ = path_agreement(remote, shas)
     return total > 0 and same == total
 
 
-def content_state(unmatched, same, tot):
+def content_state(unmatched, same, tot, held=0):
     """LANDED · UNRESOLVED · N/A, from counts alone — no repository required.
 
     ⛔ tot == 0 is UNRESOLVED, never LANDED. "Every path matched" over zero paths is
@@ -183,7 +184,54 @@ def content_state(unmatched, same, tot):
         return "N/A"
     if tot == 0:
         return "UNRESOLVED"
-    return "LANDED" if same == tot else "UNRESOLVED"
+    if same == tot:
+        return "LANDED"                       # byte-identical: conclusive
+    # ⇒ Weaker and separately named ON PURPOSE. Every line is upstream with multiplicity,
+    # but a file of boilerplate satisfies that without its work landing. A reader must be
+    # able to tell which evidence they have.
+    if held == tot:
+        return "LANDED-BY-LINES"
+    return "UNRESOLVED"
+
+
+def line_contained(remote, base, path):
+    """Is every line of `remote:path`, with multiplicity, present in `base:path`?
+
+    ⇒ ARCHITECT's primitive, and it answers the question byte-identity cannot:
+    *is this content upstream* — WITHOUT a patch id, without a case rule, and without
+    caring how the merge was performed. **Immune to squash by construction**, which is the
+    exact limitation the NO-UPSTREAM-MATCH row carries.
+
+    ⚠ WEAKER THAN BYTE-IDENTITY AND REPORTED SEPARATELY. Byte-identity is conclusive.
+    Containment is not: a file whose lines ALL recur elsewhere in `base` — boilerplate,
+    blanks, closing braces — reads contained without its work having landed. Measured
+    known-negatives: a single unique line -> False; three copies of a line `base` holds
+    once -> False (Counter compares COUNTS, not membership); an all-blank file -> True,
+    and that last one is the limitation, not a bug.
+    """
+    b, m = blob_at(remote, path), blob_at(base, path)
+    if b is None and m is None:
+        return True                                   # deleted both ends
+    if b is None or m is None:
+        return False
+    rc1, bt, _ = sh("git", "show", "%s:./%s" % (remote, path))
+    rc2, mt, _ = sh("git", "show", "%s:./%s" % (base, path))
+    if rc1 != 0 or rc2 != 0:
+        return False
+    return lines_contained(bt, mt)
+
+
+def lines_contained(branch_text, base_text):
+    """Every line of `branch_text`, WITH MULTIPLICITY, present in `base_text`.
+
+    ⛔ PURE, AND SEPARATE FROM THE GIT FETCH, so it can be controlled without a repository.
+    The first version of this lived inline and `--self-test` PASSED when the predicate was
+    mutated to `return True` — the suite controlled only the counts derived from it, so a
+    broken containment leg was invisible. A control that cannot fail for the thing it
+    appears to cover is the defect this tool exists to report.
+    """
+    cb, cm = Counter(branch_text.splitlines()), Counter(base_text.splitlines())
+    return not [ln for ln, n in cb.items() if cm[ln] < n]
 
 
 def path_agreement(remote, shas):
@@ -197,8 +245,10 @@ def path_agreement(remote, shas):
     """
     paths = touched_paths(shas)
     if not paths:
-        return 0, 0
-    return sum(blob_at(remote, q) == blob_at(BASE, q) for q in paths), len(paths)
+        return 0, 0, 0
+    same = sum(blob_at(remote, q) == blob_at(BASE, q) for q in paths)
+    held = sum(line_contained(remote, BASE, q) for q in paths)
+    return same, len(paths), held
 
 
 def stranded(rows):
@@ -232,7 +282,7 @@ def stranded(rows):
         # and marks "-" when an equivalent change is already upstream.
         rc, out, _ = sh("git", "cherry", BASE, remote)
         if rc != 0:
-            found.append((ref, sha, None, None, prs, (0, 0)))  # unreadable is not zero
+            found.append((ref, sha, None, None, prs, (0, 0, 0)))  # unreadable is not zero
             continue
         marks = [ln[:1] for ln in out.splitlines() if ln[:1] in "+-"]
         if not marks:
@@ -243,7 +293,7 @@ def stranded(rows):
         # commit can never match by patch id — the diffs are different sizes — yet the
         # bytes are all there. Ask the content question before reporting an absence.
         plus = [ln[2:].strip() for ln in out.splitlines() if ln[:1] == "+"]
-        agree = path_agreement(remote, plus) if unmatched else (0, 0)
+        agree = path_agreement(remote, plus) if unmatched else (0, 0, 0)
         found.append((ref, sha, len(marks), unmatched, prs, agree))
     return found, checked, deleted, unfetched
 
@@ -287,15 +337,37 @@ def self_test():
     print(f"  known-positive  unreadable ref : {unk}   (unreadable is not zero)")
     # ⇒ The fourth state needs its own control, and the row that matters is the
     # vacuous one: zero paths examined must NOT read LANDED.
-    cs = {case: content_state(*case) for case in [(2, 3, 3), (2, 2, 3), (2, 0, 0), (0, 0, 0)]}
+    cs = {case: content_state(*case) for case in
+          [(2, 3, 3, 3), (2, 2, 3, 2), (2, 0, 0, 0), (0, 0, 0, 0), (2, 0, 3, 3), (2, 0, 3, 2)]}
     for case, got in cs.items():
-        print(f"  content-state   unmatched={case[0]} paths={case[1]}/{case[2]}: {got}")
+        print(f"  content-state   unmatched={case[0]} bytes={case[1]}/{case[2]} "
+              f"lines={case[3]}/{case[2]}: {got}")
+    # ⇒ THE PREDICATE ITSELF, not only the counts derived from it. Mutating
+    # lines_contained to `return True` used to leave --self-test green.
+    lc = {
+        "identical":            lines_contained("a\nb\n", "a\nb\n"),
+        "subset (main grew)":   lines_contained("a\nb\n", "a\nb\nc\n"),
+        "one unique line":      lines_contained("a\nZZ\n", "a\nb\n"),
+        "3 copies vs 1":        lines_contained("x\nx\nx\n", "x\ny\n"),
+        "empty branch":         lines_contained("", "a\n"),
+    }
+    for name, got in lc.items():
+        print(f"  lines-contained {name:<20}: {got}")
+
     ok = (pos == ["b/stranded"] and neg == [] and unk == ["d/unreadable"]
           and cap == ["dev4/instruction-precedence"]
-          and cs[(2, 3, 3)] == "LANDED"          # all paths upstream
-          and cs[(2, 2, 3)] == "UNRESOLVED"      # one shared file vetoes
-          and cs[(2, 0, 0)] == "UNRESOLVED"      # ⛔ examined nothing is not landed
-          and cs[(0, 0, 0)] == "N/A")
+          and cs[(2, 3, 3, 3)] == "LANDED"            # byte-identical: conclusive
+          and cs[(2, 2, 3, 2)] == "UNRESOLVED"        # partial on both legs
+          and cs[(2, 0, 0, 0)] == "UNRESOLVED"        # ⛔ examined nothing is not landed
+          and cs[(0, 0, 0, 0)] == "N/A"
+          # ⇒ ARCHITECT's leg: bytes differ everywhere, lines all upstream -> its OWN state,
+          # never silently promoted to LANDED, and never demoted to UNRESOLVED.
+          and cs[(2, 0, 3, 3)] == "LANDED-BY-LINES"
+          and cs[(2, 0, 3, 2)] == "UNRESOLVED"        # partial containment is not containment
+          and lc["identical"] and lc["subset (main grew)"]
+          and not lc["one unique line"]                # ⛔ it must be able to say NO
+          and not lc["3 copies vs 1"]                  # counts, not membership
+          and lc["empty branch"])                      # vacuous, and stated in the docstring
     print("  ✅ discriminated" if ok else "  ⛔ FAILED to discriminate", file=sys.stderr)
     return 0 if ok else 2
 
@@ -370,12 +442,15 @@ def main():
               "ESTABLISHED NOTHING. Expected at least one surviving ref; a fetch or prune "
               "failure looks exactly like a tidy repository.", file=sys.stderr)
         return 2
-    for ref, sha, cnt, unmatched, prs, (same, tot) in found:
+    for ref, sha, cnt, unmatched, prs, (same, tot, held) in found:
         if cnt is None:
             state, n = "UNREADABLE", "-"
-        elif content_state(unmatched, same, tot) == "LANDED":
+        elif content_state(unmatched, same, tot, held) == "LANDED":
             # Patch ids diverged but every touched path is byte-identical at BASE.
             state, n = "CONTENT-UPSTREAM", f"{unmatched} of {cnt} commit(s), {same}/{tot} paths landed"
+        elif content_state(unmatched, same, tot, held) == "LANDED-BY-LINES":
+            state, n = "LINES-UPSTREAM", (f"{unmatched} of {cnt} commit(s), {held}/{tot} paths "
+                                          f"line-contained (bytes differ: main moved)")
         elif unmatched == 0:
             # Every commit has a patch-equivalent upstream. The sha is unreachable
             # and the WORK landed. Reported, never called stranded.
@@ -391,7 +466,7 @@ def main():
     # tool's preferred error direction — a false "lost" makes a reader re-do work that
     # already exists — and byte equality is evidence, not a guess.
     unmatched_refs = [f for f in found if f[3] not in (0,)
-                      and content_state(f[3], *f[5]) != "LANDED"]
+                      and content_state(f[3], *f[5]) not in ("LANDED", "LANDED-BY-LINES")]
     print(f"\n{len(unmatched_refs)} ref(s) with no upstream patch-match, of {checked} examined; "
           f"{len(deleted)} ref(s) deleted on merge (nothing to examine); "
           f"{checked + len(deleted)} of {len(by_ref_count(rows))} merged-PR refs accounted for.",
