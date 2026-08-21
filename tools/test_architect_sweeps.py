@@ -81,6 +81,31 @@ def main():
     check("known-negative: and the refusal says so, not 'no finding'",
           "VOID" in buf2.getvalue() and "established nothing" in buf2.getvalue().lower(), True)
 
+    # --- doctrine-discriminability: THE SWEEP, over the real tree.
+    # ⛔ Every other check in this file drives a helper on constructed inputs. That unit-checks the
+    #    PREDICATE and leaves the SWEEP with no caller -- #89's defect, which this file's author
+    #    spent an afternoon routing to other roles before auditing his own directory and finding
+    #    four instances of it, this one being the only one with no mechanical excuse.
+    # ⚠ Affordable and safe, measured: 1.40s, 0 forge references, 0 write operations. The other
+    #    three sweeps here reach the forge or mutate tools, and a caller for those would PERFORM
+    #    the action (#506) -- which is why only this one is wired.
+    import importlib.util as _ilu, io as _io, contextlib as _cl
+    _sp = _ilu.spec_from_file_location(
+        "dd", os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "architect-sweeps", "doctrine-discriminability.py"))
+    dd = _ilu.module_from_spec(_sp); _sp.loader.exec_module(dd)
+    _buf = _io.StringIO()
+    with _cl.redirect_stdout(_buf):
+        _rc = dd.main()
+    _out = _buf.getvalue()
+    check("discriminability: the sweep RUNS over the real tree", _rc in (0, 1, 2), True)
+    # ⚠ 2 is ESTABLISHED NOTHING and is a legitimate outcome here -- a tree with no history for the
+    #    subject returns it. Asserting rc==0 would make this suite fail on a shallow clone, which is
+    #    a caller that breaks on an environment rather than on a defect.
+    check("discriminability: it names the subject it read", "prompts/" in _out or _rc == 2, True)
+    check("discriminability: a VOID run says so rather than printing a clean sweep",
+          _rc != 2 or "VOID" in _out or "established nothing" in _out.lower(), True)
+
     print(f"\n{'all checks passed' if not FAILED else f'{FAILED} FAILED'}")
     return 1 if FAILED else 0
 
