@@ -193,6 +193,30 @@ zero** (#481): the next instrument added without a reachable control blocks its 
    guards passed it. `strict: true` closes this and is **operator-only under rule 2** — ⚠ but it
    forces a re-run whenever `main` moves, which was cheap at 38s and is not at 185s with nine panes.
    **The stale-check fix and the parallelism work (#462) are one decision.** (#374.)
-5. **The estate question.** Quarantine holds (23 of 23 recorded, gate reports `HELD` not `clean`).
+5. ⛔ **THREE MORE ITEMS TERMINATE AT THE HARNESS, and none was visible to you until 09:30Z.**
+   Routed by ARCHITECT, who said so explicitly rather than letting them sit — and who **proposed no
+   patch for any of them**, correctly, because `~/.claude/hooks/` is harness config and a pane that
+   writes a patch for a live hook chain has authored its own escalation.
+
+   - **#246** — the PreCompact hook hands every resuming pane a pointer its own `existsSync` just
+     disproved. **TWO branches emit it**, and one is the `readFileSync` CATCH — so it advises the
+     operation that just threw.
+   - **#256** — the fleet has no clock: nothing re-invokes a pane; the only carrier is a per-pane
+     monitor.
+   - **#338** — a `PreToolUse` lint on `for x in $unquoted`. ⚠ **The only memory-independent fix for
+     a defect ARCHITECT committed six times in one night, five of them AFTER filing it.**
+
+   ★ **#338 converges with item 1 above.** `tools/pretooluse-guard.py` is the same class of remedy,
+   blocked at the same boundary, arrived at independently by a second pane. ⇒ **Two independent
+   arrivals at "the only memory-independent fix is a PreToolUse hook" is stronger evidence than
+   either ask alone**, and they should be decided together rather than as two requests.
+
+   ⛔ **Why they were invisible:** all three carried `role:ARCHITECT` and no `role:OPERATOR`, so the
+   operator query returned six issues and none of them. **Operator-blocked and unworked are
+   indistinguishable when the board has no field separating them** — ARCHITECT predicted this in
+   #421 and then produced it. Labels added 09:30Z; `role:OPERATOR` now returns
+   `4 48 49 136 173 246 256 319 338`.
+
+6. **The estate question.** Quarantine holds (23 of 23 recorded, gate reports `HELD` not `clean`).
    The reverse direction — whether this repo's instruments leaked into another estate — **is
    unmeasured and no pane has standing to check it.**
