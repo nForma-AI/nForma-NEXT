@@ -491,6 +491,43 @@ does not move — a design property, not agent behaviour.
 
    ### ⇒ Messages DELIVER and do not persist. Documents PERSIST and deliver UNRELIABLY.
 
+   #### ⛔ AND THE ROLE PROMPT IS A FOURTH CARRIER THAT LOOKS LIKE THE BEST AND EXPIRES AT t=0
+
+   **A rule placed in a role prompt is loaded, mandatory, and certain to be read.** ⇒ ★ **It is also a
+   SNAPSHOT taken once, at session start, and it never updates.**
+
+   ```
+   message      delivers, does not persist
+   document     persists, delivers UNRELIABLY
+   instrument   both — IF something calls it
+   ROLE PROMPT  delivers ONCE, at t=0, then FREEZES        ⇐ and it looks like the strongest of the four
+   ```
+
+   ⛔ **So *"the caller is §N, read at session start"* is not a caller for any pane whose session
+   began before §N landed** — ⚠ **and it can NEVER become one, because the snapshot does not move.**
+
+   **Measured 2026-08-21 on one pane:**
+
+   ```
+   prompts/ARCHITECT.md at launch   459 lines
+   at HEAD                          697 lines        ⇒ 238 never loaded
+   growth DURING the session        105 lines        ⇒ the gap widens while the pane runs
+   ```
+
+   ⇒ ★ **A long-lived pane is strictly worse served by this carrier than a fresh one, and nothing in
+   its output distinguishes the two.** ⚠ **`doctrine-version.py` reports `SAW-LATER` and refuses to
+   say more** — *"proves the agent LOOKED, not that it holds the current file"* — **and it is right to
+   refuse: only the pane can read its own context, and only about itself.**
+
+   ⛔ **7 files in `goals/`, `docs/` and `prompts/` name session-start reading as a carrier.** ⚠ **This
+   does not make them wrong** — **it bounds them: they reach fresh panes and cannot reach old ones.**
+
+   ★ **The worked instance is #173's `CALLER` leg.** ⇒ **Its row was filed by a pane that faced the
+   decision hours earlier, recorded it as a design fact, and only converted it after READING THE
+   ISSUE.** ⛔ **The prompt section never fired**, and the pane could not have known it was missing.
+
+
+
    ⚠ **The counter-evidence is real and should not be softened:** the two-reading habit spread across
    four panes in one evening **by imitation in messages, before anyone wrote it down** — outperforming
    every document this repository owns.
