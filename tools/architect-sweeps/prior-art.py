@@ -24,7 +24,7 @@ Exit codes:
 """
 import argparse, json, subprocess, sys, uuid
 
-CHANNELS = ("open-prs", "merged-prs", "main-tree")
+CHANNELS = ("issues", "open-prs", "merged-prs", "main-tree")
 
 
 def gh(*args):
@@ -37,6 +37,17 @@ def search(term, repo, merged_limit):
     """Returns {channel: (ok, [hit, ...])}. ok=False means the channel could not be read —
     which is VOID for that channel, never zero hits."""
     low, out = term.lower(), {}
+
+    # ⛔ ISSUES FIRST, AND THEY WERE ABSENT UNTIL 2026-08-21. Reported by DEV1 (#549): this tool
+    #    returned `channels read 3 of 3 · controls fired on 3 · hits 0` for a term with a DEDICATED
+    #    OPEN ISSUE, and its honesty note named messages, transcripts and other estates as its
+    #    omissions -- never issues. ⇒ Three green controls and a zero read as a valid negative.
+    # ★ Measured the same day, against the terms this tool's own author had swept: 8 of 12 had at
+    #    least one issue-board hit invisible to all three channels. The issue board is the PRIMARY
+    #    channel for findings in this fleet, and it was the one not read.
+    rc, s = gh("issue", "list", "-R", repo, "--state", "all", "--limit", "400",
+               "--json", "number,title,body")
+    out["issues"] = _scan(rc, s, low, "issue")
 
     rc, s = gh("pr", "list", "-R", repo, "--state", "open", "--limit", "200",
                "--json", "number,title,body,files")
@@ -84,6 +95,12 @@ def _scan(rc, stdout, low, kind):
 def _positive_from_channels(repo, merged_limit):
     """A per-channel positive term, taken from each channel's own first row."""
     out = {}
+    # ⛔ The `issues` channel was added 2026-08-21 (#549) and THIS function was the consumer that
+    #    kept the old space: adding the channel raised KeyError: 'issues' on the first real run.
+    #    #39's shape -- a producer gains a state, a consumer keeps the old one -- inside the tool
+    #    whose job is to find what already exists. Caught by RUNNING it, not by reading the diff.
+    rc, o = gh("issue", "list", "-R", repo, "--state", "all", "--limit", "1", "--json", "title")
+    out["issues"] = _first_word(rc, o)
     rc, o = gh("pr", "list", "-R", repo, "--state", "open", "--limit", "1", "--json", "title")
     out["open-prs"] = _first_word(rc, o)
     rc, o = gh("pr", "list", "-R", repo, "--state", "merged", "--limit", "1", "--json", "title")
