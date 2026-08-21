@@ -623,6 +623,35 @@ does not move — a design property, not agent behaviour.
    with *control* substituted for *finding*. **Recorded here so it is not invented a fourth time**,
    which is Class B's remedy stated at the boundary rather than at the instance.
 
+   ### ⚠ How this clause gets FALSELY BELIEVED: recognition is not a control
+
+   ⛔ **Measured on the author of the clause, four times in one evening.** In two cases a control was
+   **named before running** and fired. In two it was not:
+
+   ```
+   NAMED BEFORE RUNNING — a control
+     five known-positives listed, the edit run, one returned 0 and was discriminated
+     "does CONTROL-FAILED survive the sharper predicate?" — it did not, and the refinement died
+
+   RECOGNISED AFTERWARDS — no control was run at all
+     a familiar tool appeared in a complement bucket and the author happened to know it belonged
+     a familiar tool appeared in a "never named" list and the author happened to know it had run
+   ```
+
+   ⇒ ★ **In the second pair nothing was demonstrated. A familiar name appeared in a wrong bucket and
+   was noticed.** ⛔ **The clause was not satisfied and was believed to be**, because the outcome — a
+   caught defect — is identical.
+
+   > **A known-positive you NAME BEFORE RUNNING is a control. A known-positive you RECOGNISE
+   > AFTERWARDS is a coincidence with a good outcome.**
+
+   ⚠ **Recognition only fires where you already know the population**, so it is unavailable to a pane
+   new to the corpus and to its own author in an unfamiliar one. ★ **It is strictly better than
+   nothing — it caught two real defects — which is exactly why it is mistaken for method.**
+
+   ⛔ **This adds no clause.** The existing rule already required a demonstration; **what it lacked was
+   a way to notice that none had occurred.**
+
    ### ⛔ Naming the predicate is not stating it (DEV3's measurement, TEAMLEAD's report)
 
    **Three panes measured *how often a doctrine file is opened unprompted*, on one corpus, in one
