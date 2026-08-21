@@ -106,6 +106,16 @@ VERDICT, NOTHING, NOVOCAB, NEVERRUN, SLOW = (
 #   anything", and an instrument whose own known-positive is broken reads VERDICT-SEEN either way.
 STPASS, STFAIL, STNONE, STDECL = ("SELFTEST-PASS", "SELFTEST-FAIL", "NO-SELF-TEST",
                                   "SELFTEST-DECLARED")
+# ⛔ A FIFTH STATE, AND ITS ABSENCE WAS THE SAME COLLAPSE THIS FILE ALREADY FIXED ONCE. classify()
+# separates NO-VERDICT-IN-TIME from NEVER-RUN (#248) because a timeout is a property of the BOUND
+# the caller chose, not of the instrument. selftest_state() folded a timeout into NO-SELF-TEST —
+# "I could not wait long enough" reported as "this tool has no control".
+# ⚠ MEASURED ON THIS FILE ITSELF: selftest_state runs THREE subprocesses, and one is a BARE run.
+#   A bare verdict-census.py is a full census, minutes long. At a 60s bound it times out and this
+#   tool reported ITSELF as NO-SELF-TEST — while `--self-test` returns 0 with 49 lines of controls.
+# ★ The detail string said "no self-test verdict within 60s". The STATE did not, and a state is
+#   what a census tallies. I read my own row as ABSENT before reading the detail beside it.
+STSLOW = "NO-SELFTEST-IN-TIME"
 SELFTEST = "--self-test"
 # ⛔ THE PROBE MUST BE THE SAME LENGTH AS THE REAL FLAG, and this was measured rather than
 # reasoned. A flag NAME influences output beyond its own occurrence: `gh`'s usage block wraps to
@@ -211,7 +221,11 @@ def selftest_state(path, timeout=TIMEOUT):
         bare = subprocess.run([sys.executable, str(path)], capture_output=True,
                               text=True, timeout=timeout, cwd=str(ROOT))
     except subprocess.TimeoutExpired:
-        return STNONE, f"no self-test verdict within {timeout}s — bound is the caller's"
+        # ⛔ NOT NO-SELF-TEST. The bound is the caller's, not the instrument's — and one of the
+        # three probes below is a BARE run, which for a census-shaped tool is its whole workload.
+        return STSLOW, (f"no self-test verdict within {timeout}s — ⚠ one of the three probes is a"
+                        f" BARE run, which for some instruments is minutes of work. Raise"
+                        f" --timeout before reading this as 'no control'.")
     except OSError as e:
         return STNONE, f"could not execute: {e}"
 
@@ -324,7 +338,7 @@ def census(index=None, tools_dir=None, timeout=TIMEOUT):
              for s in (VERDICT, NOTHING, NOVOCAB, SLOW, NEVERRUN)}
     tally["SELF-EXCLUDED"] = sum(1 for _, x, *_ in rows if x == "SELF-EXCLUDED")
     stally = {s: sum(1 for *_, x, _ in rows if x == s)
-              for s in (STPASS, STFAIL, STDECL, STNONE)}
+              for s in (STPASS, STFAIL, STDECL, STNONE, STSLOW)}
     stally[STNONE] -= tally["SELF-EXCLUDED"]  # the self row carries no self-test reading
     out.append("")
     out.append("  " + " · ".join(f"{k} {v}" for k, v in tally.items()))
@@ -359,6 +373,8 @@ def census(index=None, tools_dir=None, timeout=TIMEOUT):
     out.append("  note  a bare run answers 'did it conclude'; the self-test column answers"
                " 'is that conclusion worth anything' — an instrument with a broken known-positive"
                " reads VERDICT-SEEN either way (#151)")
+    # ⚠ STSLOW is NOT a finding: it establishes nothing about the instrument, exactly as
+    # NO-VERDICT-IN-TIME does not. It is reported, never counted as a defect.
     rc = 1 if (tally[NEVERRUN] or tally[NOVOCAB] or tally[SLOW]
                or stally[STFAIL] or stally[STDECL]) else 0
     return rc, out, rows
@@ -480,6 +496,22 @@ def self_test():
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  a confirmed verdict from unchanged bytes is NOT "
               f"re-run — this is the whole saving")
+
+        # ⛔ A SLOW INSTRUMENT IS NOT AN INSTRUMENT WITHOUT A CONTROL, and folding the two is
+        # the collapse classify() already fixed as NO-VERDICT-IN-TIME vs NEVER-RUN (#248).
+        # ⚠ Controlled in BOTH directions: a state that swallowed the absent case would report
+        # every uncontrolled tool as merely slow, which is worse than the defect it replaced.
+        slow = _fixture(d, "st_slow.py", "import time\ntime.sleep(20)\nraise SystemExit(0)")
+        got, _ = selftest_state(slow, timeout=2)
+        ok &= got == STSLOW
+        print(f"  {'ok  ' if got == STSLOW else 'FAIL'}  an instrument slower than the bound is"
+              f" {STSLOW}, not NO-SELF-TEST (got {got})")
+
+        absent = _fixture(d, "st_absent.py", "raise SystemExit(0)")
+        got, _ = selftest_state(absent, timeout=30)
+        ok &= got == STNONE
+        print(f"  {'ok  ' if got == STNONE else 'FAIL'}  and a genuinely uncontrolled instrument"
+              f" is still NO-SELF-TEST (got {got}) — the new state does not swallow it")
 
         # ⛔ THE FINGERPRINT MUST MOVE FOR A CLASSIFICATION CHANGE AND HOLD FOR A COSMETIC ONE.
         # Controlled in BOTH directions: one that never moves preserves wrong rows forever, and
