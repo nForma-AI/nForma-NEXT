@@ -65,6 +65,25 @@ the name resolves to nothing in the only registry a pane can read. The rule is n
 `"You are DEV4."` Content settles which pane is which (DEV3 measured 119 `DEV3 → TEAMLEAD` and 270
 `TEAMLEAD →` inside that transcript); **no identifier does.**
 
+⇒ **AMENDED AGAIN 06:25Z — and this is a better account than the one above.** A session
+bootstrapped as TEAMLEAD **did** exist in this project, and it stopped:
+
+```
+501fcd3b-…   bootstrap turn: "You are TEAMLEAD."   last write 2026-08-20 13:24:31Z
+fleet relaunch (DEV3's measurement)                             2026-08-20 14:31:35
+this pane (a10daa24)  bootstrap turn: "You are DEV4."           still live
+```
+
+⇒ **The TEAMLEAD pane died about an hour before the relaunch and was never replaced under that
+name.** That is *why* no live registry entry is named TEAMLEAD — not a naming bug, a **succession
+that happened without being recorded anywhere**. The role moved to a pane launched as DEV4, and
+nothing at any layer was updated to say so.
+
+⚠ **This strengthens rule 3, it does not weaken it.** Succession has no default and is the
+operator's — and the fleet has now performed one anyway, silently, by a pane picking up a role whose
+holder had stopped. ⛔ **Nothing detected that at the time**, and the only reason it is written down
+now is that DEV4 refused a message on identity grounds fourteen hours later.
+
 ★ Three layers were already recorded above as disagreeing — recipe, rename, monitor. This adds a
 fourth, and it is the one the file relied on to escape the other three.
 
