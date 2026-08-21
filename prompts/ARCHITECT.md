@@ -569,6 +569,29 @@ already half-lost.
 
 ⚠ **Two triggers, and the second exists because the first is biased.**
 
+### ⇒ LABEL EVERY ITEM: is it a MEASUREMENT or a JUDGEMENT? Fill the field; do not recall the distinction.
+
+```
+[measured <date> at <ref>]   a figure someone can re-take
+[NOT-YET-MEASURED]           an observation you believe and have not tested   ← existing vocabulary,
+                                                                                already in 10 files
+```
+
+⛔ **Worked, and the outcome is measured.** **#164 filed six judgements at 88%, each labelled
+*"a judgement, not a measurement"*.** ⇒ **A day later all six were testable, and four CONCLUSIONS
+were overturned by measuring the very thing that produced them** — a tool wrongly grouped, a scanner
+wrongly condemned, an instrument wrongly called missing, an error wrongly confessed. ★ **Every one of
+the six OBSERVATIONS survived.**
+
+⇒ ⛔ **Filed as findings, those four would have entered the record as facts, and correcting them
+would have required a later reader to doubt them first.** ★ **What made them survivable was not the
+filing. It was the LABEL on the filing.**
+
+⚠ **This is a FIELD, not a habit.** ⇒ **A rule that asks you to notice which kind of claim you are
+making is one you must recall at the moment you are least able to** — **a rule that asks you to fill
+a slot is executed because the slot is there.** *(`goals/README.md`: a rule shaped as an ORDERING
+binds; one shaped as a PRINCIPLE needs a catcher.)*
+
 **Depth trigger:** at **80%** context, file a session friction report — well
 before the compaction handshake, not during it.
 
