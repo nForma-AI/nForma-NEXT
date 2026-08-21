@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# NOT-EXECUTABLE: a module. tools/README.md: 'not an instrument; a module. It is imported, never run.' No __main__, no argv surface.
 """Two stderr markers that separate *never ran* from *ran and established nothing*.
 
 ⛔ THE DEFECT, measured (#58). Three different things produce `exit 2`, and the
