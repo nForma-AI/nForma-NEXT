@@ -166,7 +166,22 @@ def main():
               "pattern,\n      and 0 matches reads as 'the signature is absent'.")
         return 2
 
-    print(f"✅ witnessed log: {len(log)} bytes, "
+    # ⛔ THIS SAID "bytes" AND COUNTED CHARACTERS. Caught 2026-08-21 by a peer who
+    # refused to pin a fixture on a number two fetches disagreed about: their fetch
+    # measured 39,067 and this printed 38,950. The 117 was not a fetch difference —
+    # `len()` on a str counts CHARACTERS, and a CI log is full of ✅ ⛔ ─, so it
+    # understated by 110-124 on every log measured. Reconciled exactly:
+    # len(stripped.encode("utf-8")) == the on-disk byte count, on all four.
+    #
+    # ★ AND THE MISLABEL MATTERED MORE HERE THAN IT USUALLY WOULD: this tool's whole
+    # argument is that SIZE IS NOT A WITNESS — and it prints a size anyway, which is
+    # the number people then quote (46,922 vs 535 is cited in its own docstring).
+    # ⇒ A number a tool PRINTS gets used as evidence whether or not the tool calls
+    # it one. So it is now exact, and says which quantity it is.
+    raw_b = len(body.encode("utf-8", "replace")) if body else 0
+    txt_b = len(log.encode("utf-8", "replace"))
+    note = "" if raw_b == txt_b else f" ({raw_b} fetched, {raw_b - txt_b} stripped)"
+    print(f"✅ witnessed log: {txt_b} bytes{note}, "
           f"{len(LOG_LINE.findall(log))} timestamped line(s)")
     for pat in a.grep:
         hits = [l for l in log.splitlines() if re.search(pat, l, re.I)]
