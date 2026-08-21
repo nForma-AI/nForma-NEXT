@@ -354,6 +354,14 @@ def self_test():
     for name, got in lc.items():
         print(f"  lines-contained {name:<20}: {got}")
 
+    # ⇒ The DISTRIBUTION check, controlled two-sided: it must fire on a collapse and stay
+    # quiet on a mixed population.
+    _mk = lambda st: ("r", "s", 2, 2, [1], (2, 2, 2) if st == "L" else
+                      ((0, 2, 2) if st == "B" else (0, 2, 0)))            # noqa: E731
+    d_collapsed = state_distribution([_mk("U"), _mk("U"), _mk("U")])
+    d_mixed = state_distribution([_mk("U"), _mk("L"), _mk("B")])
+    print(f"  distribution    collapsed: {d_collapsed}  mixed: {d_mixed}")
+
     ok = (pos == ["b/stranded"] and neg == [] and unk == ["d/unreadable"]
           and cap == ["dev4/instruction-precedence"]
           and cs[(2, 3, 3, 3)] == "LANDED"            # byte-identical: conclusive
@@ -367,9 +375,39 @@ def self_test():
           and lc["identical"] and lc["subset (main grew)"]
           and not lc["one unique line"]                # ⛔ it must be able to say NO
           and not lc["3 copies vs 1"]                  # counts, not membership
-          and lc["empty branch"])                      # vacuous, and stated in the docstring
+          and lc["empty branch"]                       # vacuous, and stated in the docstring
+          # ⛔ one verdict for every subject must be VISIBLE as one key...
+          and len(d_collapsed) == 1
+          # ...and a mixed population must NOT trip it.
+          and len(d_mixed) == 3)
     print("  ✅ discriminated" if ok else "  ⛔ FAILED to discriminate", file=sys.stderr)
     return 0 if ok else 2
+
+
+def row_state(cnt, unmatched, agree):
+    """The reported state for one row, from counts alone. Pure, so it is controllable."""
+    if cnt is None:
+        return "UNREADABLE"
+    if unmatched == 0:
+        return "EQUIVALENT-UPSTREAM"
+    return {"LANDED": "CONTENT-UPSTREAM",
+            "LANDED-BY-LINES": "LINES-UPSTREAM"}.get(content_state(unmatched, *agree),
+                                                     "NO-UPSTREAM-MATCH")
+
+
+def state_distribution(found):
+    """{state: count} across the whole population.
+
+    ⛔ EXTRACTED SO THE NON-DISCRIMINATING CHECK CAN FAIL. Written inline first, where the
+    only way to exercise it was a live sweep — the same defect as the containment predicate
+    two changes ago, whose --self-test stayed green under `return True` because the suite
+    controlled the counts derived from it and never the thing itself.
+    """
+    dist = {}
+    for _r, _s, cnt, unmatched, _p, agree in found:
+        st = row_state(cnt, unmatched, agree)
+        dist[st] = dist.get(st, 0) + 1
+    return dist
 
 
 def verdict_exit(n_unmatched, truncated):
@@ -498,6 +536,23 @@ def main():
           "three observers of one ref disagreed within an hour, none of them wrong. A count "
           "without its sha is not comparable to the same count from another run.",
           file=sys.stderr)
+    # ⇒ THE DISTRIBUTION, not any single row. A predicate returning ONE VERDICT for every
+    # subject passes every per-run control it has — the tell is only visible across the
+    # population. (#479, DEV2's `13 of 13` at this layer.) ⛔ This tool has five states and
+    # is exactly the shape that can collapse silently: if patch-id ever matched nothing,
+    # every row would read NO-UPSTREAM-MATCH and each row would still be correct.
+    dist = state_distribution(found)
+    if dist:
+        print("\nstate distribution: " + " · ".join(f"{k} {v}" for k, v in sorted(dist.items())),
+              file=sys.stderr)
+        if len(dist) == 1:
+            only = next(iter(dist))
+            print(f"⛔ NON-DISCRIMINATING — all {sum(dist.values())} refs scored {only}. One verdict "
+                  "for every subject passes every per-run control; the tell is the DISTRIBUTION. "
+                  "⚠ This does NOT establish the predicate is broken — a genuinely uniform "
+                  "population reads the same way. It establishes that this run cannot tell the "
+                  "two apart.", file=sys.stderr)
+
     code = verdict_exit(len(unmatched_refs), truncated)
     if code == 2:
         print("⛔ no unmatched refs IN THE PREFIX EXAMINED — and the sweep was truncated, so "
