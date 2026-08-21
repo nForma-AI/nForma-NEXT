@@ -431,15 +431,28 @@ def env_control(reg):
     passes a pane pid.
     """
     live = next((r for r in reg.values() if r.get("pid")), None)
+    source = "a live pane"
     if not live:
-        print("  ⛔ no live pane in the registry to control against", file=sys.stderr)
-        return False
+        # ⛔ A CONTROL DRAWN FROM LIVE FLEET STATE CANNOT RUN WHERE THAT STATE IS ABSENT, and
+        # the only place that GATES is exactly such a place. Measured 2026-08-21: this control
+        # exited 3 on a CI runner — "no live pane in the registry to control against" — so the
+        # first run of `gate-selftests.sh` over population B reported bootstrap-audit as its one
+        # FAILED subject. The tool was behaving correctly and saying so; it simply could not be
+        # SET UP there.
+        #
+        # ⇒ THE RUNNING PROCESS IS A LIVE PROCESS. Its pid always exists and its environment is
+        # readable by the same `ps eww` path, so it is a known-positive that CANNOT DECAY and
+        # needs no fleet. ⚠ It is a FLOOR, not a replacement: a real pane is still preferred when
+        # one exists, because it exercises the reader against the population the tool actually
+        # serves. The source is PRINTED so a reader never has to guess which ran.
+        live = {"pid": os.getpid()}
+        source = "this process — NO live pane in the registry, so the floor ran"
     env, readable = env_of(live["pid"])
     pos = readable and "HOME" in env
     neg = "NFORMA_AUDIT_PROBE_7f3a" not in env
     _, ghost = env_of(2 ** 22)
     dead_ok = not ghost
-    print(f"  known-positive  env of a live pane: "
+    print(f"  known-positive  env of {source}: "
           f"{f'{len(env)} vars incl. HOME' if pos else 'HOME NOT FOUND — reader is blind'}")
     print(f"  known-negative  a nonce variable  : "
           f"{'correctly absent' if neg else 'REPORTED PRESENT — reader invents values'}")
