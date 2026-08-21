@@ -242,13 +242,13 @@ def self_test():
         return p
 
     # DEV3's estate sweep: the encoded ~/.claude/projects/ form the regex missed.
-    # ⛔ THE SLUG IS ASSEMBLED, NOT WRITTEN. `estatenames.py` treats any literal
-    # `.claude/projects/-…` as an estate reference — correctly, since it cannot tell
-    # a fixture from a dependency and guessing would be the use-vs-mention error it
-    # exists to avoid. A real slug here would make this file indistinguishable from
-    # contamination to the very detector this repository gates on. ⇒ The fixture
-    # needs the SHAPE, never the owner: the defect being demonstrated is that the
-    # encoded form does not match a `/Users/x/code/name` pattern.
+    # ⛔ ASSEMBLED, NOT WRITTEN — the fixture needs the SHAPE, never the owner.
+    # ⇒ The rule and its five cases live in docs/ESTATE-BOUNDARY.md, "The fixture
+    #   rule: the shape, never the owner". POINTER, NOT A COPY (#78): a copy cannot
+    #   inherit a correction, and that section has already been corrected twice.
+    # Local reason only: this fixture demonstrates that the ENCODED path form does
+    # not match a `/Users/…/code/<name>` pattern. The shape is the subject; the
+    # owner would only make this file read as contamination to its own detector.
     slug = "~/.claude/" + "projects/" + "-Users-someone-code-Neighbour-Estate/memory"
     has_estate = w("has_estate.py",
                    'ap.add_argument("--dir", default=os.path.expanduser(\n'
