@@ -69,9 +69,25 @@ def main():
     tr9 = [f"s{i}" for i in range(9)]
 
     # 1. The only case that may report a number.
-    rc, lines = pc.census(nine, tr9)
-    check("agreement -> exit 0", rc, 0)
+    ids9 = [r["id"] for r in nine]
+    rc, lines = pc.census(nine, tr9, ids9)
+    check("all sources answered and agree -> exit 0", rc, 0)
     check("agreement states N of N", any("9 of 9" in l for l in lines), True)
+
+    # ⛔ #456's pending-vs-failing split, on the two states this tool shipped wrong.
+    #    An empty rollup is `exit 2` in a different costume: established nothing YET.
+    rc, lines = pc.census(nine, tr9, None)
+    check("getStatus UNAVAILABLE -> not agreement", rc, 1)
+    # ⚠ ✅-marker, not the phrase: the PARTIAL line quotes it to DENY it.
+    check("...and says NOT CHECKED rather than emitting a success verdict",
+          any("NOT CHECKED" in l for l in lines)
+          and not any(l.strip().startswith("✅") for l in lines), True)
+
+    rc, lines = pc.census(nine, tr9, [])
+    check("getStatus EMPTY -> not a mismatch", 
+          any("POPULATION MISMATCH" in l for l in lines), False)
+    check("...and names it a broken query, not a divergence",
+          any("ZERO panes" in l for l in lines), True)
 
     # 2. ⛔ THE SHIPPED DEFECT: a pane alive with no transcript. The census must not
     #    quietly adopt the smaller number, which is what the monitor did for hours.
