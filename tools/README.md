@@ -77,8 +77,31 @@ carries neither relation in its name, so each author supplied one.**
 
 ⛔ **NOT PROPOSING WHICH NAME MOVES.** Two tools declare, one reports; **that is a count, not a
 claim about which is right**, and both are their authors' to name. ⇒ **What is stated here is only
-that one flag currently answers two questions, and that a reader cannot tell which without running
-it.**
+that one flag answers two questions, and that a reader cannot tell which without running it.**
+
+### ⇒ RESOLVED by its own author, on three arguments — and the third is the one that settles it
+
+⚠ **Measured at `origin/main` on 2026-08-21; the fix is in flight as #499 and had not landed when
+this was written.** DEV3 ran the check this section declined to run:
+
+```
+doctrine-version.py      e8e1cff  2026-08-20 19:07   DECLARE   ← first
+close-condition-scan.py  2fcd8e1  2026-08-20 20:09   REPORT      62 minutes later
+runnable-condition.py    1a75706  2026-08-21 01:05   DECLARE
+```
+
+⇒ **Priority and count both favour DECLARE** — ★ **and neither is the reason.** DEV3's third argument
+is: **`--states` reads as *tell me the states*. It names a state SPACE.** ⇒ **The flag was never named
+for the reporting relation at all**, so the one that moved is the one whose name never fitted.
+
+★ **The fix was CONFORMANCE, not exemption.** `close-condition-scan.py` now emits a declaring
+`--states` *and* keeps its reporting behaviour under `--by-state`. ⛔ **An exemption would have
+preserved the collision behind a special case** — which is what a ratchet keyed on the flag rather
+than the property would have forced.
+
+⚠ **And the declaration is emitted BEFORE any network call:** *a tool that cannot say what it CAN
+report is worse than one that cannot report*, and **declaring a state space must never depend on
+reaching a forge.**
 
 ### ⛔ And a refusal must say which KIND of refusal it is (#73)
 
