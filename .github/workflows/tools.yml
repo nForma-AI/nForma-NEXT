@@ -129,7 +129,42 @@ jobs:
       # `--zzz-not-a-flag` and exited 0, so `--self-test` exiting 0 proved nothing about whether
       # the flag was ever recognised. Both argument surfaces are fixed in the same PR; the gate
       # runs the known-negative on every subject on every run so it cannot silently return.
-      - name: subject controls
+      - name: subject controls (scripts/)
+        run: ./scripts/gate-selftests.sh
+
+      # ⛔ POPULATION B — the 29 tools/ instruments exposing `--self-test`, invoked by NOTHING
+      # until now (#398, the open half of #372). ⚠ EXPECTED RED, and that is the point: the
+      # census names 23 of 46 subjects whose controls cannot be shown to run, each with its
+      # cause. A born-red control is a FINDING; excluding the subject converts a broken control
+      # into an ABSENT one, and #372 measured what absent controls cost.
+      #
+      # ⇒ THREE GUARDS LAND BEFORE THIS STEP, IN THIS ORDER, and the middle one is why CI reds
+      # rather than HANGS:
+      #   1. refuse-unknown-flag, using DEV3's differ-test — does the garbage run DIFFER from the
+      #      `--self-test` run? Six subjects absorb the flag entirely; "did it exit nonzero" is
+      #      false here because instruments exit nonzero FOR THEIR OWN FINDINGS.
+      #   2. PER-SUBJECT TIMEOUT — REFUSE 10s, SELF-TEST 60s. Measured: index-watch's own control
+      #      clones a repository and takes ~25s, the slowest by far. A subject that never returns
+      #      is reported TIMED OUT AND NAMED, never folded into "the suite failed".
+      #   3. tests excluded, declarations checked, both counted and named.
+      # ⚠ THE REPRODUCTION COMMAND IS NOT THE SCRIPT NAME. `./scripts/gate-selftests.sh` bare
+      # runs `scripts/` and reports 4 subjects; THIS step sets SUBJ_DIR and runs 48. Someone
+      # spent three passes comparing the bare form's output to this step's CI result before
+      # noticing. To reproduce this step exactly:
+      #
+      #     SUBJ_DIR=tools SUBJ_BASELINE=24 ./scripts/gate-selftests.sh     (~3 minutes)
+      #
+      # ⛔ SUBJ_BASELINE IS A RECORDED DEBT, NOT AN EXEMPTION, and the difference is that it
+      # CANNOT GROW. 24 of these controls establish nothing today; blocking every PR for nine
+      # panes until 24 subjects are repaired is not viable, and going green over them is the
+      # defect this gate exists against. ⇒ The run passes at or below the recorded number and
+      # REDS the moment it rises. Every non-passing subject is still NAMED on every run.
+      # ⚠ Lower it when you repair one — a stated number that is no longer true is the
+      # stale-calibration defect this repository has filed three times.
+      - name: subject controls (tools/)
+        env:
+          SUBJ_DIR: tools
+          SUBJ_BASELINE: "24"
         run: ./scripts/gate-selftests.sh
 
   fleet-dependent:
