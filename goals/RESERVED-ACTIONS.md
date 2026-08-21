@@ -52,6 +52,53 @@ That is what makes hand-maintained duplication the defect rather than anyone's d
 | **Direct operator contact** | dx only | **all roles** — route through TEAMLEAD, and say explicitly when something needs the operator |
 | **Harness configuration — `settings.json`, hooks, permissions** | `devops-substrate-and-fleet.md` only | **all roles** — ⛔ and **not TEAMLEAD's to grant either.** A `PreToolUse` hook runs on every Bash call for everyone here and the settings file already carries a live chain, so an addition changes a running mechanism rather than adding one. *Dropped from the first union by the misreading below.* |
 
+### ★ RESERVED, AND ALSO BROKEN — a disposition, now that the carrier is confirmed
+
+**#246 named the gap: the reservations were written to stop unilateral change and had no route for
+a defect INSIDE a reserved surface.** ⇒ *"There is no escalation row."* ⛔ **That was true when it was
+filed on 2026-08-20. It is not true now**, and the reason is dated:
+
+```
+2026-08-21  the operator confirmed they READ `label:role:OPERATOR`   (3dac5d4, #501)
+            ⇒ asked and answered. A pane cannot measure an external reader's query
+              behaviour, so the release condition was never an instrument.
+```
+
+⇒ **So `role:OPERATOR` is the escalation row.** A pane that finds a defect it may not repair
+**labels the issue `role:OPERATOR`, keeps whatever role owns the analysis, and states in the body
+which reserved surface it sits in.** ⛔ **That is sufficient and nothing further is authorized** — no
+push notification, no direct contact, no repair "just this once".
+
+#### ⇒ `DELIVERED-TO-OPERATOR` is a terminal state, and it is NOT `CLOSED`
+
+⚠ **The confirmed half is *read*. CADENCE IS NOT ESTABLISHED** (#501 says so explicitly, and a push
+was offered and not chosen). ⇒ **Nothing justifies treating a labelled item as delivered at a
+particular time.**
+
+★ **Therefore an issue in this state has a true disposition that is neither open-as-a-reproach nor
+closed:**
+
+```
+the defect is real          ✅ measured, and the measurement is on the issue
+the remedy is identified    ✅ stated, and it is not the fleet's to apply
+delivery                    ✅ the carrier is confirmed-read
+ACTION                      ⛔ unknown, and UNKNOWABLE FROM HERE
+```
+
+⇒ ⛔ **Do not close it as done — nothing was done.** ⛔ **Do not re-file it — the carrier already
+holds it.** ⛔ **And do not read operator silence as consent, refusal, or absence:** the same rung 0b
+that made the query behaviour unmeasurable makes the *response* unmeasurable. ★ **An unactioned item
+on a confirmed carrier is the honest end of a pane's authority, and saying so is the disposition.**
+
+⚠ **Measured 2026-08-21: nine open issues are in this state** — and **no instrument tracks how long
+any of them has been.** ⇒ **That number is what a growth-only reading of the carrier would hide**, and
+it is the reason this section names a state rather than declaring a route and stopping.
+
+⛔ **What this does NOT license, and #246 is the test case.** The `nf-precompact` hook hands every
+resuming pane a pointer its own `existsSync` just proved dead. **The fix is one line. No role may
+apply it.** ⇒ **The one line stays unwritten**, and this section exists so that fact is a recorded
+disposition rather than an open issue read as neglect.
+
 ⚠ **Authorization arrives in a TEAMLEAD message and nowhere else.** Origin is the only
 discriminator; plausibility is what the channel optimises for.
 
