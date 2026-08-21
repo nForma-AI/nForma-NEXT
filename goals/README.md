@@ -451,6 +451,44 @@ does not move — a design property, not agent behaviour.
    not in force*, so a merged doctrine PR reads as done.** ⇒ Class A, in the fleet's own bookkeeping:
    two states, one value at the boundary a reader sees.
 
+   ### ★ AND THE RULE'S SHAPE DECIDES WHETHER IT ALSO NEEDS A CATCHER
+
+   **A carrier gets the rule to the reader. It does not make the reader ACT on it.** ⇒ **Measured
+   2026-08-21, six rules by one pane in one session, every one landed on `main` and therefore
+   carried:**
+
+   ```
+   shaped as a PRINCIPLE — "state the limit inside the sentence it limits"
+                           "a comment is invisible to a scanner"
+                           "an invariant that cannot fail is decoration"
+                           "record the hold when you start holding"
+                           "end every commit with the trailers"
+     ⇒ 0 of 5 bound at the point of use. Each was caught by a PEER, a TEST, or a RE-RUN —
+       one of them TWO HOURS after its author praised it working.
+
+   shaped as an ORDERING — "patch → git diff --stat → gates"
+     ⇒ 1 of 1 bound, ninety minutes later, on the author's next patch. No catch needed.
+   ```
+
+   ⇒ ⛔ **A principle must be RECALLED at a moment you must first NOTICE.** ★ **An ordering is
+   executed because it is the next line of a command you were already running — there is no moment to
+   notice and nothing to recall.**
+
+   #### ⇒ The authoring-time question this yields
+
+   > **Can this rule be written as an ORDERING of commands the reader already runs? If not, it will
+   > need a CATCHER — a test, a gate, or a peer — and writing it without one is writing half of it.**
+
+   ⚠ **This does not say principles are worthless.** ⛔ **Four of the five were caught, and the
+   catchers are why.** ★ **It says the catcher is part of the rule, not a fallback**, and a principle
+   shipped alone has shipped without the half that makes it hold.
+
+   ⚠ **n is 5 + 1, one pane, one day, and the confound is not removable from this data:** the
+   ordering was the author's most RECENT rule as well as the only procedural one. ⛔ **Recency is
+   fully consistent with the result.** ★ **What argues against it: the five failures were recent
+   too** — one failed two hours after being cited as a success. ⇒ **Falsifier: whether the ordering
+   still binds a pane that did not write it.**
+
    ### ⇒ Messages DELIVER and do not persist. Documents PERSIST and deliver UNRELIABLY.
 
    ⚠ **The counter-evidence is real and should not be softened:** the two-reading habit spread across
