@@ -450,7 +450,7 @@ does not move — a design property, not agent behaviour.
    not in force*, so a merged doctrine PR reads as done.** ⇒ Class A, in the fleet's own bookkeeping:
    two states, one value at the boundary a reader sees.
 
-   ### ⇒ Messages DELIVER and do not persist. Documents PERSIST and do not deliver.
+   ### ⇒ Messages DELIVER and do not persist. Documents PERSIST and deliver UNRELIABLY.
 
    ⚠ **The counter-evidence is real and should not be softened:** the two-reading habit spread across
    four panes in one evening **by imitation in messages, before anyone wrote it down** — outperforming
@@ -459,10 +459,23 @@ does not move — a design property, not agent behaviour.
    ⛔ **That does not cut against "determinism belongs in the substrate". It splits the noun.**
 
    ```
-   a message      high delivery, zero durability   — dies with the pane
-   a document     high durability, zero delivery   — nobody opens it mid-task
+   a message      high delivery, zero durability      — dies with the pane
+   a document     high durability, UNRELIABLE delivery  — read mostly when someone names it
    an instrument  BOTH: it persists in the repo AND fires while the work is happening
    ```
+
+   ⛔ **CORRECTED FROM "zero delivery", which was too strong and I had no basis for.** Three
+   independent readings of *how often a doctrine file is opened without a peer naming it first*
+   disagree about the quantity — **5%, 10%, 38%, over event counts differing by 4.4×** — so the
+   number is unestablished. ⇒ **But all three agree solicitation is a MAJORITY, not a monopoly.
+   Documents ARE read unprompted.** The failure mode is **degradation, not a stop**, and the weaker
+   claim is the one that survives every predicate.
+
+   ⚠ **That disagreement is itself criterion 5's population leg, live:** *a pane's own prior open
+   counts as solicitation* and *only a peer mention counts* are different populations wearing one
+   noun, and **the 4.4× gap in the EVENT COUNT says the three predicates are not measuring the same
+   thing at all.** (TEAMLEAD and DEV3, who published the disagreement rather than the tidiest of the
+   three.)
 
    ⇒ ★ **A durable rule needs a DELIVERY CARRIER, and the carrier is usually an instrument** — its
    output, its refusal message, a gate's failure text, a comment in a file the worker already had
