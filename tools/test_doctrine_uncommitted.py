@@ -208,5 +208,26 @@ with tempfile.TemporaryDirectory() as tmp2:
     check("...and it SAYS reads == landed rather than printing nothing",
           "what the fleet reads is what landed" in out, True)
 
+
+# ── ⛔ THE CONTROL MUST BE REACHABLE BARE ────────────────────────────────────
+# This tool merged WITHOUT a self-test, raising the repo's recorded debt to 24; the
+# next tool added then tripped the ratchet at 25 and red-ed CI. ★ The gate's wording
+# is the rule: a control that cannot be invoked without also supplying the subject
+# "is not 'has no self-test'; it is a limit of the invocation" — UNESTABLISHED, not
+# absent. So every argument has a default and `--self-test` runs bare.
+import subprocess
+_tool = os.path.join(_here, "doctrine-uncommitted.py")
+r = subprocess.run([sys.executable, _tool, "--self-test"], capture_output=True, text=True)
+check("`--self-test` alone is REACHABLE (no argparse error)", r.returncode, 0)
+check("...and it ran controls", "all checks passed" in r.stdout, True)
+check("...leading with the KNOWN-NEGATIVE, without which the rest is vacuous",
+      "KNOWN-NEGATIVE" in r.stdout, True)
+check("...and it exercises all THREE states, not two",
+      all(k in r.stdout for k in ("read-but-not-committed", "COMMITTED on a branch",
+                                  "committed-but-not-read")), True)
+_src = open(_tool).read()
+check("a missing git makes the self-test REFUSE (exit 3), never pass",
+      "git is not on PATH" in _src and "return 3" in _src, True)
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)

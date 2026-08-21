@@ -116,6 +116,66 @@ def compare(repo, path, ref):
             [l for l in c if l.strip() and l not in ws])
 
 
+def self_test():
+    """⛔ A control on the CLASSIFIER, built from a real git repo in a temp dir.
+
+    ⚠ THIS TOOL SHIPPED WITHOUT ONE and the omission was not free: it raised the
+    repository's recorded self-test debt to 24, and the next tool added tripped the
+    ratchet at 25 and red-ed CI. ★ The gate's wording is the rule — a control that
+    cannot be invoked without also supplying the subject "is not 'has no self-test';
+    it is a limit of the invocation" — so every argument here has a default.
+
+    The KNOWN-NEGATIVE is the load-bearing case: a checkout sitting exactly on the
+    ref must report NOTHING. Without it a tool that flagged every file would satisfy
+    every positive check below.
+    """
+    import shutil, subprocess, tempfile
+    if not shutil.which("git"):
+        print("⛔ ESTABLISHED NOTHING — git is not on PATH, so no control can run. "
+              "That is not a pass.")
+        return 3
+    ok = True
+    with tempfile.TemporaryDirectory() as tmp:
+        r = os.path.join(tmp, "r"); os.makedirs(r)
+        def g(*a):
+            subprocess.run(["git", "-C", r, *a], capture_output=True, text=True)
+        def w(text):
+            with open(os.path.join(r, "CLAUDE.md"), "w") as fh:
+                fh.write(text)
+        g("init", "-q"); g("config", "user.email", "t@t"); g("config", "user.name", "t")
+        w("alpha\nbeta\n")
+        g("add", "CLAUDE.md"); g("commit", "-qm", "base"); g("branch", "base")
+
+        cases = [("KNOWN-NEGATIVE: on the ref itself, nothing is reported",
+                  compare(r, "CLAUDE.md", "base"), ([], []))]
+        w("alpha\nbeta\nUNSAVED\n")
+        ro, co = compare(r, "CLAUDE.md", "base")
+        cases.append(("a working-only line is read-but-not-committed",
+                      (ro, co), (["UNSAVED"], [])))
+        cases.append(("...and HEAD does not carry it, so it is genuinely uncommitted",
+                      on_head(r, "CLAUDE.md", ro), set()))
+        g("checkout", "-q", "-b", "docs/pr")
+        g("add", "CLAUDE.md"); g("commit", "-qm", "docs: add it")
+        ro2, _ = compare(r, "CLAUDE.md", "base")
+        cases.append(("once COMMITTED on a branch, HEAD carries it — the THIRD state",
+                      on_head(r, "CLAUDE.md", ro2), {"UNSAVED"}))
+        cases.append(("...and the commit is named, so a reviewer can act",
+                      any("docs: add it" in c
+                          for c in branch_commits(r, "CLAUDE.md", "base")), True))
+        w("alpha\n")
+        _, co2 = compare(r, "CLAUDE.md", "base")
+        cases.append(("a missing committed line is committed-but-not-read", co2, ["beta"]))
+
+        for label, got, want in cases:
+            good = got == want
+            print(f"{'✅' if good else '❌'} {label}")
+            if not good:
+                print(f"     got {got!r} want {want!r}")
+                ok = False
+    print("\nall checks passed" if ok else "\nFAILED")
+    return 0 if ok else 3
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -124,7 +184,11 @@ def main():
     ap.add_argument("--path", action="append", default=[],
                     help="doctrine file to check; repeatable. Defaults to the known set.")
     ap.add_argument("--show", type=int, default=6)
+    ap.add_argument("--self-test", action="store_true")
     a = ap.parse_args()
+
+    if a.self_test:
+        return self_test()
 
     repo = os.path.expanduser(a.repo_path)
     if git(repo, "rev-parse", "--git-dir") is None:
