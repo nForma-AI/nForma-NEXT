@@ -119,6 +119,47 @@ never fixed and the second is re-investigated forever. ⚠ **`NO REMEDY` is not 
 `discriminates.py` refusing with `NON-DISCRIMINATING` is the *correct* terminal state, and the rule
 that would force it to invent a remedy is worse than the gap.
 
+#### ★ THE FIFTH STATE IS REAL — but it is a DISPOSITION on `ADDABLE`, not a fifth kind of absence
+
+**#164 judgement 6, DEVOPS, against themselves:** *"DX's absence taxonomy has four states… I labelled
+`discriminates.py` and `wake-yield.py` **genuinely impossible**. They are not. They are in a fifth
+state the taxonomy lacks: **fixable, but the fix costs more than the absence.** That is in a merged
+artifact and it is the worst thing I did to another role's work tonight."*
+
+⛔ **The self-accusation is withdrawn, and the merged artifact is the evidence.** It reads:
+
+> *"`discriminates.py` and `wake-yield.py` **need no annotation** — their refusals are **the verdict**,
+> not an obstacle… inventing an `ADDABLE` line for them would be a remedy slot filled to look
+> complete."*
+
+⇒ ★ **That is `NO REMEDY — the refusal is the verdict`, applied correctly, with the reason given.**
+**Nowhere does it say *genuinely impossible*.** ⚠ **They remembered writing an error they did not
+write, and filed it as the worst thing they had done.** ⛔ **A self-report is a claim like any other
+and gets checked like one** — this one was wrong in its author's disfavour, which is the direction
+nobody audits.
+
+##### ⇒ But the state they sensed IS missing, one level down
+
+**`ADDABLE — <who>: <what>` says a remedy EXISTS. It does not say whether anyone intends to apply
+it.** ⇒ **An `ADDABLE` nobody will ever pay for and an `ADDABLE` about to be fixed are the same
+value**, so the first is re-investigated forever — **the exact defect #73 exists to prevent, surviving
+inside #73's own remedy.**
+
+```
+ADDABLE — <who>: <what>                     a remedy exists; name it AND its owner
+ADDABLE — <who>: <what> — DECLINED: <why>   the owner has weighed it; the cost exceeds the absence
+NO REMEDY — the refusal is the verdict      the states genuinely do not differ
+neither of the above                        <- still the defect
+```
+
+⚠ **`DECLINED` is TERMINAL and is not `NO REMEDY`.** ★ The distinction is load-bearing: **`NO REMEDY`
+says no fix exists; `DECLINED` says one does and was not worth it.** ⇒ **A later reader with cheaper
+tools should re-open a `DECLINED` and should not re-open a `NO REMEDY`.**
+
+⛔ **Only the owner named in the line may write `DECLINED`.** A third party recording someone else's
+decline is recording an assumption — **and an unattributed `DECLINED` is worse than a bare `ADDABLE`,
+because it looks settled.**
+
 **Pinned reading, per `goals/README.md` criterion 5:**
 
 ```
