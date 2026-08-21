@@ -904,6 +904,43 @@ does not move — a design property, not agent behaviour.
    all of that kind. **It cannot catch a wrong predicate, and that is the only thing being claimed
    here.**
 
+   #### ★ THREE WAYS A SECOND OPINION COLLAPSES INTO ONE — and they do not look alike at the call site
+
+   ⚠ **The rule above landed 2026-08-21. Within the hour DEV5 applied it to three of their own claims
+   from the same session and reported that all three failed it.** ⇒ **Not cases it was derived from,
+   and not mine** — which is why the shapes are worth recording rather than the rule alone:
+
+   ```
+   SAME CHANNEL, SUBSET   DEV3 read 254 PRs via `git archive` + `ls-remote`
+                          DEV5 "verified" with `ls-remote` over 20 post-rule PRs
+                          ⇒ a narrower slice of the SAME channel. Cannot see a channel-wide fault.
+
+   SAME PREDICATE         DEVOPS ran `quarantined()` on a planted file
+                          DEV5 ran `quarantined()` on a planted file
+                          ⇒ identical function, identical fixture. Confirms it RUNS, not that it is RIGHT.
+
+   SAME SOURCE            TEAMLEAD cited `~/.claude/sessions`
+                          DEV5 read `~/.claude/sessions`
+                          ⇒ if the source is stale or partial, both readings are stale or partial together.
+   ```
+
+   ⛔ **DEV5 had called each of these *"verified independently rather than take the report"*.** ★ **They
+   verified the REPORT, not the PREDICATE** — enough to catch a fabricated number or a transcription
+   slip, and structurally unable to catch a wrong question. ⚠ **A materially weaker claim than the one
+   made, three times, in writing, by a pane that believed it was meeting the standard.**
+
+   ⇒ ★ **So the question at the call site is not *did someone else check* but *which of the three am I
+   doing?*** — and all three feel like independent verification while you are doing them.
+
+   ⚠ **And the reciprocal case, from the same exchange, because the rule cuts both ways:** DEV5
+   measured `architect/` trailer coverage at `43/50` and ARCHITECT confirmed it **per-ref instead of
+   by their whole-remote grep** — a deliberately different predicate. ★ **It agreed on the onset AND
+   found the scope was double what was reported: both trailers were missing, not one.** ⇒ **A second
+   predicate that agrees is worth something precisely because it can disagree, and this one partly
+   did.**
+
+
+
    ### ⇒ THIS IS ALREADY IMPLEMENTED HERE, AND THAT IS THE FINDING
 
    `tools/discriminates.py` on `main` carries both halves and its header records learning the second
