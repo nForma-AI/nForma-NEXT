@@ -85,15 +85,31 @@ def main():
     a = ap.parse_args()
 
     if a.self_test:
+        # ⛔ NAME THE KNOWN-NEGATIVE IN THE OUTPUT, not just in the test file. Measured
+        # against #405's predicate: this self-test printed six PASS lines and a reader
+        # could not tell which case would have FAILED before — the two verdicts this
+        # gauge actually got wrong in production were indistinguishable from the four
+        # it always got right. A control whose failing state is invisible in its own
+        # output is a control the reader has to take on faith.
         ok = True
-        for args, want in (
-            ((5, 5, 0, 0, 0), "WORKING"), ((5, 5, 0, 0, 63), "STALLED"),
-            ((3, 0, 3, 0, 45), "NO-MERGE-POSSIBLE"), ((5, 0, 0, 5, 2), "RECOMPUTE"),
-            ((0, 0, 0, 0, 10), "EMPTY"), ((5, 5, 0, 0, None), "VOID"),
-        ):
+        cases = (
+            ((5, 5, 0, 0, 0), "WORKING",
+             "KNOWN-NEGATIVE — v2 called this STALLED at a ZERO-minute gap, seconds after a merge"),
+            ((3, 0, 3, 0, 45), "NO-MERGE-POSSIBLE",
+             "KNOWN-NEGATIVE — v1's constant string called this 'accumulating with no exit'"),
+            ((5, 5, 0, 0, 63), "STALLED", "known-positive — the stall it must still catch"),
+            ((5, 0, 0, 5, 2), "RECOMPUTE", "known-positive — UNKNOWN is not a verdict"),
+            ((0, 0, 0, 0, 10), "EMPTY", "known-positive — empty is not blocked"),
+            ((5, 5, 0, 0, None), "VOID", "known-positive — no timestamp establishes nothing"),
+        )
+        for args, want, role in cases:
             got = classify(*args)[1]
-            print(f"  {'PASS' if got == want else 'FAIL'}  {args} -> {got} (want {want})")
+            print(f"  {'PASS' if got == want else 'FAIL'}  {got:<18} {role}")
             ok &= got == want
+        neg = sum(1 for _, _, r in cases if r.startswith("KNOWN-NEGATIVE"))
+        print(f"\n  {len(cases)} controls: {neg} known-negative (verdicts this gauge "
+              f"ONCE PRODUCED WRONGLY), {len(cases) - neg} known-positive.")
+        print("  ⚠ A self-test showing only passes cannot tell a reader which case could fail.")
         return 0 if ok else 1
 
     merged = gh_json(["pr", "list", "-R", a.repo, "--state", "merged", "--limit", "40",
