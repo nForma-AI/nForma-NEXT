@@ -592,6 +592,13 @@ def self_test():
         stamped["_classifier"] = "f" * 40
         lpath.write_text(json.dumps(stamped))
         rcx, lines = stale_check(index=lidx, tools_dir=ld, path=lpath)
+        # ⛔ AND THE FOOTER MUST NAME THAT CAUSE, not the other one.
+        ok &= "CLASSIFIER changed" in stale_footer(lines)
+        print(f"  {'ok  ' if 'CLASSIFIER changed' in stale_footer(lines) else 'FAIL'}  the exit"
+              f" line names the CLASSIFIER cause when that is what was reported")
+        ok &= "population moved" in stale_footer(["  ⛔ foo.py: in the index, absent from the record"])
+        print(f"  {'ok  ' if 'population moved' in stale_footer(['  ⛔ x: absent']) else 'FAIL'}"
+              f"  and names the POPULATION cause otherwise — the branch is not a constant")
         hit = rcx == 1 and any("DIFFERENT classifier" in l for l in lines)
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  --stale-check reports a FOREIGN classifier as stale"
@@ -969,6 +976,21 @@ def _rerun_reason(rec, blob):
     return None
 
 
+def stale_footer(lines):
+    """The exit line names the cause `stale_check` actually reported.
+
+    ⛔ `stale_check` reports TWO distinct causes — a foreign classifier and a moved population —
+    and one footer saying "the indexed population moved" CONTRADICTS the first, two lines above
+    it. ★ That is CLASS F in this tool's own summary: the discriminating field is in the output
+    and the summarising step throws it away. Extracted so the branch has a control; a footer
+    chosen inline is a branch that regresses in silence.
+    """
+    if any("DIFFERENT classifier" in l for l in lines):
+        return ("  FINDING — the CLASSIFIER changed; rows written by another classifier are"
+                " readings of a different question, not stale readings of this one")
+    return "  FINDING — the indexed population moved; the record no longer answers it"
+
+
 def stale_check(index=None, tools_dir=None, path=None):
     """Does the record still describe the indexed population? NO SUBPROCESSES. Sub-second.
 
@@ -1223,12 +1245,19 @@ def main(argv):
         return self_test()
     if a.stale_check:
         rc, lines = stale_check()
+        # ⛔ THE FOOTER MUST NOT GENERALISE AWAY THE REASON PRINTED ABOVE IT. `stale_check` reports
+        # TWO distinct causes — a foreign classifier, and a moved population — and a single exit
+        # line saying "the indexed population moved" contradicts the first one two lines up.
+        # ★ That is CLASS F in this tool's own summary line: the discriminating field is in the
+        #   output and the step that summarises it throws it away. Named on #486, and committed
+        #   in the mode I built to report staleness precisely.
+
         print("\nverdict ledger — is the record still answerable for the indexed population?")
         for l in lines:
             print(l)
         print({0: "  the record is CURRENT for the index — not a claim that any instrument"
                   " produced a verdict",
-               1: "  FINDING — the indexed population moved; the record no longer answers it",
+               1: stale_footer(lines),
                2: "  VOID"}[rc])
         return rc
     if a.ledger:
