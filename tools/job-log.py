@@ -22,6 +22,27 @@ witnesses, because any one of them alone has a hole:
                                    a refusal, an empty file and an HTML error page
                                    all lack it
 
+⛔⛔ AND THESE WITNESSES CERTIFY PROVENANCE, NOT COMPLETENESS.
+
+    A witness that certifies PROVENANCE does not certify COMPLETENESS,
+    and every absence claim needs the second one. COUNTS ARE ABSENCE CLAIMS.
+
+★ That is this tool's own primary output. All three witnesses answer "is this body
+A LOG". None answers "is this THE WHOLE LOG". ⇒ A body that is truncated but
+timestamped passes all three and then returns 0 for every --grep pattern — which
+reads as "the signature is absent", the exact defect this file exists to prevent,
+one level up. And it is MORE dangerous than a refusal, because it genuinely IS the
+log; there is no wrong-shaped body to notice.
+
+⚠ A fourth witness — evidence the job TERMINATED (`Complete job`, `Post job
+cleanup`, a final `Process completed with exit code N`) — is NOT implemented here,
+deliberately. There is exactly one specimen of it. A cancelled job, or one killed
+by a runner loss, may legitimately carry none of those while still being the
+complete available body, and a witness that refuses a legitimately-short body is
+precisely the mistake `^ISO` already made against `gh run view --log`. ⇒ When it
+lands it should WARN on absence, not refuse, until specimens exist from a cancelled
+and a runner-killed job. Stated here as an open gap rather than a passing check.
+
 ⚠ The size floor is deliberately NOT a witness. 535 and 99 are both "small", but
 so is a genuinely short job log, and picking a threshold invents a boundary the
 data does not have. The timestamp is a property of the format, not of the length.
