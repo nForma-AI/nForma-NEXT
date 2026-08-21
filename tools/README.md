@@ -1677,6 +1677,63 @@ when the panes it notified read their files.)
   line, so silence still means *ran and found nothing* rather than *could not run* — ⛔ a longer poll
   interval is NOT a substitute, because it buys quiet by discarding the guarantee.
 
+- ⛔ **A GUARD'S FAILURE MESSAGE MUST REPRINT THE AUTHOR'S OWN DECLARED TEXT, NOT DESCRIBE THE
+  CONDITION.** ⇒ The accepted form has to reach the writer **on the failure path**, because a
+  compliant writer never sees the message at all. ⚠ **A README sentence describing the form is a
+  MENTION until the tool is shown to print it on the path a writer actually hits.**
+
+  ★ **The control is same-file, same-author, three lines apart** — which is why this is structural
+  and not a fact about anyone's care. `.github/workflows/tools.yml`:
+
+  ```
+  ✅ fleet-dependent step   why=$(sed -n 's/^# SUITE-DEPENDS: //p' "$f")
+                            python3 "$f" || echo "  ⚠ failed — $why"
+                            ⇒ REPRINTS WHAT THE AUTHOR WROTE, at the moment of failure
+  ⛔ hermetic step          python3 "$f" || echo "  ⛔ $(basename "$f") FAILED"
+                            ⇒ describes a CONDITION; `SUITE-DEPENDS` appears only in a source comment
+  ```
+
+  ⇒ A writer whose network-dependent suite fails in the hermetic job is told **that** it failed and
+  never told the marker that would have declared it.
+
+  **Swept 2026-08-21 — 6 of 19 author-facing instruments resolved, named rather than counted:**
+
+  | instrument | failure path | states the accepted form |
+  |---|---|---|
+  | `tools.yml` fleet-dependent step | reached | ✅ reprints the author's `$why` |
+  | `tools.yml` hermetic step | reached | ⛔ no |
+  | `close-condition-scan.py` | reached | ⛔ no — `Done when` ×0, no anchoring or body guidance |
+  | `check-goal-conformance.py` | reached | ⛔ no — `SCOPE:` ×0 on the MENTION-ONLY line |
+  | `check-orientation.py` | reached | ⛔ no — says *un-struck*, never shows `~~…~~` or `FALSE` |
+  | `fleet-state.py` | reached | ⛔ no — and its **unit** is unpublished (see below) |
+
+  ⚠ **13 unrun, and they are reported UNRUN rather than estimated.** `check-tools-index.py` is
+  unresolved: it refuses outside a real repository (*"cannot derive this repo's identity"*), which is
+  correct behaviour and a **bound on the sweep method**, not a defect.
+
+  ⛔ **Two of my own fixtures were invalid before any tool was judged**, and the base-must-be-clean
+  control is the only reason neither became a finding:
+  1. a **single-commit** fixture reproduced the depth-1 condition — `check-tools-index` correctly
+     printed *"git history is absent, shallow, or one commit deep … the wholesale-import leg is NOT
+     run"*, a known-positive for `8414cd7` produced by accident;
+  2. a fixture cloned from a **stale local `main`** had **0 workflow files**, where an un-struck
+     *"No CI"* claim is **true** — the check compares claim against **world**, not against a pattern,
+     and was right where I was wrong.
+
+  ⇒ ★ **Establish the base is clean before a fixture means anything.** Both invalid fixtures exited
+  **2**; had they exited 0 I would have recorded *"states the form 0 times"* from runs that
+  established nothing — a VOID read as a finding, inside a sweep about instruments that mislead.
+- ⚠ **And the unit a rule is measured in must be publishable, or the rule is unenforceable.**
+  `fleet-state.py` reads the **last non-empty line of an assistant TEXT BLOCK**, while every prompt
+  says *"end every turn with a STATE: line."* **No document defines a turn as a text block**, so a
+  one-line preamble before a tool call is a complete turn that ended without a declaration.
+  ⇒ Measured: DEV2 **1 of 7** recent text blocks compliant; TEAMLEAD **83 of 822 (10%)**, clustered
+  early. ⛔ **The test that settles it: if the unit were published, could an agent comply?** Under
+  *text block*, only by emitting `STATE:` before every tool call — which makes the line noise. ⇒ So
+  **the unit is wrong, not the documentation of it**, and the fleet row `18 turns ago` reads as
+  staleness of WORK while measuring staleness of DECLARATION. **A number that moves for reasons
+  unrelated to what it names is worse than no number.**
+
 ## Running the checks
 
 ```
