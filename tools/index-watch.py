@@ -356,8 +356,22 @@ def self_test():
     """
     # ⛔ FETCHED ONCE, THREADED DOWN. Every check_once below would otherwise hit the network
     # again; measured at ~8 calls x ~1.3s. Not a module cache — see check_once.
+
     _sha = remote_sha()
     ok = True
+    # ⛔ --help IS NOT A REFUSAL. argparse exits 0 after printing usage; catching every SystemExit
+    # as "unrecognised arguments" made this tool print its help and then declare it established
+    # nothing (#350). ⚠ Placed BEFORE the unreachable-origin early return, because asking a tool
+    # what it does needs no network — a control that only runs when the forge answers is a control
+    # that is absent exactly when someone is debugging.
+    import contextlib, io
+    for _flag, _want in (("--help", 0), ("-h", 0), ("--zzz-not-a-real-flag", 2)):
+        _buf = io.StringIO()
+        with contextlib.redirect_stdout(_buf), contextlib.redirect_stderr(_buf):
+            _got = main(["x", _flag])
+        ok &= _got == _want
+        print(f"  {'ok  ' if _got == _want else 'FAIL'}  {_flag} -> {_got} (want {_want})"
+              f"{' — help is not VOID' if _want == 0 else ' — a bogus flag is still VOID'}")
     r = run(sys.executable, str(SUBJECT), "--self-test")
     if r.returncode != 0:
         r = run(sys.executable, str(SUBJECT), "--selftest")
@@ -652,7 +666,17 @@ def main(argv):
                          "outside it (see the ⛔ note at ROOT)")
     try:
         a = ap.parse_args(argv[1:])
-    except SystemExit:
+    except SystemExit as e:
+        # ⛔ argparse EXITS 0 AFTER PRINTING --help / -h. Catching every SystemExit and calling it
+        # "unrecognised arguments" makes the tool REFUSE ITS OWN HELP: it prints the usage text and
+        # then declares, one line below, that it established nothing. Reported by ARCHITECT on #350
+        # against verdict-census.py; measured here across all five instruments sharing this
+        # pattern, which I copied between them.
+        # ⛔ `VOID — established nothing` is this repository's most load-bearing string. Emitting it
+        # for a SUCCESSFUL request is not a cosmetic defect: it is the refusal vocabulary spent on
+        # a non-refusal, which is exactly what makes a real refusal readable.
+        if e.code == 0:
+            return 0
         print("  VOID  unrecognised arguments — established nothing", file=sys.stderr)
         return 2
     if a.self_test:
