@@ -153,12 +153,14 @@ def main(argv=None):
         # so this tool declared --states and was counted, correctly, as not exposing it. Copying
         # the README row's LOOK instead of the producer's CONTRACT is #39's shape from the other
         # side: a new producer speaking a dialect its consumer does not read.
+        # ⚠ EXIT lines ONLY, and that is deliberate. A first version also declared five VERDICT
+        # states, one of which (NO-DEV-LABEL) exists only on the branch of a DIFFERENT open PR --
+        # so merging this one first would have made the tool DECLARE A STATE IT DOES NOT HAVE,
+        # which is #39's defect inside the PR about #39. `emit_row` reads EXIT lines only, so the
+        # VERDICT lines bought nothing and cost a merge-order dependency. ⇒ Removed rather than
+        # documented: an order a reader must remember is the weakest carrier on the ladder.
+        # VERDICT declarations can be added once the bucket set is settled on `main`.
         for kind, code, meaning in (
-                ("VERDICT", "HAZARD", "a dev:N beside a queue that RESERVES action from panes"),
-                ("VERDICT", "ADDRESS", "a dev:N alongside role:DEV -- the address within that queue"),
-                ("VERDICT", "PROVENANCE", "a dev:N beside any other role: -- which pane produced it"),
-                ("VERDICT", "UNROUTED", "a dev:N and NO role: -- invisible to every role query"),
-                ("VERDICT", "NO-DEV-LABEL", "no dev:N at all -- the named complement (#466)"),
                 ("EXIT", "0", "no HAZARD collisions"),
                 ("EXIT", "1", "at least one HAZARD -- a finding, established"),
                 ("EXIT", "2", "established nothing: forge unreadable, or the buckets did not sum")):
