@@ -19,6 +19,22 @@ of a close condition instead of a probe.
 not test the thing, or an expected result nobody will check. This tool cannot see either,
 and says so on every run so the number is not quoted without the limit.
 
+⛔⛔⛔ AND `RUNNABLE` IS NOT `READABLE`. MEASURED BY RUNNING THE CONDITIONS THIS TOOL SCORED.
+
+A condition can name a command and a result and still produce output that CANNOT DISTINGUISH
+"not met" from "the check itself failed". Two of four run on 2026-08-21:
+
+    #29   grep -rn 'doctrine-version' .github/workflows/ scripts/  ->  SILENCE
+          which reads as BOTH "no invocation exists" AND "the grep found no files".
+          Repaired to print `files=N hits=N`: files>0 & hits=0 is a readable NOT MET;
+          files=0 is VOID.
+    #345  a bare grep whose 0 hits and whose unreadable-file case are the same output.
+
+⇒ THAT IS DEV3's ABSENT-PROBE RULE APPLIED TO CLOSE CONDITIONS. A command whose negative and
+whose failure are one value has the collapse this repository has spent an evening filing, and
+THIS TOOL SCORES IT `RUNNABLE`. ⚠ So `RUNNABLE = N` is not N usable conditions -- it is N
+conditions that name a command. TEAMLEAD said as much as a caveat; this is the mechanism.
+
 ⛔⛔ AND `ASSERTED` IS NOT AUTOMATICALLY A DEFECT. Some conditions close on a judgement no
 command can make -- "a hop is caught prospectively by someone who did not write the form"
 has no invocation and is still the right bar. ⇒ ASSERTED means AGREEMENT IS THE ONLY ROUTE,
@@ -188,6 +204,9 @@ def main():
     print("\n⚠ ASSERTED IS NOT AUTOMATICALLY A DEFECT. Some conditions close on a judgement"
           "\n   no command can make. ASSERTED means agreement is the only route — a fact about the"
           "\n   condition, not a verdict on its author.")
+    print("⛔ RUNNABLE IS NOT READABLE. A named command whose NOT-MET and whose OWN FAILURE"
+          "\n   produce the same output is scored RUNNABLE here and cannot be acted on. Measured on"
+          "\n   2 of 4 of this tool's author's own conditions.")
     print("⚠ PRESENCE OF A HARDER FEATURE IS STILL PRESENCE. A condition can name a command"
           "\n   that does not test the thing, or a result nobody will check. This does not test"
           "\n   FALSIFIABILITY and no count here should be quoted as if it did.")
