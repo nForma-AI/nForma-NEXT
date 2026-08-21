@@ -88,10 +88,24 @@ STUB = (
     # ⚠ RECORDED ON CALL, NOT ON ACCESS. `m.CHANNELS` is an attribute read and is NOT a sweep;
     #   `m.main()` is. Writing the record inside __getattr__ would score the first as the
     #   second, which is the over-report that would make this worse than the false negative.
+    # ⛔ THE RETURN VALUE DECIDES HOW LONG THE CALLER SURVIVES, and therefore how much of it
+    # this tool can see. Returning a bare 0 killed suites at the FIRST `m.f()[0]` or
+    # `for x in m.g()`, so everything after that point was invisible. ★ Measured: swapping 0
+    # for this sentinel moved the subprocess-sweep count 2 -> 4, and BOTH new entries were
+    # verified real by reading their suites (test_estate_provenance.py:26,
+    # test_pretooluse_guard.py:75 run the tool as a subprocess with ordinary args).
+    # ⚠ int subclass on purpose: it still compares and arithmetics like the 0 it replaces, so
+    # nothing that worked before stops working.
+    "class _S(int):\n"
+    "    def __iter__(self): return iter(())\n"
+    "    def __getitem__(self, _k): return _S(0)\n"
+    "    def __len__(self): return 0\n"
+    "    def __call__(self, *_a, **_k): return _S(0)\n"
+    "    def __getattr__(self, _n): return _S(0)\n"
     "def __getattr__(_name):\n"
     "    def _call(*_a, **_k):\n"
     "        open(os.environ['GC_LOG'], 'a').write(_n + '|CALL|' + _name + chr(10))\n"
-    "        return 0\n"
+    "        return _S(0)\n"
     "    return _call\n"
     "if __name__ == '__main__':\n"
     "    raise SystemExit(0)\n"
@@ -370,9 +384,17 @@ def census(tools_dir=None, timeout=120):
     trunc = seen.get("__truncation_risk__", [])
     if trunc:
         out.append(f"  ⚠ TRUNCATION RISK: {len(trunc)} of {len(suites)} gated suites exited"
-                   f" NONZERO under the recording stub. Each may have stopped before a call it"
-                   f" would otherwise have made, so every count above is a LOWER BOUND — this"
-                   f" tool changes what it observes, and this is by how much it might.")
+                   f" NONZERO under the recording stub, so every count above is a LOWER BOUND"
+                   f" of UNKNOWN size.")
+        # ⛔ AND THIS NUMBER DOES NOT BOUND THAT ERROR — the earlier version of this line said it
+        # did, and it was wrong. ★ Measured: enriching the stub's return value moved the
+        # subprocess-sweep count 2 -> 4 while THIS COUNT STAYED AT 28. The suites did not stop
+        # failing; they failed LATER, after the calls that had been invisible. ⇒ An exit code
+        # says a suite ended badly, never WHERE — so it cannot size what came after.
+        out.append("  ⛔ THIS COUNT IS NOT A BOUND ON THAT ERROR. It was measured unchanged"
+                   " across a stub change that revealed two more real callers — a suite fails"
+                   " at the same rate whether it dies early or late, and only WHERE it died"
+                   " decides what went unseen.")
     # ⇒ REPORTED SEPARATELY, on its own line, for the reason above: it answers a DIFFERENT
     #   question and must not be summed with the one above it.
     out.append(f"  {len(called)} of {len(names)} are INVOKED IN-PROCESS by a gated suite that"
@@ -547,6 +569,28 @@ def self_test():
         print(f"  {'ok  ' if hit else 'FAIL'}  the census NAMES its own exclusion by file, rather"
               f" than omitting the row")
         (td / Path(__file__).name).unlink()
+
+        # ⛔ THE SENTINEL'S WHOLE PURPOSE: a caller that INDEXES a return value must survive to
+        # do what it does NEXT. With a bare 0 this suite died at [0] and its later subprocess
+        # run — the sweep — was never recorded. ★ This is the control that fails if the return
+        # value is narrowed back, which is the only thing making the 2 -> 4 move checkable.
+        (td / "late.py").write_text('import sys\nif "--self-test" in sys.argv:\n'
+                                    '    raise SystemExit(0)\nraise SystemExit(0)\n')
+        (td / "test_late.py").write_text(
+            "import importlib.util, os, subprocess, sys\n"
+            "here = os.path.dirname(os.path.abspath(__file__))\n"
+            "sp = importlib.util.spec_from_file_location('l', os.path.join(here,'late.py'))\n"
+            "m = importlib.util.module_from_spec(sp)\nsp.loader.exec_module(m)\n"
+            "_ = m.collect()[0]\n"                       # <- dies here under a bare-0 stub
+            "for _x in m.collect(): pass\n"              # <- and here
+            "subprocess.run([sys.executable, os.path.join(here,'late.py')])\n"   # THE SWEEP
+            "raise SystemExit(0)\n")
+        rl = probe(gated_suites(td), td, ["late.py"], timeout=60)
+        hit = bool(rl["late.py"]["swept"])
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a caller that INDEXES and ITERATES a return value "
+              f"survives to reach its later subprocess run (swept={rl['late.py']['swept']}) — "
+              f"with a bare 0 it died at [0] and the sweep was invisible")
 
         # ⛔ TRUNCATION RISK MUST BE COUNTED, AND MUST NOT COUNT A CLEAN SUITE. Asserted as a
         # pair: "a dying suite is flagged" passes if every suite were flagged; "a clean suite is
