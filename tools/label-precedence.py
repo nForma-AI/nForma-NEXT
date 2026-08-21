@@ -169,7 +169,24 @@ def main(argv=None):
                     help="print the exit states this tool can return, and stop")
     a = ap.parse_args(argv)
     if a.states:
-        print("0 no HAZARD collisions · 1 at least one HAZARD · 2 established nothing")
+        # ⛔ The contract is machine-readable and TAB-separated -- `EXIT\t<code>\t<meaning>`.
+        # A first version printed the same information as prose separated by "·". It read
+        # correctly to a human and `states-index-check.py` could not parse a single line of it,
+        # so this tool declared --states and was counted, correctly, as not exposing it. Copying
+        # the README row's LOOK instead of the producer's CONTRACT is #39's shape from the other
+        # side: a new producer speaking a dialect its consumer does not read.
+        # ⚠ EXIT lines ONLY, and that is deliberate. A first version also declared five VERDICT
+        # states, one of which (NO-DEV-LABEL) exists only on the branch of a DIFFERENT open PR --
+        # so merging this one first would have made the tool DECLARE A STATE IT DOES NOT HAVE,
+        # which is #39's defect inside the PR about #39. `emit_row` reads EXIT lines only, so the
+        # VERDICT lines bought nothing and cost a merge-order dependency. ⇒ Removed rather than
+        # documented: an order a reader must remember is the weakest carrier on the ladder.
+        # VERDICT declarations can be added once the bucket set is settled on `main`.
+        for kind, code, meaning in (
+                ("EXIT", "0", "no HAZARD collisions"),
+                ("EXIT", "1", "at least one HAZARD -- a finding, established"),
+                ("EXIT", "2", "established nothing: forge unreadable, or the buckets did not sum")):
+            print(f"{kind}\t{code}\t{meaning}")
         return 0
     if a.self_test:
         return self_test()

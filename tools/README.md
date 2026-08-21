@@ -225,7 +225,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `doctrine-watch.py` | which roles' doctrine moved under them, and who has not read it? | 0 nothing to tell · 1 a role is behind · **2 established nothing** |
 | `doctrine-uncommitted.py` | which doctrine is the fleet READING that main does not carry? | 0 reads == landed · 1 drift in any of three directions · **2 established nothing (no repo, bad ref, no file)** |
-| `label-precedence.py` | when `role:` and `dev:N` disagree, which does a pane obey? | 0 no hazard · 1 a `dev:N` beside a reserved queue · **2 established nothing** |
+| `label-precedence.py` | when `role:` and `dev:N` disagree, which does a pane obey? | 0 no HAZARD collisions · 1 at least one HAZARD -- a finding, established · 2 established nothing: forge unreadable, or the buckets did not sum | ⚙ GENERATED-FROM: --states |
 | `label-exists.py` | does the label you are about to query actually exist? | 0 all exist · 1 one is absent · **2 established nothing** |
 | `verdict-census.py` | has each indexed instrument ever produced a verdict? (`--ledger` keeps the record · `--stale-check` asks in 0.1s whether it is current) | 0 no finding · 1 a finding · **2 established nothing** · ⚠ `--stale-check`'s 0 means *the record is current*, NOT *they all produce verdicts* |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
