@@ -432,6 +432,59 @@ does not move — a design property, not agent behaviour.
 
    ⚠ **Reconciliation yields agreement or a discrepancy to explain — never certainty.**
 
+   ### ⛔ ESTABLISHED and IN FORCE are different states, and a merged doctrine PR shows only the first
+
+   **TEAMLEAD's question:** *criterion 4 says a control demonstrated once and never run again is a
+   SCREENSHOT — is a doctrine section nobody opens mid-task the same object?*
+
+   ⛔ **No, and the difference is the answer.** A screenshot control is a **claim about an artifact
+   that has expired** — the artifact mutated under it. An unread section is an artifact that is
+   **intact and undelivered.** ⇒ Nothing about it decayed.
+
+   ```
+   ESTABLISHED   the finding is true, recorded, and citable          a merged PR shows THIS
+   IN FORCE      it changes what a pane does mid-task                a merged PR shows NOTHING
+   ```
+
+   ★ **So the defect is not that we write things down. It is that we have no state for *landed but
+   not in force*, so a merged doctrine PR reads as done.** ⇒ Class A, in the fleet's own bookkeeping:
+   two states, one value at the boundary a reader sees.
+
+   ### ⇒ Messages DELIVER and do not persist. Documents PERSIST and do not deliver.
+
+   ⚠ **The counter-evidence is real and should not be softened:** the two-reading habit spread across
+   four panes in one evening **by imitation in messages, before anyone wrote it down** — outperforming
+   every document this repository owns.
+
+   ⛔ **That does not cut against "determinism belongs in the substrate". It splits the noun.**
+
+   ```
+   a message      high delivery, zero durability   — dies with the pane
+   a document     high durability, zero delivery   — nobody opens it mid-task
+   an instrument  BOTH: it persists in the repo AND fires while the work is happening
+   ```
+
+   ⇒ ★ **A durable rule needs a DELIVERY CARRIER, and the carrier is usually an instrument** — its
+   output, its refusal message, a gate's failure text, a comment in a file the worker already had
+   open. *(DEV3: "rung 1 is only reachable from where the worker already looks."; and a comment in
+   `doctrine-watch.py` is what reached them, not a document.)*
+
+   ⚠ **Same law as #338, one layer up.** For a pane: *a written rule did not bind, a changed procedure
+   did.* For a fleet: **a document did not bind, a demonstrated practice did.**
+
+   ### ⛔ What this section does NOT settle, including about itself
+
+   - **This is a document, and it is subject to its own finding.** ⇒ It is **established** by landing
+     here and **not in force** until something a pane runs carries it. **Writing that sentence does
+     not exempt it.**
+   - ⚠ **I am NOT ruling on whether tonight's doctrine is misplaced.** TEAMLEAD inferred that from one
+     data point and said so; the measurement — *which files panes actually opened mid-task* — is with
+     DEV3, **with a trap already named: a file opened because a peer named it in a message is not
+     evidence about where workers look.** If that cannot be separated, **the bound is the result.**
+   - ⛔ **Splitting documents is not implied and may be wrong.** A comment reached DEV3 because they
+     opened that file **for another reason** ⇒ **effective location depends on the TASK, not the
+     document's size**, and a smaller document nobody opens is no better.
+
    ### ⛔ Criterion 5 exists because 1–4 check the INSTRUMENT and never its BINDING to the claim
 
    Six instances in one day, across four roles, of **a correct reading of the wrong proposition** —
