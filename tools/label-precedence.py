@@ -147,7 +147,22 @@ def main(argv=None):
                     help="print the exit states this tool can return, and stop")
     a = ap.parse_args(argv)
     if a.states:
-        print("0 no HAZARD collisions · 1 at least one HAZARD · 2 established nothing")
+        # ⛔ The contract is machine-readable and TAB-separated -- `EXIT\t<code>\t<meaning>`.
+        # A first version printed the same information as prose separated by "·". It read
+        # correctly to a human and `states-index-check.py` could not parse a single line of it,
+        # so this tool declared --states and was counted, correctly, as not exposing it. Copying
+        # the README row's LOOK instead of the producer's CONTRACT is #39's shape from the other
+        # side: a new producer speaking a dialect its consumer does not read.
+        for kind, code, meaning in (
+                ("VERDICT", "HAZARD", "a dev:N beside a queue that RESERVES action from panes"),
+                ("VERDICT", "ADDRESS", "a dev:N alongside role:DEV -- the address within that queue"),
+                ("VERDICT", "PROVENANCE", "a dev:N beside any other role: -- which pane produced it"),
+                ("VERDICT", "UNROUTED", "a dev:N and NO role: -- invisible to every role query"),
+                ("VERDICT", "NO-DEV-LABEL", "no dev:N at all -- the named complement (#466)"),
+                ("EXIT", "0", "no HAZARD collisions"),
+                ("EXIT", "1", "at least one HAZARD -- a finding, established"),
+                ("EXIT", "2", "established nothing: forge unreadable, or the buckets did not sum")):
+            print(f"{kind}\t{code}\t{meaning}")
         return 0
     if a.self_test:
         return self_test()

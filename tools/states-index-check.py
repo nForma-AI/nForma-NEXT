@@ -185,7 +185,7 @@ def main():
         #    fix already available. ⇒ Adoption becomes monotonic: nothing can regress, and the
         #    covered population — the one in which #39's class is actually retired — can only
         #    grow. Same shape as SUBJ_BASELINE, which records a debt that reds if it GROWS.
-        capable, ungenerated = [], []
+        capable, ungenerated, nonconforming = [], [], []
         tdir = os.path.join(a.repo, "tools")
         for fn in sorted(os.listdir(tdir)):
             if not fn.endswith(".py") or fn.startswith("test_"):
@@ -199,6 +199,14 @@ def main():
             #    ratchet was demanding a fix that does not exist. ⇒ Ratchet on the PROPERTY
             #    (emit_row succeeds), never on the flag. #403's population leg, in a guard.
             if emit_row(os.path.join(tdir, fn), "probe") is None:
+                # ⛔ #466: this branch used to `continue` in silence, so a tool that REGISTERS
+                #    --states and emits an unparseable format was skipped without being counted.
+                #    That is the silent complement -- and it hid a real case for an hour:
+                #    label-precedence.py declared --states as prose separated by "·", which reads
+                #    as a declaration to a human and yields not one parseable line. ⇒ Named, so
+                #    the population where #39's class is NOT yet retired is visible rather than
+                #    inferred from a smaller number.
+                nonconforming.append(fn)
                 continue
             capable.append(fn)
             if not any(f"`{fn}`" in l for l in marked):
@@ -207,6 +215,14 @@ def main():
         print(f"  instruments exposing --states: {len(capable)} · of those, row NOT generated:"
               f" {len(ungenerated)}"
               + (f"  ⇒ {' '.join(ungenerated)}" if ungenerated else ""))
+        print(f"  registers --states but emits no parseable row: {len(nonconforming)}"
+              + (f"  ⇒ {' '.join(nonconforming)}" if nonconforming else ""))
+        print(f"  ⇒ partition {len(capable)} + {len(nonconforming)} = "
+              f"{len(capable) + len(nonconforming)} tools registering --states")
+        if nonconforming:
+            print("⚠ NOT a defect in those tools by itself — a format may predate this contract."
+                  "\n   It is the population where #39's class is NOT retired, and --emit cannot"
+                  "\n   help them until they emit EXIT<TAB>code<TAB>meaning.")
         if ungenerated:
             print("⛔ RATCHET — a tool that CAN generate its row and has not is a future drift with"
                   "\n   the fix already written. Run --emit and commit the result.")
