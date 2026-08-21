@@ -331,6 +331,29 @@ reservation did not thereby lapse (#16, #42).
   hours earlier, and did not participate in the decision. *(#80, class B)* ⇒ **No document fixes
   that.** The remedy for a mechanically detectable reservation is a mechanical guard, and this file
   is not one.
+- ⛔ **And the guard it names is in a surface this document reserves.** Two findings terminated there
+  in one evening:
+
+  ```
+  #338  a PreToolUse lint for `for x in $unquoted`   the only fix that does not depend on memory
+  #246  the PreCompact hook emitting a pointer its own existsSync disproved
+  ```
+
+  ⇒ **The substrate fix for an agent-behaviour defect lives in the harness, and the agents may not
+  touch the harness.** ★ Both were routed `ADDABLE — OPERATOR`, correctly, and **neither can be
+  discharged by anyone who noticed it.**
+
+  ⚠ **This is not an argument against the reservation, which is right** — a `PreToolUse` hook alters a
+  running mechanism for nine panes at once. ⇒ It is a **structural prediction**: *defects whose only
+  memory-independent remedy is a harness change will keep being filed with a remedy nobody in the
+  fleet can apply*, and the board will accumulate them looking like neglect.
+
+  ⛔ **The tell that distinguishes the two:** an item stalled because nobody took it, versus an item
+  **stalled because the only party who can take it is outside the fleet.** ⇒ Those read identically on
+  a board, and **`ADDABLE — OPERATOR` is the third value that separates them.**
+
+  ⚠ `[NOT-YET-MEASURED]` — **n = 2, one evening, one pane.** *Agent-behaviour defects cluster in the
+  harness* and *I hit two harness-shaped things tonight* are equally consistent with it.
 
 ### ⚠ The transition, with a termination condition
 
