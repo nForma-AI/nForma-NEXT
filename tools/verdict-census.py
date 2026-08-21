@@ -124,6 +124,42 @@ def documented_codes(src):
     return {int(c) for c in CODE.findall(m.group(1))}
 
 
+# ⚠ Which code does THIS instrument use for "established nothing"? Read from its own docstring,
+# with 2 as a NAMED fallback rather than an assumption.
+REFUSAL_WORDS = re.compile(r"establish|nothing|void|refus|unknown", re.I)
+
+
+def refusal_code(src, default=2):
+    """(code, derived) — the exit code this instrument documents as establishing nothing.
+
+    ⛔ WHY THIS IS NOT JUST `2`. This file already reads each instrument's docstring to decide
+    whether a code is DOCUMENTED — and then ignored that same docstring to decide what 2 MEANS,
+    using a module constant. Using the documentation for one question and a constant for the
+    other is the derive-vs-hardcode split this repository files defects about, committed here.
+
+    ⚠ MEASURED 2026-08-21: three indexed instruments document exit 2 as something other than a
+    refusal, and one of them is unambiguous — `exists-anywhere.py` documents
+        `2 absent everywhere · 3 established nothing`
+    ⇒ "absent everywhere" is a CONCLUSION. Read through a hardcoded refusal it becomes
+    ESTABLISHED-NOTHING: a real finding inverted into a non-answer, about someone else's tool.
+
+    ⚠ AND THE FALLBACK IS REPORTED, NOT SILENT. Prose is a weak thing to parse; where no code's
+    description carries refusal vocabulary this returns (2, False) so the caller can say the
+    reading rests on this repository's convention rather than on the instrument's own words.
+    """
+    m = EXIT_DOC.search(src or "")
+    if not m:
+        return default, False
+    block = " ".join(m.group(1).split())
+    # split on the separators this repo's Exit: lines actually use
+    for part in re.split(r"[·|]|(?<=[a-z])\s+(?=[0-9]\s)", block):
+        part = part.strip()
+        cm = re.match(r"^\**(\d)\**\s+(.*)$", part)
+        if cm and REFUSAL_WORDS.search(cm.group(2)):
+            return int(cm.group(1)), True
+    return default, False
+
+
 def _norm(r, flag):
     """Output with the probe flag itself masked, so two rejections differ only in substance."""
     return (r.returncode, ((r.stdout or "") + (r.stderr or "")).replace(flag, "<FLAG>"))
@@ -216,8 +252,13 @@ def classify(path, timeout=TIMEOUT):
     if r.returncode not in codes:
         return NEVERRUN, (f"exited {r.returncode}, not in its documented set {sorted(codes)}"
                           f" [{elapsed:.1f}s]")
-    if r.returncode == REFUSAL:
-        return NOTHING, f"exit 2 — refused a verdict (honest silence) [{elapsed:.1f}s]"
+    ref, derived = refusal_code(src)
+    if r.returncode == ref:
+        why = ("its own docstring" if derived
+               else "this repo's convention — ⚠ ITS docstring does not say, so this reading is"
+                    " the convention's, not the instrument's")
+        return NOTHING, (f"exit {ref} — refused a verdict (honest silence), per {why}"
+                         f" [{elapsed:.1f}s]")
     return VERDICT, f"exit {r.returncode} — a documented conclusion [{elapsed:.1f}s]"
 
 
@@ -419,6 +460,32 @@ def self_test():
         print(f"  {'ok  ' if hit else 'FAIL'}  a confirmed verdict from unchanged bytes is NOT "
               f"re-run — this is the whole saving")
 
+        # ⛔ A RECORD WRITTEN BY A DIFFERENT CLASSIFIER IS NOT EVIDENCE ABOUT THIS ONE, and the
+        # discard must be NAMED. A silent full re-run is indistinguishable from a cheap warm one,
+        # so a reader could not tell every prior row had been thrown away.
+        stamped = json.loads(lpath.read_text())
+        stamped["_classifier"] = "0" * 40
+        lpath.write_text(json.dumps(stamped))
+        rc, lines, _ = ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
+        hit = any("CLASSIFIER CHANGED" in l for l in lines) and any("ran   " in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a record stamped by ANOTHER classifier is discarded"
+              f" AND the discard is named, not silent")
+
+        rcx, _ = stale_check(index=lidx, tools_dir=ld, path=lpath)
+        ok &= rcx == 0
+        print(f"  {'ok  ' if rcx == 0 else 'FAIL'}  after the re-measure the record matches this"
+              f" classifier again (rc={rcx})")
+
+        stamped = json.loads(lpath.read_text())
+        stamped["_classifier"] = "f" * 40
+        lpath.write_text(json.dumps(stamped))
+        rcx, lines = stale_check(index=lidx, tools_dir=ld, path=lpath)
+        hit = rcx == 1 and any("DIFFERENT classifier" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  --stale-check reports a FOREIGN classifier as stale"
+              f" and says why (rc={rcx})")
+
         # ⛔ THE CONTROL THAT MATTERS MOST. A stored NEGATIVE must be re-measured even when the
         # bytes are identical, because a negative flips without an edit: an absent credential, an
         # unreachable forge, a raised --timeout. Skipping it would freeze a NEVER-RUN forever and
@@ -570,6 +637,52 @@ def self_test():
               " exercising them on an undrawn population means running every real instrument"
               " (~4m). Their undrawn population is --ledger / --stale-check, which are live runs.")
 
+
+    # ==================================================================================
+    # ⛔ THE REFUSAL CODE IS THE INSTRUMENT'S, NOT THIS FILE'S. Controls for the defect that
+    # produced this function: exists-anywhere.py documents `2 absent everywhere · 3 established
+    # nothing`, and a hardcoded REFUSAL=2 turned a CONCLUSION into a non-answer.
+    # ==================================================================================
+    EA = '"""x\n\nExit: 0 present on the default ref · 1 present only on other refs'\
+         ' · 2 absent everywhere\n      · 3 established nothing.\n"""\n'
+    got = refusal_code(EA)
+    ok &= got == (3, True)
+    print(f"  {'ok  ' if got == (3, True) else 'FAIL'}  an instrument documenting 3 as established"
+          f"-nothing has refusal 3, NOT 2 (got {got}) — the exists-anywhere shape")
+
+    NORMAL = '"""x\n\nExit: 0 clean · 1 findings · 2 established nothing\n"""\n'
+    got = refusal_code(NORMAL)
+    ok &= got == (2, True)
+    print(f"  {'ok  ' if got == (2, True) else 'FAIL'}  the ordinary shape still derives 2, and"
+          f" derives it from the DOCSTRING rather than assuming (got {got})")
+
+    # ⛔ NO REFUSAL VOCABULARY AT ALL: fall back to 2, but the fallback must be VISIBLE. A silent
+    # fallback is indistinguishable from a derivation, which is the whole defect one level down.
+    SILENT = '"""x\n\nExit: 0 yes · 1 no · 2 maybe\n"""\n'
+    got = refusal_code(SILENT)
+    ok &= got == (2, False)
+    print(f"  {'ok  ' if got == (2, False) else 'FAIL'}  a docstring with no refusal vocabulary"
+          f" falls back to 2 and REPORTS the fallback (got {got})")
+
+    # ⚠ and the fallback must reach the reader, not just the return value
+    with tempfile.TemporaryDirectory() as d:
+        f = Path(d) / "silent.py"
+        f.write_text('#!/usr/bin/env python3\n"""Fixture.\n\nExit: 0 yes · 1 no · 2 maybe\n"""\n'
+                     "raise SystemExit(2)\n")
+        st, detail = classify(f, timeout=30)
+        hit = st == NOTHING and "convention" in detail
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  when the code is the CONVENTION's and not the"
+              f" instrument's, the row says so (got {st})")
+
+        g = Path(d) / "conclusive.py"
+        g.write_text('#!/usr/bin/env python3\n"""Fixture.\n\nExit: 0 here · 2 absent everywhere'
+                     '\n      · 3 established nothing.\n"""\n' + "raise SystemExit(2)\n")
+        st, _ = classify(g, timeout=30)
+        ok &= st == VERDICT
+        print(f"  {'ok  ' if st == VERDICT else 'FAIL'}  exit 2 meaning 'absent everywhere' is a"
+              f" VERDICT, not ESTABLISHED-NOTHING (got {st}) — the inversion this fixes")
+
     return 0 if ok else 3
 
 
@@ -706,6 +819,14 @@ def stale_check(index=None, tools_dir=None, path=None):
     # ⚠ AND STATE THE OTHER HALF, because the codes are close enough to swap by accident:
     #   exit 0 HERE means "the record is current". It does NOT mean every instrument has a
     #   verdict. That finding is --ledger's exit code, and it is 1.
+    if rec.get("_classifier") != blob_id(Path(__file__).read_bytes()):
+        return 1, [f"  ⛔ STALE  the record was written by a DIFFERENT classifier"
+                   f" ({str(rec.get('_classifier'))[:8]}) than the one asking"
+                   f" ({blob_id(Path(__file__).read_bytes())[:8]}).",
+                   "  ⚠ Rows written by another classifier are not evidence about this one —"
+                   " they are not stale readings, they are readings of a different question.",
+                   f"  ----  refresh with: python3 {Path(__file__).name} --ledger"]
+    rec = {k: v for k, v in rec.items() if not k.startswith("_")}
     me = Path(__file__).name
     covered = [n for n in names if n != me]
     stale, standing = [], []
@@ -762,10 +883,29 @@ def ledger(index=None, tools_dir=None, timeout=TIMEOUT, path=None, write=True):
         return 2, ["  VOID  the index named no instruments — the table format changed, or it is"
                    " gone. Established nothing."], {}
 
+    # ⛔ THE RECORD'S VALIDITY DEPENDS ON THE CLASSIFIER THAT WROTE IT, AND THE FIRST VERSION DID
+    # NOT KEY ON THAT. Blobs covered each INSTRUMENT's bytes; nothing covered THIS FILE's. ⇒ Change
+    # how a verdict is classified and every stored row silently keeps the old reading.
+    #
+    # ⚠ MEASURED, AND IT WAS NOT HYPOTHETICAL. `exists-anywhere.py` documents `3 established
+    # nothing`; a hardcoded REFUSAL=2 classified its exit 3 as VERDICT-SEEN, and the merged ledger
+    # recorded `ever_verdict: true` for an instrument that had REFUSED.
+    # ⛔ AND THE MONOTONE SKIP MADE IT PERMANENT: "a verdict cannot un-happen" holds only if the
+    #   READING was right. A wrong positive is the one case the design had no recovery path for —
+    #   the row would never be re-run, so it could never self-correct.
+    # ⇒ The classifier's own blob is part of the key. When it moves, every row is re-measured.
+    my_blob = blob_id(Path(__file__).read_bytes())
     try:
         prior = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(prior, dict):
             raise ValueError("not an object")
+        if prior.get("_classifier") != my_blob:
+            # ⚠ NAMED, never silent. A quiet full re-run looks identical to a cheap warm one, and
+            # the reader would have no way to know the previous rows were discarded.
+            out.append(f"  ⚠ CLASSIFIER CHANGED ({str(prior.get('_classifier'))[:8]} ->"
+                       f" {my_blob[:8]}) — every row re-measured. Rows written by a different"
+                       f" classifier are not evidence about this one.")
+            prior = {}
     except FileNotFoundError:
         prior = {}
     except (OSError, ValueError) as e:
@@ -775,6 +915,7 @@ def ledger(index=None, tools_dir=None, timeout=TIMEOUT, path=None, write=True):
                    " refusing to overwrite it. Established nothing."], {}
 
     me = Path(__file__).name
+    prior = {k: v for k, v in prior.items() if not k.startswith("_")}
     record, rows = {}, []
     for n in names:
         if n == me:
@@ -822,7 +963,9 @@ def ledger(index=None, tools_dir=None, timeout=TIMEOUT, path=None, write=True):
     out.append("  note  WHEN a row was taken is derived from this file's `git log`, never stored"
                " in it. A written date is the part that rots.")
     if write:
-        path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        payload = dict(record)
+        payload["_classifier"] = my_blob
+        path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         out.append(f"  ----  wrote {path}")
     else:
         out.append("  ----  --dry-run: the record on disk was NOT updated")
