@@ -78,8 +78,28 @@ def bootstrap_role(path, window=40):
 
 
 def contacts(path):
-    """{issue number: set(OPENED|ACTED)} for one transcript. None if unreadable."""
+    """({issue: set(OPENED|ACTED)}, skipped) for one transcript. None if unreadable.
+
+    ⛔ `skipped` EXISTS BECAUSE A COUNT IS AN ABSENCE CLAIM.
+
+        A witness that certifies PROVENANCE does not certify COMPLETENESS,
+        and every absence claim needs the second one.
+
+    This function's product is "which issues were NOT contacted", and an
+    unparseable line is silently skipped — so a partial read and a genuinely
+    quiet pane produced the SAME output, and the difference was invisible.
+    The bias runs one way: dropped lines mean fewer contacts, which means MORE
+    issues reported as "opened by NOBODY". It over-reports the alarming direction.
+
+    ⚠ MEASURED 2026-08-21 BEFORE ADDING THIS, and the result refuted the reason
+    I went looking: 0 unparseable lines in 170,364 across all 12 role-named
+    transcripts, 0 of 12 ending on a partial line — including panes writing while
+    I read them. The writer appends whole lines. ⇒ So this is NOT a fix for a
+    live defect and must not be described as one. The COUNT is zero; the COUNTER
+    was missing, and an instrument that cannot report a zero cannot report a one.
+    """
     out = collections.defaultdict(set)
+    skipped = 0
     try:
         with open(path, errors="replace") as fh:
             for line in fh:
@@ -88,6 +108,7 @@ def contacts(path):
                 try:
                     rec = json.loads(line)
                 except ValueError:
+                    skipped += 1      # ⇒ counted, never silent
                     continue
                 if rec.get("type") != "assistant":
                     continue
@@ -104,7 +125,7 @@ def contacts(path):
                         out[int(m.group(1))].add(ACTED)
     except OSError:
         return None
-    return out
+    return out, skipped
 
 
 def open_issues(repo=None):
@@ -205,11 +226,16 @@ def main():
         return 2
 
     touched, per_role, unreadable = collections.defaultdict(set), collections.Counter(), 0
+    skipped_total, skipped_panes = 0, []
     for p in paths:
-        c = contacts(p)
-        if c is None:
+        got = contacts(p)
+        if got is None:
             unreadable += 1
             continue
+        c, sk = got
+        skipped_total += sk
+        if sk:
+            skipped_panes.append((bootstrap_role(p) or os.path.basename(p)[:8], sk))
         who = bootstrap_role(p) or os.path.basename(p)[:8]
         for n, kinds in c.items():
             if n in issues:
@@ -223,6 +249,17 @@ def main():
     print(f"  opened by at least one pane   {len(touched):4d}")
     print(f"  opened by NOBODY              {len(never):4d}  "
           f"({100 * len(never) / len(issues):.0f}%)")
+    # ⛔ COMPLETENESS, PRINTED EVERY RUN — not only when it is bad. A line that
+    # appears only on failure is a line nobody has ever seen working, and its
+    # absence then reads as "fine" rather than as "the check did not run".
+    if skipped_total:
+        print(f"  ⛔ {skipped_total} unparseable line(s) SKIPPED across "
+              f"{len(skipped_panes)} pane(s): "
+              + " · ".join(f"{r}+{n}" for r, n in skipped_panes))
+        print("     ⇒ contacts are UNDER-counted, so 'opened by NOBODY' is "
+              "OVER-stated by an unknown amount.")
+    else:
+        print(f"  completeness: every line parsed in all {len(paths)} transcript(s)")
     print("\n  per pane (LOWER bounds): "
           + " · ".join(f"{r} {n}" for r, n in per_role.most_common()))
 

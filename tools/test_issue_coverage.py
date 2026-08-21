@@ -49,23 +49,23 @@ with tempfile.TemporaryDirectory() as tmp:
         return p
 
     p = write([tool_use("Bash", {"command": "gh issue view 602 --json body"})])
-    check("gh issue view is a real contact", dict(ic.contacts(p)), {602: {ic.OPENED}})
+    check("gh issue view is a real contact", dict(ic.contacts(p)[0]), {602: {ic.OPENED}})
 
     p = write([tool_use("Bash", {"command": "gh issue comment 604 --body x"})])
-    check("a comment is OPENED and ACTED", dict(ic.contacts(p)), {604: {ic.OPENED, ic.ACTED}})
+    check("a comment is OPENED and ACTED", dict(ic.contacts(p)[0]), {604: {ic.OPENED, ic.ACTED}})
 
     p = write([tool_use("Bash", {"command": "gh api repos/o/r/issues/1115"})])
-    check("the api path form counts", dict(ic.contacts(p)), {1115: {ic.OPENED}})
+    check("the api path form counts", dict(ic.contacts(p)[0]), {1115: {ic.OPENED}})
 
     # ⛔ the known-bad control: a number in PROSE is not a contact
     p = write([{"type": "assistant", "message": {"content": [
         {"type": "text", "text": "we should look at #602 and issues/604 soon"}]}}])
-    check("KNOWN-BAD control: a number in prose is NOT a contact", dict(ic.contacts(p)), {})
+    check("KNOWN-BAD control: a number in prose is NOT a contact", dict(ic.contacts(p)[0]), {})
 
     # a bulk list dump is not a contact either
     p = write([{"type": "user", "message": {"content": [
         {"type": "tool_result", "content": "#602 #604 #1115 ..."}]}}])
-    check("a list dump in a tool_result is NOT a contact", dict(ic.contacts(p)), {})
+    check("a list dump in a tool_result is NOT a contact", dict(ic.contacts(p)[0]), {})
 
     check("an unreadable transcript is None, never {}",
           ic.contacts(os.path.join(tmp, "nope.jsonl")), None)
@@ -164,6 +164,64 @@ with tempfile.TemporaryDirectory() as tmp:
     anon_only = os.path.join(tmp, "anon*.jsonl")
     sel, _ = ic.select_panes(anon_only, limit=64)
     check("a corpus of role-less transcripts also selects nothing", sel, [])
+
+
+# ── ⛔ A COUNT IS AN ABSENCE CLAIM, SO IT NEEDS A COMPLETENESS WITNESS ────────
+#     A witness that certifies PROVENANCE does not certify COMPLETENESS,
+#     and every absence claim needs the second one.
+#
+# This tool's product is "which issues did NOBODY open". An unparseable line was
+# silently skipped, so a PARTIAL READ and a GENUINELY QUIET PANE produced the same
+# output. The bias runs one way: fewer contacts -> MORE issues read as untouched.
+#
+# ⚠ MEASURED BEFORE WRITING THIS, and it refuted the reason for looking: 0
+# unparseable lines in 170,364 across all 12 role-named transcripts, 0 of 12
+# ending on a partial line, including panes writing while they were read. ⇒ The
+# COUNT is zero. The COUNTER was missing, and an instrument that cannot report a
+# zero cannot report a one. These pins protect the counter, not a live defect.
+with tempfile.TemporaryDirectory() as tmp2:
+    def tx(name, lines):
+        q = os.path.join(tmp2, name)
+        with open(q, "w") as f:
+            f.write("".join(lines))
+        return q
+
+    good = json.dumps(tool_use("Bash", {"command": "gh issue view 777"})) + "\n"
+    # ⚠ must contain "issue" or the prefilter drops it BEFORE json.loads —
+    # otherwise this fixture would test the prefilter, not the parser.
+    # ⚠ I WROTE THE COMMENT ABOVE AND THEN VIOLATED IT ON THE NEXT LINE: the first
+    # version of this fixture had no "issue" token, so the PREFILTER dropped it and
+    # `skipped` stayed 0. The test failed and was right to. A fixture has to reach
+    # the code path it claims to exercise, and "it looks malformed" is not that.
+    torn = '{"type":"assistant","content":"gh issue view 888","tool_us\n'
+
+    clean = tx("clean.jsonl", [good])
+    partial = tx("partial.jsonl", [good, torn])
+
+    c_clean, s_clean = ic.contacts(clean)
+    c_partial, s_partial = ic.contacts(partial)
+
+    check("a clean transcript skips nothing", s_clean, 0)
+    check("a torn final line is COUNTED, not swallowed", s_partial, 1)
+    check("...and the good line's contact still lands",
+          dict(c_partial), {777: {ic.OPENED}})
+
+    # ⛔ KNOWN-BAD CONTROL — the whole reason the counter has to exist.
+    # The contacts are IDENTICAL between a complete read and a torn one. Nothing
+    # in the primary output can tell them apart; only `skipped` can.
+    check("KNOWN-BAD control: contacts are IDENTICAL either way",
+          dict(c_clean), dict(c_partial))
+    check("...so ONLY the completeness counter separates them",
+          (s_clean, s_partial), (0, 1))
+
+    # a torn line that never mentions an issue is dropped by the PREFILTER, not
+    # the parser — and that is not a completeness failure, so it must not count.
+    prefiltered = tx("pre.jsonl", [good, '{"type":"assistant","con\n'])
+    check("a torn line with no 'issue' token is not counted as skipped",
+          ic.contacts(prefiltered)[1], 0)
+
+    check("an unreadable transcript is still None, not (…, 0)",
+          ic.contacts(os.path.join(tmp2, "absent.jsonl")), None)
 
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)
