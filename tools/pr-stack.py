@@ -72,6 +72,32 @@ def open_prs(repo=None, limit=200):
             len(rows) >= limit)
 
 
+def is_shallow():
+    """True if this checkout has a truncated object store — or None if unknown.
+
+    ⛔ MEASURED 2026-08-21: THIS SILENTLY INVALIDATED A WHOLE COLLISION MAP.
+    A shallow clone gives each fetched PR head ONE reachable commit against main's
+    4,633, so no common ancestor exists and `merge-tree` answers:
+
+        fatal: refusing to merge unrelated histories        (rc=128)
+
+    ⇒ 121 of 272 reported "conflicts" were that error, and `--unshallow` (18
+    seconds) removed 119 of them. The published map was 78% conflict-inflated and
+    every "N behind" was nonsense — branches read as 4631 behind when the true
+    spread was min 1, median 2, max 170.
+
+    ★ AND THE TELL WAS VISIBLE THE WHOLE TIME: those rows printed an EMPTY file
+    list, because the file names are parsed from CONFLICT lines that a failed
+    merge never emits. ⚠ A plausible benign explanation was available and nearly
+    ended the search — `files[:3]` truncation would have explained a SHORT list,
+    but not an empty one. One more question was the whole difference.
+    """
+    r = sh("git", "rev-parse", "--is-shallow-repository", check=True)
+    if r is None:
+        return None
+    return r.strip() == "true"
+
+
 def local_remote():
     """owner/name of this checkout's origin, or None if it cannot be determined."""
     url = sh("git", "remote", "get-url", "origin", check=True)
@@ -95,10 +121,19 @@ def relation(r1, r2):
     """CONFLICTS | OVERLAPS | independent, plus the files implicated."""
     r = subprocess.run(["git", "merge-tree", "--write-tree", r1, r2],
                        capture_output=True, text=True)
-    if r.returncode != 0 or "CONFLICT" in r.stdout:
-        files = sorted({l.split(" in ")[-1] for l in r.stdout.splitlines()
-                        if l.startswith("CONFLICT")})
+    files = sorted({l.split(" in ")[-1] for l in r.stdout.splitlines()
+                    if l.startswith("CONFLICT")})
+    if files:
         return "CONFLICTS", files
+    # ⛔ AN EXIT CODE IS NOT A VERDICT. It is a channel carrying verdicts AND
+    # transport failures, and nothing separates them but content. `merge-tree`
+    # exits non-zero for a real conflict AND for "refusing to merge unrelated
+    # histories", a bad ref, or a missing object — and the old code folded all of
+    # them into CONFLICTS. Measured: 121 of 272 "conflicts" were rc=128 errors
+    # with an EMPTY file list, which is the shape a conflict can never have.
+    if r.returncode != 0:
+        why = (r.stderr or "").strip().splitlines()
+        return "UNKNOWN", [why[-1][:90] if why else f"merge-tree exited {r.returncode}"]
     return None, []
 
 
@@ -112,6 +147,22 @@ def main():
     ap.add_argument("--no-fetch", action="store_true",
                     help="skip the fetch; unresolved heads are reported as UNKNOWN, never clean")
     a = ap.parse_args()
+
+    # ⛔ SHALLOW FIRST — before any query, because a truncated object store makes
+    # EVERY merge-tree result unreliable, and the failures render as CONFLICTS.
+    shallow = is_shallow()
+    if shallow:
+        print("⛔ ESTABLISHED NOTHING — this checkout is SHALLOW, so every pair below "
+              "would be\n   computed against a truncated history. Measured 2026-08-21: "
+              "121 of 272\n   'conflicts' were `fatal: refusing to merge unrelated "
+              "histories`, and the\n   'N behind' column read 4631 where the true "
+              "spread was 1-170.\n\n   git fetch --unshallow      (18 seconds on this "
+              "repo)")
+        return 2
+    if shallow is None:
+        print("⚠ could not determine whether this checkout is shallow — `git rev-parse "
+              "--is-shallow-repository`\n   failed. Every result below is UNVERIFIED "
+              "against that failure mode.")
 
     got = open_prs(a.repo, a.limit)
     if got is None:
@@ -177,21 +228,34 @@ def main():
         flag = "  ⚠ STALE" if b else ""
         print(f"{n:>6} {b:>6} {ah:>5}  {head}{flag}")
 
-    conflicts, overlaps = [], []
+    conflicts, overlaps, uncomputed = [], [], []
     for (n1, _, r1, _, _, f1), (n2, _, r2, _, _, f2) in itertools.combinations(rows, 2):
         kind, files = relation(r1, r2)
         if kind == "CONFLICTS":
             conflicts.append((n1, n2, files))
+        elif kind == "UNKNOWN":
+            uncomputed.append((n1, n2, files))
         elif f1 & f2:
             overlaps.append((n1, n2, sorted(f1 & f2)))
 
+    # ⛔ EVERY ROW CARRIES ITS SECTION. The two lists used to render in an IDENTICAL
+    # shape — `#N × #M   files` — so a grep over the output could not tell them
+    # apart, and mine matched a superset: I "corrected" a correct conflict count to
+    # conflicts+overlaps and published the wrong figure to someone ordering merges
+    # off it. ⇒ Fix the OUTPUT so the wrong reading is impossible, rather than
+    # warning against it. The prefix costs 4 characters and removes the class.
     print(f"\n── CONFLICTS — one MUST rebase on the other; decide which now ({len(conflicts)})")
     for n1, n2, files in conflicts:
-        print(f"  #{n1} × #{n2}   {', '.join(files[:3])}")
+        print(f"  CONF  #{n1} × #{n2}   {', '.join(files[:3])}")
     print(f"\n── OVERLAPS — same files, no textual conflict ({len(overlaps)})")
     print("   ⛔ The dangerous set: both branches pass, the MERGE RESULT is untested.")
     for n1, n2, files in overlaps:
-        print(f"  #{n1} × #{n2}   {', '.join(files[:3])}")
+        print(f"  OVER  #{n1} × #{n2}   {', '.join(files[:3])}")
+    if uncomputed:
+        print(f"\n── UNKNOWN — merge-tree could not compute a result ({len(uncomputed)})")
+        print("   ⛔ NOT a conflict and NOT independence. These pairs were never judged.")
+        for n1, n2, why in uncomputed:
+            print(f"  UNKN  #{n1} × #{n2}   {why[0] if why else '(no reason given)'}")
 
     if conflicts:
         hot = {}
@@ -206,7 +270,8 @@ def main():
 
     print("\n⚠ merge-tree is TEXTUAL. 'independent' is the absence of a textual signal, "
           "never\n   a claim of compatibility — a PR can delete what another starts calling.")
-    return 1 if (conflicts or unresolved or any(r[3] for r in rows)) else 0
+    return 1 if (conflicts or uncomputed or unresolved
+                 or any(r[3] for r in rows)) else 0
 
 
 if __name__ == "__main__":
