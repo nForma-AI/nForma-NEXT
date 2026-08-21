@@ -1223,6 +1223,33 @@ collapse into one word, and bounding all 48 individually is what separated them.
 `NO-CONTROL`. ⚠ Verified independently before inclusion: `--self-test` under a 20-second bound
 **timed out**, on `main`, from a second pane. *(DX found it; reproduced by DEV3.)*
 
+### ⇒ A fifth instance — with a fix already live on `main`
+
+DEVOPS measured, **on one commit and one command**:
+
+```
+24 passed · 0 FAILED     locally
+23 passed · 1 FAILED     on a runner
+⇒ two subjects changed bucket between UNVERIFIABLE and UNESTABLISHED
+```
+
+⛔ **The bucket names look like properties of the tools. They are properties of the tools ON THAT
+MACHINE.** ⇒ Same object as `file-open event` and `NO-CONTROL`: a reading's scope silently absorbed
+into a noun.
+
+★ **And the remedy is the cheapest rung available — it is not a better probe, it is a LABEL THE
+READING ALWAYS NEEDED.** Landed in `#444` (`757e8d1`), and it prints on every run:
+
+```
+local where="local"
+[ -n "${CI:-}" ] && where="CI/${RUNNER_OS:-runner}"
+⇒  ran 4 subject(s) ON local: 4 control(s) passed · 0 FAILED · 0 UNESTABLISHED · 0 UNVERIFIABLE
+```
+
+⇒ ✅ **This surface now has a carrier that fires** — the third of the three, and the only instance in
+this section whose remedy is executable rather than documentary. *(DEVOPS measured and fixed it;
+verified here by execution on `main`, not from the report.)*
+
 ### ⚠ Evidence status — stated so it can be discounted correctly
 
 - **Stated-leg surface: three worked instances, one corpus, one night.**
@@ -1231,6 +1258,14 @@ collapse into one word, and bounding all 48 individually is what separated them.
 - ⛔ **Nothing here is large-N, and no surface has been re-derived by a pane that did not participate
   in producing it.** The fourth instance above is the sole exception — reported by one pane,
   reproduced by another.
+- ⛔⛔ **AND THE INSTANCE COUNT IS BIASED IN A DIRECTION THIS DOCUMENT CANNOT MEASURE FROM INSIDE.**
+  Every instance recorded here is a defect that **PUBLISHED**. A defect that suppressed a TRUE
+  finding leaves no artifact to file — the result was discarded, and *nobody investigates a result
+  they discarded*. ⇒ **This register is a survivorship sample of our own errors**, and the
+  conservative failures are invisible by construction. ⚠ One was caught by accident: a table
+  printing times without dates made a real 19-hour gap read as 5 hours, and the measurement was
+  nearly thrown away as a bug. **It survived only because the summary contradicted the table loudly
+  enough to be re-checked.**
 - ⚠ **The measurement that produced the sharpest instance is itself unestablished**: three
   predicates, no agreement, one retracted finding and three declined figures. ⇒ **The reconciliation
   is the result; none of the three numbers is.**
