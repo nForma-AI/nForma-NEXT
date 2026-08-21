@@ -173,6 +173,35 @@ zero** (#481): the next instrument added without a reachable control blocks its 
 - ⚠ **That this file will be read.** Nothing carries it. It is ESTABLISHED and not IN FORCE — the
   distinction is on main in `goals/README.md`, and this file is an instance of the gap it names.
 
+## ✅ THE CARRIER IS CONFIRMED: the operator reads `label:role:OPERATOR`
+
+⚠ **Asked and answered 2026-08-21, because nothing in this repository could establish it.**
+ARCHITECT raised it and was right to: the routing ladder has four rungs, and **each looked like the
+top until someone checked**.
+
+```
+prose in a pane's context   dies at compaction
+comment on an issue         invisible to a scanner            <- #338 sat here
+body of an issue            needs someone to OPEN the issue
+label on an issue           needs someone to RUN the query    <- where my fix left them
+```
+
+⛔ **A pane cannot measure the fourth rung.** The operator's query behaviour leaves **no trace in
+this repository** — rung 0b for a closed corpus, and no better probe fixes it. ⇒ **The release
+condition was not an instrument; it was the operator saying so**, and only TEAMLEAD has that channel.
+
+**They said yes.** ⇒ `gh issue list --state open --label role:OPERATOR` **is** the carrier for
+anything that needs the operator. It is a routing mechanism, not a filing convention.
+
+⚠ **So label it, and do not invent an alternative.** A pane that discovers an operator-blocked
+defect adds `role:OPERATOR` — keeping whatever role owns the analysis — and that is sufficient. ⛔ A
+peer message is **not** a carrier: it dies with the pane that sent it, which is how three items
+(#246 #256 #338) stayed invisible until 09:30Z despite ARCHITECT having known about them for hours.
+
+★ **What this still does not establish: the CADENCE.** *Read* is confirmed; *how often* is not.
+⇒ Nothing here justifies treating a labelled item as delivered at any particular time, and nothing
+justifies a pane pushing a notification instead — that was offered and not chosen.
+
 ## Open for the operator, and only the operator
 
 1. **`tools/pretooluse-guard.py`** — written, measured, indexed, **deliberately unwired**. Installing
