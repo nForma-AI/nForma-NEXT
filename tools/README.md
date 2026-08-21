@@ -1373,6 +1373,39 @@ when the panes it notified read their files.)
 
 ## Conventions worth copying
 
+### ⛔ RUNNING AN INSTRUMENT FROM A REF — because `python3 tools/x.py` from a stale tree exits 2
+
+**Nine panes share one checkout and it drifts.** ⚠ **Measured 2026-08-21: the main checkout was 329
+commits behind `origin/main`, with 133 files present at the ref and ABSENT from the tree** — including
+whole instruments. ⇒ ⛔ **`python3 tools/architect-sweeps/prior-art.py` exits `2` there, which this
+repository's convention reads as *established nothing*, and it is actually *the runtime could not
+find the file*.** ★ **A missing instrument is indistinguishable from a refusing one.**
+
+```
+git worktree add -q --detach /tmp/at-main origin/main && cd /tmp/at-main     # then run normally
+git archive origin/main tools/ | tar -x -C /tmp/pin                          # directory pin (#236)
+```
+
+⚠ **Use the second when a tool imports a sibling** — 8 of the instruments do, and `git show` of one
+file gives you a module with no neighbours.
+
+★ **Both fail LOUDLY, which is the property that matters and it was tested:**
+
+```
+git worktree add … no-such-ref   ⇒ exit 128  fatal: invalid reference: no-such-ref
+git archive no-such-ref tools/   ⇒ exit 128  fatal: not a valid object name: no-such-ref
+```
+
+⇒ ⛔ **Neither can be misread as a tool refusal.** **`exit 128` + `fatal:` is not `exit 2`**, and that
+is the whole requirement.
+
+⚠ **This is a DELIVERY fix, not a capability one, and the distinction is measured rather than
+assumed:** the directory-pin idiom has existed since #236. ★ **The author of this section knew it,
+used the worktree form all session, and STILL ran a plain `tools/` path from the stale tree once —
+and read the resulting `exit 2` as a tool refusal for several seconds.** ⇒ **The recipe existing was
+never the gap; it not being where a pane looks was.**
+
+
 ### ⛔ `gh --jq` IS NOT `jq` — it corrupts lookarounds before jq sees them
 
 ```
