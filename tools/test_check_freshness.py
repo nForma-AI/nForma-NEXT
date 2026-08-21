@@ -76,5 +76,43 @@ cf.subprocess.run = fake(0, '{"data":{"repository":null}}')
 check("a null repository is None, not an empty board", cf.fetch("o", "n", 5), None)
 cf.subprocess.run = real
 
+# ── ⛔ "no current reds" vs "nothing re-ran" — two states, one output ─────────
+# Found by USING the tool: with --since set to a recent push it printed
+# "0 CURRENT" and exited 0, which reads as clean. Nothing had re-run yet.
+def _rollup(contexts):
+    return {"data": {"repository": {
+        "branchProtectionRules": {"nodes": [
+            {"pattern": "main", "requiredStatusCheckContexts": ["A1"]}]},
+        "pullRequests": {"nodes": [{"number": 1, "title": "t", "commits": {"nodes": [
+            {"commit": {"statusCheckRollup": {"contexts": {"nodes": contexts}}}}]}}]}}}}
+
+
+def _run(contexts, since_iso):
+    import json as _j
+    cf.subprocess.run = fake(0, _j.dumps(_rollup(contexts)))
+    cf.sys.argv = ["x", "--repo", "o/n", "--since", since_iso]
+    try:
+        return cf.main()
+    finally:
+        cf.subprocess.run = real
+
+
+OLD = [{"__typename": "CheckRun", "name": "A1", "conclusion": "FAILURE",
+        "completedAt": "2026-08-20T10:00:00Z"}]
+NEWPASS = OLD + [{"__typename": "CheckRun", "name": "A1", "conclusion": "SUCCESS",
+                  "completedAt": "2026-08-21T02:00:00Z"}]
+
+check("stale red only, nothing re-ran -> ESTABLISHED NOTHING (exit 2)",
+      _run(OLD, "2026-08-21T00:00:00Z"), 2)
+check("a required check DID complete after the boundary -> real reading (exit 0)",
+      _run(NEWPASS, "2026-08-21T00:00:00Z"), 0)
+check("KNOWN-BAD control: both cases have ZERO current reds",
+      (len([c for c in OLD if c["completedAt"] > "2026-08-21T00:00:00Z"]),
+       len([c for c in NEWPASS if c["conclusion"] == "FAILURE"
+            and c["completedAt"] > "2026-08-21T00:00:00Z"])), (0, 0))
+check("a CURRENT red still reports as one (exit 1)",
+      _run([{"__typename": "CheckRun", "name": "A1", "conclusion": "FAILURE",
+             "completedAt": "2026-08-21T02:00:00Z"}], "2026-08-21T00:00:00Z"), 1)
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)

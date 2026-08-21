@@ -109,6 +109,7 @@ def main():
         return 2
 
     buckets = {CURRENT: [], STALE: [], UNDATED: []}
+    ran_since = []
     prs = d["pullRequests"]["nodes"]
     for p in prs:
         cm = p["commits"]["nodes"]
@@ -119,7 +120,15 @@ def main():
                 nm, st, when = c.get("name"), c.get("conclusion"), c.get("completedAt")
             else:
                 nm, st, when = c.get("context"), c.get("state"), c.get("createdAt")
-            if nm not in req or st not in ("FAILURE", "ERROR"):
+            if nm not in req:
+                continue
+            # ⛔ Count EVERY required check that completed after the boundary, not
+            # only the failing ones. Without this, "0 CURRENT reds" is produced both
+            # by a board that re-ran clean AND by a board where nothing re-ran at
+            # all — and the second is not a pass, it is an absence of evidence.
+            if classify(when, since) == CURRENT:
+                ran_since.append((p["number"], nm, st))
+            if st not in ("FAILURE", "ERROR"):
                 continue
             buckets[classify(when, since)].append((p["number"], nm, when))
 
@@ -142,6 +151,20 @@ def main():
         print(f"\n  ── CURRENT — the only reds that are evidence about now ──")
         for n, nm, when in sorted(buckets[CURRENT]):
             print(f"    #{n:<6} {nm:34s} {when}")
+    # ⛔ THE DISCRIMINATOR THIS TOOL EXISTS FOR, APPLIED TO ITSELF. Found by using
+    # it: with --since set to a recent push, it printed "0 CURRENT" and exited 0,
+    # which reads as "no current reds". Nothing had re-run yet. A board that re-ran
+    # clean and a board that has not re-run print the same zero.
+    if not buckets[CURRENT] and not ran_since:
+        print(f"\n  ⛔ ESTABLISHED NOTHING — no required check of ANY conclusion has "
+              f"completed\n     since {a.since}. Zero CURRENT reds here means nothing "
+              "has re-run, not that\n     anything passed. Re-run first, then ask again.")
+        return 2
+    if not buckets[CURRENT]:
+        ok = sum(1 for _, _, st in ran_since if st == "SUCCESS")
+        print(f"\n  ✅ no CURRENT reds, and {len(ran_since)} required check(s) DID "
+              f"complete since\n     {a.since} ({ok} success). That is a real reading.")
+
     share = 100 * len(buckets[STALE]) // total
     if share >= 50:
         print(f"\n  ⇒ {share}% of the board's red predates the change. Diagnosing it "
