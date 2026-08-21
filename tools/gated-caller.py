@@ -78,6 +78,21 @@ STUB = (
     #   flowing through this stub and was discarded at the bucket.
     "_k = 'MAIN' if __name__ == '__main__' else 'IMPORT'\n"
     "open(os.environ['GC_LOG'], 'a').write(_n + '|' + _k + '|' + _a + chr(10))\n"
+    # ⛔ RECORD IN-PROCESS INVOCATION (#551). __name__ separates SUBPROCESS from IMPORT and
+    # nothing more. It cannot separate an import that merely LOADS the module from one that
+    # CALLS THE SWEEP — and only the second is what the count is about, so `1 of 36` was a
+    # LOWER BOUND reported as a count. ★ #550 is the instance: a gated suite that runs
+    # doctrine-discriminability's sweep in-process via importlib.
+    # ⇒ PEP 562 module __getattr__ fires only for attributes the module does NOT define, and
+    #   this stub defines none of the subject's — so every reach lands here.
+    # ⚠ RECORDED ON CALL, NOT ON ACCESS. `m.CHANNELS` is an attribute read and is NOT a sweep;
+    #   `m.main()` is. Writing the record inside __getattr__ would score the first as the
+    #   second, which is the over-report that would make this worse than the false negative.
+    "def __getattr__(_name):\n"
+    "    def _call(*_a, **_k):\n"
+    "        open(os.environ['GC_LOG'], 'a').write(_n + '|CALL|' + _name + chr(10))\n"
+    "        return 0\n"
+    "    return _call\n"
     "if __name__ == '__main__':\n"
     "    raise SystemExit(0)\n"
 )
@@ -105,7 +120,8 @@ def probe(suites, tools_dir, instruments, timeout=120):
     Every instrument is stubbed at once; each suite runs ONCE. The stub records its own name, so
     one log attributes every call the suite made.
     """
-    seen = {n: {"selftest": [], "swept": [], "reached": []} for n in instruments}
+    seen = {n: {"selftest": [], "swept": [], "called": [], "reached": []} for n in instruments}
+    truncation_risk = []   # suites that exited nonzero under the stub — see the loop below
     for suite in suites:
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d) / "tools"
@@ -116,9 +132,22 @@ def probe(suites, tools_dir, instruments, timeout=120):
             log = Path(d) / "calls.log"
             env = dict(os.environ, GC_LOG=str(log))
             try:
-                subprocess.run([sys.executable, str(tmp / suite.name)], capture_output=True,
-                               text=True, timeout=timeout, cwd=str(Path(d)), env=env)
+                _r = subprocess.run([sys.executable, str(tmp / suite.name)],
+                                    capture_output=True, text=True, timeout=timeout,
+                                    cwd=str(Path(d)), env=env)
+                # ⛔ TRUNCATION RISK, MEASURED. The exit code must not decide whether a suite
+                # counted as a caller (see below) — but a suite that DIED under the stub may
+                # have died BEFORE a call it would otherwise have made, so anything after that
+                # point is invisible. ⚠ This is the probe changing what it observes.
+                # ★ Measured instance: test_prevalence.py imports the subject at line 27, reads
+                #   pv.<attr> from line 41, and only at line 141 runs it bare. With a stub that
+                #   defined nothing, the attribute read raised AttributeError and the suite
+                #   never reached the bare run — so `1 of 36` was an UNDERCOUNT PRODUCED BY
+                #   THIS TOOL, not a fact about the repository.
+                if _r.returncode != 0:
+                    truncation_risk.append(suite.name)
             except (subprocess.TimeoutExpired, OSError):
+                truncation_risk.append(suite.name)
                 continue
             # ⚠ The suite's own exit code is IGNORED on purpose. Under stubs a strict suite fails,
             # and reading that as "did not call" would report every rigorous suite as a
@@ -135,7 +164,16 @@ def probe(suites, tools_dir, instruments, timeout=120):
                 # ⛔ THREE OUTCOMES, NOT TWO. A bare SUBPROCESS run is the SWEEP — the thing that
                 # produces findings. An IMPORT exercises the module in-process and produces none.
                 # Folding them lost exactly the distinction #164 asks about.
-                if "--self-test" in argv:
+                if kind == "CALL":
+                    # ⛔ A THIRD STATE, NOT A WIDER "swept". A gated suite reached into the
+                    # module and INVOKED something — but "called any function" is NOT the
+                    # proposition "the sweep has a caller". test_close_condition_scan.py calls
+                    # main() with argv patched to --states, a DECLARE path that measures
+                    # nothing. ⇒ Folding these into `swept` would move the published figure
+                    # from 1 to 26 by SILENTLY CHANGING THE QUESTION — a correct reading of
+                    # the wrong proposition, under a number other panes are acting on.
+                    key = "called"
+                elif "--self-test" in argv:
                     key = "selftest"
                 elif kind == "MAIN":
                     key = "swept"
@@ -143,6 +181,7 @@ def probe(suites, tools_dir, instruments, timeout=120):
                     key = "reached"
                 if suite.name not in seen[name][key]:
                     seen[name][key].append(suite.name)
+    seen["__truncation_risk__"] = sorted(set(truncation_risk))
     return seen
 
 
@@ -295,6 +334,7 @@ def census(tools_dir=None, timeout=120):
     #   fact behind the other for any tool that is both — the collapsed pair, in the instrument
     #   whose job is refusing collapses.
     swept = [n for n in names if seen[n]["swept"]]
+    called = [n for n in names if seen[n]["called"] and n not in swept]
     out.append(f"  {len(swept)} of {len(names)} have a gated caller that runs the SWEEP — invoked as a"
                f" subprocess WITHOUT --self-test{': ' + ', '.join(swept) if swept else ''}")
     if not swept:
@@ -323,6 +363,21 @@ def census(tools_dir=None, timeout=120):
         out.append(f"  ⚠ POPULATION BOUNDARY: {sum(n for _, n in subdirs)} instrument(s) exposing"
                    f" --self-test live in SUBDIRECTORIES and are OUTSIDE the counts above"
                    f" — {detail}. They are not reported as uncalled; they are not reported.")
+    # ⛔ THE PROBE'S OWN OBSERVER EFFECT, REPORTED AS A NUMBER RATHER THAN A WORRY.
+    # A suite that DIED under the stub may have died before a call it would have made, so every
+    # count above is a LOWER BOUND by an amount this line bounds. ⚠ Its exit code still does not
+    # decide caller-hood — that would anti-correlate with rigour — it only bounds the error.
+    trunc = seen.get("__truncation_risk__", [])
+    if trunc:
+        out.append(f"  ⚠ TRUNCATION RISK: {len(trunc)} of {len(suites)} gated suites exited"
+                   f" NONZERO under the recording stub. Each may have stopped before a call it"
+                   f" would otherwise have made, so every count above is a LOWER BOUND — this"
+                   f" tool changes what it observes, and this is by how much it might.")
+    # ⇒ REPORTED SEPARATELY, on its own line, for the reason above: it answers a DIFFERENT
+    #   question and must not be summed with the one above it.
+    out.append(f"  {len(called)} of {len(names)} are INVOKED IN-PROCESS by a gated suite that"
+               f" imports the module and calls into it — NOT the same claim as a sweep:"
+               f" calling main() with a --help or --states argv measures nothing.")
     out.append(tree_provenance())
     out.append("  ⚠ RUNNER is INVOCATION, not evidence. A blanket runner passes --self-test to"
                " every subject; whether a given tool's control DISCRIMINATES is a separate"
@@ -433,6 +488,47 @@ def self_test():
             "here = os.path.dirname(os.path.abspath(__file__))\n"
             "subprocess.run([sys.executable, os.path.join(here,'swept.py')])\n"
             "raise SystemExit(0)\n")
+        # ⛔ AN IN-PROCESS CALLER THAT RUNS THE SWEEP IS SWEPT (#551). The pair is the point:
+        # "the caller that INVOKES is swept" passes if every importer were swept, and
+        # "the importer that only LOADS is reached" passes if none were. Neither half alone.
+        (td / "inproc.py").write_text('import sys\nif "--self-test" in sys.argv:\n'
+                                      '    raise SystemExit(0)\nraise SystemExit(0)\n')
+        (td / "test_inproc.py").write_text(
+            "import importlib.util, os\n"
+            "here = os.path.dirname(os.path.abspath(__file__))\n"
+            "sp = importlib.util.spec_from_file_location('q', os.path.join(here,'inproc.py'))\n"
+            "m = importlib.util.module_from_spec(sp)\nsp.loader.exec_module(m)\n"
+            "m.main()\n"                      # <- the sweep, in-process
+            "raise SystemExit(0)\n")
+        ri = probe(gated_suites(td), td, ["inproc.py", "imported.py"], timeout=60)
+        nosweep = not ri["inproc.py"]["swept"]
+        ok &= nosweep
+        print(f"  {'ok  ' if nosweep else 'FAIL'}  an IN-PROCESS caller does NOT count as SWEPT "
+              f"(swept={ri['inproc.py']['swept']}) — 'calls any function' is not 'runs the "
+              f"sweep'; folding them would move a published figure by changing the question")
+        hit = bool(ri["inproc.py"]["called"]) and not ri["imported.py"]["called"]
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a suite that IMPORTS and CALLS the subject is "
+              f"CALLED (a state of its own, NOT swept), while one that imports and does not "
+              f"call is neither (inproc={ri['inproc.py']['called']}, "
+              f"import={ri['imported.py']['called']}) — __name__ cannot see this")
+
+        # ⛔ ATTRIBUTE ACCESS IS NOT A SWEEP. Reading a module constant must not score as one,
+        # or the fix trades a false negative for a false positive, which is worse here.
+        (td / "test_readattr.py").write_text(
+            "import importlib.util, os\n"
+            "here = os.path.dirname(os.path.abspath(__file__))\n"
+            "sp = importlib.util.spec_from_file_location('r', os.path.join(here,'inproc.py'))\n"
+            "m = importlib.util.module_from_spec(sp)\nsp.loader.exec_module(m)\n"
+            "_ = m.SOME_CONSTANT\n"
+            "raise SystemExit(0)\n")
+        (td / "test_inproc.py").unlink()
+        ra = probe(gated_suites(td), td, ["inproc.py"], timeout=60)
+        hit = not ra["inproc.py"]["called"]
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  reading an ATTRIBUTE is not an invocation "
+              f"(called={ra['inproc.py']['called']}) — recorded on CALL, never on ACCESS")
+
         rs = probe(gated_suites(td), td, ["swept.py", "imported.py"], timeout=60)
         hit = bool(rs["swept.py"]["swept"]) and not rs["imported.py"]["swept"]
         ok &= hit
@@ -451,6 +547,24 @@ def self_test():
         print(f"  {'ok  ' if hit else 'FAIL'}  the census NAMES its own exclusion by file, rather"
               f" than omitting the row")
         (td / Path(__file__).name).unlink()
+
+        # ⛔ TRUNCATION RISK MUST BE COUNTED, AND MUST NOT COUNT A CLEAN SUITE. Asserted as a
+        # pair: "a dying suite is flagged" passes if every suite were flagged; "a clean suite is
+        # not" passes if none were.
+        (td / "dies.py").write_text('import sys\nif "--self-test" in sys.argv:\n'
+                                    '    raise SystemExit(0)\nraise SystemExit(0)\n')
+        (td / "test_dies.py").write_text(
+            "import subprocess, sys, os\n"
+            "here = os.path.dirname(os.path.abspath(__file__))\n"
+            "subprocess.run([sys.executable, os.path.join(here,'dies.py')])\n"
+            "raise SystemExit(7)\n")               # <- nonzero: may have stopped early
+        rt = probe(gated_suites(td), td, ["dies.py"], timeout=60)
+        risk = rt.get("__truncation_risk__", [])
+        hit = "test_dies.py" in risk and "test_import.py" not in risk
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a gated suite that EXITS NONZERO under the stub is"
+              f" counted as truncation risk and a clean one is not (risk={risk}) — the probe"
+              f" states how much it may have changed what it observed")
 
         # ⛔ THE BOUNDARY LINE NEEDS A DEMONSTRATED INSTANCE, and its ABSENCE needs one too.
         # ⚠ Asserted as a pair: "the line appears when a subdir instrument exists" passes if the
