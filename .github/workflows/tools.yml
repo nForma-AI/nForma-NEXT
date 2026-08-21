@@ -152,7 +152,7 @@ jobs:
       # spent three passes comparing the bare form's output to this step's CI result before
       # noticing. To reproduce this step exactly:
       #
-      #     SUBJ_DIR=tools SUBJ_BASELINE=24 ./scripts/gate-selftests.sh     (~3 minutes)
+      #     SUBJ_DIR=tools SUBJ_BASELINE=23 ./scripts/gate-selftests.sh     (~3 minutes)
       #
       # ⛔ SUBJ_BASELINE IS A RECORDED DEBT, NOT AN EXEMPTION, and the difference is that it
       # CANNOT GROW. 24 of these controls establish nothing today; blocking every PR for nine
@@ -164,7 +164,7 @@ jobs:
       - name: subject controls (tools/)
         env:
           SUBJ_DIR: tools
-          SUBJ_BASELINE: "24"
+          SUBJ_BASELINE: "23"
         run: ./scripts/gate-selftests.sh
 
   fleet-dependent:
