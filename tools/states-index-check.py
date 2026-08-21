@@ -157,7 +157,14 @@ def main():
         #    produced by the generator and NOTHING re-runs it — a name carrying its method only
         #    because someone typed it (#437). This regenerates and compares byte-for-byte.
         text = open(os.path.join(a.repo, "tools", "README.md")).read()
-        marked = [l for l in text.splitlines() if "GENERATED-FROM: --states" in l]
+        # ⛔ USE, NOT MENTION (#36). The first version matched ANY line containing the marker,
+        #    so the PROSE PARAGRAPH DESCRIBING this flag was read as a row claiming provenance
+        #    and scored UNPARSEABLE. ⇒ Found by the guard's own first live run, two hours after
+        #    shipping it, and it is the SECOND time this tool has matched a mention: --tokens'
+        #    predicate did the same with the string "--states" in a docstring.
+        #    ⇒ A claim of provenance is a TABLE ROW. A description of one starts with anything else.
+        marked = [l for l in text.splitlines()
+                  if "GENERATED-FROM: --states" in l and l.lstrip().startswith("|")]
         if not marked:
             print("⛔ VOID  no row claims to be generated — ESTABLISHED NOTHING.", file=sys.stderr)
             return 2
