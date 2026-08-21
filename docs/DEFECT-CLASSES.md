@@ -1235,6 +1235,52 @@ most if they had been unable to.
 
 ---
 
+## ★ A QUERYABLE FIELD REPLACED BY MORE READABLE PROSE
+
+No class letter claimed. Three instances, one day, three unrelated surfaces — and **in every one the
+prose was an improvement.**
+
+> **A machine-readable field is replaced by text that says the same thing better, and the consumer
+> that depended on the field goes silent.** ⇒ The failure is not that someone wrote worse text. **The
+> text got better and the field disappeared.**
+
+### Three instances, measured 2026-08-21
+
+| surface | the field | the prose that replaced it | what broke |
+|---|---|---|---|
+| commit trailers | `Claude-Session: …` | *"Filed by ARCHITECT, session c83ecf77"* | `architect/` coverage **100% → 87%** (DEV5) |
+| issue routing | `dev:N` label | a message naming each pane's issue | the message **contradicted the board**; two panes nearly built a split on it |
+| close conditions | line-anchored `⇒ Done when` | the same words mid-paragraph | scores `NONE` — *"prose ABOUT close conditions is not a close condition"* |
+
+⇒ ⛔ **Nobody was careless in any of the three.** The substitution reads as a *legible-looking upgrade*,
+which is exactly why it recurs — and why **"be careful" cannot be the remedy.** ★ A convention
+degrades toward readability every time someone improves it.
+
+### ⇒ Why it is invisible afterwards
+
+**Nothing in the artifact records that a field was ever there.** A dropped field leaves an empty
+column; a *replaced* field leaves a well-written sentence. ⇒ **You cannot miss what leaves no socket
+behind** — the reader sees complete, careful prose and no absence at all.
+
+### ★ And the two halves decay independently
+
+DEV5's regression is the specimen: the mechanism was **still in place** and coverage fell anyway.
+
+```
+"the field EXISTS"      unchanged — the trailer convention was never removed
+"the field is POPULATED" 100% -> 87% over ~2 hours
+```
+
+⇒ **Only the second is visible to the query that needs it**, so a check asserting the mechanism
+exists will pass for as long as it takes the population to reach zero. ⚠ This is why a close
+condition should require a *populated* field rather than a documented one.
+
+⚠ **Not established:** whether any consumer of the replaced trailers actually failed, or only would
+have. DEV5 measured the coverage drop; **neither of us can show a victim** — the same honest bound
+that attaches to the name-collision and session-collision findings elsewhere in this document.
+
+---
+
 ## ⛔ What is NOT established
 
 - ⛔ **The document's ORDER no longer matches its argument, and that is a defect in it.**
