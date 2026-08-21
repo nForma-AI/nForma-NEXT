@@ -42,9 +42,23 @@ _spec.loader.exec_module(fleet_state)
 
 
 def write(turns, path, title="DEVOPS"):
+    """One AGENT TURN per element — with the user turn that ends it.
+
+    ⛔ This helper used to emit consecutive assistant records with NOTHING between
+    them, which is a transcript that cannot occur: an agent does not produce two
+    turns without an intervening user turn. That made every fixture agree with a
+    parser unit — one turn per assistant MESSAGE — that no real corpus supports,
+    and the fixtures then defended the unit against correction.
+
+    ⚠ The boundary is a REAL user turn. A tool_result also arrives as role="user";
+    see _is_real_user_turn in fleet-state.py and the control below.
+    """
     with open(path, "w") as fh:
         fh.write(json.dumps({"type": "custom-title", "customTitle": title}) + "\n")
-        for t in turns:
+        for i, t in enumerate(turns):
+            if i:
+                fh.write(json.dumps({"type": "user", "message": {"role": "user", "content": [
+                    {"type": "text", "text": "continue"}]}}) + "\n")
             fh.write(json.dumps({"message": {"role": "assistant", "content": [
                 {"type": "text", "text": t}]}}) + "\n")
 
@@ -56,6 +70,52 @@ def check(name, got, want):
 
 
 WORK = "Ran the migration, 4 files changed, tests green."
+
+
+def test_tool_result_is_not_a_turn_boundary():
+    """A USER RECORD IS NOT A USER TURN.
+
+    In this harness a tool result is delivered as ``role="user"``. Using "a record
+    with role user" as the turn boundary fires once per TOOL CALL, which is the unit
+    that made "end every turn with a STATE: line" unsatisfiable: an agent turn
+    interleaves prose with tool calls, so only the final block can carry a
+    declaration. Measured on a live transcript: 829 message-units vs 275 real turns.
+    """
+    def _u(blocks):
+        return {"type": "user", "message": {"role": "user", "content": blocks}}
+    def _a(text):
+        return {"type": "assistant", "message": {"role": "assistant",
+                "content": [{"type": "text", "text": text}]}}
+    base = [
+        _u([{"type": "text", "text": "do the thing"}]),
+        _a("starting"),
+        _u([{"type": "tool_result", "content": "ok"}]),
+        _a("still going"),
+        _u([{"type": "tool_result", "content": "ok"}]),
+        _a("done\nSTATE: FREE — nothing queued"),
+    ]
+    fd, path = tempfile.mkstemp(suffix=".jsonl"); os.close(fd)
+    def put(recs):
+        with open(path, "w") as fh:
+            for r in recs:
+                fh.write(json.dumps(r) + "\n")
+    ok = True
+    try:
+        put(base)
+        _, t = fleet_state.assistant_texts(path)
+        ok &= check("tool_results do not split a turn", len(t), 1)
+        ok &= check("declared at the turn's end", fleet_state.declared_state(t[0])[0], "FREE")
+
+        put(base[:-1] + [_a("done, no declaration")])
+        _, t2 = fleet_state.assistant_texts(path)
+        ok &= check("same shape, no declaration", fleet_state.declared_state(t2[0])[0], None)
+
+        put(base + [_u([{"type": "text", "text": "next"}]), _a("more")])
+        _, t3 = fleet_state.assistant_texts(path)
+        ok &= check("a REAL user turn does split", len(t3), 2)
+    finally:
+        os.unlink(path)
+    return ok
 
 
 def main():
@@ -112,6 +172,9 @@ def main():
         failures += not check("state", state, None)
         failures += not check("turns_ago", back, None)
 
+        print("⛔ a tool_result arrives as role=user — it must NOT end a turn:")
+        failures += not test_tool_result_is_not_a_turn_boundary()
+
         print("empty/tool-only turns are not turns:")
         p = os.path.join(d, "g.jsonl")
         write(["STATE: WORKING — mid-task", "   ", "\n"], p)
@@ -124,7 +187,6 @@ def main():
         return 1
     print("all checks passed")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())
