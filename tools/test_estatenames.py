@@ -61,12 +61,15 @@ def main():
 
     print("\nadjacency: gh -R arrives as SEPARATE literals, and only for gh:")
     gh = ["gh", "issue", "list", "-R", "%s/%s" % (OWN, EST)]
-    check("gh argv list", [k for k, _, _ in en.scan_strings(gh, ID)], ["forge-flag"])
+    check("gh argv list", [k for k, _, _ in en.scan_strings(gh, ID, one_call=True)],
+          ["forge-flag"])
+    # ⛔ THE SAME LIST, file-scope: adjacency OFF, because ast.walk order is not source order.
+    check("same argv, file scope -> no adjacency", en.scan_strings(gh, ID), [])
     check("our own repo via -R",
-          en.scan_strings(["gh", "-R", "nForma-AI/nForma-NEXT"], ID), [])
+          en.scan_strings(["gh", "-R", "nForma-AI/nForma-NEXT"], ID, one_call=True), [])
     # ⛔ -R is also grep's recursive flag.
     check("grep -R is not a forge ref",
-          en.scan_strings(["grep", "-R", "docs/README.md"], ID), [])
+          en.scan_strings(["grep", "-R", "docs/README.md"], ID, one_call=True), [])
 
     print("\nan incomplete identity establishes NOTHING — it never reads clean:")
     # With no comparand every string is trivially "not ours"; returning [] here is the
