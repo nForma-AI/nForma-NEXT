@@ -35,8 +35,26 @@ def sh(*a, check=False):
     return r.stdout.strip()
 
 
-def open_prs(repo=None, limit=50):
-    """[(number, headRef, title)] or None — a failed query is not an empty board."""
+def open_prs(repo=None, limit=200):
+    """([(number, headRef, title)], saturated) or None — a failed query is not an
+    empty board, and a FULL window is not a complete board.
+
+    ⛔ MEASURED 2026-08-21, LIVE, ON THIS TOOL'S OWN DEFAULT. Borduas-Holdings/
+    Blazing-Back had 61 open PRs; `--limit 50` returned exactly 50. Eleven were
+    invisible, and because this tool's product is PAIRS, the loss compounds:
+
+        61 PRs -> 1830 pairs        50 PRs -> 1225 pairs
+        ⇒ 605 pairs (33%) never examined, and nothing said so
+
+    ★ THIS FILE ALREADY CARRIES THE ARGUMENT, one level down, about unfetched
+    heads: "a smaller number that looks like better news." The same sentence is
+    true of an unlisted PR, and the guard was only on the inner window.
+
+    ⚠ `len(rows) >= limit` is the test, NOT a comparison against some expected
+    total — the caller does not know the total, which is the whole problem. A full
+    window is indistinguishable from a board that happens to be exactly that size,
+    so this reports SATURATED and lets the caller decide, rather than guessing.
+    """
     cmd = ["gh", "pr", "list", "--state", "open", "--json",
            "number,headRefName,title", "--limit", str(limit)]
     if repo:
@@ -48,7 +66,10 @@ def open_prs(repo=None, limit=50):
         rows = json.loads(out)
     except ValueError:
         return None
-    return [(r["number"], r["headRefName"], r["title"]) for r in rows] or None
+    if not rows:
+        return None
+    return ([(r["number"], r["headRefName"], r["title"]) for r in rows],
+            len(rows) >= limit)
 
 
 def local_remote():
@@ -86,15 +107,31 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--repo", default=None)
     ap.add_argument("--base", default="origin/main")
-    ap.add_argument("--limit", type=int, default=50)
+    ap.add_argument("--limit", type=int, default=200,
+                    help="PR window. A FULL window is refused, not reported — see open_prs.")
     ap.add_argument("--no-fetch", action="store_true",
                     help="skip the fetch; unresolved heads are reported as UNKNOWN, never clean")
     a = ap.parse_args()
 
-    prs = open_prs(a.repo, a.limit)
-    if prs is None:
+    got = open_prs(a.repo, a.limit)
+    if got is None:
         print("⛔ ESTABLISHED NOTHING — the PR query failed or returned nothing. "
               "An empty board and a failed query print the same table.")
+        return 2
+    prs, saturated = got
+
+    # ⛔ REFUSE, do not warn. Every other refusal in this file protects a count;
+    # this protects a count OF PAIRS, so a 20% shortfall in the board is a 33%
+    # shortfall in what was examined — and the missing pairs can only ever REMOVE
+    # conflicts from the answer. A partial conflict scan is the one output whose
+    # error direction is always reassuring.
+    if saturated:
+        print(f"⛔ ESTABLISHED NOTHING — the window is FULL: {len(prs)} PR(s) returned "
+              f"for --limit {a.limit}, so there are probably more.\n"
+              f"   A conflict scan over a truncated board is a clean answer about a set "
+              f"this tool never saw,\n"
+              f"   and every unlisted PR can only REMOVE conflicts from the result. "
+              f"Raise --limit.")
         return 2
 
     # ⛔ A HEAD THAT IS NOT FETCHED IS NOT AN ABSENT CONFLICT. The first run of this

@@ -11,7 +11,7 @@ the thing under test, and a stub would test the stub.
 
 Run: python3 tools/test_pr_stack.py
 """
-import os, subprocess, sys, tempfile, types
+import json, os, subprocess, sys, tempfile, types
 
 sys.dont_write_bytecode = True
 os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -119,6 +119,49 @@ check("a different repo is not the same repo",
 # cross-repo message to someone whose only problem is an unfetched branch.
 check("an unknown local remote is falsy, so the generic remedy is used instead",
       bool(ps.same_repo("a/b", None)), False)
+
+
+# ── ⛔ A FULL WINDOW IS NOT A COMPLETE BOARD, AND THIS TOOL COUNTS PAIRS ──────
+# Measured LIVE 2026-08-21 on this tool's own default: Blazing-Back had 61 open
+# PRs and `--limit 50` returned exactly 50. Eleven invisible — and because the
+# product is PAIRS the loss compounds: 1830 pairs -> 1225, so 605 (33%) were never
+# examined, and nothing said so.
+#
+# ★ This file already argued the point one level down, about unfetched heads:
+# "a smaller number that looks like better news." The guard was only on the inner
+# window. The same sentence is true of an unlisted PR.
+_saved_sh = ps.sh
+
+def _rows(n):
+    return json.dumps([{"number": i, "headRefName": f"h{i}", "title": "t"}
+                       for i in range(1, n + 1)])
+
+def _with_rows(n):
+    ps.sh = lambda *a, **k: _rows(n)
+    try:
+        return ps.open_prs(None, limit=10)
+    finally:
+        ps.sh = _saved_sh
+
+rows, sat = _with_rows(10)
+check("a FULL window reports saturated", (len(rows), sat), (10, True))
+rows, sat = _with_rows(9)
+check("a short window does not", (len(rows), sat), (9, False))
+
+# ⛔ KNOWN-BAD CONTROL — the test that makes the two above non-vacuous. A board of
+# EXACTLY the window size is indistinguishable from a truncated one, and the tool
+# must call it saturated rather than guess. Being wrong here is the safe direction:
+# it refuses a complete board instead of blessing an incomplete one.
+check("KNOWN-BAD control: a board of exactly N is ALSO saturated — refusing a "
+      "complete board is the safe error", _with_rows(10)[1], True)
+
+# the saturation test must be len(rows) >= limit, never a guess at the true total
+src = open(os.path.join(_here, "pr-stack.py")).read()
+check("saturation is keyed on the WINDOW, not on an assumed total",
+      "len(rows) >= limit" in src, True)
+check("...and a saturated board is REFUSED, not warned about",
+      "the window is FULL" in src and "return 2" in src, True)
+check("...with a remedy the caller can actually follow", "Raise --limit" in src, True)
 
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)
