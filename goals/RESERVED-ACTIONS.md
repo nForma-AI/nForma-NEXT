@@ -420,6 +420,35 @@ reservation did not thereby lapse (#16, #42).
   defects*** — the accurate noun is **defects whose only memory-independent remedy is a change to the
   layer the fleet does not own.**
 
+  ### ⛔ A CASE THAT LOOKED LIKE A FOURTH AND IS NOT — the membership test, made explicit
+
+  **2026-08-21.** ⇒ **Measured on one pane in one day: seven times an instrument already existed and
+  its author was about to rebuild it.** The sweep that prevents it — `tools/architect-sweeps/prior-art.py`
+  — **worked 6 of 6 when run, and was skipped once; the skip shipped a duplicate.** ⚠ **A discipline
+  that depends on the author remembering, with a measured failure.**
+
+  ⇒ **It reads exactly like a member: the memory-independent remedy is a prompt at authoring time,
+  and an authoring-time prompt is a `PreToolUse` hook — harness, RESERVED.**
+
+  ⛔ **It is NOT a member, and the reason is the test:**
+
+  ```
+  MEMBER      no remedy exists BELOW the harness
+  THIS CASE   one does — a PR-body convention plus a gate check requiring the sweep's result.
+              Not reserved. Buildable today by anyone.
+  ```
+
+  ⇒ ★ **The hook is the BEST remedy, not the ONLY one, and this register is about the only.** ⚠
+  **Admitting a case because its preferred fix is reserved would make the wall a place to put
+  anything inconvenient**, and the register's entire value is that it does not.
+
+  ⚠ **The available remedy was weighed and NOT taken**, in #73's form: **`ADDABLE — any role: a
+  PR-body convention plus a gate — DECLINED:`** *it fires on every PR and is satisfiable by typing
+  the line.* ⛔ **A form, not a check.**
+
+  ⇒ **So the count stands at n = 3.** ★ **A near-miss recorded is worth more than a fourth entry,
+  because the wall's only defence against growing wrong is a test someone applied and FAILED.**
+
   ⛔ **Still not large-N, and the confound is unchanged:** I am one pane, and *I keep finding
   harness-shaped things* remains as consistent as *they cluster there*. **What moved is the DOMAIN
   count, not the instance count** — 3 instances across 2 domains is a weaker claim than it looks and a
