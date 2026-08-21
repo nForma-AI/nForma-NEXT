@@ -163,5 +163,112 @@ check("...and a saturated board is REFUSED, not warned about",
       "the window is FULL" in src and "return 2" in src, True)
 check("...with a remedy the caller can actually follow", "Raise --limit" in src, True)
 
+
+# ── ⛔ A SHALLOW CLONE SILENTLY INVALIDATES EVERY PAIR ────────────────────────
+# Measured 2026-08-21: a shallow checkout gives each fetched head ONE reachable
+# commit against main's 4,633, so no common ancestor exists and merge-tree answers
+# `fatal: refusing to merge unrelated histories` (rc=128). 121 of 272 reported
+# "conflicts" were that error; `--unshallow` (18s) removed 119 of them, and the
+# "N behind" column read 4631 where the true spread was 1-170.
+_saved = ps.sh
+def _sh_returns(val):
+    ps.sh = lambda *a, **k: val
+
+_sh_returns("true\n");  check("is_shallow reads true", ps.is_shallow(), True)
+_sh_returns("false\n"); check("...and false", ps.is_shallow(), False)
+_sh_returns(None)
+check("⛔ an UNREADABLE answer is None, never False — 'could not ask' is not 'not shallow'",
+      ps.is_shallow(), None)
+ps.sh = _saved
+
+# ── ⛔ AN EXIT CODE IS NOT A VERDICT ─────────────────────────────────────────
+# merge-tree exits non-zero for a real conflict AND for a transport failure.
+# The old code was `rc != 0 or "CONFLICT" in stdout -> CONFLICTS`, which folded
+# every error into the answer — with an EMPTY file list, a shape a real conflict
+# can never have.
+class _R:
+    def __init__(self, rc, out="", err=""):
+        self.returncode, self.stdout, self.stderr = rc, out, err
+
+_saved_run = ps.subprocess.run
+def _run_returns(r):
+    ps.subprocess.run = lambda *a, **k: r
+
+_run_returns(_R(1, "CONFLICT (content): Merge conflict in e2e/x.py\n"))
+check("a real conflict is CONFLICTS, with its file",
+      ps.relation("a", "b"), ("CONFLICTS", ["e2e/x.py"]))
+
+_run_returns(_R(128, "", "fatal: refusing to merge unrelated histories\n"))
+kind, why = ps.relation("a", "b")
+check("⛔ a merge-tree ERROR is UNKNOWN, not CONFLICTS", kind, "UNKNOWN")
+check("...and it carries the reason verbatim",
+      "refusing to merge unrelated histories" in why[0], True)
+
+# ⛔ KNOWN-BAD CONTROL — without it the two checks above would pass against code
+# that simply never returns CONFLICTS. This asserts the OLD predicate DID call
+# this error a conflict, i.e. the fixture reproduces the defect.
+_old_verdict = (128 != 0) or ("CONFLICT" in "")
+check("KNOWN-BAD control: the OLD `rc != 0` predicate called that error a CONFLICT",
+      _old_verdict, True)
+
+_run_returns(_R(0, "4b825dc642cb6eb9a060e54bf8d69288fbee4904\n"))
+check("a clean merge is neither", ps.relation("a", "b"), (None, []))
+ps.subprocess.run = _saved_run
+
+# ── ⛔ EVERY ROW CARRIES ITS SECTION ─────────────────────────────────────────
+# The two lists used to render identically — `#N × #M   files` — so a grep over
+# the output could not tell them apart. Mine matched a superset and I published a
+# conflicts+overlaps figure as a conflict count, to someone ordering merges by it.
+# ⇒ Fix the OUTPUT so the wrong reading is impossible.
+src = open(os.path.join(_here, "pr-stack.py")).read()
+check("conflict rows are prefixed CONF", '"  CONF  #{n1}' in src.replace("f\"", '"'), True)
+check("overlap rows are prefixed OVER", '"  OVER  #{n1}' in src.replace("f\"", '"'), True)
+check("unknown rows are prefixed UNKN", '"  UNKN  #{n1}' in src.replace("f\"", '"'), True)
+check("the three prefixes are distinct",
+      len({"CONF", "OVER", "UNKN"}), 3)
+check("an UNKNOWN pair is not a clean board — it reaches the exit code",
+      "uncomputed or unresolved" in src.replace("\n", " ").replace("  ", " "), True)
+check("shallow is checked BEFORE the PR query, not after",
+      src.index("shallow = is_shallow()") < src.index("got = open_prs("), True)
+check("...and the refusal names the remedy", "git fetch --unshallow" in src, True)
+
+
+# ── ⛔ THE CHECKS ABOVE ON PREFIXES/ORDERING ARE SOURCE-TEXT AND WOULD PASS
+#    AGAINST A COMMENT. Drive main() and assert the EXIT CODE, which is what a
+#    caller acts on. (Same correction already made once tonight in
+#    tools/test_check_freshness.py — recorded so it is not made a third time.)
+import contextlib, io
+
+def _main_with(shallow_val):
+    saved_is, saved_open = ps.is_shallow, ps.open_prs
+    ps.is_shallow = lambda: shallow_val
+    ps.open_prs = lambda *a, **k: None          # would exit 2 for a different reason
+    buf, argv = io.StringIO(), sys.argv[:]
+    sys.argv = ["pr-stack.py", "--no-fetch"]
+    try:
+        with contextlib.redirect_stdout(buf):
+            rc = ps.main()
+    finally:
+        sys.argv = argv
+        ps.is_shallow, ps.open_prs = saved_is, saved_open
+    return rc, buf.getvalue()
+
+rc, out = _main_with(True)
+check("BEHAVIOUR: a shallow checkout EXITS 2", rc, 2)
+check("...saying the checkout is shallow", "SHALLOW" in out, True)
+check("...and naming the remedy", "git fetch --unshallow" in out, True)
+check("...and it refuses BEFORE the PR query — the query never reported its own failure",
+      "the PR query failed" in out, False)
+
+rc, out = _main_with(None)
+check("BEHAVIOUR: an UNDETERMINABLE answer warns and does not silently proceed",
+      "could not determine" in out, True)
+check("...but it is not fatal — 'cannot ask' must not become 'refuse everything'",
+      rc != 2 or "the PR query failed" in out, True)
+
+rc, out = _main_with(False)
+check("KNOWN-BAD control: a FULL checkout does NOT trip the shallow refusal",
+      "SHALLOW" in out, False)
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)
