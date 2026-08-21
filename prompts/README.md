@@ -167,6 +167,43 @@ listing **excludes the caller**, so every pane sees its own role name as one rar
 every pane is biased toward believing its own name is unique, which is the condition that reads
 as safe.
 
+### ★ THE CALLER-EXCLUSION IS A BIAS — and TWO PANES CAN USE IT AS AN INSTRUMENT
+
+**The exclusion above is recorded as a defect: every pane sees its own role as rarer than it is.**
+⇒ **Measured 2026-08-21, it also RESOLVES an ambiguity neither pane could resolve alone.**
+
+```
+ARCHITECT sees   DEV4 [889bf9]  AND  DEV4 [71abb0]   both interactive — cannot tell which is which
+TEAMLEAD sees    DEV4 [71abb0]  only — [889bf9] ABSENT
+⇒ the listing excludes the CALLER, so the row TEAMLEAD cannot see IS TEAMLEAD.
+  [889bf9] identified positively, by an absence.
+```
+
+⇒ ★ **Neither view resolves it. The pair does.** ⛔ **And it works ONLY because the exclusion is
+SYSTEMATIC:**
+
+> **An absence you can PREDICT is evidence. An absence you cannot predict is nothing.**
+
+⚠ **That is the same distinction this repository draws between `VOID` and a zero**, arriving from the
+other side: **here the missing row is informative precisely because the rule producing it is known.**
+
+#### ⇒ Three safe addressing forms, and only one survives a cold start
+
+```
+REPLY to `from=`        ✅ arrives WITH the message; nothing is resolved, nothing can be wrong
+`NAME [ref]` from a fresh listing  ✅ the ref disambiguates at the moment of resolution
+BARE NAME               ⛔ ambiguous for SEVEN roles on 2026-08-21 (DEV4 3 rows; six others 2 each)
+```
+
+⛔ **And none of them reaches a cold start to `TEAMLEAD`: 3 rows carry that name, all Remote Control,
+0 interactive.** ⇒ ★ **So `docs/MERGE-AUTHORITY.md` rule 4 — *authorization arrives in a TEAMLEAD
+message* — is unexecutable in the INITIATING direction, not only the verifying one.** ⚠ **A pane
+needing the merge authority cold cannot reach it from the listing at all.**
+
+⚠ **NOT established: that the two `DEV4` interactive rows are two distinct panes.** ★ **The pair
+identification above establishes which row is TEAMLEAD's; it does not establish what the other one
+is.**
+
 ⚠ **`success:true` establishes transport, never target.** A correct receipt and a misdelivered one
 render identically.
 
