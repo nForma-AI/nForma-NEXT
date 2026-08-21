@@ -25,6 +25,22 @@ schemes coexist here (`dev:1 … dev:5` and `role:ARCHITECT … role:TEAMLEAD`),
 plausible blend of both that matches neither. A bare "not found" leaves the caller where it found
 them.
 
+★ HOW IT IS MEASURED — stated as an ACT, not a noun (#437). "Does this label exist" is the same
+kind of noun as "file-open event", which three panes measured three ways and got 1,619 / 7,166 /
+17,395. The act here is:
+
+    1. fetch the repository's label set with `gh label list --limit 500 --json name`
+    2. ⛔ if it returns AT the bound, treat the set as possibly TRUNCATED and refuse (exit 2) —
+       a partial set manufactures false ABSENTs, and a false ABSENT is the answer this tool
+       exists to prevent
+    3. compare each requested label case-insensitively, because GitHub does
+    4. on a miss, offer same-referent candidates by TOKEN SUFFIX before falling back to spelling
+       similarity, and label which of the two produced the suggestion
+
+⚠ Every one of those steps changes the answer, and three of them were invisible from outside this
+docstring until #437 was adopted — they lived in code comments, which a caller reading `--help`
+never sees.
+
 ⚠ WHAT THIS DOES NOT DO. It does not say whether a label has issues, or whether they are yours, or
 whether the routing is correct. It answers exactly one question — is this string a label in this
 repository — and a `0` from it is NOT a statement that your queue is non-empty.
