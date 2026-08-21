@@ -89,9 +89,47 @@ def quota():
         return None
 
 
+def select_panes(root, limit):
+    """The transcripts that ARE the fleet, and a note about how they were chosen.
+
+    ⛔ THE DEFECT THIS REPLACES — the SAME one fixed in issue-coverage.py, which
+    lived on unfixed in this sibling. Selection was `sorted(paths, key=-mtime)[:12]`,
+    the twelve most recently-TYPING panes. Measured 2026-08-21 against the live
+    corpus:
+
+        6 of 12 slots  -> transcripts with NO role at all
+        6 role-named panes MISSED entirely: CODER2 CODER3 CODER4 IMPLEMENTER CODER x2
+
+    ★ AND THE BIAS IS WORSE HERE THAN IN issue-coverage. This tool exists to show a
+    pane its share of ONE shared 5000/hr pool. A pane that is idle -- thinking,
+    blocked, waiting on a meter -- leaves the window, and its spend becomes
+    invisible. ⇒ The tool UNDER-REPORTS consumption exactly when the pool is
+    exhausted and everyone is idle waiting for it, which is the only moment anyone
+    reads it.
+
+    ⇒ Identity, not recency. `bootstrap_role` reads 40 lines, so classifying all of
+    them is cheap: 6,333 transcripts in ~2s, 12 of which name a role.
+
+    ⚠ Third copy of this selection would be the moment to extract a shared
+    primitive. This is the second. Stated so the next person does it rather than
+    writing a third.
+    """
+    all_paths = glob.glob(os.path.expanduser(root))
+    named = [(bootstrap_role(p), p) for p in all_paths]
+    named = [(r, p) for r, p in named if r]
+    named.sort(key=lambda rp: -os.path.getmtime(rp[1]))
+    chosen = [p for _, p in named[:limit]]
+    note = "  selection: identity — {} of {} transcript(s) bootstrapped as a role".format(
+        len(named), len(all_paths))
+    if len(named) > limit:                 # the ceiling BOUND; never silent
+        note += ("\n  ⛔ --limit {} BOUND: {} role-named pane(s) NOT read: {}\n"
+                 "     Their API calls are counted as ZERO. Raise --limit.").format(
+            limit, len(named) - limit, " · ".join(r for r, _ in named[limit:]))
+    return chosen, note
+
+
 def scan(root, limit):
-    paths = sorted(glob.glob(os.path.expanduser(root)),
-                   key=lambda p: -os.path.getmtime(p))[:limit]
+    paths, how = select_panes(root, limit)
     per, subs, multi = collections.Counter(), collections.Counter(), collections.Counter()
     unreadable = 0
     for p in paths:
@@ -122,7 +160,7 @@ def scan(root, limit):
                             multi[who] += len(hits)
         except OSError:
             unreadable += 1
-    return per, subs, multi, len(paths), unreadable
+    return per, subs, multi, len(paths), unreadable, how
 
 
 def main():
@@ -144,10 +182,11 @@ def main():
         bar = "EXHAUSTED" if rem == 0 else f"{100 * rem // max(lim, 1)}% left"
         print(f"  core {rem}/{lim}  ({bar}), resets in {mins}m")
 
-    per, subs, multi, files, unreadable = scan(a.root, a.limit)
+    per, subs, multi, files, unreadable, how = scan(a.root, a.limit)
     total = sum(per.values())
     print(f"\n── INVOCATIONS ── {files} transcript(s)"
           + (f", {unreadable} unreadable" if unreadable else ""))
+    print(how)
     if not total:
         print("  ⛔ ESTABLISHED NOTHING — no gh invocation found. A transcript glob that")
         print("     matched nothing and a fleet that made no calls print the same zero.")
