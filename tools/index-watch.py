@@ -211,7 +211,7 @@ def save_state(path, sha, findings):
     path.write_text(json.dumps({"sha": sha, "findings": sorted(findings)}, indent=1))
 
 
-def check_once(state_path, force=False, subject=None, repo=None, legs=None):
+def check_once(state_path, force=False, subject=None, repo=None, legs=None, sha=None):
     """Return (exit_code, lines). One poll of `main`, every leg run against it.
 
     ⛔ COMBINING THE LEGS' EXIT CODES IS ITSELF A COLLAPSED PAIR, so the rule is stated rather
@@ -230,7 +230,14 @@ def check_once(state_path, force=False, subject=None, repo=None, legs=None):
         # back-compat for the injected single-subject controls
         legs = [{**legs[0], "path": subject}]
     repo = ROOT if repo is None else repo
-    sha = remote_sha(repo)
+    # ⛔ THREADED, NEVER CACHED IN A MODULE GLOBAL. A cached SHA would be correct here and WRONG in
+    # the monitor path, whose entire job is noticing that this value CHANGED — a cache there turns
+    # a change detector into a constant. ⇒ The caller may pass a SHA it already fetched; nothing
+    # is remembered between calls.
+    # ⚠ Measured 2026-08-21: the self-test called this ~8 times at ~1.3s of network each. The
+    # control ran in ~22s against a 30s gate bound — 8s of margin on a laptop, and a CI runner is
+    # slower. A control that passes only on fast hardware is a control with a hidden precondition.
+    sha = remote_sha(repo) if sha is None else sha
     if sha is None:
         return 2, [f"  VOID  could not read origin/main from {repo} — establishes nothing about"
                    " the index. ⛔ This is NOT 'unchanged'."]
@@ -347,6 +354,9 @@ def self_test():
     repaired. This asserts the SUBJECT'S OWN --self-test instead, which is a property of the
     instrument and not of the directory it reads.
     """
+    # ⛔ FETCHED ONCE, THREADED DOWN. Every check_once below would otherwise hit the network
+    # again; measured at ~8 calls x ~1.3s. Not a module cache — see check_once.
+    _sha = remote_sha()
     ok = True
     r = run(sys.executable, str(SUBJECT), "--self-test")
     if r.returncode != 0:
@@ -364,7 +374,7 @@ def self_test():
         sha = remote_sha()
         if sha:
             save_state(st, sha, [])
-            rc, lines = check_once(st)
+            rc, lines = check_once(st, sha=_sha)
             # ⚠ The assertion is on the SEMANTIC — that the quiet path names what did NOT run —
             # not on the old wording. "clean" must never appear on a path where nothing ran.
             hit = (rc == 0 and any("not run" in l for l in lines)
@@ -489,7 +499,7 @@ def self_test():
     # FileNotFoundError. ⚠ Measured 2026-08-21 with `git ls-remote` stubbed: exit 1 from a
     # traceback, which the gate reads as FINDINGS. A crash is not a finding and an unreachable
     # forge is not a defect; both were being reported as one.
-    if remote_sha() is None:
+    if _sha is None:
         print("  ----  NOT ESTABLISHED  origin/main is unreachable, so the two-leg controls were"
               " NOT exercised. ⛔ Untested, not correct — and NOT a failure of the code.")
         return 0 if ok else 3
@@ -511,7 +521,7 @@ def self_test():
         la["path"] = _fixture_subject(Path(d), [same])
         lb["path"] = Path(d) / "fixture_b.py"
         lb["path"].write_text(f'print("  FAIL  {same}")\nraise SystemExit(1)\n')
-        rc, lines = check_once(st, force=True, legs=[la, lb])
+        rc, lines = check_once(st, force=True, legs=[la, lb], sha=_sha)
         state = json.loads(st.read_text())["findings"]
         hit = rc == 1 and sorted(state) == sorted([f"a\t{same}", f"b\t{same}"])
         ok &= hit
@@ -523,7 +533,7 @@ def self_test():
         st2 = Path(d) / "mixed.json"
         missing = {"key": "b", "title": "b", "path": Path(d) / "not-here.py", "argv": [],
                    "doc": DOC}
-        rc, lines = check_once(st2, force=True, legs=[la, missing])
+        rc, lines = check_once(st2, force=True, legs=[la, missing], sha=_sha)
         hit = rc == 1 and any("VOID" in l for l in lines) and any("FIND" in l for l in lines)
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  finding + VOID exits 1, and the VOID line still "
@@ -556,7 +566,7 @@ def self_test():
         odd = Path(d) / "odd_output.py"
         odd.write_text('print("  ⛔ something is wrong")\nraise SystemExit(1)\n')
         st4 = Path(d) / "odd.json"
-        rc, lines = check_once(st4, force=True, legs=[
+        rc, lines = check_once(st4, sha=_sha, force=True, legs=[
             {"key": "odd", "title": "odd", "path": odd, "argv": [], "doc": DOC}])
         hit = rc == 2 and any("extracted NO findings" in l for l in lines)
         ok &= hit
@@ -565,7 +575,7 @@ def self_test():
 
         # ⚠ and the same subject WITH a matching pattern must find it — otherwise the guard above
         # could pass by never matching anything at all.
-        rc, lines = check_once(Path(d) / "odd2.json", force=True, legs=[
+        rc, lines = check_once(Path(d) / "odd2.json", sha=_sha, force=True, legs=[
             {"key": "odd", "title": "odd", "path": odd, "argv": [], "doc": DOC,
              "finding": re.compile(r"^\s*⛔\s+(.*\S)\s*$", re.M)}])
         hit = rc == 1 and any("something is wrong" in l for l in lines)
@@ -574,7 +584,7 @@ def self_test():
               f"finding — the guard is not passing by matching nothing (got {rc})")
 
         # ⛔ the two numbers that were printed as one
-        rc, lines = check_once(Path(d) / "hdr.json", force=True, legs=[la])
+        rc, lines = check_once(Path(d) / "hdr.json", sha=_sha, force=True, legs=[la])
         hdr = [l for l in lines if l.startswith("  == ")][0]
         hit = "subject exited 1" in hdr and "watch says 1" in hdr
         ok &= hit
