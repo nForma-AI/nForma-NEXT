@@ -59,17 +59,22 @@ def main():
     check("bare dir/file", kinds("'tools/README.md'"), [])
     check("bare owner/repo alone", kinds("'%s/%s'" % (OWN, EST)), [])
 
-    print("\nadjacency: gh -R arrives as SEPARATE literals, and only for gh:")
+    print("\nthe argv shape is an UNCOVERED GAP, asserted so it is not assumed:")
+    # ⛔ NOT a bug — a stated gap. The adjacency leg that once caught this was removed:
+    # ast.walk is breadth-first, so literals from unrelated statements sort before a call's
+    # own arguments, and the leg passed by luck. DEVOPS measured 12 of 12 real estate hits
+    # matching a SINGLE literal, so it never fired for a genuine detection.
+    # ⚠ This row FAILS if someone reintroduces adjacency without the per-call population —
+    # which is the point: the gap must stay visible until it is closed properly.
     gh = ["gh", "issue", "list", "-R", "%s/%s" % (OWN, EST)]
-    check("gh argv list", [k for k, _, _ in en.scan_strings(gh, ID, one_call=True)],
-          ["forge-flag"])
-    # ⛔ THE SAME LIST, file-scope: adjacency OFF, because ast.walk order is not source order.
-    check("same argv, file scope -> no adjacency", en.scan_strings(gh, ID), [])
-    check("our own repo via -R",
-          en.scan_strings(["gh", "-R", "nForma-AI/nForma-NEXT"], ID, one_call=True), [])
-    # ⛔ -R is also grep's recursive flag.
+    check("argv list is NOT detected", en.scan_strings(gh, ID), [])
+    # ⇒ And the SHELL-STRING form still is, which is what keeps the gap narrow.
+    check("shell string form still caught",
+          [k for k, _, _ in en.scan_strings(["gh issue list -R %s/%s" % (OWN, EST)], ID)],
+          ["forge-repo"])   # one kind: the flag form is not distinguished from the URL form
+    # ⛔ -R is also grep's recursive flag; the single-string leg must not read a path as a repo.
     check("grep -R is not a forge ref",
-          en.scan_strings(["grep", "-R", "docs/README.md"], ID, one_call=True), [])
+          en.scan_strings(["grep -R docs/README.md"], ID), [])
 
     print("\nan incomplete identity establishes NOTHING — it never reads clean:")
     # With no comparand every string is trivially "not ours"; returning [] here is the

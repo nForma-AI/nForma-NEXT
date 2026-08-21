@@ -449,9 +449,23 @@ its output**, not only here: there is no executable position in Markdown or JSON
 `ast.walk`, which is **breadth-first — the extracted order is not source order.** Measured: a `-R`
 whose true neighbour was a repo came out beside a check *name* from an unrelated statement, and the
 false hit landed on this module's own `["grep", "-R", "docs/README.md"]` known-negative. ⇒ No window
-rescues it; adjacency now requires `one_call=True` from a caller holding a real argv. **The cost,
-stated: a genuine `gh -R foreign/repo` written as an argv LIST is no longer caught by a file scan.**
-The shell-string form still matches.
+rescues it, because the failure is **between statements**, where no window is small enough.
+
+⛔ **The leg is REMOVED, not gated — DEVOPS's ruling, on their measurement:** every estate hit in
+this repository, **12 of 12, matched a SINGLE literal**, so adjacency never fired for a real
+detection. ★ *A leg that passes by luck is worse than an absent leg, because it reads as coverage.*
+And the sound version is not a parameter — it is a different **population**, the string arguments of
+one `ast.Call` collected per call site, to be built when something needs the argv shape.
+
+⚠ **So the argv shape is an UNCOVERED GAP, asserted in the suite so it cannot be assumed:** a
+`gh -R foreign/repo` written as an argv LIST is not detected. The shell-string form still is. This
+narrows a claim made in #354, where the shape was demonstrated and reported covered — it passed
+because that plant's literals happened to survive walk order.
+
+⛔ **And removing the leg removed a guard that was load-bearing elsewhere.** The `gh`-token gate had
+been attached to adjacency only, while the SINGLE-STRING `-R owner/repo` form kept matching — so
+`grep -R docs/README.md` read as a foreign forge ref. Caught by this module's own known-negative,
+and the gate now sits on the single-string leg where it belongs.
 
 **`estatenames.py`** — ⚠ **not an instrument; a module.** The estate predicate, shared so that
 `scripts/check-tools-index.py` and `tools/estate-provenance.py` cannot disagree about the same file.
