@@ -113,7 +113,7 @@ repeat "the fleet ran out of context" as though it were measured.
 
 ⇒ **Nothing was lost.** Zero open PRs, `main` green, every open thread owned with a close condition.
 
-## ⇒ The FIVE guards on the merge loop, each added after it cost something
+## ⇒ The FOUR guards on the merge loop, each added after it cost something
 
 ```
 reviews read before merge     ← a review was merged over; CI status cannot carry an objection
@@ -124,30 +124,35 @@ gating run POST-dates THE GATE ← added 04:45Z, CORRECTED 06:20Z. A check older
                                  establishes nothing about the gate it must pass.
 ```
 
-⛔ **GUARD 5 EXISTS BECAUSE ALL FOUR OTHERS PASSED A PR THAT WOULD HAVE REVERTED SEVEN MERGES.**
-Measured 12:53Z on #509:
+⛔ **GUARD 5 WAS WITHDRAWN THE SAME DAY IT WAS ADDED. It measured BRANCH AGE, not content loss.**
+It refused every open PR on the board and every one was a net addition:
 
 ```
-merge-base        273b4a8   ⇒ SEVEN merges behind main
-mergeStateStatus  CLEAN     ⇒ no conflict exists — none is possible
-guards 1-4        ALL PASS  ⇒ base IS main, 0 reviews, gating SUCCESS, check post-dates the gate
-git diff --stat origin/main <head>:   14 files, 4 insertions, 709 DELETIONS
+                two-dot (what guard 5 used)   three-dot     ACTUAL MERGE (merge-tree)
+#499  119 ins,  907 deletions                 68 ins, 2 del      68 ins, 2 del
+#507   76 ins,  224 deletions                 61 ins,13 del      61 ins,13 del
+#511   49 ins,  171 deletions                 36 ins, 3 del             —
 ```
 
-⇒ **A branch old enough merges as a REVERT SHAPED LIKE A FAST-FORWARD.** Git is correct and the
-board is correct; the hazard is invisible to both. ⛔ **Guard 1 checks `base == main` and the base
-IS main** — the base ref was never the hazard, the **merge-base age** is, and the ref does not carry
-it. ★ It is #445 mirrored: I instrumented *a stacked PR's squash orphans its child* and not *a stale
-branch's merge reverts its parents*.
+⇒ **`git diff main..head` counts every line MAIN has gained since the branch's base as a deletion.**
+A merge applies the **three-dot** diff — it uses the merge base — so the "709-line revert" I blocked
+#509 on **was never going to happen**. ⚠ ARCHITECT further showed by controlled experiment that the
+genuinely dangerous case (rewriting a file main has grown) **CONFLICTS** — `mergeStateStatus` reads
+`DIRTY`, not `CLEAN`. ⛔ **The four guards passed #509 because there was nothing to catch.**
 
-```
-guard 5:  git diff --stat origin/main <head>  →  net-NEGATIVE on a PR that describes an addition
-```
+★ **This is CLASS C in the guard itself**: `git diff --stat main <head>` answers *"how does this TREE
+differ from main"* and merging answers *"what will be ADDED"*. **Both numbers were correct and they
+answer different questions.**
 
-⚠ **The naive form over-fires** — legitimate deletions exist. The discriminator is **lines the PR
-never added, in files it does not claim to touch**. ⛔ **And it was caught by RECOGNISING three
-commit shas**, not by any check: memory, which does not scale and fails if another pane merged the
-parents. Filed as **#510**. `strict: true` closes it entirely by forcing currency.
+⚠ **And it was my own recorded trap, used backwards** — two-dot versus three-dot is filed earlier in
+this session as a defect I hit and named. ⛔ ⇒ A guard built on a number you have already been taught
+not to trust is worse than no guard, because it refuses real work with a confident figure.
+
+⚠ **What is NOT settled** — #509's branch was updated before merging, so the state I reacted to is
+**gone from every ref**. ARCHITECT's experiments are analogues on real history, not the instance.
+⇒ And the hazard would be real if this repository ever merged by a path that is not a merge —
+**"rebase and merge" replays commits and is not merge-base-aware the same way.** That is DEVOPS's
+question and it is open on #510.
 
 ⛔ **GUARD 4's FIRST FORM WAS SELF-DEFEATING AND BLOCKED THE WHOLE QUEUE.** It compared the check
 against **main's HEAD**, so every merge invalidated every other PR. Measured 06:19Z: #453 merged,
