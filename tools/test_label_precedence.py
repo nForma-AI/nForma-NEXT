@@ -34,7 +34,7 @@ class Classifier(unittest.TestCase):
 
     def test_319_current_state_is_not(self):
         """The other side of the same pair, on the same real issue."""
-        self.assertIsNone(lp.classify(row(319, "role:OPERATOR"))[0])
+        self.assertEqual(lp.classify(row(319, "role:OPERATOR"))[0], "NO-DEV-LABEL")
 
     def test_role_dev_does_not_rescue_a_reserved_queue(self):
         """⚠ A reserved queue outranks a legitimate address. Order of checks matters."""
@@ -50,10 +50,11 @@ class Classifier(unittest.TestCase):
     def test_dev_n_with_no_role_is_unrouted(self):
         self.assertEqual(lp.classify(row(4, "dev:1"))[0], "UNROUTED")
 
-    def test_no_dev_label_is_not_classified_at_all(self):
-        """⚠ Two-sided: the classifier must be able to return 'not my business'."""
-        self.assertIsNone(lp.classify(row(5, "role:DX"))[0])
-        self.assertIsNone(lp.classify(row(6))[0])
+    def test_an_issue_with_no_dev_label_still_gets_a_NAMED_bucket(self):
+        """⛔ #466: the complement must be NAMED, not silent. A row that falls out of every bucket
+        is the 79 issues this tool used to print a 110-population line about and never count."""
+        self.assertEqual(lp.classify(row(5, "role:DX"))[0], "NO-DEV-LABEL")
+        self.assertEqual(lp.classify(row(6))[0], "NO-DEV-LABEL")
 
 
 class Reporting(unittest.TestCase):
@@ -88,6 +89,34 @@ class Reporting(unittest.TestCase):
         clean, _ = self._report([row(9, "role:DX")])
         void, _ = self._report([], ok=False)
         self.assertNotEqual(clean, void)
+
+    def test_a_bucket_the_printer_does_not_know_makes_it_REFUSE(self):
+        """#466 leg 3 — the KNOWN-NEGATIVE, run by this caller on every suite run.
+
+        ⛔ The invariant is not decoration. Its live failure mode is #39's: the classifier gains a
+        state and the printer keeps the old space. Planting exactly that -- a kind the print list
+        does not enumerate -- must produce exit 2 ESTABLISHED NOTHING, never a verdict.
+        """
+        real = lp.classify
+        lp.classify = lambda r: ("A-KIND-NOBODY-PRINTS", [], [])
+        try:
+            rc, out = self._report([row(1, "dev:1"), row(2, "role:DX")])
+        finally:
+            lp.classify = real
+        self.assertEqual(rc, 2)
+        self.assertIn("ESTABLISHED NOTHING", out)
+        self.assertNotIn("no HAZARD collisions", out)
+
+    def test_the_same_run_WITHOUT_the_plant_reports_normally(self):
+        """⚠ The other side. A control that only ever fails proves the check is stuck, not working."""
+        rc, out = self._report([row(1, "dev:1"), row(2, "role:DX")])
+        self.assertEqual(rc, 0)
+        self.assertIn("PARTITION", out)
+
+    def test_partition_line_states_the_sum(self):
+        rc, out = self._report([row(1, "dev:5", "role:DX"), row(2, "role:DX")])
+        self.assertIn("PARTITION", out)
+        self.assertEqual(rc, 0)
 
     def test_states_flag_matches_the_codes_report_can_return(self):
         buf = io.StringIO()
