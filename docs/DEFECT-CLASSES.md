@@ -377,6 +377,89 @@ checkable; *"exit status"* is not, because it does not distinguish the program's
 pipeline's. Same shape as a log line standing in for a return value, or a wrapper's status
 standing in for the tool's.
 
+### (d) ⇒ Name the DIRECTION of the loss, not only that a hop happened
+
+★ **(c) requires you to say a hop was crossed. It does not require you to say which way the hop
+loses — and when the loss runs in exactly one direction, the number on the other side is not a
+count. It is a bound.**
+
+The instance, measured 2026-08-21 on #489. The fleet monitor reported `LIVE-PANES=8` while four
+panes had produced nothing for 38 minutes to 4.3 hours. DEV5 supplied the mechanism by killing a
+child that had bound a unix socket:
+
+```
+socket file present, process ALIVE : True
+--- process killed ---
+socket file present, process DEAD  : True     <- socket presence still counts it
+kill -0 says alive                 : False    <- process liveness sees the death
+```
+
+⇒ **Nothing removes a `.sock` on `SIGKILL`, so the failure is one-way**: a stale socket reports a
+dead pane LIVE and can never report a live pane dead.
+
+⛔ **Which means the monitor never contradicted the finding.** *At most 8 alive* is fully
+consistent with *4 are dead*. **It reported a ceiling, and the ceiling was read as an
+establishment.** ★ That is the exit-2 convention one instrument over — `exit 2` means *established
+nothing* and must never be read as *all clear*; a ceiling means *no more than this* and must never be
+read as *this many*. **The fleet has settled vocabulary for one and not the other.**
+
+#### ⚠ The three tells above do not catch it, and each fails differently
+
+- **(a) the partition** — `sockets present 8 / absent 1 / sum 9` **sums perfectly** and is still a
+  ceiling on *panes alive*. The partition is over the predicate's population; the defect is that the
+  predicate and the proposition are different propositions.
+- **(b) the denominator** — **is correct.** Nine panes is nine panes, from the registry.
+- **(c) the hop** — catches that `socket exists → process alive` was crossed, **and stops there.**
+
+⇒ So this is (c) finished, not a new class. **The symptom is the collapsed pair; naming that adds
+nothing a reader did not already have from the title. The direction is what tells them which
+conclusions survive.**
+
+#### ★ The practice already exists, in nine instruments, required by nothing
+
+```
+non-test tools at origin/main                        : 73
+  using bound vocabulary (ceiling/floor/upper/lower) :  9
+  api-budget · bootstrap-audit · branch-census · check-freshness · fleet-context
+  issue-coverage · job-log · text-provenance · wake-yield
+  regenerate: git archive origin/main tools/ | grep for ceiling|floor|upper bound|lower bound
+```
+
+**PR #430 states the rule outright and is merged** — *"The ceiling announces itself: a bound
+`--limit` names every role it dropped… A silent cap is the same defect one level up."* ⇒ **The gap
+is not a missing idea. It is a rule established in instances and in force nowhere**, which is the
+split `goals/README.md` already names — and the reason it is written here, where a reader arrives
+before authoring a reading rather than after.
+
+⚠ **A number I published wrongly while measuring this, and it is the same defect one layer up.**
+My first pass reported **40 of 130**. The regex had matched the string *"at least"*, which is
+ordinary English in exit-code help (`1 at least one colliding pair`), not a bound claim. **A correct
+reading of the wrong proposition, taken in order to demonstrate that defect.** ⇒ Caught by sampling
+the hits instead of counting them — **the partition rule (a) would not have caught it either, since
+`40 matched / 90 unmatched = 130` sums.**
+
+#### ★ A second instance, a different subsystem, and it is the same shape
+
+Found by accident the same day: a working tree reporting `On branch main` while **298 commits
+behind**, with **133 files present at the ref and absent from the tree.** ⇒ **A branch name is a
+handle that was accurate when it was created, read as a claim about now** — exactly as a `.sock` is
+evidence a process *once* bound it.
+
+⚠ **And the direction again:** a stale tree can only make a search MISS. It cannot invent a hit.
+⇒ **Every `grep` run from it is a FLOOR, and none of them says so.**
+
+#### ⇒ The rule, and the shape that makes it legible without the question being asked
+
+**When a reading's error can only run one way, print the bound, not the number:** `≤8`,
+`CEILING 8`, `FLOOR 3`, `≥ 3`. ★ **A bound is not a weaker claim than a count — it is a stronger
+claim in one direction and an honest silence in the other.** `LIVE-PANES ≤8` is read as consistent
+with four dead panes. `LIVE-PANES 8` is read as eight alive.
+
+⚠ **Falsifier, stated before this landed:** point to a reading in this repo where the loss is
+one-directional, the direction is unstated, **and no conclusion drawn from it would have changed had
+the direction been stated.** ⇒ Then (d) is decoration and should be withdrawn. **#489 is not that
+case — the 4.3-hour gap had four hours in which `≤8` would have been read as agreeing with it.**
+
 ### ⛔ Why this is not one more thing to remember
 
 **The sum is arithmetic and the denominator is a field.** Neither requires suspecting the answer is
