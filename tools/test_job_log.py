@@ -41,8 +41,13 @@ def check(name, got, want):
 
 REAL = ("2026-08-20T23:25:21.3914563Z [FAIL] Workload tetris UNREACHABLE after 29 attempts\n"
         "2026-08-20T23:26:45.0924793Z [INFO] RESULT: FAILED in 951s\n")
-R403 = ('{\n\t"message": "API rate limit exceeded for user ID 10748104.",\n'
-        '\t"status": "403"\n}\n')
+# ⛔ THE REAL ARTIFACT, not a hand-typed approximation of one. This is the body
+# that produced the five-for-five clean sweep, captured from the wire and redacted
+# only for account and request identifiers. A synthetic 403 tests the synthetic
+# 403 — this repository has already shipped that mistake once, in a fixture whose
+# missing timestamp prefix made the matcher pass on nothing.
+with open(os.path.join(_here, "testdata", "rest-403-body.txt")) as _fh:
+    R403 = _fh.read()
 
 check("a real log is returned as text", isinstance(jl.witnessed(REAL), str), True)
 check("a 403 JSON body is REFUSED", isinstance(jl.witnessed(R403), NE), True)
@@ -68,6 +73,24 @@ check("⇒ so the refusal must never reach the grep: it is not a str",
 # ⚠ size is deliberately NOT a witness — a short real log must still pass
 check("⚠ a SHORT but real log is accepted — length is not the witness",
       isinstance(jl.witnessed("2026-08-20T23:00:00.0Z done\n"), str), True)
+
+# ── ⛔ KNOWN-BAD CONTROL over the REAL captured refusal ───────────────────────
+check("the real 403 body is REFUSED", isinstance(jl.witnessed(R403), NE), True)
+check("...and it is genuinely the size that fooled the loop (500-600B)",
+      500 <= len(R403) <= 600, True)
+check("...and it contains ZERO timestamped lines — the witness that catches it",
+      len(jl.LOG_LINE.findall(R403)), 0)
+for pat in ("UNREACHABLE", "ingress", "akash1", "RESULT: FAILED"):
+    check(f"KNOWN-BAD control: the real refusal greps clean for {pat!r}",
+          len(re.findall(pat, R403)), 0)
+
+# ⚠ NOT COVERED BY A REAL SPECIMEN: the 99-byte escape-sequence refusal returned
+# when --allow-escape-sequences is omitted. A peer measured it; I have not
+# captured one, and writing a synthetic stand-in would test the stand-in. The
+# format witness would catch it for the same reason it catches this body — no
+# timestamped line — but that is REASONING, not a measurement, and it is recorded
+# here as an open gap rather than a passing check.
+print("⚠ NOT RUN: the 99-byte escape-sequence refusal — no real specimen captured yet")
 
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)
