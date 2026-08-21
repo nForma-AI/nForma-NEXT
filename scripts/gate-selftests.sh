@@ -204,22 +204,56 @@ gate() {
             echo "        argument it does not recognise is not a read-only checker."
             continue
         fi
-        if [ "$grc" -ne 0 ] && [ "$grc" -ne 124 ]; then
-            case "$gout" in
-                *unrecognised*|*unrecognized*|*VOID*) ;;
-                *)  unver=$((unver + 1)); unver_names="$unver_names $b"
-                    echo "  ⚠ $b UNVERIFIABLE — it exits $grc on \`$GARBAGE\` but never says it"
-                    echo "     is REFUSING it. ⛔ Non-zero for an unrelated reason is"
-                    echo "        indistinguishable from a refusal when only the code is read."
-                    continue ;;
-            esac
-            case "$gout" in
-                *"$GARBAGE"*) ;;
-                *)  unver=$((unver + 1)); unver_names="$unver_names $b"
-                    echo "  ⚠ $b UNVERIFIABLE — it refuses without NAMING \`$GARBAGE\`, so the"
-                    echo "        refusal cannot be attributed to the argument under test."
-                    continue ;;
-            esac
+        # ⛔ TWO PROBES, AND THE SECOND RESCUES WHAT THE FIRST CANNOT ASK. A subject with
+        # REQUIRED arguments refuses `$GARBAGE` ALONE for the wrong reason — `discriminates.py`
+        # exits 2 because `--a/--b` are missing, not because it read the flag. It refuses EVERY
+        # invocation, so the probe is non-discriminating there and reporting it UNVERIFIABLE
+        # charges the tool for a defect in the question. Measured: 7 of 45 were in exactly that
+        # state, and none of them is defective.
+        #
+        # ⇒ `$FLAG $GARBAGE` is a COMPLETE, VALID invocation plus a typo, and it is askable of
+        # every subject regardless of required arguments. So: the flag surface discriminates if
+        # EITHER probe produces an attributable refusal. Only when NEITHER does is the subject
+        # UNVERIFIABLE — and then the reason is named.
+        attributable() {   # <rc> <output> -> 0 if this is a refusal OF THE ARGUMENT
+            [ "$1" -eq 0 ] && return 1
+            [ "$1" -eq 124 ] && return 1
+            case "$2" in *unrecognised*|*unrecognized*|*VOID*) ;; *) return 1 ;; esac
+            case "$2" in *"$GARBAGE"*) return 0 ;; *) return 1 ;; esac
+        }
+        LIMIT="$REFUSE_LIMIT"
+        run_it "$FLAG" "$GARBAGE"
+        brc=$?
+        bout=$(cat "$LOG" 2>/dev/null); rm -f "$LOG"
+        LIMIT="$_saved_limit"
+        # ⛔ `$FLAG $GARBAGE` EXITING 0 IS A POSITIVE DEFECT AND THE FALLBACK MUST NOT LAUNDER
+        # IT. The flag was matched and the remainder DISCARDED, so a control result there
+        # describes an invocation only half read — regardless of how the other probe behaved.
+        # ⚠ Written first as a plain OR over both probes, and the control caught the regression
+        # within a minute: a subject refusing garbage ALONE was accepted while `--self-test
+        # --zzz` exited 0. An OR is the right shape for "can it refuse at all" and the WRONG
+        # shape for "did it read the whole invocation".
+        if [ "$brc" -eq 0 ]; then
+            unver=$((unver + 1)); unver_names="$unver_names $b"
+            echo "  ⚠ $b UNVERIFIABLE — \`$FLAG $GARBAGE\` exits 0."
+            echo "     ⛔ The flag is matched and the rest DISCARDED, so a control result here"
+            echo "        describes an invocation that was only half read."
+            continue
+        fi
+        if ! attributable "$grc" "$gout" && ! attributable "$brc" "$bout"; then
+            unver=$((unver + 1)); unver_names="$unver_names $b"
+            if [ "$grc" -eq 0 ] || [ "$brc" -eq 0 ]; then
+                echo "  ⚠ $b UNVERIFIABLE — an unknown flag is ACCEPTED and it exits 0"
+                echo "     (\`$GARBAGE\` -> $grc, \`$FLAG $GARBAGE\` -> $brc)."
+                echo "     ⛔ So \`$FLAG\` exiting 0 establishes NOTHING about whether the"
+                echo "        control ran: the flag may never have been recognised."
+            else
+                echo "  ⚠ $b UNVERIFIABLE — it exits nonzero on an unknown flag but never says it"
+                echo "     is REFUSING it, and never NAMES it, on EITHER probe"
+                echo "     (\`$GARBAGE\` -> $grc, \`$FLAG $GARBAGE\` -> $brc)."
+                echo "     ⛔ Nonzero for an unrelated reason is indistinguishable from a refusal."
+            fi
+            continue
         fi
         if [ "$grc" -eq 0 ]; then
             unver=$((unver + 1))
@@ -235,20 +269,6 @@ gate() {
         # membership test accepts the flag and silently drops the rest, so the caller reads a
         # clean control result for an invocation half of which was ignored. Testing the garbage
         # flag ALONE cannot see it — and my own two gates failed this when I checked.
-        LIMIT="$REFUSE_LIMIT"
-        run_it "$FLAG" "$GARBAGE"
-        brc=$?
-        LIMIT="$_saved_limit"
-        rm -f "$LOG"
-        if [ "$brc" -eq 0 ]; then
-            unver=$((unver + 1))
-            unver_names="$unver_names $b"
-            echo "  ⚠ $b UNVERIFIABLE — \`$FLAG $GARBAGE\` exits 0."
-            echo "     ⛔ The flag is matched and the rest DISCARDED, so a control result here"
-            echo "        describes an invocation that was only half read."
-            continue
-        fi
-
         run_it "$FLAG"
         rc=$?
         fout=$(cat "$LOG" 2>/dev/null); rm -f "$LOG"
@@ -379,8 +399,11 @@ selftest() {
 
     # ⛔ THE LEG THIS GATE EXISTS FOR. b_permissive PASSES a naive `--self-test && echo ok`.
     out=$(gate "$d" 'b_permissive.py' 2>&1); rc=$?
+    # ⚠ The MESSAGE changed when the two-probe logic landed and the new one is more precise: a
+    # subject accepting everything is caught by `$FLAG $GARBAGE` exiting 0, which says exactly
+    # what is wrong — the flag was matched and the rest discarded.
     check "a subject accepting ANY flag is UNVERIFIABLE, not passing" 2 \
-          "UNVERIFIABLE" "establishes NOTHING"
+          "UNVERIFIABLE" "only half read"
     case "$out" in
         *"1 control(s) passed"*) echo "  FAIL  a permissive subject was counted as a PASS"; ok=1 ;;
         *) echo "  ok    a permissive subject is never counted as a pass" ;;
@@ -438,8 +461,8 @@ selftest() {
 
     printf '#!/usr/bin/env python3\nimport sys\nif sys.argv[1:] == ["--self-test"]: sys.exit(0)\nprint("  VOID  something went wrong — established nothing")\nsys.exit(2)\n' > "$d/h_unnamed.py"
     out=$(gate "$d" 'h_unnamed.py' 2>&1); rc=$?
-    check "a refusal that does not NAME the argument cannot be attributed to it" 2 \
-          "without NAMING"
+    check "a refusal that does not NAME the argument cannot be attributed to it, on EITHER probe" 2 \
+          "never NAMES it, on EITHER probe"
     rm -f "$d/h_unnamed.py"
 
     # ⛔ THE THIRD INVOCATION, CONTROLLED. A subject that REFUSES garbage alone but accepts the
@@ -453,6 +476,36 @@ selftest() {
         *) echo "  ok    known-negative: refusing garbage alone is NOT sufficient to pass" ;;
     esac
     rm -f "$d/f_half_read.py"
+
+    # ⛔ THE `# NO-SELF-TEST:` BUCKET MUST NOT ABSORB "HAS ONE I FAILED TO DISPATCH".
+    # TEAMLEAD's warning, made mechanical, and it is the same shape as DEV3's withdrawn
+    # `19 NO CONTROL` figure: **a count of what a probe did NOT find is a claim about the
+    # PROBE.** `NO-SELF-TEST` names the world; the honest name would be
+    # `NOT-DISPATCHED-BY-THIS-PROBE` unless the bucket is guarded.
+    #
+    # ⇒ The guard is ORDER: the flag surface is checked FIRST, so a subject that ACCEPTS
+    # everything and exits 0 is UNVERIFIABLE before its declaration is ever read. Five live
+    # specimens (daintree-control · established · estatenames · fleet-identity · runmarker)
+    # accept `--zzz-not-a-flag` and exit 0 — `fleet-identity --self-test` prints its ORDINARY
+    # REPORT TABLE, the flag never dispatched.
+    plant_py "$d/a_good3.py" 'if a == ["--self-test"]: sys.exit(0)' 'if a: void()' 'sys.exit(0)'
+    { echo '#!/usr/bin/env python3'
+      echo '# NO-SELF-TEST: claims to have none, but accepts everything and exits 0'
+      echo 'import sys'; echo 'sys.exit(0)'; } > "$d/i_undispatched.py"
+    out=$(gate "$d" 'i_undispatched.py' 2>&1); rc=$?
+    check "a DECLARATION does not rescue a subject whose flag surface accepts everything" 2 \
+          "UNVERIFIABLE"
+    # ⚠ MATCHED ON THE PER-SUBJECT LABEL, NOT ON THE WORD. Written first as a two-sided glob
+    # over "declared" and the filename, it fired on the ALWAYS-PRINTED summary line
+    # (`declared NO self-test … : none`) and reported a defect in the gate that was a defect in
+    # the matcher. Third time tonight: a tally is not a label, and the question is whether THIS
+    # SUBJECT was labelled declared. The gate was correct both times.
+    case "$out" in
+        *"---- i_undispatched"*)
+            echo "  FAIL  the NO-SELF-TEST bucket absorbed an UNDISPATCHED flag"; ok=1 ;;
+        *) echo "  ok    the bucket cannot absorb 'has one I failed to dispatch' — order guards it" ;;
+    esac
+    rm -f "$d/a_good3.py" "$d/i_undispatched.py"
 
     # ⛔ A TEST IS EXCLUDED AND THE EXCLUSION IS COUNTED. Planted because the real population
     # taught it: 37 test suites swept in as "subjects" and 46 of them reported as accepting a
