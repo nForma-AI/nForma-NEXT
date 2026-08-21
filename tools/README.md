@@ -225,6 +225,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `doctrine-watch.py` | which roles' doctrine moved under them, and who has not read it? | 0 nothing to tell · 1 a role is behind · **2 established nothing** |
 | `doctrine-uncommitted.py` | which doctrine is the fleet READING that main does not carry? | 0 reads == landed · 1 drift in any of three directions · **2 established nothing (no repo, bad ref, no file)** |
+| `label-precedence.py` | when `role:` and `dev:N` disagree, which does a pane obey? | 0 no hazard · 1 a `dev:N` beside a reserved queue · **2 established nothing** |
 | `label-exists.py` | does the label you are about to query actually exist? | 0 all exist · 1 one is absent · **2 established nothing** |
 | `verdict-census.py` | has each indexed instrument ever produced a verdict? (`--ledger` keeps the record · `--stale-check` asks in 0.1s whether it is current) | 0 no finding · 1 a finding · **2 established nothing** · ⚠ `--stale-check`'s 0 means *the record is current*, NOT *they all produce verdicts* |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
@@ -735,6 +736,27 @@ means a population leg **exists**, not that it is a good one; `DRAWN` is a state
 **control**, not a defect in the tool, and where an undrawn population is genuinely unaffordable the answer
 is a **stated exception with a reason**. ★ Its own control is DRAWN, and it reports itself as such — a tool
 that measured this property and exempted itself would be the joke version of itself.
+
+**`label-precedence.py`** — **when `role:` and `dev:N` disagree about who owns an issue, which one is a
+pane meant to obey?** ⛔ Measured on #461: both fields are queryable, both populated, and until
+2026-08-21 nothing stated which wins — **15 open issues carried a `dev:N` beside a `role:` that is not
+`role:DEV`**, and a pane querying `dev:5` and a pane querying `role:DEVOPS` both got an
+authoritative-looking answer naming a different owner. ★ The rule this enforces is in
+`prompts/README.md`: **`role:` is the queue; `dev:N` is the address only alongside `role:DEV`** (DEV
+being the only subdivided role), **and on any other issue it is PROVENANCE — a record of which pane
+produced the work, not an assignment.** ⛔ **So this tool never reports a bare collision count as a
+verdict**, because #461's own Done-when warns that the count can be driven to zero by stripping
+labels, destroying provenance and reproducing the *"what is mine?"* gap behind a clean-looking board.
+It reports **which kind** each collision is — `HAZARD` / `ADDRESS` / `PROVENANCE` / `UNROUTED` —
+and only one of those is a defect: **a `dev:N` beside a queue that reserves action from panes.** That
+shape already bit on **#319**, where `role:OPERATOR` + `dev:2` had the board telling a pane to work
+inside an operator quarantine. ⚠ **Its clean run on the live board proves less than it appears to:**
+`HAZARD 0` today is a board **already repaired** — the hazard was removed at `04:47:53Z`, before the
+tool existed — so the known-positive is pinned as a **regression test on #319's real historical
+labels**, both states of the same real issue, rather than on the current board. ⚠ It **cannot**
+distinguish an intentional provenance label from a mislabelling; both render as `dev:N` on a non-DEV
+issue. It reports the set and refuses to judge it, because a tool that guessed would be inventing a
+distinction the board does not carry. Exit `2` if the forge cannot be read — never *no collisions*.
 
 **`label-exists.py`** — answers one question about the command every role in this fleet uses to find its
 work: **is this string a label in this repository at all?** ⛔ Measured 2026-08-20: `gh issue list --label`
