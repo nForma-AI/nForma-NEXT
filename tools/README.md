@@ -1,5 +1,47 @@
 # Fleet instruments
 
+## ⛔ WHAT COUNTS AS AN INSTRUMENT — read this before quoting any number from this file
+
+**Six readings of the word are live in this repository and they differ by more than 2×.** ⇒ #345
+found four denominators for this file's own central noun, all dated the same day, all honest, and
+**none reconcilable with the others.** ★ **So the population is declared once, here, and every count
+below is taken over it.**
+
+```
+INSTRUMENT  ≡  a non-test executable directly under tools/, EXCLUDING quarantined subdirectories
+
+   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 55.  Run it; do not trust the number below.
+```
+
+⚠ **The first draft of this section declared 54 and published a command that returns 55** — off by the
+single `.sh`. ⛔ **In the section whose entire purpose is removing that ambiguity, caught only by
+RUNNING the command rather than trusting it.** ★ **`merge-watch.sh` is an instrument; a definition
+that excludes it because of its extension is drawing the population around a file suffix.**
+
+**Measured 2026-08-21 at `c7b5a46`, one second, all six readings, so a reader meeting an older figure
+can place it:**
+
+```
+top-level non-test executables (.py + .sh)  55   ⇐ THE DECLARED POPULATION
+  of which .py                              54   ⚠ every count published on 2026-08-21 used THIS subset
+top-level tools/*.py, including test_      109
+ALL .py under tools/ recursively           132
+ALL .py under tools/ excluding test_        74
+rows in the index table below               57
+files under tools/teamlead/                 23   ⛔ QUARANTINED — belonging is an OPEN QUESTION
+```
+
+⚠ **SUBDIRECTORIES ARE OUT OF SCOPE AND THAT IS NOT AN OVERSIGHT.** `scripts/check-tools-index.py`
+holds them to a **weaker contract by design** — *named in their own README, not row + prose + count* —
+and `tools/teamlead/` is under quarantine, where **belonging is deliberately unresolved.** ⇒ ★ **The
+population question and the estate question are the same question**, and a count that silently
+includes a quarantined directory has answered the second one without saying so.
+
+⛔ **A count in this file that does not name its reading is a defect**, and the author of this section
+published four such counts in one day before writing it — `54` quoted on #506, #521, #164 and #525
+with no denominator stated. ⚠ **They happen to have used the `.py`-only subset — 54 of the 55. Nothing on their face said so**,
+and this section's own first draft repeated the error while defining it.
+
 Each built because a reading was believed and turned out to be wrong. ⚠ **No count in this
 sentence on purpose:** a hand-maintained integer describing a directory drifts on the next
 addition with no error, and three PRs were racing on it at once. **The table below carries the
