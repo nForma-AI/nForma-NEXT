@@ -75,5 +75,95 @@ check("an EMPTY board is refused, not reported as covered", ic.open_issues.__doc
 check("...and the code path returns None on an empty list",
       ic.open_issues("nForma-AI/this-repo-does-not-exist-xyzzy"), None)
 
+
+# ── selection: identity, not recency ──────────────────────────────────────────
+# ⛔ THE DEFECT. Selection was `sorted(paths, key=-mtime)[:9]`. Measured 2026-08-21,
+# two runs 90s apart against an UNCHANGED board: TRIAGE contributed 41 issues, then
+# 0, because it went quiet for ~2 minutes and fell out of the top nine. Its issues
+# reverted to "opened by NOBODY". The instrument dropped the idle panes — the exact
+# population the question is usually about.
+#
+# ★ The claim being pinned is STRUCTURAL, not statistical: when --limit does not
+# bind, the selected SET cannot depend on mtime at all. Sampling the live fleet
+# cannot show this — measured, the OLD selection also held steady across 24s. So
+# the test permutes mtime directly and asserts the set is unmoved.
+with tempfile.TemporaryDirectory() as tmp:
+    def pane(sid, role, issue=None):
+        """A transcript that bootstraps as `role` (None = never declared one)."""
+        p = os.path.join(tmp, sid + ".jsonl")
+        recs = []
+        if role:
+            recs.append({"type": "user", "message": {"content":
+                         f"You are {role}. Do the thing."}})
+        else:
+            recs.append({"type": "user", "message": {"content": "hello, do the thing"}})
+        if issue:
+            recs.append(tool_use("Bash", {"command": f"gh issue view {issue}"}))
+        with open(p, "w") as f:
+            for r in recs:
+                f.write(json.dumps(r) + "\n")
+        return p
+
+    roled = [pane(f"role{i}", r) for i, r in
+             enumerate(["ARCHITECT", "DEVOPS", "TRIAGE", "DX", "MAINTAINER"])]
+    anon = [pane(f"anon{i}", None) for i in range(5)]
+    root = os.path.join(tmp, "*.jsonl")
+
+    def stamp(order):
+        """Give `order` strictly decreasing freshness — order[0] is newest."""
+        for k, path in enumerate(order):
+            os.utime(path, (1_700_000_000 - k * 60,) * 2)
+
+    stamp(roled + anon)                       # roles fresh, anon stale
+    a_sel, _ = ic.select_panes(root, limit=64)
+    stamp(anon + roled)                       # ⇄ anon fresh, roles stale
+    b_sel, _ = ic.select_panes(root, limit=64)
+    stamp(list(reversed(roled)) + anon)       # roles reordered among themselves
+    c_sel, _ = ic.select_panes(root, limit=64)
+
+    check("identity: the SET is the role-named panes", set(a_sel), set(roled))
+    check("identity: reversing every mtime does not move the set",
+          set(b_sel), set(a_sel))
+    check("identity: reordering WITHIN the roles does not move it either",
+          set(c_sel), set(a_sel))
+    check("identity: a pane that never declared a role is NOT read",
+          set(a_sel) & set(anon), set())
+
+    # ⛔ KNOWN-BAD CONTROL — without it the three checks above are vacuous: they
+    # would also pass against a selector that ignored mtime by accident. This
+    # asserts the fixture CAN move a recency selector, i.e. the test has teeth.
+    stamp(roled + anon)
+    r_a, _ = ic.select_panes(root, limit=64, recency=5)
+    stamp(anon + roled)
+    r_b, _ = ic.select_panes(root, limit=64, recency=5)
+    check("KNOWN-BAD control: --recency DOES move under the same permutation",
+          set(r_a) != set(r_b), True)
+    check("KNOWN-BAD control: ...and it picks up the anonymous panes",
+          set(r_b), set(anon))
+    check("--recency says the counts are a function of when you ran it",
+          "function of WHEN" in ic.select_panes(root, 64, recency=5)[1], True)
+
+    # ── the ceiling must announce itself ──────────────────────────────────────
+    # ⛔ A silent cap is the same defect one level up: the dropped panes' issues
+    # are counted as untouched, and nothing in the output says a pane was dropped.
+    stamp(roled + anon)
+    sel, note = ic.select_panes(root, limit=2)
+    check("a bound --limit reads only that many", len(sel), 2)
+    check("...and SAYS it bound", "BOUND" in note, True)
+    check("...and NAMES every role it dropped",
+          all(r in note for r in ["TRIAGE", "DX", "MAINTAINER"]), True)
+    check("...and warns their issues now read as untouched",
+          "counted as untouched" in note, True)
+    _, unbound = ic.select_panes(root, limit=64)
+    check("an UNBOUND limit says nothing about a ceiling", "BOUND" in unbound, False)
+
+    # ── no fleet at all is a refusal, not a clean zero ────────────────────────
+    empty = os.path.join(tmp, "none", "*.jsonl")
+    sel, _ = ic.select_panes(empty, limit=64)
+    check("no transcripts at all selects nothing (main then refuses)", sel, [])
+    anon_only = os.path.join(tmp, "anon*.jsonl")
+    sel, _ = ic.select_panes(anon_only, limit=64)
+    check("a corpus of role-less transcripts also selects nothing", sel, [])
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)
