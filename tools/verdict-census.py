@@ -481,6 +481,23 @@ def self_test():
         print(f"  {'ok  ' if hit else 'FAIL'}  a confirmed verdict from unchanged bytes is NOT "
               f"re-run — this is the whole saving")
 
+        # ⛔ THE SELF ROW MUST BE NAMED, NOT OMITTED. census() states this rule; the ledger path
+        # broke it and reported "22 of 49" for a population of 50. An invisible narrowing is the
+        # defect check-tools-index.py exists against.
+        (ld / Path(__file__).name).write_text("raise SystemExit(0)\n")
+        lidx.write_text(f"| `good.py` | f |\n| `{Path(__file__).name}` | f |\n")
+        lpath.unlink()
+        _, lines, rec = ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
+        hit = (any("SELF-EXCLUDED" in l for l in lines)
+               and any(Path(__file__).name in l for l in lines)
+               and any(" of 1 indexed" in l for l in lines))
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  the ledger NAMES its self-exclusion and drops it"
+              f" from the denominator, rather than omitting it silently")
+        lidx.write_text("| `good.py` | a fixture |\n")
+        lpath.unlink()
+        ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
+
         # ⛔ A RECORD WRITTEN BY A DIFFERENT CLASSIFIER IS NOT EVIDENCE ABOUT THIS ONE, and the
         # discard must be NAMED. A silent full re-run is indistinguishable from a cheap warm one,
         # so a reader could not tell every prior row had been thrown away.
@@ -981,7 +998,13 @@ def ledger(index=None, tools_dir=None, timeout=TIMEOUT, path=None, write=True):
     record, rows = {}, []
     for n in names:
         if n == me:
-            continue  # the census does not census itself — a nested run terminates only by timeout
+            # ⛔ NAMED, never silently skipped. This file states that rule 680 lines above, in
+            # census(), and then broke it here — an invisible population narrowing is the defect
+            # check-tools-index.py exists against, and "22 of 49" silently meant "of 50".
+            # ⇒ Citing a rule is not installing it (#275), in the file that carries the citation.
+            rows.append((n, None, None, "self", "the census does not census itself — a nested run"
+                         " terminates only by timeout"))
+            continue
         p = tools_dir / n
         try:
             blob = blob_id(p.read_bytes())
@@ -1002,12 +1025,18 @@ def ledger(index=None, tools_dir=None, timeout=TIMEOUT, path=None, write=True):
     dropped = sorted(set(prior) - set(record))
     width = max([len(n) for n, *_ in rows] + [1])
     for n, st, sst, mark in ((r[0], r[1], r[2], r[3]) for r in rows):
+        if mark == "self":
+            out.append(f"  {'SELF':<9} {'SELF-EXCLUDED':<20} {'':<18} {n:<{width}}"
+                       f"  [not counted]")
+            continue
         ever = record[n].get("ever_verdict")
         out.append(f"  {'EVER' if ever else '⛔ NEVER':<9} {str(st):<20} {str(sst):<18}"
                    f" {n:<{width}}  [{mark}]")
     ran = sum(1 for r in rows if r[3] == "RAN")
+    # ⚠ the denominator EXCLUDES the self row and the output SAYS which row that was
     out.append("")
-    out.append(f"  {sum(1 for n in record if record[n].get('ever_verdict'))} of {len(rows)}"
+    counted = [r for r in rows if r[3] != "self"]
+    out.append(f"  {sum(1 for n in record if record[n].get('ever_verdict'))} of {len(counted)}"
                f" indexed instruments carry a verdict ever recorded · {ran} run now,"
                f" {len(rows) - ran} answered from the record")
     for n, _, _, mark, why in rows:
