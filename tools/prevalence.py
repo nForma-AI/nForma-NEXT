@@ -66,11 +66,56 @@ def verdict(carrying, total):
     return "DISCRIMINATES", "present in some records and absent from others"
 
 
+def self_test():
+    """⛔ A known-POSITIVE and a known-NEGATIVE, because a checker that always refused
+    would pass a suite made only of positives.
+
+    The positive is this tool's own founding case: a suffix on EVERY record. The
+    negative is a token that genuinely varies across the same records. If the two do
+    not come out differently, the verdict function is not discriminating and no
+    result it produces means anything."""
+    recs = ["[POLL #1] status=QUEUED, detail=, attempts=0, elapsed=0s",
+            "[POLL #2] status=RUNNING, detail=, attempts=1, elapsed=183s",
+            "[POLL #3] status=FAILED, detail=boom, attempts=1, elapsed=247s"]
+    cases = [
+        ("attempts=", recs, "NON-DISCRIMINATING", "a suffix on EVERY record is FORMAT"),
+        ("status=FAILED", recs, "DISCRIMINATES", "KNOWN-NEGATIVE: a varying token informs"),
+        ("nowhere", recs, "NON-DISCRIMINATING", "absent from all is equally uninformative"),
+        ("attempts=", recs[:1], "VOID", "a population of ONE cannot distinguish"),
+    ]
+    ok = True
+    for token, population, want, label in cases:
+        carrying, total = prevalence(population, token)
+        got, _ = verdict(carrying, total)
+        good = got == want
+        print(f"{'✅' if good else '❌'} {label}: {carrying}/{total} -> {got}")
+        if not good:
+            print(f"     want {want}")
+            ok = False
+    # ⛔ the two verdicts must actually DIFFER on the same population, or the
+    # function is constant and every check above is vacuous.
+    a1, t1 = prevalence(recs, "attempts=")
+    a2, t2 = prevalence(recs, "status=FAILED")
+    differ = verdict(a1, t1)[0] != verdict(a2, t2)[0]
+    print(f"{'✅' if differ else '❌'} the two verdicts DIFFER on the same records "
+          f"— the function is not constant")
+    ok = ok and differ
+    print("\nall checks passed" if ok else "\nFAILED")
+    return 0 if ok else 3
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("path", help="file to read, or - for stdin")
-    ap.add_argument("--token", required=True,
+    # ⛔ nargs="?" so `--self-test` is reachable BARE. A control you cannot invoke
+    # without also supplying the thing under test is not a control the gate can run —
+    # measured: the repo's gate-selftests counts exactly that as UNESTABLISHED.
+    ap.add_argument("path", nargs="?", help="file to read, or - for stdin")
+    # ⛔ NOT required=True. argparse rejects `--self-test` alone before main() runs,
+    # so a required flag makes the control UNREACHABLE — which the repo's gate counts
+    # as UNESTABLISHED, correctly: "that is not 'has no self-test'; it is a limit of
+    # the invocation." The requirement is enforced below, where it can be explained.
+    ap.add_argument("--token", default=None,
                     help="LITERAL text whose prevalence to measure (see --token-re)")
     ap.add_argument("--token-re", action="store_true",
                     help="treat --token as a regex; opt in deliberately")
@@ -78,8 +123,17 @@ def main():
                     help="regex selecting the COMPARABLE records. Without it every "
                          "non-empty line counts, which is rarely the population meant.")
     ap.add_argument("--show", type=int, default=3)
+    ap.add_argument("--self-test", action="store_true")
     a = ap.parse_args()
 
+    if a.self_test:
+        return self_test()
+
+    if not a.path or not a.token:
+        missing = " and ".join(x for x, v in (("a path", a.path), ("--token", a.token)) if not v)
+        print(f"⛔ ESTABLISHED NOTHING — {missing} not given. Pass a file (or - for "
+              f"stdin) and --token, or --self-test.")
+        return 2
     try:
         text = sys.stdin.read() if a.path == "-" else open(a.path, errors="replace").read()
     except OSError as exc:

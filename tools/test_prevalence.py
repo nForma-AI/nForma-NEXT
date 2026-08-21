@@ -119,5 +119,31 @@ with tempfile.TemporaryDirectory() as tmp:
 rc, out = run(os.path.join(tmp, "gone.txt"), "--token", "x")
 check("⛔ an unreadable path is VOID", rc, 2)
 
+
+# ── ⛔ THE CONTROL MUST BE REACHABLE WITHOUT THE THING UNDER TEST ─────────────
+# CI failed this PR for exactly this: the repo's gate-selftests counts a tool whose
+# `--self-test` cannot be invoked BARE as UNESTABLISHED — "that is not 'has no
+# self-test'; it is a limit of the invocation." `--token` was required=True, so
+# argparse rejected `--self-test` alone BEFORE main() ran.
+# ★ A control you cannot invoke without supplying the subject is not a control the
+# gate can run, and the gate is right to refuse to count it.
+import subprocess
+_tool = os.path.join(_here, "prevalence.py")
+r = subprocess.run([sys.executable, _tool, "--self-test"], capture_output=True, text=True)
+check("`--self-test` alone is REACHABLE (exit 0, no argparse error)", r.returncode, 0)
+check("...and it actually ran controls", "all checks passed" in r.stdout, True)
+check("...including a KNOWN-NEGATIVE, or a always-refusing tool would pass",
+      "KNOWN-NEGATIVE" in r.stdout, True)
+check("...and it asserts the two verdicts DIFFER — a constant function is vacuous",
+      "the function is not constant" in r.stdout, True)
+
+# ⛔ and dropping the subject must still refuse clearly rather than crash
+r = subprocess.run([sys.executable, _tool], capture_output=True, text=True)
+check("bare, with no args at all: exit 2 and a named reason", r.returncode, 2)
+check("...naming BOTH missing things, not just the first",
+      "a path and --token" in r.stdout, True)
+r = subprocess.run([sys.executable, _tool, REAL], capture_output=True, text=True)
+check("a path with no --token also exits 2", r.returncode, 2)
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)
