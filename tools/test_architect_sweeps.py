@@ -65,6 +65,22 @@ def main():
     muts = list(kn.mutants(src, 5))
     check("known-negative: the comparison is inverted", "n != 3" in (muts[0][1] if muts else ""), True)
 
+    # --- known-negative: #466's accounting, and BOTH directions by execution.
+    # ⛔ The assertion cannot fire on today's control flow -- every pair appends exactly one row --
+    # so it was split into account() precisely so this caller can reach the failing state. An
+    # invariant no test can reach is decoration, and asserting it inline was the first draft's bug.
+    import io as _io
+    buf = _io.StringIO()
+    check("known-negative: a sound partition returns 0",
+          kn.account(4, 3, 1, 2, out=buf), 0)
+    check("known-negative: it prints the subset OFF the bucket line",
+          "a SUBSET, not a third bucket" in buf.getvalue(), True)
+    buf2 = _io.StringIO()
+    check("known-negative: buckets that do NOT sum REFUSE with 2",
+          kn.account(9, 3, 1, 0, out=buf2), 2)
+    check("known-negative: and the refusal says so, not 'no finding'",
+          "VOID" in buf2.getvalue() and "established nothing" in buf2.getvalue().lower(), True)
+
     print(f"\n{'all checks passed' if not FAILED else f'{FAILED} FAILED'}")
     return 1 if FAILED else 0
 

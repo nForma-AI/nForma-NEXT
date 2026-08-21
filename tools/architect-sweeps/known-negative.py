@@ -170,8 +170,8 @@ def main():
                 print(f"  ⛔ DECORATIVE  {r['tool']:<34} passed all {r['passed']} viable"
                       f"  ({r['void']} crashed, excluded)")
 
-        print(f"\n  pairs given {len(a.pairs)} · examined {examined} · void {len(rows)-examined}"
-              f" · decorative {decorative}")
+        if account(len(a.pairs), examined, len(rows) - examined, decorative) == 2:
+            return 2
         print("\n⛔ A crashed mutant is VOID, never a detection — non-zero exit from a Traceback is")
         print("   what a naive `exit != 0` probe reads as success. ⚠ Sites are comparison flips")
         print("   outside dispatch only: a control this misses may still catch other sabotage.")
@@ -180,6 +180,31 @@ def main():
         return 1 if decorative else 0
     finally:
         shutil.rmtree(sandbox, ignore_errors=True)
+
+
+def account(pairs_given, examined, void, decorative, out=sys.stdout):
+    """#466: print the partition, keep the SUBSET off its line, and refuse if it does not sum.
+
+    ⛔ `decorative` counts a PROPERTY OF the examined rows. Printing it as a fourth bucket invites
+    the reader to add it in, which over-counts the population -- that is the defect this fixes.
+
+    ⚠ AND AN HONEST BOUND ON THE ASSERTION ITSELF. On today's control flow it CANNOT FIRE: every
+    pair appends exactly one row on both branches, so examined + void == pairs_given by
+    construction. It guards a future edit -- a `continue` that skips the append -- and nothing
+    else. ⇒ It is split into this function precisely so a caller CAN reach the failing state and
+    demonstrate the check is not decoration. A first draft asserted it inline, where no test could
+    reach it, which is the same mistake this file's own docstring records one function below.
+    """
+    print(f"\n  pairs given {pairs_given}", file=out)
+    print(f"    examined {examined} · void {void}   ⇒ {examined + void}", file=out)
+    print(f"    of the {examined} examined: decorative {decorative} · "
+          f"demonstrated {examined - decorative}   ⚠ a SUBSET, not a third bucket", file=out)
+    if examined + void != pairs_given:
+        print(f"⛔ VOID — the buckets sum to {examined + void} against {pairs_given} pairs given."
+              f" A sweep that cannot account for every pair has established nothing about the"
+              f" ones it dropped.", file=out)
+        return 2
+    return 0
 
 
 def self_test():
