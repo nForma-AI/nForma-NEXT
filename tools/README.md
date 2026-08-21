@@ -171,6 +171,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `verdict-census.py` | has each indexed instrument ever produced a verdict? (`--ledger` keeps the record · `--stale-check` asks in 0.1s whether it is current) | 0 no finding · 1 a finding · **2 established nothing** · ⚠ `--stale-check`'s 0 means *the record is current*, NOT *they all produce verdicts* |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
 | `estate-provenance.py` | does the evidence place this file in THIS estate? | 0 no FOREIGN rows · 1 FOREIGN found · **2 established nothing** |
+| `landing-rate.py` | how long since anything LANDED, and is that a stall or a queue being worked? | 0 landing inside the window · 1 gap exceeded, cause named · **2 forge did not answer — ESTABLISHED NOTHING** · `--self-test` |
 | `branch-census.py` | which remote branches are finished, live, or work that died quietly? | 0 discriminated · **2 no refs, or every branch in one bucket** |
 | `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
@@ -678,6 +679,15 @@ records `ESTABLISHED-NOTHING` — a bare run names no label, and refusing is the
 nothing a label?"*. ★ The row is **right**, the tool is **healthy**, and reading the column as a defect list
 would condemn it. Every instrument here is run with **no arguments**; the `NEVER` set is a statement about
 what a bare invocation establishes, which is #2's premise made measurable — not a verdict on anyone's tool.
+
+**`landing-rate.py`** — reports the interval since the last merge, and DERIVES the cause
+from the split rather than asserting it. Three stalls were measured in one day (125, 125,
+171 minutes); the first ran to 126 minutes unseen while every armed instrument stayed green
+and correct — four instruments, four state variables, zero derivatives. ⛔ The cause clause
+was itself wrong twice: a constant string that was true in one stall and false in the next,
+then a split-derived clause that announced merger-absence seconds after a merge, because
+`M > 0` means mergeable work EXISTS and not that nothing is consuming it. ⚠ A gap is not a
+cause — it cannot tell an absent merger from a deliberate hold or a freeze.
 
 **`branch-census.py`** — classifies every remote branch as MERGED, SQUASH-MERGED, LIVE or
 STRANDED. Built because 89 branches carried no signal of which were finished, and four panes
