@@ -219,6 +219,16 @@ def main(argv):
     if not ident.complete():
         return void("cannot derive this repo's own identity (%r) — the derived estate "
                     "leg has no comparand and did NOT run" % (ident,))
+    # ⇒ STAMP THE TREE STATE, not only the calibration. Every verdict below comes from
+    # `git show HEAD:./<file>`, and the derived range is read from `git log` — BOTH move.
+    # Measured today: the range went #1-#381 to #1-#523 in one session, so two runs of this
+    # tool can disagree about the same file and neither be wrong.
+    # ⛔ `docs/DEFECT-CLASSES.md`: a count without its sha is not comparable to the same count
+    # from another run. This printed its calibration and never said which tree produced it.
+    rc_h, head, _ = sh("git", "-C", root, "rev-parse", "--short", "HEAD")
+    print("tree read: HEAD=%s — every verdict below is AS OF this commit; re-running after "
+          "HEAD moves may reclassify a file without either reading being wrong."
+          % (head.strip() if rc_h == 0 else "UNKNOWN"))
     print("local identity: repo=%s forge=%s (derived; the derived leg compares against "
           "these)" % (ident.repo_dir, ident.forge_repo))
 
