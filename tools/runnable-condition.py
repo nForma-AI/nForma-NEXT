@@ -204,6 +204,15 @@ def main():
     print("\n⚠ ASSERTED IS NOT AUTOMATICALLY A DEFECT. Some conditions close on a judgement"
           "\n   no command can make. ASSERTED means agreement is the only route — a fact about the"
           "\n   condition, not a verdict on its author.")
+    # ⛔ A GUARD THAT CAN FIRE, CAN REFUSE, AND FIRES ON EVERYTHING DISCRIMINATES NOTHING.
+    #    Every control here is per-invocation — can it fire? can it refuse? — and a predicate
+    #    returning ONE VERDICT FOR ALL SUBJECTS passes all of them. The tell is the
+    #    DISTRIBUTION, which no per-run control sees. (DEV2's `13 of 13`, at this layer.)
+    _nz = [v for v in ("ASSERTED", "RUNNABLE", "NO-CONDITION") if buckets[v]]
+    if len(rows) >= 3 and len(_nz) == 1:
+        print(f"\n⛔ NON-DISCRIMINATING — all {len(rows)} subjects scored {_nz[0]}. One verdict for"
+              "\n   every subject establishes nothing about any of them, and passes every"
+              "\n   per-invocation control this repository owns.")
     print("⛔ RUNNABLE IS NOT READABLE. A named command whose NOT-MET and whose OWN FAILURE"
           "\n   produce the same output is scored RUNNABLE here and cannot be acted on. Measured on"
           "\n   2 of 4 of this tool's author's own conditions.")

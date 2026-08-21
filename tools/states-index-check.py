@@ -158,6 +158,11 @@ def main():
         return 2
     print(f"\n  tools exposing --states: {checked + disagreed} · rows agreeing: {checked}"
           f" · disagreeing: {disagreed}")
+    _total = checked + disagreed
+    if _total >= 3 and (checked == 0 or disagreed == 0):
+        _w = "agreeing" if disagreed == 0 else "disagreeing"
+        print(f"⛔ NON-DISCRIMINATING — all {_total} subjects scored {_w}. Establishes nothing"
+              "\n   about any of them; a per-invocation control cannot see this.")
     print("⚠ This DETECTS drift; it does not make drift impossible. #39's condition asks for a row"
           "\n   GENERATED from the emitter, and a verified transcription is not one.")
     return 1 if disagreed else 0
