@@ -1281,6 +1281,54 @@ that attaches to the name-collision and session-collision findings elsewhere in 
 
 ---
 
+## ⛔ `git config --local` IN A WORKTREE WRITES TO THE SHARED REPOSITORY
+
+No class letter claimed. A near-miss, measured 2026-08-21, with a zero blast radius **only because
+the write was verified afterwards.**
+
+> **A linked worktree has no config of its own unless `extensions.worktreeConfig` is enabled. So
+> `--local` means local to the REPOSITORY, not to your pane** — and this repository has nine panes
+> sharing one.
+
+```
+# run from .claude/worktrees/dev2
+git config --local user.name DEV2
+git config --show-origin user.name
+  -> file:/Users/jonathanborduas/code/nForma-NEXT/.git/config    DEV2
+```
+
+⇒ **Every pane's commits would have been authored `DEV2`.** Reverted in ~90 seconds; **0 commits made
+in the window.** ⚠ Had any pane committed, it would have been recorded as another pane's work — and
+`author.name` was at that moment being measured as an attribution channel on `#327`. ⛔ **The change
+would have manufactured false evidence in the channel it was meant to improve**, and the result would
+have looked like data.
+
+### ★ What caught it was the verification, not the intent
+
+`--show-origin` printed the shared path. **The flag is named for a scope it does not have here**, so
+nothing in the command reads as dangerous. ⇒ This is `CLAUDE.md`'s *nine agents may share one working
+tree* (#19) extended to the **config layer**, where it is less visible because a config write leaves
+no file in your tree.
+
+### ✅ The form that works, verified
+
+```
+git -c user.name=DEV2 commit -m …
+  commit author.name  -> DEV2
+  config              -> UNCHANGED
+  next commit         -> back to default, no leakage
+```
+
+⇒ **Per-invocation, not per-config.** ★ Same correction as the single-file pin on #291: **the safe
+form is the one that does not mutate shared state**, and in both cases the unsafe form is the one
+that reads as the normal way to do it.
+
+⚠ **Not established:** whether `extensions.worktreeConfig` is off deliberately here, and whether the
+21 commits that *do* carry a pane name were made with `-c` or a since-removed config. The boundary is
+`f40e6f0`; the mechanism was not found.
+
+---
+
 ## ⛔ What is NOT established
 
 - ⛔ **The document's ORDER no longer matches its argument, and that is a defect in it.**
