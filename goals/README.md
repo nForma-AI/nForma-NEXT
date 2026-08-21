@@ -519,6 +519,13 @@ does not move — a design property, not agent behaviour.
    say more** — *"proves the agent LOOKED, not that it holds the current file"* — **and it is right to
    refuse: only the pane can read its own context, and only about itself.**
 
+   ⚠ **AND IT IS THE RIGHT CARRIER FOR ONE THING — an action whose content IS *do this at session
+   start*.** ⇒ **A t=0 delivery is a defect for a STANDING rule and exactly correct for a STARTING
+   one.** ★ **Worked instance: `prompts/ARCHITECT.md` §22 now carries *read your predecessors'
+   friction reports* as a query, because that obligation has no meaning after the session has run.**
+   ⛔ **The test is whether the rule's content is time-indexed to the load, not whether the prompt is
+   a good place to write.**
+
    ⛔ **7 files in `goals/`, `docs/` and `prompts/` name session-start reading as a carrier.** ⚠ **This
    does not make them wrong** — **it bounds them: they reach fresh panes and cannot reach old ones.**
 
