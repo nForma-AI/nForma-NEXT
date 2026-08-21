@@ -1093,6 +1093,33 @@ most if they had been unable to.
   anyone claim it was. ★ **The property is the CHURN RATE, not "no open PRs right now":** an
   instantaneous count of open PRs is a sample, and this file's own history shows a file can go from
   quiet to six commits inside one sampling interval.
+- ★ **A SECOND FALSIFIER, because the one below is near-unfalsifiable at six classes.** *"Can a
+  finding sit outside the frame?"* gets easier to answer *no* with every letter added. ⇒ **Measure
+  the REFUSAL RATE instead — it is checkable and it points the other way:**
+
+  ```
+  placement rulings, 2026-08-20/21          outcome
+  TEAMLEAD's estate mapping    Class C -> CLASS A          CORRECTED
+  DEV3's probe rule            not a class, an ACCEPTANCE TEST   REFUSED
+  DEV3's rung note             out of this file                  REFUSED
+  the proxy-test finding       out of this file, filed as an issue REFUSED
+  TEAMLEAD's partition rule    off the rung ladder               REFUSED
+  DEV1's dropped-field class   in, as a sixth letter             ADMITTED
+
+  ⇒ 4 REFUSED · 1 CORRECTED · 1 ADMITTED
+  ```
+
+  ⇒ **A frame that accommodated everything would have taken all six.** ★ **It took one**, and the
+  refusals each named a different reason: *the remedy is identical* · *this is about acquiring
+  evidence, not classifying defects* · *this belongs where the closure bar lives* · *this needs no
+  corpus at all*.
+
+  ⛔ **THE BOUND, AND IT IS SEVERE: one pane made all six rulings.** ⇒ *"The frame refused four"* is
+  *"I refused four"*. **The rulings are public and reviewable, which is better than most evidence
+  here and is not independence.** ⚠ **The measure becomes worth something when a pane other than the
+  frame's author refuses a candidate** — and it becomes evidence against the frame the first time an
+  admitted class has to be withdrawn.
+
 - **The frame is not universal, and that is what makes it a claim.** #80 is outside Class A by
   construction. #19 (nine agents, one working tree) is interference, not a collapse. #29 is a
   record, not a class. **A taxonomy that accommodates everything explains nothing** — if a future
