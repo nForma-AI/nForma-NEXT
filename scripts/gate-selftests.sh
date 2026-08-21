@@ -88,6 +88,14 @@ DECLARES_NONE="^# NO-SELF-TEST:"
 # tool that ACCEPTED a bogus flag. That is a claim about the FILE'S KIND, not about its control,
 # and it is the only reason to skip execution.
 NOT_EXECUTABLE="^# NOT-EXECUTABLE:"
+# ⛔ A TEST FILE IS NOT A SUBJECT — it IS the control, and it has no `--self-test` because there
+# is nothing beneath it to control. Measured the hard way: pointing this gate at `tools/` with
+# the default glob swept in 37 `test_*.py` suites and reported 93 SUBJECTS, of which 46
+# "accepted a bogus flag" — every one a test file with no argument surface at all. ⇒ A real
+# population defect, in the dry run of the gate built to catch population defects.
+# ⚠ Same predicate `scripts/check-tools-index.py` uses for its instrument population, so the two
+# cannot drift apart — and the exclusion is PRINTED on every run, never merely applied.
+IS_A_TEST="^(test_.+|.+_test)\.(py|sh)$"
 # ⛔ TWO BUDGETS, because the two invocations answer different questions and one ceiling hides
 # the difference. A REFUSAL is an argument-parse decision and should be instant: a subject taking
 # ten seconds to reject an unknown flag has already STARTED DOING ITS WORK, which is the finding,
@@ -123,8 +131,9 @@ limited() {
 
 gate() {
     local dir="$1" glob="${2:-*.py}"
-    local pass=0 broke=0 unest=0 unver=0 hung=0 declared=0 ran=0
+    local pass=0 broke=0 unest=0 unver=0 hung=0 declared=0 excluded=0 ran=0
     local broke_names="" unest_names="" unver_names="" hung_names="" declared_names="" why=""
+    local excluded_names=""
     local f b rc grc
 
     local _saved_limit="$LIMIT"
@@ -132,6 +141,10 @@ gate() {
         [ -f "$f" ] || continue
         [ "$(basename "$f")" = "$(basename "$0")" ] && continue
         b=$(basename "$f")
+        if echo "$b" | grep -qE "$IS_A_TEST"; then
+            excluded=$((excluded + 1)); excluded_names="$excluded_names $b"
+            continue
+        fi
         # ⛔ THE DECLARATION IS READ BEFORE ANY INVOCATION, not as a branch of the exit code.
         # A MODULE forces this: `tools/runmarker.py` is imported, never run, and has no argv
         # surface at all — running it exits 0 having done nothing, which is indistinguishable
@@ -287,6 +300,7 @@ gate() {
     echo
     echo "  ran $ran subject(s): $pass control(s) passed · $broke FAILED · $unest UNESTABLISHED · $unver UNVERIFIABLE · $hung TIMED OUT"
     echo "  declared NO self-test (skipped, COUNTED and NAMED, never silent):${declared_names:- none}"
+    echo "  excluded as TESTS (a test IS the control, not a subject): $excluded"
 
     # ⛔ A FINDING OUTRANKS AN EMPTY POPULATION, and the order matters. The other way round, a
     # run whose only subject was a FALSE `# NOT-EXECUTABLE:` declaration returned 2 ESTABLISHED
@@ -439,6 +453,21 @@ selftest() {
         *) echo "  ok    known-negative: refusing garbage alone is NOT sufficient to pass" ;;
     esac
     rm -f "$d/f_half_read.py"
+
+    # ⛔ A TEST IS EXCLUDED AND THE EXCLUSION IS COUNTED. Planted because the real population
+    # taught it: 37 test suites swept in as "subjects" and 46 of them reported as accepting a
+    # bogus flag. ⚠ The count is asserted, not just the absence — an exclusion nobody can see is
+    # how a checker's population quietly stops matching its subject.
+    plant_py "$d/a_good2.py" 'if a == ["--self-test"]: sys.exit(0)' 'if a: void()' 'sys.exit(0)'
+    printf '#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n' > "$d/test_planted.py"
+    out=$(gate "$d" '*.py' 2>&1); rc=$?
+    case "$out" in
+        *"test_planted"*) echo "  FAIL  a test file was run as a subject"; ok=1 ;;
+        *"excluded as TESTS (a test IS the control, not a subject): 1"*)
+            echo "  ok    a test file is EXCLUDED and the exclusion is COUNTED" ;;
+        *) echo "  FAIL  the test exclusion was not counted"; ok=1 ;;
+    esac
+    rm -f "$d/a_good2.py" "$d/test_planted.py"
 
     # ⛔ NOT-EXECUTABLE, BOTH DIRECTIONS. It is the only declaration that skips EXECUTION, so it
     # is the only one that could become an off switch — and the second leg is what stops it.
