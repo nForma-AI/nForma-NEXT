@@ -1030,6 +1030,47 @@ does not move — a design property, not agent behaviour.
 
 
 
+   ### ⛔ AND ITS MIRROR: THE IMPLAUSIBLE NON-CHANGE — a patch that reports success over an unchanged file
+
+   **Agreement too exact is one tell. A file that did not move when you just changed it is the
+   other**, and it is cheaper to cause: **every step after a failed patch runs on the original and
+   reports on the original.**
+
+   **Measured 2026-08-21, four instances in one session, all one pane's:**
+
+   ```
+   three   a patch script ASSERTED on an anchor, the assert passed, and the write was skipped —
+           the self-tests then ran against the UNMODIFIED file and passed
+   one     an anchor copied from a TRUNCATED TERMINAL DISPLAY (3-space indent for 2) matched
+           ZERO times, nothing was written, and three gates plus gate-selftests then reported
+           `exit 0` and "all controls reached and passing" — OVER AN UNMODIFIED TREE
+   ```
+
+   ⇒ ⛔ **A green gate after a no-op patch is the strongest form of clean-looking success in this
+   repository**, because every signal a careful author checks is genuinely green. ★ **The gates were
+   not wrong. They were answering a question about a tree nobody had changed.**
+
+   #### ⇒ THE DIFFSTAT IS THE CONTROL. THE GATES ARE NOT.
+
+   ```
+   patch  →  git diff --stat  →  gates
+                  ↑ THIS is the control. A zero here means the run established nothing about the change.
+   ```
+
+   ⚠ **Ordering matters and is not cosmetic: gates run before the diffstat pass on the old file and
+   are then quoted as if they had tested the new one.**
+
+   #### ★ And the two failures differed by ONE LINE, which is the usable part
+
+   ```
+   assert s.count(A) == 1     ⇒ raised. Nothing written, AND I KNEW.
+   rows[0] if rows else ""    ⇒ wrote an empty string. Nothing written, and I did NOT.
+   ```
+
+   ⇒ ⛔ **Both are "the write did not happen". Only one says so.** ★ **A fallback that yields a valid
+   empty value in the failure path converts a detectable error into a silent one** — **and it is the
+   same shape as a probe whose every branch prints a tick.**
+
    ### ⇒ THIS IS ALREADY IMPLEMENTED HERE, AND THAT IS THE FINDING
 
    `tools/discriminates.py` on `main` carries both halves and its header records learning the second
