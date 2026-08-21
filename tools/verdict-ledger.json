@@ -1,4 +1,5 @@
 {
+  "_classifier": "76a5ced69a0b65976c040f881d221fd9151dc9b5",
   "api-budget.py": {
     "blob": "fc9a0beef3596dfb9a0ecfd90a1707728ebf1dc9",
     "ever_verdict": false,
@@ -6,10 +7,22 @@
     "state": "NO-VERDICT-VOCAB"
   },
   "bootstrap-audit.py": {
-    "blob": "b18725bf9dc5fa232340b0bd1f1afe61f368b3e9",
+    "blob": "003e03d48fa2fdce5d8c45b80f14727e779c5227",
     "ever_verdict": true,
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
+  },
+  "branch-census.py": {
+    "blob": "8fc60c6581f79cf38479785a97b7117dc0effdb8",
+    "ever_verdict": true,
+    "selftest": "NO-SELF-TEST",
+    "state": "VERDICT-SEEN"
+  },
+  "check-freshness.py": {
+    "blob": "87226d819ac05e3a04c753b0bfcf1864a29f59ad",
+    "ever_verdict": false,
+    "selftest": "NO-SELF-TEST",
+    "state": "NO-VERDICT-VOCAB"
   },
   "ci-log-clean.py": {
     "blob": "d600398881d76be8b64f76762c09ba7a53a40375",
@@ -18,10 +31,16 @@
     "state": "ESTABLISHED-NOTHING"
   },
   "close-condition-scan.py": {
-    "blob": "5619d64ad2a522387142771e221dac3426674338",
+    "blob": "c4e4873c5c2d778d69a43b72a6a52d9dd5dbb8d6",
     "ever_verdict": true,
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
+  },
+  "codestrings.py": {
+    "blob": "c8ceaa0488fe6b6880322a510fe42b2388f80581",
+    "ever_verdict": false,
+    "selftest": "SELFTEST-PASS",
+    "state": "NO-VERDICT-VOCAB"
   },
   "daintree-control.py": {
     "blob": "f4279e20616d8227625ab7ea0a993c36a57fe3b4",
@@ -47,17 +66,29 @@
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
   },
+  "established.py": {
+    "blob": "11d9c2a3483cab2cbb80212f4bf0b9d6d53624e8",
+    "ever_verdict": false,
+    "selftest": "NO-SELF-TEST",
+    "state": "NO-VERDICT-VOCAB"
+  },
   "estate-provenance.py": {
-    "blob": "e1340f920060295994b5e6b8d78c5546aa522fa4",
+    "blob": "45de365830d06b265bd8eb44d658b4b23623a625",
     "ever_verdict": true,
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
   },
+  "estatenames.py": {
+    "blob": "3051e2f5126d82cdf8993e50881b894dbfdfc396",
+    "ever_verdict": false,
+    "selftest": "SELFTEST-PASS",
+    "state": "NO-VERDICT-VOCAB"
+  },
   "exists-anywhere.py": {
     "blob": "559434d7d0b2448f1c38d41451806e74cba4797a",
-    "ever_verdict": true,
+    "ever_verdict": false,
     "selftest": "SELFTEST-PASS",
-    "state": "VERDICT-SEEN"
+    "state": "ESTABLISHED-NOTHING"
   },
   "fleet-context.py": {
     "blob": "c5fad7bdb1b2eb5546bf32866bf8b980e9c04574",
@@ -72,9 +103,15 @@
     "state": "NO-VERDICT-VOCAB"
   },
   "fleet-state.py": {
-    "blob": "e9adf2874c3717f35ac51ef793a5720ac0d1b2d8",
+    "blob": "5b5d86d5fd7ecfe6918b9d1628bb49c63328de52",
     "ever_verdict": true,
     "selftest": "NO-SELF-TEST",
+    "state": "VERDICT-SEEN"
+  },
+  "gated-caller.py": {
+    "blob": "92b178dde4f7fd5b9c03c6845276aa535fd16ae5",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
   },
   "gh-complete.py": {
@@ -90,22 +127,34 @@
     "state": "ESTABLISHED-NOTHING"
   },
   "index-watch.py": {
-    "blob": "f04f94088ee2dcc66fcf241e5f4254b529ba2e61",
+    "blob": "3ce450109570de853f5f35751582e4afe9c1185f",
     "ever_verdict": true,
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
   },
   "issue-coverage.py": {
-    "blob": "b176341dcead745ead13e781d96b610fe00a88ac",
+    "blob": "e2c97bcd35ae4689572611ed6f0d7c3ecec3f630",
+    "ever_verdict": false,
+    "selftest": "NO-SELF-TEST",
+    "state": "NO-VERDICT-VOCAB"
+  },
+  "job-log.py": {
+    "blob": "010d9b0ab848f2ec46bded60ed5f5eb3427f939c",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "NO-VERDICT-VOCAB"
   },
   "label-exists.py": {
-    "blob": "52019034b5ede21dd41262359acbdc31ba6e2594",
+    "blob": "8eb18d860fe4d7a57d08dbc975bee4c458bc7a2e",
     "ever_verdict": false,
     "selftest": "SELFTEST-PASS",
     "state": "ESTABLISHED-NOTHING"
+  },
+  "landing-rate.py": {
+    "blob": "9e087a2114326583a9f09f4daccb9e15050e3de7",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
   },
   "marker-reachability.py": {
     "blob": "dea45f2392a4c7c6cddb9950e841fbb0fdf51cff",
@@ -131,6 +180,12 @@
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
   },
+  "pane-census.py": {
+    "blob": "cc1270eaa92c8ebc2ca5f447e311af73a392ab40",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
   "pipe-exit-scan.py": {
     "blob": "91e449f81640bd125a820c1310486ab50f200ff4",
     "ever_verdict": true,
@@ -143,8 +198,14 @@
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
   },
+  "population-leg.py": {
+    "blob": "92e7750a6f4724c4f6221a9ee77293867e876aa1",
+    "ever_verdict": false,
+    "selftest": "NO-SELF-TEST",
+    "state": "NO-VERDICT-IN-TIME"
+  },
   "pr-stack.py": {
-    "blob": "fa51b631b43e558c58202d9ce2aced96031b0176",
+    "blob": "e94cdbb9f64c602a16c299207dded9acd32e73ea",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "NO-VERDICT-VOCAB"
@@ -154,6 +215,12 @@
     "ever_verdict": true,
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
+  },
+  "probe-validity.py": {
+    "blob": "6d5e6bc88b3fb92f2e13fd1b38fa9acca5872c4b",
+    "ever_verdict": false,
+    "selftest": "SELFTEST-PASS",
+    "state": "ESTABLISHED-NOTHING"
   },
   "prompt-delivery.py": {
     "blob": "3eaf07038dd9c92cf8cb3078a7ee1d2f5d104a9e",
@@ -174,13 +241,25 @@
     "state": "VERDICT-SEEN"
   },
   "runmarker.py": {
-    "blob": "4f47f68514e968c8541a3bfa6b4b14638670ff90",
+    "blob": "c8a3b849e509b891faeb6a1f5ca204762b5284c8",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "NO-VERDICT-VOCAB"
   },
+  "runnable-condition.py": {
+    "blob": "072c828129eab5182be805e900483728e055b9b7",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
+  "states-index-check.py": {
+    "blob": "f9fbf5ca102eff53f60950eee21bd34969206034",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
   "stranded-branches.py": {
-    "blob": "a6b154193b2859fb78fe72eb28091b723f60267d",
+    "blob": "e73e89c86f119dec5321fa4927bd1a074520a1c5",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "NO-VERDICT-IN-TIME"
@@ -196,6 +275,12 @@
     "ever_verdict": true,
     "selftest": "NO-SELF-TEST",
     "state": "VERDICT-SEEN"
+  },
+  "truncation-guard.py": {
+    "blob": "05317d8162ffa4f7b24ed93b5989ba0c015e1159",
+    "ever_verdict": false,
+    "selftest": "SELFTEST-PASS",
+    "state": "ESTABLISHED-NOTHING"
   },
   "use-not-mention.py": {
     "blob": "1a86d4930e14e4cda043d5d80092869a29e9b322",
