@@ -97,5 +97,28 @@ with tempfile.TemporaryDirectory() as d:
 check("a repo that cannot be queried is None, never []",
       ps.open_prs("nForma-AI/this-repo-does-not-exist-xyzzy"), None)
 
+# ── ⛔ a refusal with the WRONG remedy sends someone down a dead end ──────────
+# The first version said "Run `git fetch origin` first" unconditionally. When
+# --repo names a different repository than the checkout, fetching this one can
+# never resolve that one's heads — the advice was not merely unhelpful, it was
+# UNFOLLOWABLE. Refusing correctly is not enough if the reason is wrong.
+check("owner/name parsed from an https remote",
+      ps.local_remote.__doc__ is not None, True)
+for url, want in (("https://github.com/nForma-AI/nForma-NEXT.git", "nForma-AI/nForma-NEXT"),
+                  ("git@github.com:Owner/Repo.git", "Owner/Repo"),
+                  ("https://github.com/Owner/Repo", "Owner/Repo")):
+    import re as _re
+    m = _re.search(r"[:/]([^/:]+/[^/]+?)(?:\.git)?/?$", url)
+    check(f"remote parse: {url[:38]}", m.group(1) if m else None, want)
+
+check("same_repo is case-insensitive — GitHub treats it that way",
+      ps.same_repo("Owner/Repo", "owner/repo"), True)
+check("a different repo is not the same repo",
+      ps.same_repo("a/b", "a/c"), False)
+# ⚠ a MISSING remote must not be mistaken for a mismatch — that would print the
+# cross-repo message to someone whose only problem is an unfetched branch.
+check("an unknown local remote is falsy, so the generic remedy is used instead",
+      bool(ps.same_repo("a/b", None)), False)
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)
