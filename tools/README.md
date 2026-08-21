@@ -94,12 +94,13 @@ runnable-condition.py    1a75706  2026-08-21 01:05   DECLARE
 is: **`--states` reads as *tell me the states*. It names a state SPACE.** ⇒ **The flag was never named
 for the reporting relation at all**, so the one that moved is the one whose name never fitted.
 
-★ **The fix was CONFORMANCE, not exemption.** `close-condition-scan.py` now emits a declaring
-`--states` *and* keeps its reporting behaviour under `--by-state`. ⛔ **An exemption would have
+★ **The fix is CONFORMANCE, not exemption.** ⚠ **In #499 — not yet on `main` when this was
+written** — `close-condition-scan.py` emits a declaring `--states` *and* keeps its reporting
+behaviour under `--by-state`. ⛔ **An exemption would have
 preserved the collision behind a special case** — which is what a ratchet keyed on the flag rather
 than the property would have forced.
 
-⚠ **And the declaration is emitted BEFORE any network call:** *a tool that cannot say what it CAN
+⚠ **And in that change the declaration is emitted BEFORE any network call:** *a tool that cannot say what it CAN
 report is worse than one that cannot report*, and **declaring a state space must never depend on
 reaching a forge.**
 
