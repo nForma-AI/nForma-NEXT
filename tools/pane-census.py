@@ -146,6 +146,7 @@ def live_transcripts(stale_min=STALE_MIN, base=None):
 def census(rows, transcripts, status_ids=None):
     """(exit_code, lines). Pure, so the controls can drive it with fixtures."""
     out, diverged = [], False
+    unchecked = []   # legs that established NOTHING; the verdict may not claim them
 
     if rows is None:
         return 2, ["  VOID  could not enumerate panes — established nothing about the fleet"]
@@ -157,8 +158,26 @@ def census(rows, transcripts, status_ids=None):
     titles = [r["title"] for r in rows]
     out.append(f"  panes (by id, the identity key): {len(ids)}")
 
-    # ⛔ SET comparison, not a count, wherever the namespaces agree.
-    if status_ids is not None:
+    # ⛔ THREE STATES, not two. DEV2's #456 finding, applied here: an EMPTY result from a
+    # second source is `exit 2` in a different costume — "established nothing YET" — and
+    # conflating it with a FINDING produces an alarm that is true every time and
+    # actionable never. Measured on this file as it shipped:
+    #
+    #     status_ids == []    -> exit 1, named ALL NINE panes as missing   FALSE FINDING
+    #     status_ids is None  -> exit 0, "✅ every source agrees"           FALSE GREEN
+    #
+    # ⛔ The second is the worse one and it was mine: with getStatus UNAVAILABLE the
+    # census claimed EVERY SOURCE AGREES on the strength of a source that never
+    # answered. Absence read as success, in the instrument written to refuse exactly
+    # that. ⇒ A leg that did not run must SUBTRACT from what the verdict may claim,
+    # never leave it unchanged.
+    if status_ids is None:
+        unchecked.append("terminal.getStatus did not answer — the set comparison did NOT run")
+    elif not status_ids:
+        unchecked.append("terminal.getStatus returned ZERO panes. A live fleet with zero "
+                         "panes is a broken query, not a divergence — this leg established "
+                         "nothing and is NOT reported as a mismatch")
+    else:
         a, b = set(ids), set(status_ids)
         only_list, only_status = sorted(a - b), sorted(b - a)
         if only_list or only_status:
@@ -219,6 +238,12 @@ def census(rows, transcripts, status_ids=None):
         out.append("  ⛔ UNESTABLISHED — a divergence is named above. This is a REFUSED "
                    "verdict, not a count of zero and not an all-clear.")
         return 1, out
+    if unchecked:
+        for u in unchecked:
+            out.append(f"  ----  NOT CHECKED: {u}")
+        out.append(f"  PARTIAL — {len(ids)} panes by the sources that ANSWERED; "
+                   f"{len(unchecked)} leg(s) established nothing. NOT 'every source agrees'.")
+        return 1, out
     out.append(f"  ✅ {len(ids)} of {len(ids)} — every source agrees, count established")
     return 0, out
 
@@ -239,8 +264,27 @@ def self_test():
         ["TEAMLEAD", "ARCHITECT", "DEVOPS", "DX", "DEV1", "DEV2", "DEV3", "DEV4", "DEV5"])]
     tr9 = [f"sess{i}" for i in range(9)]
 
-    rc, _ = census(nine, tr9)
-    chk("known-positive: 9 panes, 9 titles, 9 transcripts -> established", rc, 0)
+    ids9 = [r["id"] for r in nine]
+    rc, _ = census(nine, tr9, ids9)
+    chk("known-positive: all sources answered and agree -> established", rc, 0)
+
+    # ⛔ THE FALSE GREEN THIS FILE SHIPPED WITH. Before #456's pending-vs-failing split,
+    # a census with getStatus UNAVAILABLE returned 0 and printed "every source agrees" —
+    # claiming agreement across a source that never answered.
+    rc, lines = census(nine, tr9, None)
+    # ⚠ Assert on the ✅ VERDICT MARKER, not the phrase: the PARTIAL line quotes
+    #    "every source agrees" in order to DENY it, so a substring test matches its own
+    #    disclaimer. Use-vs-mention, in the control written to catch a false claim.
+    hit = rc == 1 and any("NOT CHECKED" in l for l in lines) \
+                  and not any(l.strip().startswith("✅") for l in lines)
+    chk("a leg that did NOT RUN cannot be counted as agreement", hit, True)
+
+    # ⛔ And its mirror: an EMPTY second source is 'established nothing YET', not a
+    # divergence. It previously named all nine panes as missing.
+    rc, lines = census(nine, tr9, [])
+    hit = rc == 1 and any("ZERO panes" in l for l in lines) \
+                  and not any("POPULATION MISMATCH" in l for l in lines)
+    chk("an EMPTY second source is NOT CHECKED, not a mismatch", hit, True)
 
     # ⛔ THE SHIPPED DEFECT, reproduced: one pane alive with no transcript.
     rc, lines = census(nine, tr9[:8])
@@ -306,7 +350,8 @@ def main():
     probe = [dict(r) for r in rows]
     probe[0] = dict(probe[0], title=probe[1]["title"])       # force a title collision
     neg_rc, _ = census(probe, live_transcripts())
-    pos_rc, _ = census(rows, [f"s{i}" for i in range(len(rows))])
+    pos_rc, _ = census(rows, [f"s{i}" for i in range(len(rows))],
+                       [r["id"] for r in rows])   # all legs answer, or it is PARTIAL
     print("\n  ⚠ this run's own controls, on these same rows:")
     print(f"       can report a GAP   : {'yes' if neg_rc == 1 else 'NO'} "
           f"(duplicated a title -> exit {neg_rc})")
