@@ -169,6 +169,45 @@ def blanket_runners():
     return dirs
 
 
+def tree_provenance(root=None):
+    """Which checkout produced this reading, and how far behind `origin/main` is it?
+
+    ⛔ WHY EVERY TOOL READING NEEDS THIS. A measurement of a tool is a measurement of a CHECKOUT.
+    Three panes hit that in one night, all published:
+        the doctrine watermark  — two live values, forked by working tree (TEAMLEAD, #183)
+        pane-census --help=1    — true in my worktree, already fixed on main (DEV1)
+        pane-census --help=0    — DEVOPS's correction of the above, taken from a tree 7 behind
+    ⇒ The third is the one that settles it: DEVOPS reported a property of their checkout as a
+      property of the repository MINUTES AFTER telling me that is what I had done. ★ The rule is
+      easy to state and very hard to apply to your own next reading, which is why it belongs in
+      the OUTPUT rather than in anyone's discipline.
+
+    ⚠ `index-watch.py` has carried this since #229 and `doctrine-watch.py` has it too. Measured
+    2026-08-21: 2 of 34 instruments state which tree answered. This is the third.
+
+    Returns a line, never None — "unknown" is stated, never silently omitted.
+    """
+    root = root or ROOT
+    def g(*a):
+        try:
+            r = subprocess.run(["git", *a], capture_output=True, text=True, cwd=str(root),
+                               timeout=20)
+            return r.stdout.strip() if r.returncode == 0 else None
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+    head = g("rev-parse", "--short", "HEAD")
+    if head is None:
+        return "  ---- TREE UNKNOWN — not a git checkout, or git did not answer. ⛔ This reading" \
+               " cannot be attributed to any revision."
+    behind = g("rev-list", "--count", "HEAD..origin/main")
+    if behind is None:
+        return f"  ---- tree {head}; distance to origin/main UNKNOWN — ⛔ not 'current'."
+    if behind == "0":
+        return f"  ---- tree {head} — level with origin/main."
+    return (f"  ---- ⚠ tree {head} is {behind} COMMIT(S) BEHIND origin/main. This reading is a"
+            f" property of THIS CHECKOUT, not of the repository.")
+
+
 def census(tools_dir=None, timeout=120):
     tools_dir = tools_dir or (ROOT / "tools")
     if not tools_dir.is_dir():
@@ -231,6 +270,7 @@ def census(tools_dir=None, timeout=120):
                f" DEDICATED suite running --self-test · {len(runner)} reached only by a"
                f" workflow-level runner · {len(reached)} imported but never self-tested ·"
                f" {len(orphan)} untouched")
+    out.append(tree_provenance())
     out.append("  ⚠ RUNNER is INVOCATION, not evidence. A blanket runner passes --self-test to"
                " every subject; whether a given tool's control DISCRIMINATES is a separate"
                " question this tool does not ask (see pretooluse-guard.py, invoked and"
@@ -368,6 +408,44 @@ def self_test():
                   f" yields none (got {sorted(got2)}) — NO CALLER stays reachable")
         finally:
             WORKFLOWS = _real_wf
+
+        # ⛔ TREE PROVENANCE, ALL THREE STATES. The BEHIND case is the whole point of the
+        # function, so it is synthesised rather than left unreachable — a control that can only
+        # observe "level" would pass forever on a laptop standing on main.
+        prov = Path(d) / "prov"
+        prov.mkdir()
+        def _g(*a):
+            subprocess.run(["git", *a], cwd=str(prov), capture_output=True, text=True)
+        _g("init", "-q")
+        _g("config", "user.email", "x@y.z"); _g("config", "user.name", "x")
+        (prov / "a.txt").write_text("one\n"); _g("add", "-A"); _g("commit", "-qm", "one")
+        first = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(prov),
+                               capture_output=True, text=True).stdout.strip()
+        (prov / "a.txt").write_text("two\n"); _g("add", "-A"); _g("commit", "-qm", "two")
+        second = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(prov),
+                                capture_output=True, text=True).stdout.strip()
+        _g("update-ref", "refs/remotes/origin/main", second)
+        _g("checkout", "-q", first)
+        line = tree_provenance(prov)
+        hit = "BEHIND" in line and " 1 COMMIT" in line
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a checkout 1 behind origin/main SAYS so — the"
+              f" state the function exists for is reachable")
+
+        _g("checkout", "-q", second)
+        line = tree_provenance(prov)
+        hit = "level with" in line
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a checkout level with origin/main says level —"
+              f" the branch is not a constant")
+
+        nongit = Path(d) / "nongit"
+        nongit.mkdir()
+        line = tree_provenance(nongit)
+        hit = "TREE UNKNOWN" in line
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a non-git directory is TREE UNKNOWN and SAYS the"
+              f" reading cannot be attributed — never silently omitted")
 
         empty.mkdir()
         rc, lines = census(tools_dir=empty, timeout=60)
