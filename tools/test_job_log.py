@@ -202,5 +202,28 @@ check("★ so no byte floor can catch both: 79 and 10,758 bracket every real log
 check("...and it is not JSON, not HTML, not empty — it reads like a status message",
       INPROG.strip().startswith("run "), True)
 
+
+# ── ⛔ "bytes" MUST MEAN BYTES ────────────────────────────────────────────────
+# This tool printed `len(log)` and called it bytes. len() on a str counts
+# CHARACTERS, and a CI log is full of ✅ ⛔ ─, so it understated by 110-124 on
+# every real log measured. Caught by a peer who refused to pin a fixture on a
+# number two fetches disagreed about (39,067 vs 38,950 — the 117 was the encoding,
+# not the fetch).
+#
+# ★ It mattered more here than it usually would: this tool's whole argument is that
+# SIZE IS NOT A WITNESS, and it prints a size anyway — the number people quote.
+# A number a tool PRINTS is used as evidence whether or not the tool calls it one.
+_MB = "2026-08-20T23:00:00.0Z ✅ done ⛔ ─────\n"
+check("KNOWN-BAD control: len() UNDERSTATES a multi-byte log",
+      len(_MB) < len(_MB.encode("utf-8")), True)
+# ⚠ 14, MEASURED — 2 extra bytes each for ✅ ⛔ and five ─. I first wrote 16 from
+#   arithmetic in my head and the suite caught it. Second time tonight a check
+#   caught me asserting a DERIVED number; both times the derivation was the error,
+#   not the code. ⇒ A test that only ever confirms what you predicted has no teeth.
+check("...and the gap is exactly the multi-byte characters",
+      len(_MB.encode("utf-8")) - len(_MB), 14)
+check("the real fixtures are multi-byte too, so this is not a toy case",
+      len(GCS.encode("utf-8")) >= len(GCS), True)
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)
