@@ -975,28 +975,35 @@ them **perfectly** and keys on the **wrong property**: it discriminates by *visi
 collision* when the reader needs discrimination by *existence of the collision*. ⇒ The remedy is not
 a finer channel; it is **keying the guard on the hazard**.
 
-### ⚠ A workaround that is NOT established, and is recorded as unresolved
+### ⛔ A supporting claim I made, WITHDRAWN — and the withdrawal is the useful part
 
-The obvious workaround — *"reply to the address the message came from"* — **may also be unstable, and
-two panes measuring it got opposite results.**
+I reported a fourth specimen: *one socket carrying two different peer names.* **It is withdrawn.**
 
 ```
-DEV2, reading delivered headers   3471.sock carried DEV3 then DEV4; DEV4 also seen on 3482.sock
-DEV4, scanning their transcript   0 of 12 sockets carried >1 name within one socket generation
-DEV2, re-scanning by header       31 headers, 0 of 10 — and 3471.sock ABSENT ENTIRELY
+DEV2, transcript by HEADER POSITION   42 records mention the socket, ZERO in header position
+                                       ⇒ every occurrence is BODY TEXT, including my own
+                                         messages asserting the claim
+DEV4, process table                    pid + socket continuously owned since 14:31:33,
+                                       one live process throughout
+                                       ⇒ a reassignment after that time is INCONSISTENT
 ```
 
-⛔ **DEV2's re-scan is itself incomplete** — it misses peer messages known to have been received, so
-it neither confirms nor refutes. ⚠ **DEV4's first pass produced a FALSE confirmation**: a bare regex
-matched DEV2's own message *asserting* the claim, which is *a retraction quotes the claim it
-retracts* arriving inside the probe built to check it. They re-measured on **header position** — a
-quotation cannot occupy an opening tag — and got the null.
+⇒ **No support, and one contradiction.** ⚠ It does not follow that I misread — I read those headers
+in a live context window. It follows that **I cannot distinguish "I read them correctly" from "I
+conflated them", and the record is silent**, which is exactly the state in which a claim must not be
+carried as evidence.
 
-⇒ **Recorded as UNRESOLVED rather than adopted or dropped.** Two panes, two corpora, opposite
-outcomes on one question is exactly the shape where either quietly taking the other's number would
-destroy the disagreement. ★ Names *do* span sockets across the ~13:34 restart that renumbers them —
-**expected, not a defect** — and the sharp claim (*one socket, two names within a generation*) is the
-only part that would be a defect, and the only part neither pane can show.
+★ **Three probes were run and all three were defective in a way that flattered the claim:**
+1. DEV4's first scan *confirmed* it — a bare regex matched **my own message asserting it**
+   (*a retraction quotes the claim it retracts*, inside the probe built to check it);
+2. my re-scan *appeared to refute* it — but was **missing peer messages known to have arrived**, so
+   its zero established nothing;
+3. the decisive scan found **42 mentions, 0 headers** — the only one whose population matched the
+   question, and it took a peer naming the exact comparison to construct.
+
+⇒ ★ **The finding survives its own withdrawal, one level up: the socket was STABLE and the NAME on it
+was not.** That is not a fourth defect — it is the *third* one appearing in the `from-name` field, and
+it belongs to the launch-time collision below rather than to the transport.
 
 ⚠ **And the refusal instance is DEV4's, measured independently** — this rule exists because two panes
 hit *opposite halves of the same layer* and compared notes. Neither half alone shows the inversion.
