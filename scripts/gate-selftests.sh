@@ -88,7 +88,13 @@ DECLARES_NONE="^# NO-SELF-TEST:"
 # tool that ACCEPTED a bogus flag. That is a claim about the FILE'S KIND, not about its control,
 # and it is the only reason to skip execution.
 NOT_EXECUTABLE="^# NOT-EXECUTABLE:"
-LIMIT="${SUBJ_TIMEOUT:-30}"
+# ⛔ TWO BUDGETS, because the two invocations answer different questions and one ceiling hides
+# the difference. A REFUSAL is an argument-parse decision and should be instant: a subject taking
+# ten seconds to reject an unknown flag has already STARTED DOING ITS WORK, which is the finding,
+# not a slow machine. A SELF-TEST legitimately takes longer — measured across the 44 tools/
+# instruments: 82s total, index-watch alone at 20s because its own control clones a repository.
+REFUSE_LIMIT="${REFUSE_TIMEOUT:-10}"
+LIMIT="${SUBJ_TIMEOUT:-60}"
 
 # ⚠ NO `timeout(1)`. It is absent on macOS by default and its absence exits 127 — which this
 # repository has already recorded once as a wrong reading. Portable poll instead; 124 matches
@@ -121,6 +127,7 @@ gate() {
     local broke_names="" unest_names="" unver_names="" hung_names="" declared_names="" why=""
     local f b rc grc
 
+    local _saved_limit="$LIMIT"
     for f in "$dir"/$glob; do
         [ -f "$f" ] || continue
         [ "$(basename "$f")" = "$(basename "$0")" ] && continue
@@ -169,8 +176,10 @@ gate() {
         # as an interpolated PATH. Both halves, or the control is satisfiable by coincidence.
         # ⇒ This is a MESSAGE CONTRACT on subjects, stated rather than assumed: all six current
         # subjects already satisfy it, so it costs nothing today and closes the ambiguity.
+        LIMIT="$REFUSE_LIMIT"
         run_it "$GARBAGE"
         grc=$?
+        LIMIT="$_saved_limit"
         gout=$(cat "$LOG" 2>/dev/null); rm -f "$LOG"
         # ⚠ THE TIMEOUT BRANCH IS FIRST. 124 is non-zero, so a hung subject would otherwise
         # fall into the refusal-text checks below and be classified by a message it never
@@ -213,8 +222,10 @@ gate() {
         # membership test accepts the flag and silently drops the rest, so the caller reads a
         # clean control result for an invocation half of which was ignored. Testing the garbage
         # flag ALONE cannot see it — and my own two gates failed this when I checked.
+        LIMIT="$REFUSE_LIMIT"
         run_it "$FLAG" "$GARBAGE"
         brc=$?
+        LIMIT="$_saved_limit"
         rm -f "$LOG"
         if [ "$brc" -eq 0 ]; then
             unver=$((unver + 1))
@@ -227,7 +238,30 @@ gate() {
 
         run_it "$FLAG"
         rc=$?
-        rm -f "$LOG"
+        fout=$(cat "$LOG" 2>/dev/null); rm -f "$LOG"
+        # ⛔ AN ARGPARSE REJECTION OF `--self-test` IS A DEFINITE ANSWER — "this tool has NO
+        # self-test" — and must not be read as UNESTABLISHED. #58's collision live inside the
+        # population being gated: DEV3 measured 12 tools with no self-test, of which EIGHT exit 2
+        # because argparse refused the flag and FOUR exit 2 for a third reason. Same code, three
+        # causes. ⇒ The REFUSAL TEXT separates them, and that is the CHEAPEST rung of
+        # docs/DEFECT-CLASSES.md:1019 — not a better probe, but a property of the interface
+        # answering the question directly.
+        if [ "$rc" -eq 2 ]; then
+            case "$fout" in
+                *"unrecognized arguments: $FLAG"*|*"unrecognised argument"*"$FLAG"*)
+                    if grep -q "$DECLARES_NONE" "$f"; then
+                        why=$(sed -n 's/^# NO-SELF-TEST: //p' "$f" | head -1)
+                        declared=$((declared + 1)); declared_names="$declared_names $b"
+                        echo "  ---- $b has NO self-test (the flag is REJECTED), declared: $why"
+                    else
+                        unest=$((unest + 1)); unest_names="$unest_names $b"
+                        echo "  ⚠ $b HAS NO SELF-TEST — it rejects \`$FLAG\` as unrecognised, a"
+                        echo "     DEFINITE answer, not an unestablished one. ⛔ It needs a"
+                        echo "        \`# NO-SELF-TEST: <reason>\` line, or a control."
+                    fi
+                    continue ;;
+            esac
+        fi
         if [ "$rc" -eq 124 ]; then
             hung=$((hung + 1)); hung_names="$hung_names $b"
             echo "  ⛔ $b TIMED OUT after ${LIMIT}s running its own control."
@@ -347,8 +381,12 @@ selftest() {
     esac
 
     out=$(gate "$d" 'd_none.py' 2>&1); rc=$?
-    check "a subject with NO self-test and NO declaration is UNESTABLISHED and blocks" 2 \
-          "UNESTABLISHED" "BLOCKING" "Undeclared absence"
+    # ⚠ The expected MESSAGE changed when the classification got sharper, and the change is the
+    # improvement: this planted subject REJECTS `--self-test` as unrecognised, so "has no
+    # self-test" is a DEFINITE answer rather than an unestablished one. The exit code did not
+    # move; what the run SAYS about it did.
+    check "a subject with NO self-test and NO declaration blocks, and is told it HAS none" 2 \
+          "HAS NO SELF-TEST" "DEFINITE answer" "BLOCKING"
 
     # ⛔ DECLARING IS NOT EXEMPTING — both directions, or the declaration is an off switch.
     { echo '#!/usr/bin/env python3'; echo '# NO-SELF-TEST: planted; it has no analyser to control'
@@ -356,7 +394,7 @@ selftest() {
     rm -f "$d/d_none.py"
     out=$(gate "$d" 'd_declared.py' 2>&1); rc=$?
     check "a DECLARED absence does not block, and the REASON is printed" 0 \
-          "declared in-file: planted; it has no analyser to control"
+          "declared: planted; it has no analyser to control"
     case "$out" in
         *"d_declared"*) echo "  ok    a declared subject is still NAMED — skipped, never silent" ;;
         *) echo "  FAIL  a declared subject vanished from the output"; ok=1 ;;
@@ -427,7 +465,7 @@ selftest() {
     printf '#!/usr/bin/env python3\nimport time\ntime.sleep(600)\n' > "$d/e_hangs.py"
     LIMIT=2
     out=$(gate "$d" 'e_hangs.py' 2>&1); rc=$?
-    LIMIT="${SUBJ_TIMEOUT:-30}"
+    LIMIT="${SUBJ_TIMEOUT:-60}"
     check "a subject that does not TERMINATE is TIMED OUT and blocks, never a pass" 2 \
           "TIMED OUT" "did not terminate"
     case "$out" in
