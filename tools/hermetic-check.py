@@ -175,6 +175,23 @@ def survey(tools_dir, timeout=180, quiet=False):
     lines.append("  ⚠ HERMETIC WITH RESPECT TO gh ONLY. This tool varies exactly one binary. A "
                  "suite reaching the network by another route — curl, urllib, a git remote — is "
                  "NOT covered and is not thereby clean.")
+    # ⛔ NAME THE BOUNDARY. This population is `<tools>/test_*.py`, NOT a recursive walk, and a
+    # reader of "N of N" takes N for the suite count. ⚠ Suites in subdirectories are not reported
+    # as leaky and not reported as clean — they are outside the sentence.
+    # ⇒ COUNTED, NEVER RUN. tools/teamlead/ is quarantined: not indexed, not silenced, and nobody
+    #   investigates it. A count and a directory name satisfy "not silenced" without indexing a
+    #   single file, and nothing here executes what it counts.
+    subs = []
+    for d in sorted(x for x in Path(tools_dir).iterdir()
+                    if x.is_dir() and x.name != "__pycache__"):
+        n = len(list(d.glob("test_*.py")))
+        if n:
+            subs.append((d.name, n))
+    if subs:
+        lines.append(f"  ⚠ POPULATION BOUNDARY: {sum(n for _, n in subs)} suite(s) live in"
+                     f" SUBDIRECTORIES and are OUTSIDE the count above — "
+                     + " · ".join(f"{name}/ {n}" for name, n in subs)
+                     + ". Counted, never run; not reported hermetic and not reported leaky.")
     lines.append(tree_provenance())
     return (1 if leaks else 0), lines
 
@@ -243,6 +260,19 @@ def self_test():
                   f"(rc={rc2}) — never 0, which would be a clean board from an unrun probe")
         finally:
             os.environ["PATH"] = real_path
+
+        # ⛔ THE BOUNDARY NEEDS BOTH DIRECTIONS. "the line appears" passes if it were
+        # unconditional; "no line when no subdir" passes if it never printed. Neither alone fails.
+        _, base = survey(str(td), timeout=60, quiet=True)
+        quiet = not any("POPULATION BOUNDARY" in l for l in base)
+        (td / "nested").mkdir()
+        (td / "nested" / "test_hidden.py").write_text(CLEAN)
+        _, withsub = survey(str(td), timeout=60, quiet=True)
+        named = any("POPULATION BOUNDARY" in l and "nested" in l for l in withsub)
+        ok &= quiet and named
+        print(f"  {'ok  ' if quiet and named else 'FAIL'}  a suite in a SUBDIRECTORY is named as "
+              f"outside the population, and the line is absent when there is none "
+              f"(absent={quiet}, named={named}) — never run, only counted")
 
         # ⛔ an empty population is VOID, not clean
         empty = Path(d) / "bare"
