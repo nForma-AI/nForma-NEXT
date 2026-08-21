@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fetch an Actions job log, or say you did not. A refusal greps as clean.
 
-⛔ MEASURED TWICE IN ONE NIGHT, both near-misses:
+⛔ MEASURED 2026-08-20/21, twice in one night, both near-misses:
 
   99 bytes   `gh run view --job N --log` without --allow-escape-sequences returns
              a refusal that reads as an empty log. A peer hit it on a 29KB file.
