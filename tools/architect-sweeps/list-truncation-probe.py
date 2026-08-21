@@ -21,6 +21,7 @@ Exit: 0 the reading is CHECKABLE (a stated total exists, or the limit was not re
       1 the reading may be a silent prefix and nothing states otherwise
       2 established nothing
 """
+import argparse
 import json, subprocess, sys
 
 REPO = "nForma-AI/nForma-NEXT"
@@ -30,7 +31,13 @@ def sh(*a):
     return r.returncode, r.stdout.strip()
 
 def main():
-    repo = sys.argv[1] if len(sys.argv) > 1 else REPO
+    ap = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
+    # ⛔ #506, and the sharper half: this took sys.argv[1] raw, so `--help` became the REPO and the
+    # tool issued a NETWORK QUERY against a repository named "--help". ⇒ Asking what the tool does
+    # PERFORMED the action -- the hazard #506 names for the IGNORED bucket, in my own instrument.
+    ap.add_argument("repo", nargs="?", default=REPO,
+                    help=f"owner/repo to probe (default: {REPO})")
+    repo = ap.parse_args().repo
     print(f"list-truncation probe — {repo}\n")
 
     rc, out = sh("gh", "api", f"search/issues?q=repo:{repo}+is:pr&per_page=1")

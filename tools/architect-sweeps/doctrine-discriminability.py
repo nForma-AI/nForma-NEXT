@@ -17,6 +17,7 @@ resolve to the convenient one — this establishes whether that path is ever rea
 Exit: 0 all versions mutually distinguishable · 1 at least one colliding pair
       2 established nothing (no versions resolved)
 """
+import argparse
 import subprocess, sys
 
 def git(*a):
@@ -24,7 +25,13 @@ def git(*a):
     return r.stdout if r.returncode == 0 else None
 
 def main():
-    path = sys.argv[1] if len(sys.argv) > 1 else "prompts/ARCHITECT.md"
+    ap = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
+    # ⛔ #506: this took sys.argv[1] raw, so `--help` was consumed as the PATH and the tool tried
+    # to read a file named "--help", exiting 2 -- which this repo's convention reads as
+    # "established nothing". Asking an instrument what it does must never be a measurement outcome.
+    ap.add_argument("path", nargs="?", default="prompts/ARCHITECT.md",
+                    help="the doctrine file to check (default: prompts/ARCHITECT.md)")
+    path = ap.parse_args().path
     log = git("log", "--all", "--format=%H", "--", path)
     if not log:
         print(f"VOID  no history for {path} — established nothing", file=sys.stderr)
