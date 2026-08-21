@@ -1724,6 +1724,38 @@ when the panes it notified read their files.)
   | `check-orientation.py` | reached | ⛔ no — says *un-struck*, never shows `~~…~~` or `FALSE` |
   | `fleet-state.py` | reached | ⛔ no — and its **unit** is unpublished (see below) |
 
+  ★ **SWEEP COMPLETED TO 11 OF 19, and the split is not about care — it is ENUMERATE vs SUMMARISE.**
+
+  | | instrument | form named |
+  |---|---|---|
+  | ✅ | `tools.yml` fleet-dependent step | reprints `$why` |
+  | ✅ | `doctrine-watch.py` | `watermark` ×22 |
+  | ✅ | `bootstrap-audit.py` | `ROLE-READY` ×9 |
+  | ✅ | `pipe-exit-scan.py` | names `PIPESTATUS` |
+  | ⛔ | `close-condition-scan` · `check-goal-conformance` · `check-orientation` · `fleet-state` · `tools.yml` hermetic step · `reference-check` · `index-watch` | 0 |
+
+  ⇒ **Every tool that PASSES enumerates its instances; every tool that FAILS prints a verdict or a
+  count.** Enumerating reprints the author's own text **for free** — the marker has to appear because
+  each instance is being named. ⛔ **Summarising is what strips the form out**, and it is the natural
+  thing to write when the finding is a number. ⇒ Same mechanism as the `$why` control, arriving from
+  the other side.
+
+  ⚠ **The distribution is UNEVEN, not low — 4 of 11 pass.** Reporting a percentage from the first
+  five would have published *"20%"* and been wrong about the shape. ⇒ **Do not report a rate before
+  you have the names.**
+
+  ⛔ **AND MY OWN SWEEP HARNESS COMMITTED THIS DOCUMENT'S CARDINAL ERROR.** It scored *any* nonzero
+  exit as *"failure path reached"*, so `grant-check.py` returning **2 — established nothing** was
+  recorded as having ANSWERED. ⇒ A VOID scored as a finding, by the instrument built to audit
+  instruments that mislead, and caught only by reading the exit codes rather than the verdicts.
+  **`grant-check.py` is therefore UNRESOLVED, not a pass.**
+
+  ⚠ **8 unrun or unresolved, with the cause named per instrument** — `population-leg` and
+  `stranded-branches` exceed a 90s cap (⇒ **an instrument nobody can run inside a working session is
+  an instrument that does not get run** — a mechanical cause, not a discipline one);
+  `prompt-delivery`, `readd-scan` and `runmarker` did not reach a failure path on live data;
+  `check-tools-index` needs a non-stale, non-shallow, CI-bearing fixture.
+
   ⚠ **13 unrun, and they are reported UNRUN rather than estimated.** `check-tools-index.py` is
   unresolved: it refuses outside a real repository (*"cannot derive this repo's identity"*), which is
   correct behaviour and a **bound on the sweep method**, not a defect.
