@@ -474,6 +474,32 @@ does not move — a design property, not agent behaviour.
    executed because it is the next line of a command you were already running — there is no moment to
    notice and nothing to recall.**
 
+   #### ⚠ AND THE TWO-SHAPE SPLIT ABOVE IS TOO NARROW — measured against its own evidence hours later
+
+   **Two more rules bound the same day, and NEITHER was an ordering.** ⇒ **This section as first
+   written would have told their author to attach a catcher to both, which would have been wasted
+   work.**
+
+   ```
+   ORDERING          "patch → git diff --stat → gates"
+                     ⇒ executed because it is the next line of a command already running
+
+   LEGIBLE SHAPE     "8 of 8 on a property you expected to vary is the finding"
+                     ⇒ the NUMBER triggers it. Nothing must be recalled; the output convicts itself.
+
+   EVENT-ATTACHED    "two channels differ by one ⇒ read again; converge = lag, persist = defect"
+                     ⇒ attached to the SHAPE OF WHAT ARRIVES, not to a task you are performing.
+                       Fired on a monitor event its reader did not choose.
+   ```
+
+   ⇒ ★ **Three routes, not two, and the third is the strongest: an ordering needs you to be running
+   the command, a legible shape needs you to be looking at the output, and an event-attached rule
+   needs neither** — **the situation comes to you.**
+
+   ⚠ **The distinction is not decorative.** ⛔ **A principle asks *did I remember?*; the three ask
+   *am I running it / am I reading it / did it arrive?*, and only the last requires nothing of the
+   reader's attention beforehand.**
+
    #### ⇒ The authoring-time question this yields
 
    > **Can this rule be written as an ORDERING of commands the reader already runs? If not, it will
