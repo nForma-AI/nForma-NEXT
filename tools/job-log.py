@@ -35,8 +35,30 @@ with open(_est) as _fh:
     exec(compile(_fh.read(), _est, "exec"), _m.__dict__)
 established, NotEstablished = _m.established, _m.NotEstablished
 
-# an Actions log line begins with an ISO instant — the format's own signature
-LOG_LINE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.?\d*Z\s", re.M)
+# A log line begins with an ISO instant — the format's own signature. Optionally
+# behind an ANSI colour run, because --allow-escape-sequences preserves them.
+#
+# ⛔⛔ BOTH OBVIOUS ANCHORINGS ARE WRONG, AND IN OPPOSITE DIRECTIONS. Measured
+# 2026-08-21 across six real bodies from four channels:
+#
+#                        DEV4's `gh run view --log`   platform "no entries"
+#     ^ISO   (anchored)  REFUSES EVERY REAL LOG       refuses           ✅
+#     ISO    (free)      accepts                      ACCEPTS A REFUSAL ⛔
+#     (^|\t)ISO          accepts                      refuses           ✅ both
+#
+# ⇒ Free-text search is too loose: the platform body echoes its own query filter,
+#   which CONTAINS an ISO instant — `… AND timestamp>="2026-08-21T00:36:12Z"` —
+#   so an unanchored search calls a refusal a valid log.
+# ⇒ Line-start is too tight: `gh run view --log` prefixes every line
+#   `<job>\t<step>\t<ISO> <text>`, so the instant is the THIRD tab-separated
+#   field. A peer built exactly this and their KNOWN-GOOD control caught it — a
+#   real 454-line log matched ZERO lines. Fail-closed, safe, and useless forever.
+#
+# ★ So the timestamp must sit at a FIELD boundary: line start or after a tab.
+#   Neither fixture alone locates that rule; it took a refusal that contains an
+#   instant and a real log that does not start with one.
+LOG_LINE = re.compile(
+    r"(?:^|\t)(?:\x1b\[[0-9;]*m)*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.?\d*Z\s", re.M)
 
 
 def witnessed(body):
@@ -54,11 +76,48 @@ def witnessed(body):
             msg = s[:90]
         return established(None, False, f"the body is a JSON error, not a log: {msg!r}")
     if not LOG_LINE.search(s):
-        return established(None, False, "no line carries an ISO timestamp — an Actions "
-                                        "log always does, so this is not one. A refusal, "
-                                        "an HTML error page and a truncated stream all "
-                                        "grep as zero matches.")
+        return established(None, False, "no line carries an ISO timestamp — a job log "
+                                        "always does, on every channel that serves one, "
+                                        "so this is not one. A rate-limit JSON, a gsutil "
+                                        "reauth traceback, an HTML error page, an empty "
+                                        "file and a truncated stream all grep as zero "
+                                        "matches.")
     return s
+
+
+def fetch_gcs(uri):
+    """A GCS object body, or None. ⛔ gsutil's refusal is 10,758 BYTES — a full Python
+    traceback ending in ReauthUnattendedError. Bigger than plenty of real job logs, so
+    any "small body means refusal" heuristic waves it straight through. Measured."""
+    try:
+        r = subprocess.run(["gsutil", "cat", uri],
+                           capture_output=True, text=True, timeout=180)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    # ⚠ gsutil prints its traceback on STDERR and exits 1, but prints partial output on
+    # stdout in other failure modes. Hand BOTH to the witness rather than choosing here —
+    # choosing is how a refusal gets discarded and re-read as an empty success.
+    return (r.stdout or "") + (r.stderr or "") or None
+
+
+def read_body(path):
+    """A body produced by ANY channel, witnessed the same way.
+
+    ⇒ The channels are not enumerable. GitHub REST, GCS and the platform API all serve
+    the same evidence and all three refuse differently; a guard that hardcodes them
+    hardens the ones it knows and leaves the next one bare. So this takes a file (or -
+    for stdin) and applies the same three witnesses to whatever produced it.
+
+    ⚠ If you pipe into this, the producer's exit code is already gone. That is fine —
+    the witnesses never consult it — but do not then report the PIPELINE's status as the
+    fetch's status."""
+    try:
+        if path == "-":
+            return sys.stdin.read() or None
+        with open(path, errors="replace") as fh:
+            return fh.read() or None
+    except OSError:
+        return None
 
 
 def fetch(repo, job_id):
@@ -77,16 +136,32 @@ def fetch(repo, job_id):
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--repo", required=True)
-    ap.add_argument("job_id")
+    src = ap.add_mutually_exclusive_group(required=True)
+    src.add_argument("--repo", help="owner/name — fetch an Actions job log (needs job_id)")
+    src.add_argument("--gcs", metavar="URI", help="gs://… object, fetched with gsutil cat")
+    src.add_argument("--witness-file", metavar="PATH",
+                     help="witness a body ANY channel produced; - for stdin")
+    ap.add_argument("job_id", nargs="?")
     ap.add_argument("--grep", action="append", default=[],
                     help="pattern to count; repeatable. Counts are only printed for "
                          "a WITNESSED log — never over a refusal.")
+    ap.add_argument("--show-lines", type=int, default=3,
+                    help="matching lines to print per --grep pattern (0 = counts only). "
+                         "A count invites a conclusion; a line lets you check it.")
     a = ap.parse_args()
 
-    log = witnessed(fetch(a.repo, a.job_id))
+    if a.repo:
+        if not a.job_id:
+            ap.error("--repo needs a job_id")
+        body, where = fetch(a.repo, a.job_id), f"{a.repo} job {a.job_id}"
+    elif a.gcs:
+        body, where = fetch_gcs(a.gcs), a.gcs
+    else:
+        body, where = read_body(a.witness_file), a.witness_file
+
+    log = witnessed(body)
     if isinstance(log, NotEstablished):
-        print(str(log))
+        print(f"{log}  [{where}]")
         print("   ⛔ No counts are printed. A grep over a refusal returns 0 for every "
               "pattern,\n      and 0 matches reads as 'the signature is absent'.")
         return 2
@@ -94,7 +169,21 @@ def main():
     print(f"✅ witnessed log: {len(log)} bytes, "
           f"{len(LOG_LINE.findall(log))} timestamped line(s)")
     for pat in a.grep:
-        print(f"  {len(re.findall(pat, log, re.I)):5d}  {pat}")
+        hits = [l for l in log.splitlines() if re.search(pat, l, re.I)]
+        print(f"  {len(hits):5d}  {pat}")
+        # ⛔ A COUNT INVITES A CONCLUSION; A LINE LETS YOU CHECK IT. Measured by a
+        # peer the same night: `--grep 402` on a B1b failure returned 16, and they
+        # were one message from reporting "16 x 402 confirms the funding story".
+        # Nine of those were HEX — `setup-python@a26af69be951a213d495a4c3e4e4022e16d87065`
+        # contains "402", and an Actions log is full of SHAs. The true answer was 3,
+        # one per Console backend. They caught it ONLY by asking for the lines.
+        # ⚠ And an Actions log contains the step's OWN SCRIPT, so any phrase the
+        # workflow quotes matches every run of it: their `UNREACHABLE` counted 1
+        # against a RUNTIME count of 0.
+        for l in hits[:a.show_lines]:
+            print(f"         │ {l.strip()[:150]}")
+        if len(hits) > a.show_lines:
+            print(f"         └ … {len(hits) - a.show_lines} more (--show-lines)")
     if not a.grep:
         sys.stdout.write(log)
     return 0

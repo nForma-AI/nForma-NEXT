@@ -184,7 +184,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `api-budget.py` | who is spending the shared GitHub quota? | 0 pool has room · 1 EXHAUSTED · **2 established nothing** |
 | `check-freshness.py` | is this red evidence about NOW, or about a world that ended? | 0 no current reds · 1 current reds exist · **2 established nothing** |
 | `established.py` | is this zero a finding, or did nothing look? | *(a library — imported, not run)* |
-| `job-log.py` | fetch an Actions job log, or say you did not | 0 witnessed · **2 refused (no log to read)** |
+| `job-log.py` | fetch a job log from ANY channel, or say you did not | 0 witnessed · **2 refused (no log to read)** |
 | `transition-report.py` | did the fleet ANNOUNCE its transitions, or only declare them? | 0 audited · **2 the control failed** |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
 | `doctrine-version.py` | which version of its role prompt is each agent running? | 0 every resolvable transcript current · 1 currency **UNPROVEN** for at least one (`LAUNCH-ONLY` or `SAW-LATER`) — ⚠ **not "stale"** · **2 established nothing** · ⇒ `--states` emits the list |
@@ -818,6 +818,33 @@ should be quoted as if it did.
 **`established.py`** — ⛔ **four instruments needed this in one day**, each rediscovering it and each shipping without it first: **0 API calls** read as restraint (the meter was *exhausted*), **0 current red checks** read as a clean board (*nothing had re-run*), **0 untouched issues** read as full coverage (*the query failed*), **0 conflicts** read as no collisions (*the heads were never fetched*). ★ **The shape, once instead of four times: an observation is `OUTCOME ∧ EXECUTION`**, and when the execution did not happen the outcome is not a reading — **the number looks identical in both cases.** ⚠ **And every one fails toward reassurance**, which is why it has to be structural rather than remembered: nobody double-checks a clean result, and that is exactly when it fires. ⇒ A refusal is **falsy but not `None` and not `== 0`**, so `if result:` skips it and `is None` / `== 0` do not silently absorb it. ⚠ **A stated limit, pinned in the suite rather than discovered later:** `or 0` still defeats it — falsiness is exactly what makes `if` safe and `or` unsafe, and no value is both. Use `isinstance(x, NotEstablished)`. ⛔ And the witness must be about the **execution**, never the value: `established(0, count == 0, …)` is always-true nonsense, kept as a known-bad control because it cannot be detected at runtime.
 
 **`job-log.py`** — ⛔ **a refusal is TEXT, and every grep over it returns zero.** Measured twice in one night: a **99-byte** refusal when `--allow-escape-sequences` is omitted (a peer hit it on a 29KB log), and a **535-byte JSON 403** when the pool drained *mid-loop* — five job logs fetched, greped for a failure signature, and **all five reported `unreach=0` and no provider**. A clean sweep produced entirely by refusals; the successful fetch of the same job was **46,922 bytes**. ⇒ **Three independent witnesses**, because each alone has a hole: the fetch exiting 0 (`gh` exits 0 on some refusals), the body not being a JSON error (a truncated log is not JSON either), and **a line carrying an ISO timestamp** — which every Actions log has and no refusal, empty file or HTML error page does. ⚠ **Size is deliberately NOT a witness**: 99 and 535 are both small, but so is a genuinely short job log, and a threshold would invent a boundary the data does not have. ★ Counts are printed **only for a witnessed log** — never over a refusal, because 0 matches reads as *the signature is absent* rather than *there is no log here*.
+
+⛔ **FOUR CHANNELS SERVE THE SAME EVIDENCE AND ALL FOUR REFUSE DIFFERENTLY** (measured 2026-08-21, all four captured as real fixtures rather than written by hand):
+
+| channel | refusal | size | why it fools you |
+|---|---|---|---|
+| GitHub REST | `API rate limit exceeded` | 295 B | JSON, greps clean |
+| GitHub REST, no `--allow-escape-sequences` | message on **stderr** | **99 B, stdout 0 B** | `> out.log` writes a **zero-byte file** and the reason lands in a stream nobody captures |
+| GCS `gsutil` | `ReauthUnattendedError` traceback | **10,758 B** | **larger than many real logs** |
+| Platform API | `# No log entries found …` | 277 B | **echoes a filter containing an ISO instant** |
+
+⛔⛔ **AND BOTH OBVIOUS ANCHORINGS ARE WRONG, IN OPPOSITE DIRECTIONS.** Measured across six real bodies:
+
+| | `gh run view --log` (real log) | platform "no entries" (refusal) |
+|---|---|---|
+| `^ISO` line-start | ⛔ **refuses every real log** | ✅ refuses |
+| `ISO` free-text | ✅ accepts | ⛔ **accepts a refusal** |
+| `(^\|TAB)ISO` field boundary | ✅ accepts | ✅ refuses |
+
+The platform body carries `timestamp>="2026-08-21T00:36:12Z"` **inside its own echoed query filter**, so free-text search calls a refusal a log. And `gh run view --log` prefixes every line `<job>⇥<step>⇥<ISO> <text>`, so the instant is the **third tab-separated field** — a peer built the line-start version and their **known-good control** caught it: a real 454-line log matched **zero** lines. Fail-closed, safe, and useless forever. ★ **Neither fixture alone locates the rule** — it took a refusal that contains an instant *and* a real log that does not start with one. ⇒ The timestamp must sit at a **field boundary**.
+
+★★ **And the size fixtures bracket every real log from both ends:** the 81-byte `run … is still in progress` body (exit **0**, one line, defeats `[ ! -s ]`) and the 10,758-byte gsutil traceback. **No byte floor can be set anywhere that catches both.**
+
+★★ **Two of those are known-bad controls that kill the obvious guards.** The gsutil refusal at **10,758 bytes** is bigger than plenty of real job logs, so any *"a refusal is short"* byte floor waves it straight through — which is precisely why size is not a witness. And the platform body contains `timestamp>="2026-08-21T00:36:12Z"` **inside its own echoed query filter**, so an *unanchored* ISO search calls a refusal a valid log: **the `^` anchor in `LOG_LINE` is the entire difference**, and a test now pins both directions.
+
+⇒ **So the guard stopped enumerating channels.** `--witness-file PATH` (or `-` for stdin) applies the same three witnesses to a body **whatever produced it**, alongside `--gcs URI`. A peer reported a **fourth** channel the same night — `gh run view --log` returns a near-empty body with **exit 0** while the *run* (not the job) is still in progress, defeating their `[ ! -s ]` guard because one line is technically non-empty. ★ **A guard that hardcodes its channels hardens the ones it knows and leaves the next one bare.**
+
+⛔ **A COUNT INVITES A CONCLUSION; A LINE LETS YOU CHECK IT** — so `--grep` now prints matching lines (`--show-lines`, default 3). Measured: a peer asked for `--grep 402` on a B1b failure and got **16**, and was one message from reporting *"16 × 402 confirms the funding story"*. Nine were **hex** — `setup-python@a26af69be951a213d495a4c3e4e4022e16d87065` contains `402`, and an Actions log is full of SHAs. The true answer was **3**, one per Console backend. ⚠ Same file, same trap in another form: their `UNREACHABLE` counted **1** against a runtime count of **0**, because **an Actions log contains the step's own script**, so any phrase the workflow quotes matches every run of it. ⇒ The natural things to grep in an infra log are short numeric tokens (`402`, `403`, `500`, `75`) and hex is ambient.
 
 **`transition-report.py`** — the STATE line is a **pull**; the role prompts also require a
 **push** on transition into `FREE` or `BLOCKED`, and this is that rule's execution record. Built
