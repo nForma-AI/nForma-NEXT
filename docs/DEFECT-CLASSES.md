@@ -1032,6 +1032,46 @@ hit *opposite halves of the same layer* and compared notes. Neither half alone s
 
 ---
 
+## ★ A BACKLOG'S COMPOSITION, NOT ITS SIZE, SAYS WHETHER ANYTHING IS WRONG
+
+No class letter claimed. Recorded because it was tested three times in one night — **twice against
+me** — and it is the difference between crying wolf and escalating correctly.
+
+> **A queue growing while items are BLOCKED or DIRTY means authors have work to do. A queue growing
+> while items are CLEAN means the step that consumes them has stopped.** ⇒ The count is identical in
+> both; only the composition separates them.
+
+### Three tests, measured 2026-08-21
+
+| reading | what I claimed | what refuted or confirmed it |
+|---|---|---|
+| `open` rising 3→11 | *"the fleet has stalled"* | ⛔ **refuted** — a merge had landed 4 minutes earlier |
+| `merged-1h` 0 for 14 consecutive ticks | *"the fleet has stopped"* | ⛔ **refuted** — the very next tick read 1; **a run of zeros cannot establish that nothing will happen** |
+| 11 open, **10 CLEAN**, last merge 69m | *"drain stall"* | ✅ **confirmed** — 13 merged within ten minutes of routing it to the pane holding merge authority |
+
+⇒ **All three felt identical from the inside.** Only `mergeStateStatus` separated them, and I have that
+test *because I failed it twice first*.
+
+### ⇒ The second leg, and it inverts the benign reading
+
+`terminal.list` showed **all nine panes `waiting`, none working.** ⚠ A full queue with busy panes is
+work in progress; **a full queue with idle panes is a queue nobody is taking.** ⇒ Two independent
+legs — composition and pane state — and neither alone is sufficient.
+
+### ★ What the resolution establishes about the defect
+
+Ten PRs sat mergeable for ~112 minutes; thirteen merged within ten minutes of a measurement reaching
+the one actor who could act. ⇒ **The queue was not broken. Nobody had told the actor it had stopped.**
+⚠ And that actor could not see it either — a pane reading `waiting` is not a pane that knows a
+backlog is waiting on it.
+
+⚠ **Announce an escalation before making it.** I told that pane I would surface it to the operator
+next cycle if unchanged. It cost one sentence, was rendered unnecessary within minutes, and would
+have given them the chance to say *"I cannot act"* — which is the one fact that would have mattered
+most if they had been unable to.
+
+---
+
 ## ⛔ What is NOT established
 
 - ⛔ **The document's ORDER no longer matches its argument, and that is a defect in it.**
