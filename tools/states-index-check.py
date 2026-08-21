@@ -46,16 +46,76 @@ def row_exits(readme_text, toolname):
     return None, None
 
 
+
+def emit_row(path, question):
+    """⇒ #39's other half: PRODUCE the row from the tool rather than transcribe it.
+
+    ⛔ A verified transcription is not a generated row. `states-index-check` (as first written)
+    DETECTED drift; this makes the committed text an OUTPUT of the producer, so the two cannot
+    disagree without the generator being re-run and the diff showing it.
+    """
+    p = subprocess.run([sys.executable, path, "--states"], capture_output=True, text=True,
+                       timeout=60)
+    if p.returncode != 0:
+        return None
+    exits = []
+    for line in p.stdout.splitlines():
+        parts = line.split("\t")
+        if len(parts) == 3 and parts[0] == "EXIT":
+            exits.append(f"{parts[1]} {parts[2]}")
+    if not exits:
+        return None
+    name = os.path.basename(path)
+    return (f"| `{name}` | {question} | " + " · ".join(exits)
+            + " | ⚙ GENERATED-FROM: --states |")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog=__doc__)
     ap.add_argument("--repo", default=".")
     ap.add_argument("--self-test", action="store_true")
+    ap.add_argument("--emit", metavar="TOOL",
+                    help="print the canonical README row for TOOL, generated from its --states")
+    ap.add_argument("--verify", action="store_true",
+                    help="regenerate every row marked GENERATED-FROM and compare byte-for-byte")
     a = ap.parse_args()
     print("NFORMA-RUN states-index-check", file=sys.stderr)
     if a.self_test:
         return self_test()
+    if a.verify:
+        # ⛔ THE MARKER IS A CLAIM. Without this, `⚙ GENERATED-FROM: --states` asserts the row was
+        #    produced by the generator and NOTHING re-runs it — a name carrying its method only
+        #    because someone typed it (#437). This regenerates and compares byte-for-byte.
+        text = open(os.path.join(a.repo, "tools", "README.md")).read()
+        marked = [l for l in text.splitlines() if "GENERATED-FROM: --states" in l]
+        if not marked:
+            print("⛔ VOID  no row claims to be generated — ESTABLISHED NOTHING.", file=sys.stderr)
+            return 2
+        bad = 0
+        for line in marked:
+            m = re.match(r"\| `([a-z0-9-]+\.py)` \| (.*?) \|", line)
+            if not m:
+                print(f"  ⛔ UNPARSEABLE  {line[:60]}"); bad += 1; continue
+            fresh = emit_row(os.path.join(a.repo, "tools", m.group(1)), m.group(2))
+            if fresh is None:
+                print(f"  ⛔ VOID        {m.group(1)}: --states emitted nothing"); bad += 1
+            elif fresh.strip() != line.strip():
+                print(f"  ⛔ NOT GENERATED  {m.group(1)}: committed row differs from regenerated")
+                bad += 1
+            else:
+                print(f"  ✅ GENERATED   {m.group(1)}: byte-identical to its regeneration")
+        print(f"\n  rows claiming generation: {len(marked)} · verified: {len(marked)-bad}")
+        return 1 if bad else 0
+    if a.emit:
+        row = emit_row(a.emit, "which version of its role prompt is each agent running?"
+                       if "doctrine-version" in a.emit else "<question>")
+        if row is None:
+            print("⛔ VOID  that tool emitted no EXIT lines — ESTABLISHED NOTHING.", file=sys.stderr)
+            return 2
+        print(row)
+        return 0
 
     tools_dir = os.path.join(a.repo, "tools")
     readme = os.path.join(tools_dir, "README.md")
