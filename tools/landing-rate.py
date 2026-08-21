@@ -40,7 +40,7 @@ import argparse, datetime, json, subprocess, sys
 STALL_MIN = 30
 
 
-def classify(total, mergeable, conflicting, unknown, mins, stall=STALL_MIN):
+def classify(total, mergeable, conflicting, unknown, mins, stall=STALL_MIN, blocked=0):
     """Pure decision. No repository, no network — so the suite can drive every branch.
 
     Returns (exit_code, verdict, because).
@@ -48,12 +48,26 @@ def classify(total, mergeable, conflicting, unknown, mins, stall=STALL_MIN):
     if mins is None:
         return 2, "VOID", ("no landing timestamp — the forge did not answer. This "
                            "ESTABLISHES NOTHING about throughput and is not a clean bill.")
-    split = f"{total} open = {mergeable} MERGEABLE / {conflicting} CONFLICTING / {unknown} UNKNOWN"
+    split = (f"{total} open = {mergeable} MERGEABLE / {blocked} BLOCKED / "
+             f"{conflicting} CONFLICTING / {unknown} UNKNOWN")
     if total == 0:
         return 0, "EMPTY", f"{split}. Nothing is open — an empty board, not a blocked one."
     if unknown == total:
         return 0, "RECOMPUTE", (f"{split}. Every open PR is UNKNOWN — a recompute window, "
                                 "not a verdict. Establishes nothing yet.")
+    # ⛔ THE THIRD SHAPE, and this gauge read it as the first. Reported by TEAMLEAD 2026-08-21:
+    #    #499 had `mergeable: MERGEABLE` and `mergeStateStatus: BLOCKED`, its one required check
+    #    ("hermetic suites (gating)", the sole entry in branch protection's contexts) FAILING for
+    #    four hours. ⇒ This tool classified on `mergeable`, which answers "would git conflict",
+    #    and reported "1 MERGEABLE ... the merger-absence shape" about a PR NOBODY could merge.
+    # ★ An empty merge-eligible queue is NOT an absent merger and NOT a rebase blocker. It is a
+    #    third state, and naming it as a stall misroutes it to the merger exactly as the
+    #    all-CONFLICTING case does.
+    if mergeable == 0 and blocked > 0 and conflicting == 0:
+        return 0, "NOTHING-ELIGIBLE", (
+            f"{split}. ZERO merge-eligible: all {blocked} open PR(s) are BLOCKED by a required "
+            "check. This is NOT a merger-absence stall — nothing is waiting on a merger, and the "
+            "work is with each PR's author. ⚠ A gap here is an empty queue, not a slow one.")
     if mergeable == 0 and conflicting > 0:
         return 0, "NO-MERGE-POSSIBLE", (
             f"{split}. ZERO mergeable: all {conflicting} open PR(s) are CONFLICTING. "
@@ -128,7 +142,7 @@ def main():
     merged = gh_json(["pr", "list", "-R", a.repo, "--state", "merged", "--limit", "60",
                       "--search", "sort:updated-desc", "--json", "number,mergedAt"])
     openp = gh_json(["pr", "list", "-R", a.repo, "--state", "open", "--limit", "100",
-                     "--json", "number,mergeable"])
+                     "--json", "number,mergeable,mergeStateStatus"])
     if merged is None or openp is None or not merged:
         code, verdict, because = classify(0, 0, 0, 0, None)
         print(f"  {verdict}  {because}", file=sys.stderr)
@@ -138,11 +152,18 @@ def main():
     t = datetime.datetime.strptime(last["mergedAt"], "%Y-%m-%dT%H:%M:%SZ").replace(
         tzinfo=datetime.timezone.utc)
     mins = int((datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() // 60)
-    M = sum(1 for p in openp if p["mergeable"] == "MERGEABLE")
+    # ⚠ TWO FIELDS, TWO QUESTIONS, and using one for both was the defect.
+    #    `mergeable`        -> would GIT conflict.   Correct for the CONFLICTING leg. Unchanged.
+    #    `mergeStateStatus` -> MAY this merge.       The only field that answers the stall question.
+    # ★ UNSTABLE counts as eligible: it means a NON-required check is pending or red, and a merge
+    #    on UNSTABLE is legitimate — TEAMLEAD merged #525 on exactly that, correctly.
     C = sum(1 for p in openp if p["mergeable"] == "CONFLICTING")
-    U = len(openp) - M - C
+    rest = [p for p in openp if p["mergeable"] != "CONFLICTING"]
+    M = sum(1 for p in rest if p.get("mergeStateStatus") in ("CLEAN", "UNSTABLE", "HAS_HOOKS"))
+    B = sum(1 for p in rest if p.get("mergeStateStatus") in ("BLOCKED", "DIRTY", "BEHIND", "DRAFT"))
+    U = len(openp) - M - C - B
 
-    code, verdict, because = classify(len(openp), M, C, U, mins, a.stall_min)
+    code, verdict, because = classify(len(openp), M, C, U, mins, a.stall_min, B)
     print(f"  last landing  #{last['number']} at {last['mergedAt']} ({mins}m ago)")
     print(f"  {verdict}  {because}")
     print("\n⚠ A gap is not a cause: this cannot tell an absent merger from a deliberate")

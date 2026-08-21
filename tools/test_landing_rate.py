@@ -40,8 +40,8 @@ def check(label, got, want):
         FAILED += 1
 
 
-def v(total, m, c, u, mins, stall=30):
-    return lr.classify(total, m, c, u, mins, stall)[1]
+def v(total, m, c, u, mins, stall=30, blocked=0):
+    return lr.classify(total, m, c, u, mins, stall, blocked)[1]
 
 
 print("★ regression — the two verdicts this gauge got WRONG in production:")
@@ -59,6 +59,21 @@ check("exactly at the threshold", v(5, 5, 0, 0, 30), "STALLED")
 
 print("\n⛔ states that must never be read as calm:")
 check("no timestamp is VOID, not clean", v(5, 5, 0, 0, None), "VOID")
+
+# ⛔ THE THIRD SHAPE — the live instance, 2026-08-21. #499 read `mergeable: MERGEABLE` and
+# `mergeStateStatus: BLOCKED` with its one required check red for four hours, and this gauge
+# called it "1 mergeable ... the merger-absence shape". Nobody could merge it.
+check("all-BLOCKED at 200m is NOT a merger stall", v(1, 0, 0, 0, 200, 30, 1), "NOTHING-ELIGIBLE")
+check("all-BLOCKED exits 0, not 1", lr.classify(1, 0, 0, 0, 200, 30, 1)[0], 0)
+check("the split NAMES the blocked count", "1 BLOCKED" in lr.classify(1, 0, 0, 0, 200, 30, 1)[2], True)
+
+# ⚠ THE KNOWN-NEGATIVE FOR THE FIX ITSELF. Silencing a false positive by silencing the
+# detector would pass every check above. A genuinely stalled board must STILL be STALLED.
+check("a real stall is UNCHANGED by this fix", v(5, 5, 0, 0, 63, 30, 0), "STALLED")
+check("mergeable AND blocked together is still a stall", v(3, 2, 0, 0, 63, 30, 1), "STALLED")
+
+# ⛔ CONFLICTING keeps its own leg — that one reads `mergeable` and was correct as written.
+check("all-CONFLICTING is still its own verdict", v(4, 0, 4, 0, 200, 30, 0), "NO-MERGE-POSSIBLE")
 check("VOID exits 2", lr.classify(5, 5, 0, 0, None)[0], 2)
 check("all-UNKNOWN is a recompute window", v(5, 0, 0, 5, 99), "RECOMPUTE")
 check("empty board is not a blocked one", v(0, 0, 0, 0, 500), "EMPTY")
