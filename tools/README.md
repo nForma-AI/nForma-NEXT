@@ -187,7 +187,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `job-log.py` | fetch a job log from ANY channel, or say you did not | 0 witnessed · **2 refused (no log to read)** |
 | `transition-report.py` | did the fleet ANNOUNCE its transitions, or only declare them? | 0 audited · **2 the control failed** |
 | `bootstrap-audit.py` | did the pane EXECUTE its bootstrap, or only declare it? | 0 clean · 1 negative · **2 unauditable** · **3 known-positive failed** |
-| `doctrine-version.py` | which version of its role prompt is each agent running? | 0 every resolvable transcript current · 1 currency **UNPROVEN** for at least one (`LAUNCH-ONLY` or `SAW-LATER`) — ⚠ **not "stale"** · **2 established nothing** · ⇒ `--states` emits the list |
+| `doctrine-version.py` | which version of its role prompt is each agent running? | 0 every resolvable transcript is current · 1 at least one LAUNCH-ONLY or SAW-LATER — currency UNPROVEN, never 'stale' · 2 established nothing | ⚙ GENERATED-FROM: --states |
 | `pane-binding.py` | which panes join to a session, and which leg is missing? | 0 reported · **2 established nothing** |
 | `index-watch.py` | did the tools index drift when `main` last moved? | 0 quiet · 1 finding · **2 established nothing** |
 | `pane-census.py` | how many panes are in this fleet — and is that number ESTABLISHED? | 0 sources agree · 1 a divergence is NAMED · **2 established nothing** |
@@ -862,7 +862,7 @@ widening it too far then matched *"the count must be zero"* as a command, and **
 still presence:** a condition can name a command that does not test the thing, and no count here
 should be quoted as if it did.
 
-**`states-index-check.py`** — ⛔ #39's missing half. `doctrine-version.py` gained `SAW-LATER` and
+**`states-index-check.py`** — ⛔ #39's missing half, now with the other half too: `--emit` **generates** a row from a tool's `--states`, and `--verify` **regenerates every row marked `⚙ GENERATED-FROM: --states` and compares byte-for-byte** — so the marker is a checkable claim rather than a typed one (#437). ⚠ Its known-negative is executed, not argued: hand-editing one word of a generated row takes `--verify` from exit 0 to exit 1 naming the row. ⇒ The original half remains: `doctrine-version.py` gained `SAW-LATER` and
 `tools/README.md` still read *"1 an agent is stale"*, so **the new state rendered as its
 near-opposite** in the index the fleet reads to learn what an exit code means. #292 made the tool
 **emit** its space; this **invokes the producer** instead of trusting the transcription. ⚠ **It
