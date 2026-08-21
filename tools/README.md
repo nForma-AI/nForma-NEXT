@@ -196,6 +196,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `readd-scan.py` | is this diff RESTORING a line a commit deliberately removed? | 0 none · 1 re-additions · **2 established nothing** |
 | `runmarker.py` | ⚠ **a module, not an instrument** — the two stderr markers every tool emits | n/a, it is imported |
 | `estatenames.py` | ⚠ **a module, not an instrument** — does this string name an estate that is NOT this one? | n/a, it is imported |
+| `codestrings.py` | ⚠ **a module, not an instrument** — string literals in EXECUTABLE position, not docstrings or comments | n/a, it is imported |
 | `ci-log-clean.py` | is this CI log's text OUTPUT, or the echoed script? | 0 cleaned · **2 established nothing** |
 | `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
 | `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
@@ -422,6 +423,35 @@ the `##[group]Run `…`##[endgroup]` envelope (survives an ANSI strip, but `--lo
 fetch paths omit group markers). ⛔ **With neither present it refuses — exit 2 — rather than passing
 the log through**, because handing back an uncleaned log unchanged is exactly how a count of the
 script becomes a count of the output.
+
+**`codestrings.py`** — ⚠ **not an instrument; a module.** DEVOPS's position filter, **extracted
+from `scripts/check-tools-index.py` rather than copied**, so two guards cannot disagree about the
+same file and a copy cannot inherit a correction (#78).
+
+⛔ **Why it moved.** `estate-provenance.py` classified WHOLE FILE TEXT, so a docstring that
+*mentions* an estate scored identically to a line that *uses* one — **five of its seven self-trips
+were mentions, in a tool whose subject is use-vs-mention.** ★ DEVOPS's framing, worth more than the
+fix: *a tool whose subject is X is not protected against X; it is the likeliest place to commit it,
+because the author is thinking about X in the abstract while writing the concrete line.* Fourth
+instance in one night.
+
+⛔ **The docstring test is by NODE IDENTITY, not by string.** `ast.get_docstring()` returns a
+`cleandoc()`'d value while the `Constant` node holds the raw one, so a string comparison never
+matches and every docstring scores as executable — DEV2 shipped exactly that, **13 of 13, a
+discriminator that discriminated nothing.** Hence `clean=False` and `id(node.body[0].value)`.
+
+⚠ **POSITION FILTERING IS `.py`-ONLY BY CONSTRUCTION**, and `estate-provenance.py` now says so **in
+its output**, not only here: there is no executable position in Markdown or JSON, so `.md`/`.json`/
+`.txt` keep whole-text behaviour and that half of any scan is *not* use-vs-mention clean.
+
+⛔ **ADJACENCY IS OFF AT FILE SCOPE, and this narrows a claim made in #354.** `scan_strings`'
+`gh -R owner/repo` leg needs the flag and its value to be neighbours. `code_strings()` collects via
+`ast.walk`, which is **breadth-first — the extracted order is not source order.** Measured: a `-R`
+whose true neighbour was a repo came out beside a check *name* from an unrelated statement, and the
+false hit landed on this module's own `["grep", "-R", "docs/README.md"]` known-negative. ⇒ No window
+rescues it; adjacency now requires `one_call=True` from a caller holding a real argv. **The cost,
+stated: a genuine `gh -R foreign/repo` written as an argv LIST is no longer caught by a file scan.**
+The shell-string form still matches.
 
 **`estatenames.py`** — ⚠ **not an instrument; a module.** The estate predicate, shared so that
 `scripts/check-tools-index.py` and `tools/estate-provenance.py` cannot disagree about the same file.

@@ -132,7 +132,7 @@ def foreign_in(text, ident):
 FORGE_FLAG_TOKENS = {"-R", "--repo"}
 
 
-def scan_strings(strings, ident):
+def scan_strings(strings, ident, one_call=False):
     """Deduplicated hits across many code strings, ordered for a stable report.
 
     ⛔ TAKES THE WHOLE LIST, not one string, because one leg needs ADJACENCY.
@@ -144,11 +144,19 @@ def scan_strings(strings, ident):
     is exactly that shape, and so is half the tree.
     """
     strings = list(strings)
-    # ⛔ `-R` is ALSO grep/cp/ls's recursive flag. Without this gate, a future
-    # ["grep", "-R", "docs/README.md"] reads as a foreign forge ref — `owner/repo` and
-    # `dir/file` are the same shape. Zero such calls exist today, which is exactly when
-    # a latent false positive is cheapest to close.
-    is_gh_call = any(t.strip() == "gh" or t.strip().startswith("gh ") for t in strings)
+    # ⛔ ADJACENCY IS OFF UNLESS THE CALLER GUARANTEES ONE CALL'S ARGV, IN ORDER.
+    # It was written for `["gh","issue","list","-R","owner/repo"]` and is sound there.
+    # ⚠ It is NOT sound over a whole file's literals, and not because of a tuning bound:
+    # `code_strings()` collects via `ast.walk`, which is BREADTH-FIRST, so **the extracted
+    # order is not source order.** Measured: a `-R` whose true neighbour was a repo came
+    # out next to a check NAME from an unrelated statement. Adjacency in that list is not
+    # adjacency in the code, so no window can rescue it.
+    # ⇒ Both current callers pass file-scope literals and therefore get the three
+    # single-string legs only. A caller holding a real argv may pass one_call=True.
+    # ⛔ THE COST, STATED: a genuine `gh -R foreign/repo` written as an argv LIST is no
+    # longer detected by a file scan. It is detected in the shell-string form, which
+    # CODE_DIR/FORGE_URL still match. This narrows a claim made in #354.
+    GH_WINDOW = 12
     seen, out = set(), []
 
     def add(kind, matched, estate):
@@ -160,7 +168,9 @@ def scan_strings(strings, ident):
         for kind, matched, estate in foreign_in(s, ident):
             add(kind, matched, estate)
         # The adjacency leg: a lone flag token whose NEXT literal is the forge ref.
-        if is_gh_call and s.strip() in FORGE_FLAG_TOKENS and i + 1 < len(strings):
+        near_gh = one_call and any(t.strip() == "gh" or t.strip().startswith("gh ")
+                                   for t in strings[max(0, i - GH_WINDOW):i])
+        if near_gh and s.strip() in FORGE_FLAG_TOKENS and i + 1 < len(strings):
             nxt = strings[i + 1].strip()
             m = re.fullmatch(r"([A-Za-z0-9._-]+)/([A-Za-z0-9._-]+)", nxt)
             if m and not _same(m.group(2), ident.forge_repo):

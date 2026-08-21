@@ -78,6 +78,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools"))
 try:
     import estatenames
+    from codestrings import code_strings
 except ImportError as _exc:                       # noqa: BLE001
     # ⛔ VOID, never a silent skip. A quarantine leg that quietly stops checking is the
     # exact defect the acknowledgement file exists against, and this file GATES EVERY PR
@@ -86,7 +87,7 @@ except ImportError as _exc:                       # noqa: BLE001
     # instrument that cannot be pinned as a single file. `git show <ref>:scripts/…` piped
     # to python now raises here instead of running, and THAT IS THE POINT — it fails
     # loudly at exit 2 rather than running a checker with one leg silently missing.
-    print("⛔ VOID: cannot import estatenames (%s) — the DERIVED estate leg did not run. "
+    print("⛔ VOID: cannot import estatenames/codestrings (%s) — the DERIVED estate leg did not run. "
           "This checked a CLOSED LIST only, so a new estate would read clean. Run from a "
           "checkout, not from a pinned single file." % _exc, file=sys.stderr)
     sys.exit(2)
@@ -185,35 +186,6 @@ LOOSE = re.compile(r"\b(?:(" + "|".join(list(WORDS)[1:]) + r")|(\d+))\b[^.\n]{0,
 ESTATE = re.compile(
     r"DigitalFrontier-infra|Borduas-Holdings|Blazing-Back|worker-blazing|akash",
     re.I)
-
-
-def code_strings(path):
-    """String literals in EXECUTABLE position — not docstrings, not comments.
-
-    ⚠ A SyntaxError yields no strings, which reads as CLEAN. That is stated rather than
-    guarded: this checker's job is the index, and a file that will not parse is a defect the
-    test suites own. It does mean quarantine cannot see inside an unparseable file.
-    """
-    try:
-        src = path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return []
-    if path.suffix != ".py":
-        # ⚠ Shell has no AST here. Strip whole-line and trailing comments — coarser than the
-        # Python path, and it is the weaker leg of the two.
-        return [re.sub(r"#.*$", "", line) for line in src.splitlines()]
-    try:
-        tree = ast.parse(src)
-    except SyntaxError:
-        return []
-    docs = set()
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            if node.body and isinstance(node.body[0], ast.Expr) \
-                    and ast.get_docstring(node, clean=False) is not None:
-                docs.add(id(node.body[0].value))
-    return [n.value for n in ast.walk(tree)
-            if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs]
 
 
 ACK_NAME = "QUARANTINE.txt"

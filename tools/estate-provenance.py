@@ -50,8 +50,9 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     import estatenames
+    from codestrings import code_strings_from_source
 except ImportError as exc:                        # noqa: BLE001
-    print("⛔ VOID: cannot import estatenames (%s) — the DERIVED estate leg did not "
+    print("⛔ VOID: cannot import estatenames/codestrings (%s) — the DERIVED estate leg did not "
           "run, so this scan checked a CLOSED LIST only and a new estate would read "
           "clean. Not a partial answer; a different question." % exc, file=sys.stderr)
     sys.exit(2)
@@ -100,13 +101,42 @@ def local_issue_range(root):
     return nums[0], nums[idx], len(nums)
 
 
-def classify(text, lo, hi, ident=None):
+POSITION_FILTERED = {".py"}
+
+
+def scannable(text, ext):
+    """The text a verdict may be drawn from, and whether position filtering applied.
+
+    ⛔ A DOCSTRING THAT MENTIONS AN ESTATE IS NOT A USE OF ONE. This tool classified whole
+    file text, so five of its own seven self-trips were mentions — in a tool whose subject
+    is use-vs-mention. DEVOPS had already solved it; `codestrings` is their filter,
+    extracted rather than reimplemented (#405: the tenth implementation is the defect).
+
+    ⚠ `.py` ONLY, by construction — there is no executable position in Markdown or JSON.
+    The second return value exists so the CALLER can say so in its output; a reader must
+    never take a clean prose scan for a position-filtered one.
+    """
+    if ext not in POSITION_FILTERED:
+        return text, None, False
+    lits = code_strings_from_source(text, ext)
+    # ⛔ RETURN THE LIST, NOT ONLY THE JOIN. `scan_strings` has an ADJACENCY leg — a lone
+    # `-R` whose NEXT literal is a forge ref — and joining literals with a separator
+    # FABRICATES adjacency that does not exist in the source. Caught immediately: this
+    # tool's own suite has `["grep", "-R", "docs/README.md"]` as a known-negative, and the
+    # joined form read it as `-R docs/README.md`, a foreign forge ref. The join is still
+    # returned for the substring and citation legs, which are position- but not order-sensitive.
+    return "\n".join(lits), lits, True
+
+
+def classify(text, lo, hi, ident=None, strings=None):
     """(verdict, reasons) for one file's content."""
     low = text.lower()
     foreign_terms = sorted({v for v in FOREIGN_VOCAB if v in low})
     # ⇒ The open-ended leg: an estate NOT on the list above, recognised by shape
     # rather than by name, compared against values read from this tree.
-    derived = estatenames.scan_strings([text], ident) if ident is not None else []
+    # ⚠ `strings` when we have real literals; `[text]` only when there was nothing to split.
+    derived = (estatenames.scan_strings(strings if strings is not None else [text], ident)
+               if ident is not None else [])
     cited = sorted({int(m) for m in ISSUE_RE.findall(text)})
     out_of_range = [n for n in cited if n > hi]
     in_range = [n for n in cited if lo <= n <= hi]
@@ -193,6 +223,7 @@ def main(argv):
           "these)" % (ident.repo_dir, ident.forge_repo))
 
     rows, found = [], False
+    n_filtered = n_whole = 0
     for t in targets:
         fs = files_under(root, t)
         if fs is None:
@@ -204,7 +235,12 @@ def main(argv):
             if rc2 != 0:
                 rows.append(("UNREADABLE", f, ["git show failed"]))
                 continue
-            v, why = classify(blob, lo, hi, ident)
+            scan, lits, filtered = scannable(blob, os.path.splitext(f)[1])
+            v, why = classify(scan, lo, hi, ident, lits)
+            if filtered:
+                n_filtered += 1
+            else:
+                n_whole += 1
             rows.append((v, f, why))
             if v == "FOREIGN":
                 found = True
@@ -217,6 +253,13 @@ def main(argv):
     for v, _, _ in rows:
         counts[v] = counts.get(v, 0) + 1
     print("\n" + " · ".join("%s %d" % (k, counts[k]) for k in sorted(counts)))
+    # ⚠ In the OUTPUT, not only the PR: a reader must not take a clean prose scan for a
+    # position-filtered one. The two populations are held to different predicates.
+    print("⚠ POSITION FILTERING IS .py-ONLY: %d file(s) scanned in EXECUTABLE POSITION "
+          "(docstrings and comments excluded); %d scanned as WHOLE TEXT, because there is no "
+          "executable position in Markdown, JSON or plain text. ⇒ A mention in prose scores "
+          "the same as a use there, and that half of this scan is NOT use-vs-mention clean."
+          % (n_filtered, n_whole))
     print("⛔ DIRECTION IS NOT ESTABLISHED. FOREIGN means this file's provenance evidence "
           "points at another estate. It does NOT say whether it was written there and "
           "committed here, written here ABOUT there, or is genuinely dual-use.")
