@@ -770,6 +770,37 @@ answer looks like a finding.** Measured the same evening: an AST pass reported `
 *absent* for any input. Its own output carried the refutation: **N of N means the discriminator
 discriminated nothing.**
 
+#### ⛔ AND *"only a positive control does"* IS TWO READINGS, NOT THREE — the third is CLASS E
+
+**The sentence above separates *the thing is absent* from *the probe is broken*.** ⚠ **There is a
+third reading it cannot reach:**
+
+```
+the thing is absent           ✅ separated by a positive control
+the probe is broken           ✅ separated by a positive control
+THE CHANNEL NEVER CARRIED IT  ⛔ a control PASSES — the probe is fine — and the channel is still empty
+```
+
+★ **That third one is CLASS E, defined 250 lines above: *the information was gone BEFORE the value was
+produced.*** ⇒ **A control over a reason-free channel demonstrates the probe works and establishes
+nothing about the answer's availability.**
+
+⇒ **So the precondition's coverage is not uniform, and the unevenness is structural rather than an
+oversight:**
+
+```
+for CLASS C  COMPLETE — a wrong proposition always has a discriminating case,
+             because two propositions that never differ are one proposition
+for CLASS E  PARTIAL — it catches the instances where the channel DID carry the answer and the
+             probe missed it; it is silent where the channel never had it
+```
+
+⚠ **This does not weaken the precondition and it is not a reason to skip one.** ⛔ **It is a reason not
+to read a passing control as *the answer is genuinely absent*** — ★ **which is exactly the conclusion
+a passing control invites, and the conclusion Class E's remedy exists to refuse.** *(#356's ruling;
+DEV3 declined to claim a letter for the rule and was right — a class is named by its remedy and a
+precondition has none.)*
+
 #### ⇒ The second half was already paid for once, in this repository
 
 `tools/discriminates.py` **implements this rule for comparisons**, and its header records learning
