@@ -128,6 +128,47 @@ def probe(suites, tools_dir, instruments, timeout=120):
     return seen
 
 
+# ⛔ A WORKFLOW-LEVEL RUNNER IS A CALLER, AND THIS TOOL COULD NOT SEE ONE. It probes
+# `tools/test_*.py` suites and answers "does a gated SUITE invoke this tool's --self-test?" —
+# a correct answer to ITS question and the wrong answer to "is this control run in CI".
+# ⚠ MEASURED COST: I read `REACHED doctrine-watch.py` and published on #183 that its controls
+#   "are silent because nothing calls them". `.github/workflows/tools.yml` had been running
+#   `SUBJ_DIR=tools ./scripts/gate-selftests.sh` in the GATING job since #444, which invokes
+#   every subject in tools/. DEVOPS corrected me. ★ CLASS C in the instrument I built for this
+#   question, four hours after naming the class in docs/DEFECT-CLASSES.md.
+# ⇒ A third verdict, kept DISTINCT from a dedicated suite rather than folded into it: a blanket
+#   runner invokes the flag but proves nothing about whether THAT tool's control discriminates.
+#   pretooluse-guard.py is the live proof — the runner calls it and it exits 0 for a bogus flag,
+#   so its green is worth nothing. "Has a caller" and "its green means something" are two
+#   questions and this tool answers only the first.
+WORKFLOWS = ROOT / ".github" / "workflows"
+
+
+def blanket_runners():
+    """Directories whose every subject is invoked by a workflow step. Read from the workflow.
+
+    ⚠ Derived from the file, never a constant: a hard-coded {"tools"} would be correct today and
+    silently wrong the moment the step moves, which is the stale-calibration defect this
+    repository has filed three times.
+    """
+    dirs = set()
+    if not WORKFLOWS.is_dir():
+        return dirs
+    for wf in sorted(WORKFLOWS.glob("*.y*ml")):
+        try:
+            text = wf.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if "gate-selftests.sh" not in text:
+            continue
+        # SUBJ_DIR: tools   (or SUBJ_DIR=tools inline)
+        for m in re.finditer(r"SUBJ_DIR[:=]\s*[\"']?([A-Za-z0-9_./-]+)", text):
+            dirs.add(m.group(1))
+        if re.search(r"^\s*run:\s*\./scripts/gate-selftests\.sh\s*$", text, re.M):
+            dirs.add("scripts")          # its documented default when SUBJ_DIR is unset
+    return dirs
+
+
 def census(tools_dir=None, timeout=120):
     tools_dir = tools_dir or (ROOT / "tools")
     if not tools_dir.is_dir():
@@ -151,17 +192,31 @@ def census(tools_dir=None, timeout=120):
         return 2, ["  VOID  no instrument in tools/ exposes --self-test — established nothing"]
     seen = probe(suites, tools_dir, names, timeout)
     width = max(len(n) for n in names)
-    out, orphan, reached = [], [], []
+    out, orphan, reached, runner = [], [], [], []
     # ⛔ NAMED, never silently omitted. This tool excluded ITSELF and its nested-run peer from its
     # own output entirely, so "N of M" was reported against a population the reader could not see
     # had been narrowed. verdict-census.py states this rule and this file did not follow it.
     if (tools_dir / me).is_file():
         out.append(f"  SELF-EXCLUDED  {me:<{width}}  not counted — probing it inside its own probe"
                    f" spawns a nested run that terminates only by timeout")
+    # ⛔ COMPARE THE RESOLVED PATH, NEVER THE BARE NAME. Keying on `tools_dir.name` made a TEMP
+    # FIXTURE directory named "tools" register as the repository's real tools/ — every fixture
+    # subject read as runner-covered and the NO-CALLER control stopped firing.
+    # ★ The name matched and the thing did not — the use/mention collapse this repository is
+    #   built around, introduced by me into a control that was already working.
+    blanket = any((ROOT / d).resolve() == tools_dir.resolve() for d in blanket_runners())
     for n in names:
         st, rc_ = seen[n]["selftest"], seen[n]["reached"]
         if st:
             out.append(f"  ok           {n:<{width}}  --self-test run by {', '.join(st)}")
+        elif blanket:
+            # ⚠ A WORKFLOW-LEVEL RUNNER INVOKES IT, but that is a weaker fact than a dedicated
+            # suite and is kept separate rather than counted as one. The runner passes --self-test
+            # to every subject in the directory; whether THIS tool's control discriminates is a
+            # different question, and pretooluse-guard.py answers it "no" while being invoked.
+            runner.append(n)
+            out.append(f"  ~ RUNNER      {n:<{width}}  invoked by a workflow-level runner over"
+                       f" {tools_dir.name}/ — NOT by a dedicated suite")
         elif rc_:
             # ⚠ A THIRD STATE. The suite reaches the code in-process and exercises SOME of it,
             # but never passes the flag — so whatever lives behind `--self-test` is still unrun.
@@ -170,11 +225,16 @@ def census(tools_dir=None, timeout=120):
                        f" --self-test is NEVER invoked")
         else:
             orphan.append(n)
-            out.append(f"  ⛔ NO CALLER  {n:<{width}}  no gated suite runs or imports it")
+            out.append(f"  ⛔ NO CALLER  {n:<{width}}  no gated suite, no workflow runner")
     out.append("")
-    out.append(f"  {len(names) - len(orphan) - len(reached)} of {len(names)} instruments have a"
-               f" gated caller that RUNS --self-test · {len(reached)} are imported but never"
-               f" self-tested · {len(orphan)} are untouched")
+    out.append(f"  {len(names) - len(orphan) - len(reached) - len(runner)} of {len(names)} have a"
+               f" DEDICATED suite running --self-test · {len(runner)} reached only by a"
+               f" workflow-level runner · {len(reached)} imported but never self-tested ·"
+               f" {len(orphan)} untouched")
+    out.append("  ⚠ RUNNER is INVOCATION, not evidence. A blanket runner passes --self-test to"
+               " every subject; whether a given tool's control DISCRIMINATES is a separate"
+               " question this tool does not ask (see pretooluse-guard.py, invoked and"
+               " UNVERIFIABLE).")
     out.append(f"  ----  gated suites probed: {len(suites)} (SUITE-DEPENDS files excluded — the"
                f" gate skips them, so they cannot fail the board)")
     out.append("  note  measured by REPLACING each subject with a recording stub and running the"
@@ -285,6 +345,30 @@ def self_test():
               f"names it (got {rc})")
 
         empty = Path(d) / "empty"
+        # ⛔ A WORKFLOW-LEVEL RUNNER IS A CALLER, controlled BOTH ways: a blanket_runners() that
+        # returned everything would make NO CALLER unreachable; one returning nothing restores
+        # the defect this fixes. ⇒ Derived from the workflow FILE, never a constant.
+        global WORKFLOWS
+        _real_wf = WORKFLOWS
+        try:
+            wfd = Path(d) / "wf"
+            wfd.mkdir()
+            (wfd / "x.yml").write_text("jobs:\n  g:\n    steps:\n"
+                                       "      - env:\n          SUBJ_DIR: tools\n"
+                                       "        run: ./scripts/gate-selftests.sh\n")
+            WORKFLOWS = wfd
+            got = blanket_runners()
+            ok &= "tools" in got
+            print(f"  {'ok  ' if 'tools' in got else 'FAIL'}  a workflow step declaring SUBJ_DIR"
+                  f" is read as a blanket runner (got {sorted(got)}) — derived, not hard-coded")
+            (wfd / "x.yml").write_text("jobs:\n  g:\n    steps:\n      - run: echo nothing\n")
+            got2 = blanket_runners()
+            ok &= not got2
+            print(f"  {'ok  ' if not got2 else 'FAIL'}  a workflow NOT running gate-selftests"
+                  f" yields none (got {sorted(got2)}) — NO CALLER stays reachable")
+        finally:
+            WORKFLOWS = _real_wf
+
         empty.mkdir()
         rc, lines = census(tools_dir=empty, timeout=60)
         hit = rc == 2 and any("VOID" in l for l in lines)
