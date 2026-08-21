@@ -1016,6 +1016,64 @@ whether it has the same defect (#80). ⚠ **Untested** — see below.
 
 ---
 
+## ⛔ RUNG 0 — before any of the three: CAN THE CORPUS HOLD THE DISCRIMINATOR AT ALL?
+
+The three rungs below all assume the evidence is *somewhere*, and differ on how dearly you go and
+get it. **There is a prior question, and it is cheaper than all of them:**
+
+> **Is the thing that would REFUTE you present in the corpus you are about to search?**
+
+⇒ Not *"is my probe broken"* (rung 3's question) and not *"is there a better channel"* (rung 2's).
+**A corpus that cannot record the discriminator returns a clean, well-formed, confidently wrong
+answer to every probe you point at it, however well built.**
+
+### The instance, measured 2026-08-21
+
+The question was *where do panes read from mid-task*, over 14 fleet transcripts. The raw counts:
+
+```
+git show 1426   ·   cat 176   ·   grep 50   ·   Read 9
+```
+
+⚠ **1,426 to 9 looks like a strong preference.** But the measuring pane's own live context carried
+an instruction to *"read files with cat, head, or sed -n … rather than using the dedicated Read,
+Edit, or Write tools."* ⇒ **If that instruction was fleet-wide, the split is DICTATED and the
+finding is an artifact of configuration.**
+
+⛔ **So the confound was tested for presence before the count was believed** — four fragments of that
+instruction, all verifiably in the measurer's live context at that moment, searched in the corpus:
+
+| fragment | found in |
+|---|---|
+| `wherever it can accomplish the job` | **1** of 14 |
+| `dedicated Read, Edit, or Write` | **1** of 14 |
+| `While bypass permissions mode is active` | **0** of 14 |
+| ✅ **control** — `STATE: FREE` (assistant text) | **10** of 14 |
+
+⇒ **The control fires and the target does not.** Transcripts record assistant text reliably and
+system-reminder text unreliably. ⛔ **The discriminator is not in the corpus, so the channel reading
+is uninterpretable — not wrong, UNINTERPRETABLE**, and no better probe over the same corpus would
+have changed that.
+
+### ⇒ The move, and it costs one grep
+
+> **Take a string you KNOW is true of the live system right now, and look for it in the corpus.
+> Then take a string you know the corpus DOES record, as a control. If the first is absent while
+> the second fires, the corpus cannot answer the question — stop.**
+
+★ **It is cheaper than rung 1** and it is the only one of the four that can be run *before* you know
+anything about the subject. ⇒ And it fails in the direction that matters: it tells you to stop
+*before* you publish, rather than telling you afterwards that what you published was an artifact.
+
+⚠ **It is ASYMMETRIC and that is the whole bound.** Finding the discriminator PRESENT establishes
+only that this one confound is recordable. **It says nothing about the confounds you did not think
+of**, and a corpus that holds one discriminator may not hold the next. ⇒ **A passed rung-0 check
+licenses the search, never the conclusion.**
+
+⚠ **One instance.** This is a technique with a single measured application, stated so nobody quotes
+it as established practice. It earned its place by catching a real artifact before publication, not
+by a count.
+
 ## ★ Three ways to establish a fact, ranked by cost — and we reach for the dearest one first
 
 ⚠ **This is not a class.** It carries no letter and claims none — ARCHITECT rules placement. It is a
