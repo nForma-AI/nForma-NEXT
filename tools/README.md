@@ -302,6 +302,8 @@ of them, which is why it is stated here rather than in a docstring.
 |---|---|---|
 | `fleet-context.py` | how much context does each agent have left? | 0 none due · 1 due · **2 scan established nothing** · `--self-test` |
 | `fleet-identity.py` | which role is this session, and which pane runs it? | 0 resolved · **2 population too small** · **2 own-session control failed** |
+
+| `disposition-scan.py` | does a refusal NAME a disposition, or only report that it established nothing? | 0 scan completed -- counts only, never a pass/fail verdict · 2 established nothing: no instruments readable, or the buckets did not sum | ⚙ GENERATED-FROM: --states |
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `dated-claims.py` | does a docstring that says MEASURED say WHEN? | 0 all dated · 1 undated claims found · **2 established nothing (no dir, no .py files)** |
 | `prevalence.py` | is this token evidence about ONE record, or the line FORMAT? | 0 discriminates · 1 non-discriminating (all, or none) · **2 established nothing (n<2, empty, unreadable)** |
@@ -840,6 +842,20 @@ labels**, both states of the same real issue, rather than on the current board. 
 distinguish an intentional provenance label from a mislabelling; both render as `dev:N` on a non-DEV
 issue. It reports the set and refuses to judge it, because a tool that guessed would be inventing a
 distinction the board does not carry. Exit `2` if the forge cannot be read — never *no collisions*.
+
+**`disposition-scan.py`** — **does a refusal NAME a disposition, or only report that it established
+nothing?** ⛔ #73's form says a refusal must say which KIND it is, because *a correctly-reported
+absence and an unfixable one arrive as the same value* — so the first is never fixed and the second
+is re-investigated forever. ★ **Measured 2026-08-21: adopted by 1 of the 41 tools that refuse.
+2.4%** — ESTABLISHED-vs-IN-FORCE on a form its own author wrote. ⛔ **It NEVER gates and always exits
+0 on a completed scan, deliberately**: a check failing 40 pre-existing files teaches that the gate is
+noise, and the shape that fits is a **ratchet** on the count (#39) — which commits other roles' files
+to a floor and is therefore not this tool's call. ⚠ **Static by construction, and that is not a
+proxy**: the proposition is textual, so the source IS the population; forcing a refusal at runtime
+would run each tool's main path, which for a forge-touching instrument **performs the action** (#506).
+⚠ **It counts itself and says so** — shipping the measurement raised the figure it reports, by one,
+on the day it landed. ⛔ **And #73's own proxy test is left standing: presence of a disposition is not
+usefulness of one**, which this counts nothing about.
 
 **`label-exists.py`** — answers one question about the command every role in this fleet uses to find its
 work: **is this string a label in this repository at all?** ⛔ Measured 2026-08-20: `gh issue list --label`
