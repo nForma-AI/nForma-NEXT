@@ -223,5 +223,48 @@ with tempfile.TemporaryDirectory() as tmp2:
     check("an unreadable transcript is still None, not (…, 0)",
           ic.contacts(os.path.join(tmp2, "absent.jsonl")), None)
 
+
+# ── ⛔ A COUNT WITHOUT AN INSTANT CANNOT BE RE-DERIVED ────────────────────────
+# Measured three times in one night, on three different agents' numbers, and none
+# of them was a re-measurement error — the BOARD moved:
+#
+#     233 open / 81 untouched  ->  237/86  ->  248/92   (one session)
+#     107 conflict pairs       ->  measured against a main that then moved
+#     +64/-1 vs origin/main    ->  +49/-0, origin/main moved between reads
+#
+# ★ Every one was quoted back by a second agent as a property of the repository,
+# because the output carried no instant and so READ AS TIMELESS.
+# ⚠ The failure is not the drift. It is the QUOTABILITY.
+import re as _re
+_ISO = _re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+_stamp = ic.collected_at()
+check("the stamp is an ISO-Z instant", bool(_ISO.match(_stamp)), True)
+check("...in UTC, not a local naive time", _stamp.endswith("Z"), True)
+
+# ⛔ KNOWN-BAD CONTROL — a constant would satisfy the shape check above. Assert the
+# stamp actually ADVANCES, or it is decoration that cannot distinguish two runs.
+import time as _time
+_a = ic.collected_at(); _time.sleep(1.1); _b = ic.collected_at()
+check("KNOWN-BAD control: two readings a second apart DIFFER — it is not a constant",
+      _a != _b, True)
+check("...and the later one sorts after the earlier (lexical ISO ordering)",
+      _b > _a, True)
+
+# the header and the footer must BOTH carry it: a reader who quotes the top line
+# and a reader who quotes the bottom one are both quoting a photograph.
+# ⛔ Assert on the RENDERED text, not on the source. The first version of this
+# check grepped the source for "Quote the instant" and FAILED — the phrase was
+# split across a string-literal boundary. Third source-text assertion tonight to
+# need converting; the fix is to make the text a constant, not a smarter grep.
+_rendered = ic.PHOTOGRAPH.format(when=_stamp)
+check("the footer names the reading as a photograph", "PHOTOGRAPH taken at" in _rendered, True)
+check("...carries the actual instant", _stamp in _rendered, True)
+check("...tells the reader to quote it or re-derive",
+      "Quote the instant" in _rendered and "re-derive" in _rendered, True)
+check("...and shows a MEASURED drift rather than asserting one",
+      "233/81" in _rendered and "248/92" in _rendered, True)
+src = open(os.path.join(_here, "issue-coverage.py")).read()
+check("the header line carries the instant too", "collected {collected_at()}" in src, True)
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)

@@ -33,6 +33,7 @@ recency window it replaced varied with the clock -- but it is not free, and it i
 the reason `--recency` still exists as a cross-check rather than being deleted.
 """
 import argparse, collections, glob, json, os, re, subprocess, sys
+from datetime import datetime, timezone
 
 TRANSCRIPTS = "~/.claude/projects/*/*.jsonl"
 # a real fetch of one issue -- not a number appearing in prose or in a list dump
@@ -43,6 +44,40 @@ WAKE = re.compile(r"auto-wake|machine wake|Resume your goal's autonomous loop", 
 ROLE_RE = re.compile(r"You are (?:taking over as )?([A-Z][A-Z0-9]*)\b")
 
 OPENED, ACTED = "OPENED", "ACTED"
+
+# ⛔ The footer text lives here rather than inline so a test can assert on it. The
+# first version checked for "Quote the instant" in the SOURCE and failed — the
+# phrase was split across a string-literal boundary. A source-text assertion is
+# brittle about formatting and silent about behaviour; a constant is neither.
+PHOTOGRAPH = (
+    "⚠ EVERY COUNT ABOVE IS A PHOTOGRAPH taken at {when}. The board moves:\n"
+    "   233/81 became 237/86 became 248/92 within one session on 2026-08-21.\n"
+    "   Quote the instant with the number, or re-derive — a count without one\n"
+    "   cannot be compared to a later one, or told apart from a reading taken\n"
+    "   under different conditions."
+)
+
+
+def collected_at():
+    """The instant this reading was taken, as an ISO-Z string.
+
+    ⛔ MEASURED THREE TIMES IN ONE NIGHT, on three different agents' numbers:
+
+      "233 open, 81 untouched"  ->  237 / 86 an hour later
+      "107 conflict pairs"      ->  measured against a main that then MOVED
+      "+64/-1 vs origin/main"   ->  +49/-0, because origin/main moved between reads
+
+    ⇒ NONE of those were re-measurement error. The BOARD moved. ★ And every one was
+    quoted back by a second agent as a property of the repository, because the
+    output carried no instant and so read as timeless.
+
+    ⚠ THE FAILURE IS NOT THE DRIFT, IT IS THE QUOTABILITY. A number without an
+    instant cannot be re-derived, cannot be compared to a later one, and cannot be
+    told apart from a number someone measured under different conditions. ⇒ A rate
+    or a count from a live board is a PHOTOGRAPH; printing when it was taken is
+    what makes it evidence instead of an assertion.
+    """
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def bootstrap_role(path, window=40):
@@ -243,7 +278,8 @@ def main():
                 per_role[who] += 1
 
     never = sorted(set(issues) - set(touched))
-    print(f"── COVERAGE ── {len(issues)} open issue(s), {len(paths)} transcript(s)"
+    print(f"── COVERAGE ── collected {collected_at()} · {len(issues)} open issue(s), "
+          f"{len(paths)} transcript(s)"
           + (f", {unreadable} unreadable" if unreadable else ""))
     print(how)
     print(f"  opened by at least one pane   {len(touched):4d}")
@@ -274,6 +310,7 @@ def main():
     if len(rows) > a.show:
         print(f"    … {len(rows) - a.show} more (--show)")
 
+    print("\n" + PHOTOGRAPH.format(when=collected_at()))
     print("\n⚠ CONTACT IS NOT REVIEW — 'opened' means a pane fetched it, nothing more.")
     print("⚠ Transcripts on THIS MACHINE only: a pane working from a transcript held "
           "elsewhere\n   reads as having opened nothing. The untouched count is an "
