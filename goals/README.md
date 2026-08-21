@@ -491,6 +491,32 @@ does not move — a design property, not agent behaviour.
 
    ### ⇒ Messages DELIVER and do not persist. Documents PERSIST and deliver UNRELIABLY.
 
+   #### ⛔ AND EVERY CARRIER HAS A STATE — which can revoke delivery WITHOUT the content changing
+
+   **A carrier is not only a place. It is a place in a STATE**, and the standing queries every role
+   runs are state-scoped:
+
+   ```
+   gh issue list --state open --label role:X        ⇐ the form every role's queue query uses
+   ```
+
+   ⇒ ⛔ **So closing an issue removes it from every queue, whatever its labels say** — **and the
+   labels stay correct, which is what makes it invisible.** ★ **The content did not change. The
+   ADDRESS did not change. Only the state did, and delivery ended.**
+
+   **Worked, 2026-08-21, and self-inflicted:** a routing to TEAMLEAD — *the board needs a `closed:MET`
+   label* — was written into **#423**, and **#423 was closed an hour later on its own met criteria by
+   the same pane.** ⇒ **Correct to close. The routing became unreachable, and nothing reported that.**
+
+   ⚠ **The same shape one field over: an ask addressed to DX filed on a `role:ARCHITECT` issue.**
+   ⛔ **Open, correctly labelled for its author, and not on the queue of the role it asks.** ⇒
+   **Delivery fails on the ROLE field rather than the STATE field, and neither failure is visible from
+   the sending side.**
+
+   ⇒ ★ **So before relying on a routing, run the query the recipient runs.** ⚠ **Not a query — THE
+   query: `--state open`, their label, their form.** ⛔ **A routing you can find is not a routing they
+   can find.**
+
    #### ⛔ AND THE ROLE PROMPT IS A FOURTH CARRIER THAT LOOKS LIKE THE BEST AND EXPIRES AT t=0
 
    **A rule placed in a role prompt is loaded, mandatory, and certain to be read.** ⇒ ★ **It is also a
