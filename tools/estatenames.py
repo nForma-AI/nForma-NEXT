@@ -47,6 +47,11 @@ FORGE_URL_RE = re.compile(r"github\.com[:/]([A-Za-z0-9._-]+)/([A-Za-z0-9._-]+?)(
 # ⚠ The bare `owner/repo` form is accepted ONLY behind an explicit gh flag. Matching it
 # anywhere would flag every `control-plane/api`-shaped path fragment in the tree.
 FORGE_FLAG_RE = re.compile(r"(?:-R|--repo)[=\s]+([A-Za-z0-9._-]+)/([A-Za-z0-9._-]+)")
+# ⛔ `-R` IS ALSO grep/cp/ls's RECURSIVE FLAG, and `owner/repo` is the same shape as
+# `dir/file`. Without this, `grep -R docs/README.md` reads as a foreign forge ref.
+# ⚠ The guard used to live on the adjacency leg only; removing that leg removed the guard
+# while the single-string form kept firing — caught by this module's own known-negative.
+GH_CMD_RE = re.compile(r"(?:^|[\s;|&(])gh\s")
 
 
 def sh(*args):
@@ -123,56 +128,45 @@ def foreign_in(text, ident):
     for slug in PROJ_SLUG_RE.findall(text):
         if not _same(slug, ident.slug):
             hits.append(("project-slug", slug, slug.rsplit("-", 1)[-1]))
-    for owner, repo in FORGE_URL_RE.findall(text) + FORGE_FLAG_RE.findall(text):
+    flag_pairs = FORGE_FLAG_RE.findall(text) if GH_CMD_RE.search(text) else []
+    for owner, repo in FORGE_URL_RE.findall(text) + flag_pairs:
         if not _same(repo, ident.forge_repo):
             hits.append(("forge-repo", f"{owner}/{repo}", repo))
     return hits
 
 
-FORGE_FLAG_TOKENS = {"-R", "--repo"}
-
-
-def scan_strings(strings, ident, one_call=False):
+def scan_strings(strings, ident):
     """Deduplicated hits across many code strings, ordered for a stable report.
 
-    ⛔ TAKES THE WHOLE LIST, not one string, because one leg needs ADJACENCY.
-    `code_strings()` returns literals individually, so an argv-list call arrives as
-    ["gh", "issue", "list", "-R", "Owner/Repo"] — the flag and its value are never in
-    the same string, and a per-string regex cannot see the pair. That is the form every
-    tool in this repo uses to call gh, so the per-string version missed all of them.
-    ⚠ Matching a BARE `owner/repo` in any string is not the alternative: `tools/README.md`
-    is exactly that shape, and so is half the tree.
+    ⛔ THERE IS NO ADJACENCY LEG, AND ITS ABSENCE IS A STATED GAP RATHER THAN AN OVERSIGHT.
+    An earlier version paired a lone `-R` with the NEXT literal to catch
+    `gh -R owner/repo` in argv form. It was unsound over anything but one call's argv:
+    `code_strings()` collects via `ast.walk`, which is BREADTH-FIRST, so literals from
+    unrelated statements sort before a call's own arguments. Measured:
+
+        a = "FIRST"; subprocess.run(["gh","pr","list","-R","owner/repo"]); b = "LAST"
+        walk order -> ['FIRST', 'LAST', 'gh', 'pr', 'list', '-R', 'owner/repo']
+
+    ⚠ Adjacency SURVIVES inside one list literal and is scrambled ACROSS statements, which
+    is why no window rescues it — the failure is between statements, where no window is
+    small enough. (DEVOPS's measurement.)
+
+    ⇒ REMOVED RATHER THAN GATED. DEVOPS measured every estate hit in this repository —
+    12 of 12 matched a SINGLE literal — so the leg has never fired for a real detection,
+    and a leg that passes by luck is worse than an absent one BECAUSE IT READS AS COVERAGE.
+    ⛔ The sound version is not a parameter on this function; it is a different POPULATION —
+    the string arguments of one `ast.Call`, collected per call site — and it should be built
+    when something needs the argv shape, with its own known-negative.
+
+    ⛔ SO THIS IS AN UNCOVERED SHAPE: a `gh -R foreign/repo` written as an argv LIST is not
+    detected. The shell-string form still matches via FORGE_URL_RE. This narrows a claim
+    made in #354, where the shape was demonstrated and reported covered; it passed because
+    that plant's literals happened to survive walk order.
     """
-    strings = list(strings)
-    # ⛔ ADJACENCY IS OFF UNLESS THE CALLER GUARANTEES ONE CALL'S ARGV, IN ORDER.
-    # It was written for `["gh","issue","list","-R","owner/repo"]` and is sound there.
-    # ⚠ It is NOT sound over a whole file's literals, and not because of a tuning bound:
-    # `code_strings()` collects via `ast.walk`, which is BREADTH-FIRST, so **the extracted
-    # order is not source order.** Measured: a `-R` whose true neighbour was a repo came
-    # out next to a check NAME from an unrelated statement. Adjacency in that list is not
-    # adjacency in the code, so no window can rescue it.
-    # ⇒ Both current callers pass file-scope literals and therefore get the three
-    # single-string legs only. A caller holding a real argv may pass one_call=True.
-    # ⛔ THE COST, STATED: a genuine `gh -R foreign/repo` written as an argv LIST is no
-    # longer detected by a file scan. It is detected in the shell-string form, which
-    # CODE_DIR/FORGE_URL still match. This narrows a claim made in #354.
-    GH_WINDOW = 12
     seen, out = set(), []
-
-    def add(kind, matched, estate):
-        if (kind, matched) not in seen:
-            seen.add((kind, matched))
-            out.append((kind, matched, estate))
-
-    for i, s in enumerate(strings):
+    for s in strings:
         for kind, matched, estate in foreign_in(s, ident):
-            add(kind, matched, estate)
-        # The adjacency leg: a lone flag token whose NEXT literal is the forge ref.
-        near_gh = one_call and any(t.strip() == "gh" or t.strip().startswith("gh ")
-                                   for t in strings[max(0, i - GH_WINDOW):i])
-        if near_gh and s.strip() in FORGE_FLAG_TOKENS and i + 1 < len(strings):
-            nxt = strings[i + 1].strip()
-            m = re.fullmatch(r"([A-Za-z0-9._-]+)/([A-Za-z0-9._-]+)", nxt)
-            if m and not _same(m.group(2), ident.forge_repo):
-                add("forge-flag", nxt, m.group(2))
+            if (kind, matched) not in seen:
+                seen.add((kind, matched))
+                out.append((kind, matched, estate))
     return sorted(out)
