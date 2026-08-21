@@ -926,6 +926,38 @@ def selftest():
         else:
             print("  ----  shallow control NOT EXERCISED: clone failed")
 
+        # ⛔ THE ONE-STRING SHAPE MUST NOT BE QUARANTINED. `grep -R <path>` written as a SHELL
+        # STRING reaches the shared predicate as ONE literal, and its `-R <a>/<b>` leg reads the
+        # path as a forge ref. Measured on main: a tools/ file containing
+        #     subprocess.run("grep -R docs/README.md", shell=True)
+        # is impounded as `[derived forge-repo] docs/README.md` — a CLEAN INSTRUMENT written into
+        # tools/QUARANTINE.txt, reddening a gating checker.
+        #
+        # ⚠ ZERO INSTANCES IN tools/ TODAY, and that is an ABSENCE, NOT A GUARD: no literal here
+        # holds an inline `-R owner/repo`, but a shell-string `grep -R` is an ordinary thing to
+        # write. ⇒ The exposure is one commit away and nothing would announce it.
+        #
+        # ⚠ PLACED INSIDE THE GIT-REPO SECTION, and both reasons are real: `sub` still exists
+        # here, and the DERIVED leg needs a resolvable identity — outside a repository it
+        # returns nothing, so the control would pass by the leg being ABSENT rather than by
+        # the shape being refused. That is DEV5's own finding about this fixture, and it is
+        # why a control for a derived leg cannot live in the repo-less part of it.
+        #
+        # ★ AND IT IS HERE RATHER THAN ONLY IN THE SHARED MODULE'S SUITE ON PURPOSE. The leg is
+        # DEV5's; the CONSEQUENCE is mine, because my caller is the one that impounds. A future
+        # change to the shared predicate that reopens this must fail in the file that would be
+        # damaged by it, not only in the file that owns it.
+        (sub / "oneshot.py").write_text(
+            '#\nimport subprocess\nsubprocess.run("grep -R docs/README.md", shell=True)\n')
+        (sub / "README.md").write_text("# newdir\n\n`planted.py` a. `oneshot.py` b.\n")
+        rc, lines, _ = check(root)
+        hit = not any("oneshot.py" in l and "->" in l for l in lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  KNOWN-NEGATIVE: a shell-string `grep -R <path>` is "
+              f"NOT quarantined — `-R` is grep's flag, not a forge ref")
+        (sub / "oneshot.py").unlink()
+        (sub / "README.md").write_text("# newdir\n\n`planted.py` — a planted instrument.\n")
+
         shutil.rmtree(root / ".git")
 
         # ⛔ the TOP-LEVEL branch is separate code and needs its own case
