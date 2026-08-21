@@ -118,9 +118,23 @@ def main():
                     help="print the canonical README row for TOOL, generated from its --states")
     ap.add_argument("--tokens", action="store_true",
                     help="report verdict-shaped tokens a tool emits that its own row omits")
+    ap.add_argument("--states", action="store_true",
+                    help="declare this tool's own exit states, in the contract it verifies")
     ap.add_argument("--verify", action="store_true",
                     help="regenerate every row marked GENERATED-FROM and compare byte-for-byte")
     a = ap.parse_args()
+    if a.states:
+        # ⛔ THE TOOL THAT VERIFIES --states ROWS DID NOT DECLARE ITS OWN. Measured 2026-08-21:
+        # 4 of 54 instruments expose --states and this was not among them, while checking that
+        # the four agree with their README rows. ⇒ A checker exempt from the contract it enforces
+        # is the shape this repository files against, one layer in.
+        for kind, code, meaning in (
+                ("EXIT", "0", "every tool exposing --states has a row agreeing with it"),
+                ("EXIT", "1", "a row disagrees with its tool's emitted exit codes"),
+                ("EXIT", "2", "established nothing: no tool exposes --states, or the index is unreadable"),
+                ("EXIT", "3", "CONTROL FAILED")):
+            print(f"{kind}\t{code}\t{meaning}")
+        return 0
     print("NFORMA-RUN states-index-check", file=sys.stderr)
     if a.self_test:
         return self_test()
