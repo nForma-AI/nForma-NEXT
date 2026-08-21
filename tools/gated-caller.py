@@ -55,8 +55,18 @@ SKIP = re.compile(r"^# SUITE-DEPENDS:", re.M)
 # ⛔ AND IT RECORDS AN IMPORT TOO, because a suite that `importlib`s a tool and calls its internals
 # REACHES THE CODE WITHOUT EVER PASSING --self-test. That is a third state, not a "no", and a
 # binary answer would file it under the same verdict as a suite that merely mentions the tool.
+# ⛔ THE STUB MUST BE FAITHFUL IN THE PROPERTIES SUITES SELECT ON, not merely in its name.
+# Measured 2026-08-21: a suite that DISCOVERS its population by reading each instrument's source
+# for the literal "--self-test" found NOTHING under this probe, because the stub did not contain
+# that string. ⇒ The suite invoked nothing, and this tool reported every instrument REACHED —
+# a confident wrong answer produced entirely by the measuring apparatus.
+# ★ The marker below is a FAITHFULNESS fix, not a courtesy: a stand-in for an instrument must
+#   carry the property by which instruments are identified, or the probe measures its own stub.
 STUB = (
     "#!/usr/bin/env python3\n"
+    "# marker for source-reading discovery, QUOTED because the real predicate is\n"
+    "# quote-anchored to match add_argument(\"--self-test\") rather than prose:\n"
+    "# \"--self-test\"\n"
     "import os, sys\n"
     "_n = os.path.basename(__file__)\n"
     "_a = ' '.join(sys.argv[1:])\n"
