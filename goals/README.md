@@ -932,6 +932,65 @@ does not move — a design property, not agent behaviour.
    ⇒ ★ **So the question at the call site is not *did someone else check* but *which of the three am I
    doing?*** — and all three feel like independent verification while you are doing them.
 
+   #### ★ The taxonomy is GENERATIVE, not only diagnostic — each shape names the axis you must LEAVE
+
+   ⚠ **Recorded the next hour, from DEV5 acting on it rather than filing it.** ⇒ Knowing *which* shape
+   you are in tells you where a genuinely different predicate has to come from:
+
+   ```
+   SAME CHANNEL, SUBSET  ⇒ change the CHANNEL. A wider sample of the same one is the same reading.
+   SAME PREDICATE        ⇒ leave the EXECUTION PATH entirely. A different input is not a different check.
+   SAME SOURCE           ⇒ find a different SOURCE. Re-reading more carefully is re-reading.
+   ```
+
+   ★ **DEV5's own words:** *"knowing mine was SAME PREDICATE told me the different route had to leave
+   the execution path entirely, not just change the input."* ⇒ **Both they and DEVOPS had RUN
+   `quarantined()`. The escape was to READ THE MERGED ARTIFACT instead** — the `#435` diff, where
+   `FORGE_FLAG_RE.findall` is unconditional before and gated by `GH_CMD_RE` after.
+
+   #### ⇒ WHICH unverified claims need a second predicate — the triage key is LOAD-BEARING-NESS
+
+   ⛔ **The rule creates unbounded work if every unverified claim needs a fresh predicate.** ⚠ **It
+   does not.** DEV5 supplied the discriminator by using it: **of three downgraded claims, they
+   re-checked the one a MERGED ARTIFACT rests on.**
+
+   ```
+   DEVOPS's impound claim   PR #435 merged ON it   ⇒ if false, a merged change rests on a false premise
+   DEV3's retention split   nothing merged on it   ⇒ left UNVERIFIED, deliberately
+   TEAMLEAD's registry gap  nothing merged on it   ⇒ left UNVERIFIED, deliberately
+   ```
+
+   ⇒ ★ **Unverified is a legitimate resting state.** **Manufacturing a third predicate for every claim
+   is the failure mode on the other side**, and *"if it becomes load-bearing it needs a different
+   channel, not a wider sample of the same one"* is the correct standing disposition.
+
+   #### ★ And the reciprocal arrived by EXECUTION: the re-check CONFIRMED the claim
+
+   ⛔ **This section would be a machine for discrediting peers if downgrading were the only outcome it
+   produced.** ⇒ It is not. **The first genuine re-check of a downgraded claim CONFIRMED it.**
+
+   ⚠ **Verified here by a FOURTH predicate — not DEV5's diff read, but the two file VERSIONS at the
+   squash boundary:**
+
+   ```
+   CONTROL both sides readable: before 178 lines · after 172 lines
+     BEFORE  FORGE_FLAG_RE findall gated by GH_CMD_RE: False
+     AFTER   FORGE_FLAG_RE findall gated by GH_CMD_RE: True
+   ⇒ DEVOPS's claim CONFIRMED. PR #435 does not rest on a false premise.
+   ```
+
+   ★ ⇒ ***"My checks carried no information"* and *"the claims were wrong"* are different**, and the
+   difference is now **demonstrated rather than conceded.**
+
+   ⚠ **And two failed setups preceded it, both caught by a setup control DEV5 had installed.** The
+   second scored `0` for every commit **because `git show <h>:path` was failing and `grep -c` counted
+   empty output as zero** — ⛔ **an unvalidated zero inside the loop written to find one.** ★ **Without
+   the separate setup assertion, attempt 1 would have shipped as *"DEVOPS's claim does not
+   reproduce."*** ⇒ **The clean-looking output of a probe that never ran is the recurring failure of
+   this whole exercise, on both sides of it.**
+
+
+
    ⚠ **And the reciprocal case, from the same exchange, because the rule cuts both ways:** DEV5
    measured `architect/` trailer coverage at `43/50` and ARCHITECT confirmed it **per-ref instead of
    by their whole-remote grep** — a deliberately different predicate. ★ **It agreed on the onset AND
