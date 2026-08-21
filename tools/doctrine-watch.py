@@ -272,7 +272,8 @@ def derived_base(path, head, when, root):
     ⇒ One value, two propositions, opposite optima. So the delta baseline is DERIVED per
     role from that role's newest recorded read. A derived value cannot go stale.
 
-    Falls back to the path's previous commit, then to None (caller uses the watermark) —
+    Falls back to the path's previous commit, then to None — and None now means VOID for that
+    (role, path) pair, not "use the watermark": the watermark was deleted in #183 —
     correct for a role that has never read the file, because it needs everything.
     """
     if when is None:
@@ -282,6 +283,52 @@ def derived_base(path, head, when, root):
     if rc == 0 and out.strip():
         return out.strip()
     return None
+
+
+def derived_scan(head, root, seen):
+    """#183's remedy: NO GLOBAL BASELINE. Each (role, path) is judged against the newest commit
+    of that path THAT ROLE HAS EVIDENCE OF READING.
+
+    ⛔ WHY THE WATERMARK HAD TO GO, measured rather than argued (TEAMLEAD's ruling, #183):
+        commits ever touching .claude/doctrine-watermark          1
+        committed value        b2a3d470   322 behind origin/main
+        shared working tree    eb222305   316 behind, UNCOMMITTED, 6 commits newer
+    ⇒ NINE PANES, TWO BASELINES, and which you got depended on which tree you stood in. The file
+      had no writer at all — one line read it and another told a HUMAN to write it, which in a
+      shared tree is a working-tree edit, not a commit. ★ Two failure modes: nobody remembered,
+      and the one who did had nowhere to put it that would persist.
+
+    ★ A derived value cannot go stale, and it cannot fork per tree either.
+
+    ⚠ VOID, NEVER BEHIND, WHERE EVIDENCE IS ABSENT — required by the ruling regardless of the
+    rest. #58: *established nothing* is not *behind by zero*, and the old tool reported the second
+    meaning the first. A pair with no recorded read is a pair this tool CANNOT judge.
+
+    Returns (behind, told, void) as lists of (role, [paths]).
+    """
+    behind, told, void_pairs = {}, {}, {}
+    for path, roles in sorted(BINDS.items()):
+        for r in sorted(roles):
+            sessions = seen.get(r, [])
+            if not sessions:
+                continue                      # UNKNOWN — the caller already reports this
+            when = None
+            for sess in sessions:
+                t = last_read_ts(sess, [path])
+                if t and (when is None or t > when):
+                    when = t
+            rbase = derived_base(path, head, when, root) if when else None
+            if rbase is None:
+                # ⛔ NOT "behind by zero". This role has no recorded read of this path, so the
+                # question "has it changed since you read it" HAS NO BASE. Established nothing.
+                void_pairs.setdefault(r, []).append(path)
+                continue
+            if path in changed_between(rbase, head, root):
+                behind.setdefault(r, []).append(path)
+            else:
+                told.setdefault(r, []).append(path)
+    tolist = lambda d: sorted((r, ps) for r, ps in d.items())
+    return tolist(behind), tolist(told), tolist(void_pairs)
 
 
 def has_read(path, blob_paths, changed_at):
@@ -342,7 +389,7 @@ def changed_at_ts(base, head, paths, root):
 
 def main():
     ap = argparse.ArgumentParser(description="Report which roles' doctrine moved under them.")
-    ap.add_argument("--since", help="baseline ref or SHA (default: the last recorded watermark)")
+    ap.add_argument("--since", help="explicit baseline ref or SHA. ⚠ OVERRIDE ONLY — the default\n                                is DERIVED per (role, path); there is no stored baseline")
     ap.add_argument("--head", default="origin/main", help="ref to compare against")
     ap.add_argument("--root", help="repository root (default: the MAIN worktree)")
     ap.add_argument("--self-test", action="store_true", help="run the controls and exit")
@@ -359,13 +406,55 @@ def main():
     if rc != 0:
         void(f"cannot resolve {args.head}: {err or 'unknown ref'}")
 
+    seen = {}
+    for t in transcripts_for(root):
+        r = role_of(t)
+        if r:
+            seen.setdefault(r, []).append(t)
+
+    # ⇒ #183, TEAMLEAD's ruling: DERIVED BY DEFAULT. The watermark is gone — it had one commit
+    # in its entire history, no writer, and two live values that forked by working tree.
+    # ⚠ `--since` remains as the EXPLICIT override, for asking about a range you name yourself.
+    if not args.since:
+        behind, told, void_pairs = derived_scan(head, root, seen)
+        unknown = [(r, ["(no transcript)"]) for r in sorted(set(
+            r for rs in BINDS.values() for r in rs) - set(seen))]
+        print(f"doctrine watch — DERIVED per (role, path); no global baseline")
+        print(f"  ⚠ each pair is judged against the newest commit of that path THAT ROLE has"
+              f" evidence of reading. A derived value cannot go stale, and cannot fork per tree.")
+        for r, paths in behind:
+            print(f"  BEHIND     {r:<10} {', '.join(paths)}")
+            for pth in paths:
+                when = max((t for sess in seen.get(r, [])
+                            for t in [last_read_ts(sess, [pth])] if t), default=None)
+                rb = derived_base(pth, head, when, root)
+                d = delta_for(rb, head, pth, root) if rb else None
+                if d is None:
+                    print(f"             ⚠ delta for {pth} ESTABLISHED NOTHING — size unknown")
+                    continue
+                a, rm, spans = d
+                cmd = read_delta_cmd(pth, spans, head)
+                print(f"             +{a}/-{rm} in {len(spans)} hunk(s) since {rb[:8]}"
+                      f"{' — read just the delta:' if cmd else ''}")
+                if cmd:
+                    print(f"             {cmd}")
+        for r, paths in told:
+            print(f"  read-since {r:<10} {', '.join(paths)}")
+        for r, paths in void_pairs:
+            print(f"  ⛔ VOID     {r:<10} {', '.join(paths)}")
+            print(f"             no recorded read of these paths — this tool CANNOT judge them.")
+            print(f"             ⚠ VOID is not 'behind by zero' and not 'current' (#58).")
+        for r, paths in unknown:
+            print(f"  UNKNOWN    {r:<10} no transcript found — never 'current'")
+        bp = sum(len(ps) for _, ps in behind)
+        vp = sum(len(ps) for _, ps in void_pairs)
+        print(f"  ---- {bp} (role,path) BEHIND · {sum(len(ps) for _, ps in told)} read-since"
+              f" · {vp} VOID · {len(unknown)} role(s) UNKNOWN")
+        # ⛔ VOID does not make the run a finding, and does not make it clean either. It is
+        # counted and named; the exit code reports only what was ESTABLISHED.
+        return 1 if bp else 0
+
     base = args.since
-    if not base:
-        wm = os.path.join(root, ".claude", "doctrine-watermark")
-        if os.path.exists(wm):
-            base = open(wm).read().strip()
-    if not base:
-        void("no baseline: pass --since <sha>, or write one to .claude/doctrine-watermark")
 
     rc, base_sha, err = git("rev-parse", base, cwd=root)
     if rc != 0:
@@ -434,7 +523,8 @@ def main():
         print(f"  BEHIND     {r:<10} {', '.join(paths)}")
         for p in paths:
             # ⇒ #183: DERIVE this role's delta baseline from its newest recorded read.
-            # The watermark still drives detection above; it is allowed to be old there.
+            # ⚠ This is the --since OVERRIDE path. The default no longer has a global base at
+            # all; here the caller named one, so a cumulative figure is meaningful.
             rbase = None
             for sess in seen.get(r, []):
                 rbase = derived_base(p, head, last_read_ts(sess, [p]), root) or rbase
@@ -447,7 +537,7 @@ def main():
             cum = deltas.get(p)
             if rbase and cum and d:
                 same = d[:2] == cum[:2]
-                print(f"             ⚠ cumulative since the watermark: +{cum[0]}/-{cum[1]}"
+                print(f"             ⚠ cumulative since the GIVEN baseline: +{cum[0]}/-{cum[1]}"
                       + ("  — SAME as targeted; you have seen none of it"
                          if same else
                          " — the targeted delta below is what YOU have not seen"))
@@ -584,7 +674,7 @@ def derived_delta_case(check):
 
     A role that is BEHIND has by definition not read since the change, so its derived base
     sits at or before the change point and the targeted delta EQUALS the cumulative one.
-    ⇒ The two diverge only where a role read the file AFTER the watermark and BEFORE the
+    ⇒ The two diverge only where a role read the file AFTER the given baseline and BEFORE the
     latest change — a real case, and absent from this estate today.
 
     ★ So a live run cannot distinguish the fix from a no-op. Measured: identical output
@@ -675,6 +765,47 @@ def self_test():
     check("unrecognised flag exits 2", run("--not-a-flag"), 2)
 
     print("\n" + ("all controls reachable" if ok else "⛔ a control did not fire — VERDICT REFUSED"))
+    # ==================================================================================
+    # ⛔ #183's RULING, CLAUSE 2: VOID WHERE EVIDENCE IS ABSENT — never BEHIND, never current.
+    # #58: "established nothing" is not "behind by zero", and the old tool reported the second
+    # meaning the first. Controlled in BOTH directions, because a derived_scan that returned
+    # VOID for everything would satisfy the first half and report nothing at all.
+    # ==================================================================================
+    real_root = main_tree()
+    seen_real = {}
+    for t in transcripts_for(real_root):
+        r = role_of(t)
+        if r:
+            seen_real.setdefault(r, []).append(t)
+    rc_h, head_sha, _ = git("rev-parse", "origin/main", cwd=real_root)
+    if rc_h == 0 and seen_real:
+        head_sha = head_sha.strip()
+        # ⛔ a role with NO sessions at all must never appear as BEHIND — it must not appear here
+        b0, t0, v0 = derived_scan(head_sha, real_root, {})
+        check("no sessions at all -> nothing BEHIND, nothing told", (len(b0), len(t0)), (0, 0))
+
+        # ★ THE KNOWN-POSITIVE FOR VOID: a role whose sessions exist but have read NOTHING.
+        # Synthesised by handing derived_scan a session file that contains no tool calls.
+        import tempfile as _tf
+        with _tf.TemporaryDirectory() as _d:
+            empty = os.path.join(_d, "empty.jsonl")
+            open(empty, "w").write('{"type":"user","message":{"content":"hello"}}\n')
+            fake = {r: [empty] for r in set(x for rs in BINDS.values() for x in rs)}
+            b1, t1, v1 = derived_scan(head_sha, real_root, fake)
+            vp = sum(len(ps) for _, ps in v1)
+            check("a role with a session but NO reads -> VOID, not BEHIND",
+                  (len(b1), len(t1), vp > 0), (0, 0, True))
+
+        # ⚠ AND THE DENSITY MEASUREMENT AS A CONTROL. Published on #183 before this was built:
+        # 35 of 35 (role, path) pairs derivable, 0 VOID. A future DROP is now visible rather
+        # than silent — if this fires, the tool has started refusing where it used to answer.
+        b2, t2, v2 = derived_scan(head_sha, real_root, seen_real)
+        judged = sum(len(ps) for _, ps in b2) + sum(len(ps) for _, ps in t2)
+        voided = sum(len(ps) for _, ps in v2)
+        check("read-evidence density: every bound pair is still derivable (0 VOID)", voided, 0)
+        print(f"         ---- density: {judged} pair(s) judged, {voided} VOID."
+              f" Published as 35/35 on #183 before this was written.")
+
     return 0 if ok else 3
 
 if __name__ == "__main__":
