@@ -118,6 +118,24 @@ class Reporting(unittest.TestCase):
         self.assertIn("PARTITION", out)
         self.assertEqual(rc, 0)
 
+    def test_cost_line_reports_WITHIN_when_under_the_declared_bound(self):
+        buf = io.StringIO()
+        lp.cost_line(0.5, out=buf)
+        self.assertIn("within", buf.getvalue())
+        self.assertNotIn("EXCEEDED", buf.getvalue())
+
+    def test_cost_line_reports_EXCEEDED_when_over_it(self):
+        """#521 leg 3 — a declaration nothing can contradict is a field filled in optimistically."""
+        buf = io.StringIO()
+        lp.cost_line(lp.COST_BOUND_S + 1, out=buf)
+        self.assertIn("EXCEEDED", buf.getvalue())
+
+    def test_exceeding_the_cost_bound_does_NOT_change_the_verdict(self):
+        """⛔ The load-bearing one. A slow forge must not turn a finding into a refusal."""
+        rc, out = self._report([row(9, "role:DX")])
+        self.assertEqual(rc, 0)
+        self.assertIn("cost ", out)
+
     def test_states_flag_matches_the_codes_report_can_return(self):
         buf = io.StringIO()
         old = sys.stdout

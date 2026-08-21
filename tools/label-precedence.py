@@ -39,8 +39,19 @@ import argparse
 import json
 import subprocess
 import sys
+import time
 
 RESERVED = ("role:OPERATOR",)   # queues whose work a pane must not self-assign
+
+# ⛔ #521: this tool reaches the forge, so its MAIN PATH cost is not its self-test cost. Measured
+# 2026-08-21 across 54 instruments: self-tests median 0.07s and ALL 45 finish in 37s, while one
+# forge-touching main path exceeded 120s. The cheap half is what CI bounds; the expensive half is
+# what produces quoted figures.
+# ⇒ DECLARED here, and CHECKED BY EVERY RUN rather than by a separate instrument -- a declaration
+#   nothing verifies is a field filled in optimistically (#521 leg 3).
+# ⚠ Exceeding the bound does NOT change the exit code. It is a report about THIS RUN, not a verdict
+#   about the subject; a slow forge must never turn a finding into a refusal.
+COST_CLASS, COST_BOUND_S = "forge", 15.0
 # ⛔ #466: every row must land in one of these, and the sum is asserted against the population.
 KINDS = ("HAZARD", "ADDRESS", "PROVENANCE", "UNROUTED", "NO-DEV-LABEL")
 
@@ -75,11 +86,21 @@ def classify(row):
     return "UNROUTED", devs, roles
 
 
+def cost_line(elapsed, out=sys.stdout):
+    """Report this run against the declared bound. Never changes the verdict."""
+    verdict = "within" if elapsed <= COST_BOUND_S else "⛔ EXCEEDED"
+    print(f"  cost {elapsed:.2f}s · declared {COST_CLASS} ≤ {COST_BOUND_S:.0f}s · {verdict}"
+          + ("   ⚠ the declaration is wrong or the forge is degraded — the verdict above stands"
+             if elapsed > COST_BOUND_S else ""), file=out)
+
+
 def report(repo, out=sys.stdout):
+    started = time.monotonic()
     ok, rows = fetch(repo)
     if not ok:
         print("⛔ VOID — the forge could not be read. ESTABLISHED NOTHING, not 'no collisions'.",
               file=out)
+        cost_line(time.monotonic() - started, out)
         return 2
     buckets = {}
     for r in rows:
@@ -119,6 +140,7 @@ def report(repo, out=sys.stdout):
     if buckets.get("UNROUTED"):
         print("⚠ UNROUTED rows carry a dev:N and NO role:. They are invisible to every role query"
               " and are reported for that reason, not as a hazard.", file=out)
+    cost_line(time.monotonic() - started, out)
     haz = len(buckets.get("HAZARD", []))
     if haz:
         print(f"⛔ {haz} HAZARD — a dev:N beside a reserved queue {RESERVED}. The board is telling a"
@@ -185,7 +207,8 @@ def main(argv=None):
         for kind, code, meaning in (
                 ("EXIT", "0", "no HAZARD collisions"),
                 ("EXIT", "1", "at least one HAZARD -- a finding, established"),
-                ("EXIT", "2", "established nothing: forge unreadable, or the buckets did not sum")):
+                ("EXIT", "2", "established nothing: forge unreadable, or the buckets did not sum"),
+                ("COST", COST_CLASS, f"main path declared <= {COST_BOUND_S:.0f}s; every run reports its own")):
             print(f"{kind}\t{code}\t{meaning}")
         return 0
     if a.self_test:
