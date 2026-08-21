@@ -95,11 +95,33 @@ A state space written down twice drifts **by default**; nothing joins the copies
 `VERDICT`/`EXIT` line per state — so a reader **generates** its row instead of copying it. A
 generated enumeration cannot disagree with its source; a hand-copied one cannot be relied on not to.
 
-⚠ **Screened, not measured: 15 of 28 tools** emit at least one uppercase token absent from
-`tools/README.md` *(denominator: `git archive <ref> tools/`, `*.py`, excluding `test_*`)*. ⛔ **That
-count is an upper bound and several hits are certainly not verdict states** — `HOME`, `PASS`,
-`FIXTURE`, `MINUTES` appear in it. **The screen is worth running per-token; the total is not worth
-quoting**, and it is recorded here in the form that says so.
+⚠ **Screened, not measured. ⛔ AND THE NUMBER THAT STOOD HERE WAS UNREPRODUCIBLE — it read *15 of
+28 tools*, with the denominator given as `git archive <ref> tools/` where `<ref>` was a PLACEHOLDER,
+never a ref.** ⇒ **The method was named and the population was not pinned**, which is criterion 5's
+own population leg failing in the section that argues for it. **The population has since gone 28 → 50
+and the count cannot be checked against anything.**
+
+⇒ **Replaced by the command, per this document's own remedy — emit the space, do not document it:**
+
+```
+git archive <REF> tools/ | tar -x -C /tmp/pin && cd /tmp/pin/tools
+test -f README.md || { echo "VOID: no README.md at that ref"; exit 2; }   # ⛔ see below
+for f in *.py; do case "$f" in test_*) continue;; esac
+  grep -ohE '"[A-Z][A-Z0-9_-]{2,}"' "$f" | tr -d '"' | sort -u \
+  | while read -r t; do grep -q -- "$t" README.md || echo "$f $t"; done
+done
+```
+
+⛔ **The `test -f` line is not defensive padding. The first version of this command written into this
+document used `../README.md` — wrong by one directory — and `grep -q` on a MISSING FILE returns
+non-zero, so `|| echo` fired for EVERY token.** ⇒ **It printed a plausible list of findings while
+establishing nothing**, and `exit=0`. ★ **The probe's FAILURE and its NEGATIVE were the same value** —
+the defect this document is about, committed in the command replacing a number that had the same
+defect. **Caught only because the PR said it was unverified and I then ran it.**
+
+⛔ **Whatever it returns is an UPPER BOUND** — `HOME`, `PASS`, `FIXTURE`, `MINUTES` matched the
+original screen and are not verdict states. **The screen is worth running per-token; the total is not
+worth quoting**, and now nothing here quotes one.
 
 ### ⛔ #26 is not a member. It is this class's ACCEPTANCE TEST
 
