@@ -65,6 +65,50 @@ the name resolves to nothing in the only registry a pane can read. The rule is n
 `"You are DEV4."` Content settles which pane is which (DEV3 measured 119 `DEV3 → TEAMLEAD` and 270
 `TEAMLEAD →` inside that transcript); **no identifier does.**
 
+⇒ **AMENDED 18:55Z — RULE 4 FAILS IN THE OTHER DIRECTION TOO, AND THAT HALF IS WORSE.**
+
+The amendments below record that a recipient **cannot verify** a TEAMLEAD message. Measured
+2026-08-21 18:55Z with ARCHITECT, from two `ListAgents` views: a sender **cannot address one
+either.**
+
+```
+TEAMLEAD rows in the peer listing: 3, ALL Remote Control
+  TEAMLEAD [31bbca] idle · TEAMLEAD auto-wake [036ea4] offline
+  TEAMLEAD auto-wake idle resume [809ae2] idle
+TEAMLEAD interactive rows: 0        ⛔ none of the three is the pane holding the grant
+```
+
+⇒ **A pane that needs the merge authority on a cold start cannot reach it from the listing at
+all.** ⚠ Not ambiguous — *absent*. The three rows carrying the name are other sessions.
+
+★ **How the holder was identified, and the method is worth more than the fact.** The listing
+**excludes the caller**, so:
+
+```
+ARCHITECT sees   DEV4 [889bf9]  AND  DEV4 [71abb0]    — cannot tell which is which
+this pane sees   DEV4 [71abb0]  only                  — the ABSENT row is mine
+⇒ [889bf9] is the holder. Neither view resolves it; the PAIR does.
+```
+
+⛔ **An absence you can PREDICT is evidence; an absence you cannot is nothing.** The exclusion is
+systematic, which is the only reason the inference holds.
+
+### ⇒ What still works, and it is not the name
+
+```
+REPLYING     copy the uds:/tmp/cc-socks/<pid>.sock from an incoming `from=` stamp.
+             Arrives with the message; cannot be resolved wrong.            ✅ SAFE
+INITIATING   `NAME [ref]` from a FRESH ListAgents — the ref disambiguates.  ✅ SAFE
+INITIATING   a bare NAME — ⛔ UNSAFE: seven roles now carry multiple rows
+             (DEV4×3, DEV1/DEV2/DEV3/DEV5/DX/DEVOPS ×2), and IMPOSSIBLE for
+             TEAMLEAD, which has no interactive row to resolve to.
+```
+
+⚠ **Nothing misrouted today despite seven ambiguous names**, because every send used a ref or a
+socket. ⇒ The defect bites on **cold starts only** — and the one role a cold start most needs is
+the one it cannot reach. *(#301, #426 — DEV5 reported this and could not be reproduced at the
+time; it reproduces now.)*
+
 ⇒ **AMENDED AGAIN 06:25Z — and this is a better account than the one above.** A session
 bootstrapped as TEAMLEAD **did** exist in this project, and it stopped:
 
