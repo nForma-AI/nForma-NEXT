@@ -139,5 +139,74 @@ with tempfile.TemporaryDirectory() as tmp:
     check("⚠ the one-checkout bound is printed even on a CLEAN run",
           "ONE CHECKOUT ONLY" in out, True)
 
+
+# ── ⛔ THE THIRD STATE: COMMITTED ON A BRANCH, NOT ON MAIN ────────────────────
+# The first version of this tool asserted "no ref carries them" about text that
+# THREE COMMITS on branch `pr1136` carried. False claim, wrong remedy: "commit
+# your work" is useless to someone whose work is committed and awaiting review,
+# and it sends a reviewer after unsaved edits that do not exist.
+# ★ This is not an anomaly — it is what an open docs PR looks like from the
+# working copy, every time.
+with tempfile.TemporaryDirectory() as tmp2:
+    repo2 = os.path.join(tmp2, "r"); os.makedirs(repo2)
+    git(repo2, "init", "-q")
+    git(repo2, "config", "user.email", "t@t"); git(repo2, "config", "user.name", "t")
+    def w2(text):
+        with open(os.path.join(repo2, "CLAUDE.md"), "w") as f:
+            f.write(text)
+    w2("alpha\nbeta\n")
+    git(repo2, "add", "CLAUDE.md"); git(repo2, "commit", "-qm", "base")
+    git(repo2, "branch", "base")
+    # a docs PR: committed on a branch, absent from `base`
+    git(repo2, "checkout", "-q", "-b", "docs/pr")
+    w2("alpha\nbeta\nSECTION-ON-A-BRANCH\n")
+    git(repo2, "add", "CLAUDE.md"); git(repo2, "commit", "-qm", "docs: add the section")
+
+    def run2(*extra):
+        argv = sys.argv[:]
+        sys.argv = ["x", "--repo-path", repo2, "--ref", "base", *extra]
+        buf = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(buf):
+                rc = du.main()
+        finally:
+            sys.argv = argv
+        return rc, buf.getvalue()
+
+    rc, out = run2()
+    check("branch-committed text is NOT called uncommitted",
+          "READ BUT NOT COMMITTED" in out, False)
+    check("...it is reported as COMMITTED ON <branch>, NOT ON <ref>",
+          "COMMITTED ON docs/pr, NOT ON base" in out, True)
+    check("...with LAND THE PR as the remedy", "LAND THE PR" in out, True)
+    check("...and the commit that carries it, so a reviewer can act",
+          "docs: add the section" in out, True)
+    check("...and it explicitly warns against the wrong remedy",
+          "sends them after edits that do not exist" in out, True)
+
+    # ⛔ KNOWN-BAD CONTROL — the two states must remain DISTINGUISHABLE. Add a
+    # genuinely uncommitted line on top and assert BOTH are reported separately.
+    w2("alpha\nbeta\nSECTION-ON-A-BRANCH\nTRULY-UNSAVED\n")
+    rc, out = run2()
+    check("KNOWN-BAD control: a truly uncommitted line IS still called that",
+          "READ BUT NOT COMMITTED" in out, True)
+    check("...and the branch state is reported ALONGSIDE it, not instead of it",
+          "COMMITTED ON docs/pr" in out, True)
+    check("...the uncommitted line is quoted", "TRULY-UNSAVED" in out, True)
+    check("...and the branch line is NOT in the uncommitted list",
+          out.split("READ BUT NOT COMMITTED")[1].split("⚠")[0].count("SECTION-ON-A-BRANCH"), 0)
+
+    # ⚠ and a checkout sitting exactly on the ref must report neither.
+    # ⛔ THE FIXTURE HAD A BUG HERE AND THE TEST WAS RIGHT TO FAIL: `git checkout`
+    # with a DIRTY tree CARRIES the modification across, so the file still held
+    # both extra lines and the tool correctly reported them. Restore the content
+    # explicitly — a fixture must reach the state it claims to test.
+    git(repo2, "checkout", "-q", "base")
+    w2("alpha\nbeta\n")
+    rc, out = run2()
+    check("on the ref itself, with a clean file, nothing is reported and exit is 0", rc, 0)
+    check("...and it SAYS reads == landed rather than printing nothing",
+          "what the fleet reads is what landed" in out, True)
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)
