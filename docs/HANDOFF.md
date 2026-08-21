@@ -80,9 +80,25 @@ original gap with a clean-looking board. **A zero on leg 3 without leg 1 is the 
 reviews read before merge     ← a review was merged over; CI status cannot carry an objection
 base must be main             ← a stacked PR's squash orphans (2 of 287, perfect predictor)
 ancestry verified after merge ← `MERGED` is not `landed`; verify by content, not by exit code
-gating run POST-dates main     ← added 04:45Z; see KNOWN-BROKEN. A check older than main's
-                                 head establishes nothing about main's head.
+gating run POST-dates THE GATE ← added 04:45Z, CORRECTED 06:20Z. A check older than the
+                                 last change to `.github/workflows` or `scripts/gate-*.sh`
+                                 establishes nothing about the gate it must pass.
 ```
+
+⛔ **GUARD 4's FIRST FORM WAS SELF-DEFEATING AND BLOCKED THE WHOLE QUEUE.** It compared the check
+against **main's HEAD**, so every merge invalidated every other PR. Measured 06:19Z: #453 merged,
+and all **ten** remaining PRs immediately read STALE. ⇒ **The queue could never drain** — each merge
+staleness-blocked the rest. ★ I had built `strict: true` semantics by accident, in prose, and worse
+than the real thing, because GitHub at least re-runs.
+
+```
+last change to THE GATE   2026-08-21T04:29:01Z   (757e8d1, #444)
+main HEAD                 2026-08-21T06:19:11Z   ⇒ hours apart
+```
+
+⚠ The guard was right about the **hazard** and wrong about the **population it applied to** — a
+sound predicate over the wrong set, which is #403's shape. ⛔ **It failed CONSERVATIVELY, which is
+why it went unnoticed for two hours**: a blocked queue looks like a guard working.
 
 ⚠ **All four are prose in a pane, not controls. They die with this session.** ⛔ And guard 4 was
 *itself* defective on its first run: `git log --format=%cI` returns a **local** offset
