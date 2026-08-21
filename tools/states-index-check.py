@@ -184,8 +184,24 @@ def main():
         print(f"\n  rows claiming generation: {len(marked)} · verified: {len(marked)-bad}")
         return 1 if bad else 0
     if a.emit:
-        row = emit_row(a.emit, "which version of its role prompt is each agent running?"
-                       if "doctrine-version" in a.emit else "<question>")
+        # ⛔ THE QUESTION IS THE AUTHOR'S PROSE; THE EXIT CODES ARE THE TOOL'S. Take the question
+        #    FROM the existing row rather than inventing one — a generator that rewrites the
+        #    author's words is not regenerating the row, it is replacing it. The first version
+        #    hardcoded doctrine-version's question and emitted "<question>" for anything else,
+        #    which is why only one row could ever be generated.
+        _txt = open(os.path.join(a.repo, "tools", "README.md")).read()
+        _q = None
+        for _l in _txt.splitlines():
+            if _l.startswith("|") and f"`{os.path.basename(a.emit)}`" in _l:
+                _parts = [c.strip() for c in _l.split("|")]
+                if len(_parts) > 3:
+                    _q = _parts[2]
+                break
+        if _q is None:
+            print("⛔ VOID  no existing row to take the question from — ESTABLISHED NOTHING.",
+                  file=sys.stderr)
+            return 2
+        row = emit_row(a.emit, _q)
         if row is None:
             print("⛔ VOID  that tool emitted no EXIT lines — ESTABLISHED NOTHING.", file=sys.stderr)
             return 2
