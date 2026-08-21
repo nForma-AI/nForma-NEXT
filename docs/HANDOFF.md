@@ -11,11 +11,13 @@ elsewhere. Panes finish a turn and nothing re-invokes them. **Read this instead 
 
 ## What is true right now
 
-*Measured 2026-08-21 04:00Z on `origin/main`, `gh pr list --limit 1000`, `gh issue list --limit 400`.*
+*Measured 2026-08-21 **04:55Z** on `origin/main`. ⚠ Every count uses `--limit 1000`: the default page size equals the returned count, so truncation is silent — that is how `30` was once read for a population of `85`.*
 
 ```
-merged PRs        290          open issues   106          instruments   50 + 49 suites
+merged PRs        304          open issues   108          open PRs      3 (1 held)
 main CI rollup    SUCCESS      quarantine    23 of 23 files recorded
+role: unrouted    0            role:/dev: disagreements  15   <- #461, and I created all 15
+gating job        ~185s +-2s   (was ~38s before #444 landed 04:29Z; +147s, 4.9x)
 close conditions  NONE 8 · BURIED 0 · BODY 98        (was 70 · 12 · 19 at 21:00Z)
 runnable          ASSERTED 38 · RUNNABLE 34 · NO-CONDITION 34
 ```
@@ -51,13 +53,42 @@ this to find a number to act on, prefer one produced by an instrument in the gat
 criterion 4 as amended (`a caller that still runs it`), and it is the only class of figure that
 survived the night.
 
-## ⇒ The three guards on the merge loop, each added after it cost something
+## ⛔ Filed against myself tonight, because a successor will hit it
+
+**#461 — `role:` and `dev:N` are two queryable owners with no precedence rule.** At 04:25Z I
+labelled 23 unrouted issues with `role:`, closing a real gap: a pane asking *"what is mine?"* was
+getting a partial answer with no way to detect the partiality. ⛔ **`dev:N` already existed as an
+assignment axis and I did not check it.** 15 open issues now name different owners on the two axes,
+and **all 15 are mine**.
+
+⚠ The sharp case already bit: **#319, the quarantined estate item, carried `role:OPERATOR` AND
+`dev:2`** — a pane running its own queue query was being told *by the board* to work inside a
+quarantine the operator reserved. `dev:2` removed 04:49Z, reason recorded on the issue. ⇒ That one
+was a hazard and the other 15 are ambiguity; **the difference is luck about which issue collided.**
+
+★ The lesson is not "check both labels." It is that **making routing queryable does not help if two
+queries return different owners and nothing states which wins.** The precedence rule is unwritten,
+belongs in `goals/README.md`, and is deliberately **not** written by the pane that broke it.
+
+⚠ **#461's close condition has a trap stated in the issue**: its third leg — *the disagreement query
+returns 0* — can be satisfied by stripping labels with no rule in place, which reproduces the
+original gap with a clean-looking board. **A zero on leg 3 without leg 1 is the failure, not the fix.**
+
+## ⇒ The FOUR guards on the merge loop, each added after it cost something
 
 ```
 reviews read before merge     ← a review was merged over; CI status cannot carry an objection
 base must be main             ← a stacked PR's squash orphans (2 of 287, perfect predictor)
 ancestry verified after merge ← `MERGED` is not `landed`; verify by content, not by exit code
+gating run POST-dates main     ← added 04:45Z; see KNOWN-BROKEN. A check older than main's
+                                 head establishes nothing about main's head.
 ```
+
+⚠ **All four are prose in a pane, not controls. They die with this session.** ⛔ And guard 4 was
+*itself* defective on its first run: `git log --format=%cI` returns a **local** offset
+(`05:41:21+01:00`) while check timestamps are **UTC** (`04:43:38Z`), so the lexical compare produced
+a **false refusal** on #456. Two valid ISO-8601 strings are not comparable across offsets. Normalise
+with `TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ`.
 
 ## ⛔ What is NOT established
 
@@ -76,6 +107,19 @@ ancestry verified after merge ← `MERGED` is not `landed`; verify by content, n
    only thing that closes the force-push breach class.
 2. **Four `role:OPERATOR` issues** with no close condition: #4 #48 #49 #136.
    `python3 tools/close-condition-scan.py --label role:OPERATOR` prints the accepted form.
-3. **The estate question.** Quarantine holds (23 of 23 recorded, gate reports `HELD` not `clean`).
+3. ⛔ **The merge grant cannot point at a holder.** `docs/MERGE-AUTHORITY.md` calls the holder's
+   session id "the load-bearing part." Measured 04:30Z: `~/.claude/sessions/3471.json` and
+   `3482.json` are **two live pids sharing sessionId `a10daa24`, both named `DEV4`**, and **not one
+   of the nine registry entries is named `TEAMLEAD`**. ⇒ Rule 4 — *authorization arrives in a
+   TEAMLEAD message* — is **unexecutable, not merely weak**: a recipient cannot perform the check it
+   names. DEV4 and DEVOPS both declined to trust this pane on 2026-08-21 and were right to.
+   **Re-binding the grant to a verifiable identifier is an operator action.** (#457, landed.)
+4. ⛔ **A green check does not mean the gate ran.** `required_status_checks.strict = false`, so a PR
+   need not be current with `main`. #453's gating run finished 04:27:20Z; #444 added the gate at
+   04:29:01Z. ⇒ It has **never executed the gate** and its status says `CLEAN`. All three original
+   guards passed it. `strict: true` closes this and is **operator-only under rule 2** — ⚠ but it
+   forces a re-run whenever `main` moves, which was cheap at 38s and is not at 185s with nine panes.
+   **The stale-check fix and the parallelism work (#462) are one decision.** (#374.)
+5. **The estate question.** Quarantine holds (23 of 23 recorded, gate reports `HELD` not `clean`).
    The reverse direction — whether this repo's instruments leaked into another estate — **is
    unmeasured and no pane has standing to check it.**
