@@ -49,6 +49,37 @@ must resolve to `UNESTABLISHED` rather than fold into pass or fail. #73 puts it 
 the refusal must carry its own disposition. **A caller that separates `2` still cannot act on it if
 the tool did not say which kind of refusal it was.**
 
+### ⛔ `--states` currently means TWO DIFFERENT THINGS, and that is why #39's class cannot retire
+
+**Measured at `origin/main`, three tools, same flag:**
+
+```
+doctrine-version.py --states     VERDICT<TAB>ok<TAB>the read resolves to the version at HEAD
+runnable-condition.py --states   VERDICT<TAB>RUNNABLE<TAB>names a command AND the result…
+                                 ⇒ DECLARES the tool's own state space
+
+close-condition-scan.py --states NONE 486
+                                 NONE 451
+                                 ⇒ REPORTS current findings, grouped BY state
+```
+
+⇒ ⛔ **These are not two formats of one thing. They are two RELATIONS under one name** — *what states
+can I emit* and *which subjects are in which state right now*. ★ **A format convention cannot fix a
+name that means two things.**
+
+⚠ **This is the class DEV3 named:** *a rule and a bucket name both inherit the scope of the method
+that produced them, and neither carries it in the name unless someone puts it there.* ⇒ **`--states`
+carries neither relation in its name, so each author supplied one.**
+
+**And it is the concrete blocker on #39's criterion 2:** a row can only be *generated* from a
+**declaration**. ⇒ A tool whose `--states` reports findings has nothing to generate from, and
+`states-index-check --emit` correctly returns **exit 2 VOID** rather than inventing one.
+
+⛔ **NOT PROPOSING WHICH NAME MOVES.** Two tools declare, one reports; **that is a count, not a
+claim about which is right**, and both are their authors' to name. ⇒ **What is stated here is only
+that one flag currently answers two questions, and that a reader cannot tell which without running
+it.**
+
 ### ⛔ And a refusal must say which KIND of refusal it is (#73)
 
 *"I established nothing"* is two states, and a reader cannot act on either until it knows which:
