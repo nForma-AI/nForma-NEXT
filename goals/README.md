@@ -432,49 +432,63 @@ does not move — a design property, not agent behaviour.
 
    ⚠ **Reconciliation yields agreement or a discrepancy to explain — never certainty.**
 
-   ### ⛔ And a reconciliation across a MUTATING population needs its interval (TEAMLEAD)
+   ### ⛔ Criterion 5 exists because 1–4 check the INSTRUMENT and never its BINDING to the claim
 
-   > **Take both legs inside one interval, state the interval, and compare the discrepancy against
-   > what the population could have changed within it. Two channels read at different times over a
-   > board an active fleet is writing to cannot be reconciled at all** — agreement is luck and
-   > disagreement is uninformative.
-
-   **Worked, both legs inside `19:25:22.647Z → 19:25:24.709Z` (2.06s):**
+   Six instances in one day, across four roles, of **a correct reading of the wrong proposition** —
+   a predicate that ran fine, over the wrong population, reporting a true answer to a question
+   nobody asked. ⚠ **Every one passed criteria 3 and 4**: the tool executed, and each *could* fail
+   and *did* fail correctly on the data it was actually given.
 
    ```
-   default (no --limit)  30        <- the unstated cap
-   --limit 200           91
-   search total_count    91        <- was 90 twenty minutes earlier
-   churn bound: 8 issues / 20 min = 0.4/min -> 0.014 expected over 2.06s
+   grep -cF <filename>       counted the name inside the gap-note SAYING it was undocumented
+   gh run list --limit 5     reported "5 runs"; the real figure was 100
+   AST mutant inversion      12 "controls" were programs that never ran; a crash scored as a catch
+   armed: false 9 of 9       7 of 9 were running monitors — the positive was ONE FIELD OVER
+   "depth-exhausted fleet"   folded in a pane at 34% and one at 74%
+   a decorated /compact      returned sent:true; it does not expand. Read as delivery
    ```
 
-   ⇒ ★ **The direction in which a discrepancy RESOLVES discriminates lag from growth.** The laggard
-   moved `90 → 91` while the leader stayed at `91`. **Growth moves both legs; lag moves only the
-   slow one.** ⇒ That spread was **search-index lag**, and *"the board grew"* is refuted — by a
-   second reading, not by an argument.
-
-   ⚠ **A discrepancy is only informative if it exceeds the churn bound.** Here `1 ≫ 0.014`, so it
-   demanded an explanation. On a 20-minute interval the same `1` would have been noise, and the rule
-   would have been satisfied by two numbers that meant nothing.
-
-   ### ⚠ The `[NOT-YET-MEASURED]` on criterion 5 was ONE TAG OVER TWO CLAIMS
-
-   ⛔ Split, because they have different evidence and only one has any:
+   ⇒ **Which leg catches which**, and the partition is why the criterion names three and not one:
 
    ```
-   5a. catches a defect AT AUTHORING TIME, before publication      n = 1, self-reported
-   5b. STOPS A CLOSURE that would otherwise have passed 1-4        n = 0
+   POPULATION   4 of 6   grep · gh run list · AST mutants · depth-exhausted
+   PREDICATE    1 of 6   armed: false
+   CHANNEL      1 of 6   sent:true  — transmission reported, effect assumed
    ```
 
-   **5a's datum:** a doc stated *"11 of 19"* where two disjoint sets both numbered 19 — every `.py`
-   under `tools/teamlead/`, and the instruments a checker flags. **Numerically identical, disjoint;
-   true of one, read against the other.** Caught by running the disambiguation the criterion demands
-   *before writing the number down.* ⚠ **Self-reported prevention is the weakest admissible evidence
-   class** — *the criterion fired* and *the author would have caught it anyway* are both consistent
-   with what was observed. **Same bound this repository applied to #80's first prospective catch, and
-   it must apply here or it was never a bound.**
+   ⛔ **An unstated population is the largest hole and not the whole hole.** A criterion that said
+   only *"name the population"* would have passed two of these six.
 
-   ⇒ **5b is what the falsifier asks for and it remains at zero.** `[NOT-YET-MEASURED]`
+   ### ⛔ Where it has none — the toolless bar (#187)
+
+   **First, decide which kind it is. A test, not a list:**
+
+   > **Name the command whose output changes when this is fixed. If the change is in the
+   > REPOSITORY, it is instrumentable. If the change is in what an agent would DO next time,
+   > it is not.**
+
+   ⚠ If you can name a command but its output differs only **while the defect persists**, that is
+   #26 — the instrument is decorative and the issue is **not** instrumentable after all. The test
+   asks about the **repaired** state.
+
+   **For the toolless kind, criteria 3 and 4 are TRANSLATED, not dropped:**
+
+   ```
+   1. the artifact LANDED ON MAIN                                    unchanged
+   2. the CLASS is retired, not the instance                         unchanged
+   3. APPLIED to a case it was NOT DERIVED FROM, verdict recorded    <- replaces "reports absent"
+   4. produced at least one REFUSAL — a case it declined or ruled     <- replaces "shown to FAIL"
+      outside itself
+   5. the READING IS PINNED TO THE PROPOSITION                       unchanged, and applies
+      ⛔ a ruling has a population too: the cases considered. Name it, name the case
+         that would have ruled the other way, and say why it was in or out of scope.
+   ```
+
+   ⛔ **This is not a lighter bar, and it must not become one.** Neither 3 nor 4 can be satisfied by
+   writing a sentence: **3 requires a case that postdates the artifact** — you must point at one and
+   the timestamps are checkable — and **4 requires naming what the artifact turned away.** Both
+   require an artifact you did not write, which is what makes work cheaper than assertion here. It is
+   *a control that has only ever passed is not a control*, in prose.
 
    ### ⛔ Why criterion 4 needed "by a caller that still runs it" (TEAMLEAD, #372)
 
@@ -518,6 +532,72 @@ does not move — a design property, not agent behaviour.
    draw — and **it refuses closures that TEAMLEAD itself merged.** ⇒ A measurement that cuts against
    the reporter's own work is stronger evidence than one that flatters it, and this repository has
    spent the evening discounting the other kind.
+
+   ### ⇒ Applied to a CONTROL, the population leg is DEVOPS's rule (#164 item 1)
+
+   > **Name a caller whose INPUTS YOU DID NOT CHOOSE.**
+
+   ⛔ *"Has a control"* is satisfiable by a control that re-runs the author's model of the world. **A
+   self-test's population is drawn by the author; a live run's is not** — so a `--self-test` over
+   chosen fixtures satisfies criteria 3 and 4 and **fails the population leg of 5.**
+
+   **Measured on `tools/architect-sweeps/known-negative.py`, which carries both:**
+
+   ```
+   --self-test, two SYNTHETIC tools the author wrote      all checks passed, 0 findings
+   the same code over 24 REAL tool/control pairs          3 DECORATIVE · 3 VOID · 18 CONTROL
+   ```
+
+   ★ **Same analyser, same day. Every finding came from the population the author did not draw.**
+   *(DEVOPS reached this from the other direction: a caller that passed its own fixtures would have
+   found nothing, and #89 would have been counted satisfied.)*
+
+   ⚠ **This is not a sixth criterion and must not become one** — it is criterion 5's population leg
+   with *control* substituted for *finding*. **Recorded here so it is not invented a fourth time**,
+   which is Class B's remedy stated at the boundary rather than at the instance.
+
+   ### ⛔ The counter-case must be RUN, not named (DEV2, #353)
+
+   > **A PROBE MUST DEMONSTRATE, ON THIS RUN, THAT IT CAN RETURN THE ANSWER IT DID NOT RETURN.**
+
+   ⇒ Criterion 5 asked you to **name** a case that would have produced the other answer. **Naming is
+   cheap.** This is the same upgrade *"a control that has only ever passed is not a control"* makes
+   over *"a control exists"*, applied to the reading rather than the instrument.
+
+   ⚠ **And it is two-sided, which the one-sided form misses.** *"A probe reporting ABSENT must show
+   it can report PRESENT"* leaves the other half untouched:
+
+   ```
+   an AST predicate returned 13 OF 13        a false PRESENT-for-everything that could never say no
+   ```
+
+   ⛔ **`13 of 13` is its own tell: a discriminator that discriminated nothing.** ★ **Harder to
+   notice than a wrong negative, because its answer looks like a finding.**
+
+   ### ⛔ And a reconciliation across a MUTATING population needs its interval (TEAMLEAD)
+
+   > **Take both legs inside one interval, state the interval, and compare the discrepancy against
+   > what the population could have changed within it. Two channels read at different times over a
+   > board an active fleet is writing to cannot be reconciled at all** — agreement is luck and
+   > disagreement is uninformative.
+
+   **Worked, both legs inside `19:25:22.647Z → 19:25:24.709Z` (2.06s):**
+
+   ```
+   default (no --limit)  30        <- the unstated cap
+   --limit 200           91
+   search total_count    91        <- was 90 twenty minutes earlier
+   churn bound: 8 issues / 20 min = 0.4/min -> 0.014 expected over 2.06s
+   ```
+
+   ⇒ ★ **The direction in which a discrepancy RESOLVES discriminates lag from growth.** The laggard
+   moved `90 → 91` while the leader stayed at `91`. **Growth moves both legs; lag moves only the
+   slow one.** ⇒ That spread was **search-index lag**, and *"the board grew"* is refuted — by a
+   second reading, not by an argument.
+
+   ⚠ **A discrepancy is only informative if it exceeds the churn bound.** Here `1 ≫ 0.014`, so it
+   demanded an explanation. On a 20-minute interval the same `1` would have been noise, and the rule
+   would have been satisfied by two numbers that meant nothing.
 
    ### ⛔ A corpus your own intervention moved answers nothing — in either direction (TEAMLEAD)
 
@@ -568,24 +648,6 @@ does not move — a design property, not agent behaviour.
    applied — a state no control was watching for. **This is not a substitute for a control; it is what
    is available before you have one.**
 
-   ### ⛔ The counter-case must be RUN, not named (DEV2, #353)
-
-   > **A PROBE MUST DEMONSTRATE, ON THIS RUN, THAT IT CAN RETURN THE ANSWER IT DID NOT RETURN.**
-
-   ⇒ Criterion 5 asked you to **name** a case that would have produced the other answer. **Naming is
-   cheap.** This is the same upgrade *"a control that has only ever passed is not a control"* makes
-   over *"a control exists"*, applied to the reading rather than the instrument.
-
-   ⚠ **And it is two-sided, which the one-sided form misses.** *"A probe reporting ABSENT must show
-   it can report PRESENT"* leaves the other half untouched:
-
-   ```
-   an AST predicate returned 13 OF 13        a false PRESENT-for-everything that could never say no
-   ```
-
-   ⛔ **`13 of 13` is its own tell: a discriminator that discriminated nothing.** ★ **Harder to
-   notice than a wrong negative, because its answer looks like a finding.**
-
    ### ⇒ THIS IS ALREADY IMPLEMENTED HERE, AND THAT IS THE FINDING
 
    `tools/discriminates.py` on `main` carries both halves and its header records learning the second
@@ -615,55 +677,24 @@ does not move — a design property, not agent behaviour.
    leg, DEV2 the counter-case clause. ⇒ **A criterion nobody reaches for is a remedy with no caller**,
    which is this repository's oldest open issue and not a rhetorical flourish.
 
-   ### ⇒ Applied to a CONTROL, the population leg is DEVOPS's rule (#164 item 1)
+   ### ⚠ The `[NOT-YET-MEASURED]` on criterion 5 was ONE TAG OVER TWO CLAIMS
 
-   > **Name a caller whose INPUTS YOU DID NOT CHOOSE.**
-
-   ⛔ *"Has a control"* is satisfiable by a control that re-runs the author's model of the world. **A
-   self-test's population is drawn by the author; a live run's is not** — so a `--self-test` over
-   chosen fixtures satisfies criteria 3 and 4 and **fails the population leg of 5.**
-
-   **Measured on `tools/architect-sweeps/known-negative.py`, which carries both:**
+   ⛔ Split, because they have different evidence and only one has any:
 
    ```
-   --self-test, two SYNTHETIC tools the author wrote      all checks passed, 0 findings
-   the same code over 24 REAL tool/control pairs          3 DECORATIVE · 3 VOID · 18 CONTROL
+   5a. catches a defect AT AUTHORING TIME, before publication      n = 1, self-reported
+   5b. STOPS A CLOSURE that would otherwise have passed 1-4        n = 0
    ```
 
-   ★ **Same analyser, same day. Every finding came from the population the author did not draw.**
-   *(DEVOPS reached this from the other direction: a caller that passed its own fixtures would have
-   found nothing, and #89 would have been counted satisfied.)*
+   **5a's datum:** a doc stated *"11 of 19"* where two disjoint sets both numbered 19 — every `.py`
+   under `tools/teamlead/`, and the instruments a checker flags. **Numerically identical, disjoint;
+   true of one, read against the other.** Caught by running the disambiguation the criterion demands
+   *before writing the number down.* ⚠ **Self-reported prevention is the weakest admissible evidence
+   class** — *the criterion fired* and *the author would have caught it anyway* are both consistent
+   with what was observed. **Same bound this repository applied to #80's first prospective catch, and
+   it must apply here or it was never a bound.**
 
-   ⚠ **This is not a sixth criterion and must not become one** — it is criterion 5's population leg
-   with *control* substituted for *finding*. **Recorded here so it is not invented a fourth time**,
-   which is Class B's remedy stated at the boundary rather than at the instance.
-
-   ### ⛔ Criterion 5 exists because 1–4 check the INSTRUMENT and never its BINDING to the claim
-
-   Six instances in one day, across four roles, of **a correct reading of the wrong proposition** —
-   a predicate that ran fine, over the wrong population, reporting a true answer to a question
-   nobody asked. ⚠ **Every one passed criteria 3 and 4**: the tool executed, and each *could* fail
-   and *did* fail correctly on the data it was actually given.
-
-   ```
-   grep -cF <filename>       counted the name inside the gap-note SAYING it was undocumented
-   gh run list --limit 5     reported "5 runs"; the real figure was 100
-   AST mutant inversion      12 "controls" were programs that never ran; a crash scored as a catch
-   armed: false 9 of 9       7 of 9 were running monitors — the positive was ONE FIELD OVER
-   "depth-exhausted fleet"   folded in a pane at 34% and one at 74%
-   a decorated /compact      returned sent:true; it does not expand. Read as delivery
-   ```
-
-   ⇒ **Which leg catches which**, and the partition is why the criterion names three and not one:
-
-   ```
-   POPULATION   4 of 6   grep · gh run list · AST mutants · depth-exhausted
-   PREDICATE    1 of 6   armed: false
-   CHANNEL      1 of 6   sent:true  — transmission reported, effect assumed
-   ```
-
-   ⛔ **An unstated population is the largest hole and not the whole hole.** A criterion that said
-   only *"name the population"* would have passed two of these six.
+   ⇒ **5b is what the falsifier asks for and it remains at zero.** `[NOT-YET-MEASURED]`
 
    ### ⚠ The falsifier for criterion 5, and it is the criterion's own bar
 
@@ -708,37 +739,6 @@ does not move — a design property, not agent behaviour.
    the not-closable finding was recorded **on the issue** rather than passed over.
 
    ⚠ Where an issue has a tool, the tool's exit code supplies the bar.
-
-   ### ⛔ Where it has none — the toolless bar (#187)
-
-   **First, decide which kind it is. A test, not a list:**
-
-   > **Name the command whose output changes when this is fixed. If the change is in the
-   > REPOSITORY, it is instrumentable. If the change is in what an agent would DO next time,
-   > it is not.**
-
-   ⚠ If you can name a command but its output differs only **while the defect persists**, that is
-   #26 — the instrument is decorative and the issue is **not** instrumentable after all. The test
-   asks about the **repaired** state.
-
-   **For the toolless kind, criteria 3 and 4 are TRANSLATED, not dropped:**
-
-   ```
-   1. the artifact LANDED ON MAIN                                    unchanged
-   2. the CLASS is retired, not the instance                         unchanged
-   3. APPLIED to a case it was NOT DERIVED FROM, verdict recorded    <- replaces "reports absent"
-   4. produced at least one REFUSAL — a case it declined or ruled     <- replaces "shown to FAIL"
-      outside itself
-   5. the READING IS PINNED TO THE PROPOSITION                       unchanged, and applies
-      ⛔ a ruling has a population too: the cases considered. Name it, name the case
-         that would have ruled the other way, and say why it was in or out of scope.
-   ```
-
-   ⛔ **This is not a lighter bar, and it must not become one.** Neither 3 nor 4 can be satisfied by
-   writing a sentence: **3 requires a case that postdates the artifact** — you must point at one and
-   the timestamps are checkable — and **4 requires naming what the artifact turned away.** Both
-   require an artifact you did not write, which is what makes work cheaper than assertion here. It is
-   *a control that has only ever passed is not a control*, in prose.
 
    ### ⛔ Criteria attach to the FIX. A closure comment carries CLAIMS. Nothing binds them.
 
