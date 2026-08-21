@@ -118,6 +118,32 @@ def test_tool_result_is_not_a_turn_boundary():
     return ok
 
 
+def test_freshness_marker_binds_to_the_payload():
+    """A freshness marker must be ADJACENT to the thing whose freshness it describes.
+
+    ⛔ The row used to put the age in its own COLUMN beside the detail:
+
+        DEV5  WORKING  this turn   context ~98%; ...
+
+    A reader re-associates by PROXIMITY, so that reads as "DEV5 is at 98% NOW".
+    Measured: TEAMLEAD read exactly that and was one step from compacting a pane
+    sitting at 38% — it had compacted AFTER declaring. The marker was true of the
+    LINE and false of the NUMBER INSIDE IT. (Placement fix ruled by DEV2.)
+    """
+    ok = True
+    c = fleet_state.declared_clause(0, 9, "context ~98%")
+    ok &= check("payload is quoted", '"context ~98%"' in c, True)
+    ok &= check("marker precedes and binds", c.startswith("declared this turn:"), True)
+    # ⛔ KNOWN-NEGATIVE: the marker must NOT be separable from the payload. If a
+    # caller could render them apart, the column defect returns.
+    ok &= check("one string, not a pair", isinstance(c, str), True)
+    ok &= check("older declaration says so",
+                fleet_state.declared_clause(14, 20, "x").startswith("declared 14 turns ago:"), True)
+    ok &= check("never-declared is not 'this turn'",
+                "this turn" in fleet_state.declared_clause(None, 20, "x"), False)
+    return ok
+
+
 def main():
     failures = 0
     with tempfile.TemporaryDirectory() as d:
@@ -171,6 +197,9 @@ def main():
         state, _, back = fleet_state.latest_declaration(texts)
         failures += not check("state", state, None)
         failures += not check("turns_ago", back, None)
+
+        print("⛔ a freshness marker must bind to the payload, not sit in a column:")
+        failures += not test_freshness_marker_binds_to_the_payload()
 
         print("⛔ a tool_result arrives as role=user — it must NOT end a turn:")
         failures += not test_tool_result_is_not_a_turn_boundary()
