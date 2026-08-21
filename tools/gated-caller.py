@@ -128,7 +128,16 @@ def gated_suites(tools_dir):
     return out
 
 
-def probe(suites, tools_dir, instruments, timeout=120):
+# ⛔ THE POOR STUB IS KEPT ON PURPOSE — it is not dead code, it is the second fidelity.
+# ★ Three times today this figure was published as a count and was a property of the stub:
+#   1 (died on AttributeError) -> 2 (died on TypeError) -> 4 (survives both). Chasing fidelity
+#   is unbounded and gives no signal for when to stop. ⇒ Running the SAME probe at TWO
+#   fidelities does: if the answer moves, the answer depends on the instrument, and THAT is the
+#   error term the exit-code line could not supply.
+STUB_POOR = STUB.replace("        return _S(0)\n", "        return 0\n")
+
+
+def probe(suites, tools_dir, instruments, timeout=120, stub=None):
     """{instrument: {"selftest": [suites], "reached": [suites]}} — behavioural, never textual.
 
     Every instrument is stubbed at once; each suite runs ONCE. The stub records its own name, so
@@ -142,7 +151,7 @@ def probe(suites, tools_dir, instruments, timeout=120):
             shutil.copytree(tools_dir, tmp,
                             ignore=shutil.ignore_patterns("__pycache__", "*.json"))
             for n in instruments:
-                (tmp / n).write_text(STUB)
+                (tmp / n).write_text(stub if stub is not None else STUB)
             log = Path(d) / "calls.log"
             env = dict(os.environ, GC_LOG=str(log))
             try:
@@ -277,6 +286,62 @@ def tree_provenance(root=None):
         return f"  ---- tree {head} — level with origin/main."
     return (f"  ---- ⚠ tree {head} is {behind} COMMIT(S) BEHIND origin/main. This reading is a"
             f" property of THIS CHECKOUT, not of the repository.")
+
+
+def population(tools_dir):
+    """The instruments census() measures — factored out so stability() asks the same question."""
+    me = Path(__file__).name
+    out = []
+    for f in sorted(Path(tools_dir).glob("*.py")):
+        if f.name.startswith("test_") or f.name == me:
+            continue
+        try:
+            src = f.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if has_selftest(src):
+            out.append(f.name)
+    return out
+
+
+def stability(tools_dir=None, timeout=120):
+    """Does the verdict depend on the STUB rather than on the repository?
+
+    ⛔ THE ERROR TERM THE EXIT-CODE LINE COULD NOT SUPPLY. A suite's exit code says it ended
+    badly, never WHERE — measured unchanged at 28 of 51 across a stub change that revealed two
+    more real callers. ⇒ Running the SAME probe at two fidelities answers the question that
+    actually matters: *could this method have produced the other answer?*
+    ★ Had this existed this morning it would have caught all three undercounts automatically —
+    each was a case where the poorer stub disagreed with the richer one.
+    """
+    tools_dir = Path(tools_dir) if tools_dir else (ROOT / "tools")
+    suites = gated_suites(tools_dir)
+    names = population(tools_dir)
+    if not suites or not names:
+        return 2, ["  VOID  no gated suite or no instrument — established nothing"]
+    rich = probe(suites, tools_dir, names, timeout, stub=STUB)
+    poor = probe(suites, tools_dir, names, timeout, stub=STUB_POOR)
+    lines, moved = [], []
+    for key in ("selftest", "swept", "called", "reached"):
+        a = {n for n in names if rich.get(n, {}).get(key)}
+        b = {n for n in names if poor.get(n, {}).get(key)}
+        if a != b:
+            moved.append(key)
+            lines.append(f"  ⛔ {key.upper():<9} MOVED  rich={len(a)} poor={len(b)}  "
+                         f"only-rich={sorted(a - b) or '-'}  only-poor={sorted(b - a) or '-'}")
+        else:
+            lines.append(f"  ok   {key.upper():<9} stable at {len(a)} across both fidelities")
+    lines.append("")
+    if moved:
+        lines.append(f"  ⛔ THE VERDICT DEPENDS ON THE STUB for {', '.join(moved)}. Every count "
+                     f"in a normal run is a LOWER BOUND, and the sets above are the part this "
+                     f"tool can PROVE it was missing at the poorer fidelity — not the whole of "
+                     f"it, because a third fidelity may move it again.")
+    else:
+        lines.append("  ⚠ STABLE ACROSS THESE TWO FIDELITIES ONLY. That is not 'correct' — it "
+                     "is 'these two stubs agree'. A richer stub may still disagree with both.")
+    lines.append(tree_provenance())
+    return (1 if moved else 0), lines
 
 
 def census(tools_dir=None, timeout=120):
@@ -592,6 +657,30 @@ def self_test():
               f"survives to reach its later subprocess run (swept={rl['late.py']['swept']}) — "
               f"with a bare 0 it died at [0] and the sweep was invisible")
 
+        # ⛔ --stability MUST BE ABLE TO SAY BOTH THINGS, or it is an alarm that always fires.
+        # ⇒ The `late.py` fixture above is hidden by the poor stub and seen by the rich one, so
+        #   it MUST report MOVED. A tree without it must report stable.
+        rc_m, lines_m = stability(tools_dir=td, timeout=60)
+        moved_ok = rc_m == 1 and any("SWEPT" in l and "MOVED" in l for l in lines_m)
+        ok &= moved_ok
+        print(f"  {'ok  ' if moved_ok else 'FAIL'}  --stability REPORTS MOVED when a caller is "
+              f"visible at one fidelity and not the other (rc={rc_m}) — the case it exists for")
+
+        with tempfile.TemporaryDirectory() as d2:
+            st = Path(d2) / "tools"
+            st.mkdir()
+            (st / "plain.py").write_text('import sys\nif "--self-test" in sys.argv:\n'
+                                         '    raise SystemExit(0)\nraise SystemExit(0)\n')
+            (st / "test_plain.py").write_text(
+                "import subprocess, sys, os\n"
+                "here = os.path.dirname(os.path.abspath(__file__))\n"
+                "subprocess.run([sys.executable, os.path.join(here,'plain.py'), '--self-test'])\n"
+                "raise SystemExit(0)\n")
+            rc_s, _ = stability(tools_dir=st, timeout=60)
+            ok &= rc_s == 0
+            print(f"  {'ok  ' if rc_s == 0 else 'FAIL'}  --stability reports STABLE when the two "
+                  f"fidelities agree (rc={rc_s}) — it is not an alarm that always fires")
+
         # ⛔ TRUNCATION RISK MUST BE COUNTED, AND MUST NOT COUNT A CLEAN SUITE. Asserted as a
         # pair: "a dying suite is flagged" passes if every suite were flagged; "a clean suite is
         # not" passes if none were.
@@ -730,6 +819,9 @@ def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--self-test", action="store_true")
     ap.add_argument("--timeout", type=int, default=120)
+    ap.add_argument("--stability", action="store_true",
+                    help="run the SAME probe at two stub fidelities and report whether the "
+                         "verdict moves; 0 stable, 1 the answer depends on the stub. Costs 2x.")
     try:
         a = ap.parse_args(argv[1:])
     except SystemExit as e:
@@ -747,6 +839,16 @@ def main(argv):
         return 2
     if a.self_test:
         return self_test()
+    if a.stability:
+        # ⇒ NOT the default. It doubles the runtime and answers a question ABOUT the instrument,
+        #   not about the repository — but it is the only honest source of the error term.
+        rc, lines = stability(timeout=a.timeout)
+        print("\ngated caller — does the verdict depend on the STUB? (#551)")
+        for l in lines:
+            print(l)
+        print({0: "  STABLE across the two fidelities tested",
+               1: "  FINDING — the answer moved", 2: "  VOID"}[rc])
+        return rc
     rc, lines = census(timeout=a.timeout)
     print("\ngated caller — whose --self-test does CI actually invoke? (#372, #381)")
     for l in lines:

@@ -345,7 +345,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
 | `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
 | `use-not-mention.py` | does this file CALL `<pattern>`, or merely TALK ABOUT calling it? | 0 no call · 1 at least one CALL · **2 established nothing** |
-| `gated-caller.py` | whose `--self-test` does CI actually invoke, and whose **sweep** does? | 0 all have a gated caller · 1 one does not · **2 established nothing** |
+| `gated-caller.py` | whose `--self-test` does CI actually invoke, and whose **sweep** does? — `--stability` asks whether the answer depends on the stub | 0 all have a gated caller · 1 one does not · **2 established nothing** |
 | `hermetic-check.py` | is a suite the gate CALLS hermetic actually hermetic? | 0 all hermetic · 1 a suite moves when `gh` is shadowed · **2 established nothing** · 3 control failed |
 | `population-leg.py` | does each `--self-test` consult anything outside the repository — or the forge? | 0 all do · 1 a NO-REPO-INPUT control · **2 established nothing** · ⚠ NO-REPO-INPUT is a CANDIDATE for criterion 5, not a verdict |
 | `pointer-verified.py` | did this pane READ the artifact a pointer NAMED, before acting? | 0 all read · 1 at least one not · **2 established nothing** · **3 control failed** |
@@ -752,6 +752,16 @@ revision, which is the condition being reported).
 continuing on the copy it loaded. That is the difference between a trigger and a guarantee.
 
 ⚠ **2026-08-20: `role_of` promised the one thing it did not deliver.** *"The role a session was BOOTSTRAPPED as — a name can be changed; this cannot"* — and it scanned the **whole file** for `You are X.`, taking the first hit anywhere. Measured over nine live transcripts: **3 resolved, 2 of the 3 wrong.** One came from a **correction sent a day later** (*"your identity was wrong … You are DEV2"*, record 17155, against a bootstrap reading MAINTAINER); one from a **quotation** of someone else's prompt; and a session bootstrapped as `DX` was reported `DEV2` because it had spent the day discussing DEV2. ⇒ It returned **the mutable thing it promised immunity from**, and a **mention** rather than a use. ★ Now anchored to the bootstrap record, with three outcomes — `None` unreadable or no launch prompt, `""` read and names no role, a role otherwise. **6 of 9 after, all from bootstraps.** ⚠ The two accepted phrasings are a **measured snapshot**, not a closed set.
+
+⚠ **`gated-caller.py --stability` exists because this figure was published as a count three times
+and was a property of the STUB each time** — `1` (the stub died on `AttributeError`), `2` (on
+`TypeError`), `4` (survives both); the dedicated-self-test figure moved `5 → 8` the same way.
+⛔ **Chasing stub fidelity is unbounded and gives no signal for when to stop.** ⇒ Running the SAME
+probe at TWO fidelities does: **if the answer moves, the answer depends on the instrument.** ★ That
+is the error term an exit code cannot supply — *measured*: truncation risk sat at `28 of 51` across
+a stub change that revealed two more real callers, because an exit code says a suite ended badly
+and never says WHERE. ⚠ **`STABLE` means only that these two stubs agree**, never that the count is
+right; a third fidelity may disagree with both. **Costs 2×, so it is opt-in and not the default.**
 
 **`hermetic-check.py`** — the `hermetic suites (gating)` job decides membership by the **absence of a
 marker**: a suite is hermetic iff nobody wrote `# SUITE-DEPENDS` in it. ⛔ **Nothing verified the claim.**
