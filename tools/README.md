@@ -49,6 +49,61 @@ must resolve to `UNESTABLISHED` rather than fold into pass or fail. #73 puts it 
 the refusal must carry its own disposition. **A caller that separates `2` still cannot act on it if
 the tool did not say which kind of refusal it was.**
 
+### ⛔ `--states` currently means TWO DIFFERENT THINGS, and that is why #39's class cannot retire
+
+**Measured at `origin/main`, three tools, same flag:**
+
+```
+doctrine-version.py --states     VERDICT<TAB>ok<TAB>the read resolves to the version at HEAD
+runnable-condition.py --states   VERDICT<TAB>RUNNABLE<TAB>names a command AND the result…
+                                 ⇒ DECLARES the tool's own state space
+
+close-condition-scan.py --states NONE 486
+                                 NONE 451
+                                 ⇒ REPORTS current findings, grouped BY state
+```
+
+⇒ ⛔ **These are not two formats of one thing. They are two RELATIONS under one name** — *what states
+can I emit* and *which subjects are in which state right now*. ★ **A format convention cannot fix a
+name that means two things.**
+
+⚠ **This is the class DEV3 named:** *a rule and a bucket name both inherit the scope of the method
+that produced them, and neither carries it in the name unless someone puts it there.* ⇒ **`--states`
+carries neither relation in its name, so each author supplied one.**
+
+**And it is the concrete blocker on #39's criterion 2:** a row can only be *generated* from a
+**declaration**. ⇒ A tool whose `--states` reports findings has nothing to generate from, and
+`states-index-check --emit` correctly returns **exit 2 VOID** rather than inventing one.
+
+⛔ **NOT PROPOSING WHICH NAME MOVES.** Two tools declare, one reports; **that is a count, not a
+claim about which is right**, and both are their authors' to name. ⇒ **What is stated here is only
+that one flag answers two questions, and that a reader cannot tell which without running it.**
+
+### ⇒ RESOLVED by its own author, on three arguments — and the third is the one that settles it
+
+⚠ **Measured at `origin/main` on 2026-08-21; the fix is in flight as #499 and had not landed when
+this was written.** DEV3 ran the check this section declined to run:
+
+```
+doctrine-version.py      e8e1cff  2026-08-20 19:07   DECLARE   ← first
+close-condition-scan.py  2fcd8e1  2026-08-20 20:09   REPORT      62 minutes later
+runnable-condition.py    1a75706  2026-08-21 01:05   DECLARE
+```
+
+⇒ **Priority and count both favour DECLARE** — ★ **and neither is the reason.** DEV3's third argument
+is: **`--states` reads as *tell me the states*. It names a state SPACE.** ⇒ **The flag was never named
+for the reporting relation at all**, so the one that moved is the one whose name never fitted.
+
+★ **The fix is CONFORMANCE, not exemption.** ⚠ **In #499 — not yet on `main` when this was
+written** — `close-condition-scan.py` emits a declaring `--states` *and* keeps its reporting
+behaviour under `--by-state`. ⛔ **An exemption would have
+preserved the collision behind a special case** — which is what a ratchet keyed on the flag rather
+than the property would have forced.
+
+⚠ **And in that change the declaration is emitted BEFORE any network call:** *a tool that cannot say what it CAN
+report is worse than one that cannot report*, and **declaring a state space must never depend on
+reaching a forge.**
+
 ### ⛔ And a refusal must say which KIND of refusal it is (#73)
 
 *"I established nothing"* is two states, and a reader cannot act on either until it knows which:
