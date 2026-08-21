@@ -113,7 +113,7 @@ repeat "the fleet ran out of context" as though it were measured.
 
 ⇒ **Nothing was lost.** Zero open PRs, `main` green, every open thread owned with a close condition.
 
-## ⇒ The FOUR guards on the merge loop, each added after it cost something
+## ⇒ The FIVE guards on the merge loop, each added after it cost something
 
 ```
 reviews read before merge     ← a review was merged over; CI status cannot carry an objection
@@ -123,6 +123,31 @@ gating run POST-dates THE GATE ← added 04:45Z, CORRECTED 06:20Z. A check older
                                  last change to `.github/workflows` or `scripts/gate-*.sh`
                                  establishes nothing about the gate it must pass.
 ```
+
+⛔ **GUARD 5 EXISTS BECAUSE ALL FOUR OTHERS PASSED A PR THAT WOULD HAVE REVERTED SEVEN MERGES.**
+Measured 12:53Z on #509:
+
+```
+merge-base        273b4a8   ⇒ SEVEN merges behind main
+mergeStateStatus  CLEAN     ⇒ no conflict exists — none is possible
+guards 1-4        ALL PASS  ⇒ base IS main, 0 reviews, gating SUCCESS, check post-dates the gate
+git diff --stat origin/main <head>:   14 files, 4 insertions, 709 DELETIONS
+```
+
+⇒ **A branch old enough merges as a REVERT SHAPED LIKE A FAST-FORWARD.** Git is correct and the
+board is correct; the hazard is invisible to both. ⛔ **Guard 1 checks `base == main` and the base
+IS main** — the base ref was never the hazard, the **merge-base age** is, and the ref does not carry
+it. ★ It is #445 mirrored: I instrumented *a stacked PR's squash orphans its child* and not *a stale
+branch's merge reverts its parents*.
+
+```
+guard 5:  git diff --stat origin/main <head>  →  net-NEGATIVE on a PR that describes an addition
+```
+
+⚠ **The naive form over-fires** — legitimate deletions exist. The discriminator is **lines the PR
+never added, in files it does not claim to touch**. ⛔ **And it was caught by RECOGNISING three
+commit shas**, not by any check: memory, which does not scale and fails if another pane merged the
+parents. Filed as **#510**. `strict: true` closes it entirely by forcing currency.
 
 ⛔ **GUARD 4's FIRST FORM WAS SELF-DEFEATING AND BLOCKED THE WHOLE QUEUE.** It compared the check
 against **main's HEAD**, so every merge invalidated every other PR. Measured 06:19Z: #453 merged,
