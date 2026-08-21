@@ -11,12 +11,13 @@ elsewhere. Panes finish a turn and nothing re-invokes them. **Read this instead 
 
 ## What is true right now
 
-*Measured 2026-08-21 **04:55Z** on `origin/main`. ⚠ Every count uses `--limit 1000`: the default page size equals the returned count, so truncation is silent — that is how `30` was once read for a population of `85`.*
+*Measured 2026-08-21 **08:59Z** on `origin/main`. ⚠ Every count uses `--limit 1000`: the default page size equals the returned count, so truncation is silent — that is how `30` was once read for a population of `85`.*
 
 ```
-merged PRs        304          open issues   108          open PRs      3 (1 held)
+merged PRs        329          open issues   111          open PRs      0
 main CI rollup    SUCCESS      quarantine    23 of 23 files recorded
 role: unrouted    0            role:/dev: disagreements  15   <- #461, and I created all 15
+no close condition 16 of 111 <- nobody can close these; 4 are role:OPERATOR (#4 #48 #49 #136)
 gating job        ~185s +-2s   (was ~38s before #444 landed 04:29Z; +147s, 4.9x)
 close conditions  NONE 8 · BURIED 0 · BODY 98        (was 70 · 12 · 19 at 21:00Z)
 runnable          ASSERTED 38 · RUNNABLE 34 · NO-CONDITION 34
@@ -74,6 +75,44 @@ belongs in `goals/README.md`, and is deliberately **not** written by the pane th
 returns 0* — can be satisfied by stripping labels with no rule in place, which reproduces the
 original gap with a clean-looking board. **A zero on leg 3 without leg 1 is the failure, not the fix.**
 
+## ⛔ THE FLEET STOPPED PRODUCING AT ~07:16Z, AND THE MONITOR DID NOT SEE IT
+
+**Measured 08:54Z.** Two legs per pane — file mtime versus the newest **timestamped record**:
+
+```
+pane        file-mtime   last RECORD    gap
+DEV5              8m           8m         0
+ARCHITECT         5m           5m         0
+DEV4 (this pane)  0m           0m         0
+DEV2              7m           7m         0
+DEV1             21m          38m        17m   ⚠
+DX               22m          74m        52m   ⚠
+DEVOPS           20m         140m       120m   ⚠
+DEV3             21m         258m       238m   ⚠  4.3 HOURS
+```
+
+⇒ Throughout, the fleet monitor reported **`LIVE-PANES=8`**. It keys on **live sockets**, and a
+socket outlives the pane's usefulness. ⛔ **Socket presence is not liveness** — filed as **#489**
+with a close condition whose load-bearing half is the known-negative.
+
+**PR creation gaps — the right predicate, since merge gaps conflate a stalled merger with an
+empty queue:**
+
+```
+all night (18:00Z+)   n=147   median 1.8   p90  8.1   max 173.7   current 98m — exceeded by 2/147
+last 6h               n= 36   median 4.8   p90 12.4   max  18.0   current 98m — exceeded by 0/36
+```
+
+★ In the matched window the previous maximum was **18 minutes**. It survives the population
+correction rather than dissolving under it.
+
+⚠ **CAUSE NOT ESTABLISHED.** Context exhaustion is the obvious candidate (#302 records four stalls
+at 89–100%) but **no pane here has been shown to be at any context level** — a pane cannot read
+another's, and #242 established the instrument that tries divides by a wrong denominator. ⛔ Do not
+repeat "the fleet ran out of context" as though it were measured.
+
+⇒ **Nothing was lost.** Zero open PRs, `main` green, every open thread owned with a close condition.
+
 ## ⇒ The FOUR guards on the merge loop, each added after it cost something
 
 ```
@@ -105,6 +144,24 @@ why it went unnoticed for two hours**: a blocked queue looks like a guard workin
 (`05:41:21+01:00`) while check timestamps are **UTC** (`04:43:38Z`), so the lexical compare produced
 a **false refusal** on #456. Two valid ISO-8601 strings are not comparable across offsets. Normalise
 with `TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ`.
+
+## ✅ The subject-control ratchet REFUSED for the first time, at 07:04Z
+
+`SUBJ_BASELINE=24` had only ever **passed** — seven CI runs, all green. ⛔ *A guard that has only
+ever passed is untested.* At 07:04Z it refused, correctly, on #476:
+
+```
+ran 52 subject(s): 27 passed · 0 FAILED · 17 UNEST · 8 UNVER
+⛔ BLOCKING.  ⇒ 25 exceeds the recorded baseline of 24
+cause: prevalence.py CANNOT BE INVOKED BARE — required positional + required flag, no --self-test
+```
+
+⇒ **It reddened the PR that introduced the dead control, not `main`.** The gate runs `on:
+pull_request` against each PR's own tree. ⚠ **My claim in #481 that it would fire on an innocent PR
+was WRONG and is withdrawn** — I reasoned about the gate as if it evaluated `main`'s population.
+
+★ #476's author fixed it and the debt returned to 24 with `27 → 28 passing`. **Headroom is still
+zero** (#481): the next instrument added without a reachable control blocks its own PR.
 
 ## ⛔ What is NOT established
 
