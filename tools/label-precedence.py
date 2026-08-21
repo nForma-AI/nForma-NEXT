@@ -149,7 +149,10 @@ def self_test(out=sys.stdout):
             bad += 1
         print(f"  {flag} #{row['number']}: want={want} got={got}", file=out)
     seen = {classify(r)[0] for r, _ in cases}
-    if seen != {"HAZARD", "ADDRESS", "PROVENANCE", "UNROUTED", "NO-DEV-LABEL"}:
+    # ⛔ Derived from KINDS, never re-typed. A hard-coded copy of the bucket set is #39's shape
+    # inside the check built to catch it: add a bucket to KINDS and the copy keeps the old space.
+    # Found in review by TEAMLEAD -- the definition is 100 lines above and the copy read as correct.
+    if seen != set(KINDS):
         print(f"  FAIL not every bucket exercised: {seen}", file=out)
         bad += 1
     else:
