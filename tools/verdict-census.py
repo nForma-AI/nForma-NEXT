@@ -583,7 +583,7 @@ def self_test():
         print(f"  {'ok  ' if hit else 'FAIL'}  a record stamped by ANOTHER classifier is discarded"
               f" AND the discard is named, not silent")
 
-        rcx, _ = stale_check(index=lidx, tools_dir=ld, path=lpath)
+        rcx, _, _c = stale_check(index=lidx, tools_dir=ld, path=lpath)
         ok &= rcx == 0
         print(f"  {'ok  ' if rcx == 0 else 'FAIL'}  after the re-measure the record matches this"
               f" classifier again (rc={rcx})")
@@ -591,14 +591,28 @@ def self_test():
         stamped = json.loads(lpath.read_text())
         stamped["_classifier"] = "f" * 40
         lpath.write_text(json.dumps(stamped))
-        rcx, lines = stale_check(index=lidx, tools_dir=ld, path=lpath)
+        rcx, lines, cause = stale_check(index=lidx, tools_dir=ld, path=lpath)
         # ⛔ AND THE FOOTER MUST NAME THAT CAUSE, not the other one.
-        ok &= "CLASSIFIER changed" in stale_footer(lines)
-        print(f"  {'ok  ' if 'CLASSIFIER changed' in stale_footer(lines) else 'FAIL'}  the exit"
-              f" line names the CLASSIFIER cause when that is what was reported")
-        ok &= "population moved" in stale_footer(["  ⛔ foo.py: in the index, absent from the record"])
-        print(f"  {'ok  ' if 'population moved' in stale_footer(['  ⛔ x: absent']) else 'FAIL'}"
-              f"  and names the POPULATION cause otherwise — the branch is not a constant")
+        # ⛔ ASSERT ON THE CAUSE stale_check RETURNED, NEVER ON ITS RENDERED TEXT. The first
+        # version matched substrings of the footer — a control that shares the defect's blind
+        # spot, which would pass against a stale_footer that guessed right for the wrong reason.
+        # Caught in review by TEAMLEAD; the fix and its control had the same flaw.
+        ok &= cause == CAUSE_CLASSIFIER
+        print(f"  {'ok  ' if cause == CAUSE_CLASSIFIER else 'FAIL'}  a foreign classifier RETURNS"
+              f" the classifier cause (got {cause!r}), not a string a reader must re-parse")
+        for c, want in ((CAUSE_CLASSIFIER, "CLASSIFIER changed"),
+                        (CAUSE_MISSING, "NO record"),
+                        (CAUSE_POPULATION, "population moved")):
+            hit = want in stale_footer(c)
+            ok &= hit
+            print(f"  {'ok  ' if hit else 'FAIL'}  cause {c!r} -> footer says {want!r}")
+        # ⚠ and an UNKNOWN cause must not be silently rendered as the population case — that is
+        # exactly how a missing record came to be reported as a moved population.
+        unk = stale_footer("some-future-cause")
+        hit = "does not recognise" in unk and "population moved" not in unk
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  an UNRECOGNISED cause says so, rather than falling"
+              f" back to the population wording")
         hit = rcx == 1 and any("DIFFERENT classifier" in l for l in lines)
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  --stale-check reports a FOREIGN classifier as stale"
@@ -677,22 +691,29 @@ def self_test():
         lidx.write_text("| `good.py` | f |\n| `envneg.py` | f |\n")
         lpath.unlink()
         ledger(index=lidx, tools_dir=ld, timeout=30, path=lpath)
-        rc, lines = stale_check(index=lidx, tools_dir=ld, path=lpath)
+        rc, lines, _c = stale_check(index=lidx, tools_dir=ld, path=lpath)
         hit = rc == 0 and any("STANDING" in l for l in lines)
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  a standing environmental negative is REPORTED but "
               f"does not make --stale-check a constant 1 (rc={rc})")
 
         (ld / "good.py").write_text((ld / "good.py").read_text() + "\n# edited\n")
-        rc, _ = stale_check(index=lidx, tools_dir=ld, path=lpath)
+        rc, _, _c = stale_check(index=lidx, tools_dir=ld, path=lpath)
         ok &= rc == 1
         print(f"  {'ok  ' if rc == 1 else 'FAIL'}  editing an instrument's bytes DOES move "
               f"--stale-check to 1 — it is an event detector (rc={rc})")
 
-        rc, lines = stale_check(index=lidx, tools_dir=ld, path=Path(d) / "no-such.json")
-        hit = rc == 1 and not any("VOID" in l for l in lines)
+        # ⛔ THE MISSING-RECORD PATH, END TO END — the case that proved the text-matching footer
+        # wrong. It rendered "the indexed population moved", which is FALSE: the population did
+        # not move, there is no record to move against. ⇒ Asserted on the RETURNED cause, and on
+        # the footer that cause produces, so the two cannot drift apart.
+        rc, lines, cmiss = stale_check(index=lidx, tools_dir=ld, path=Path(d) / "no-such.json")
+        hit = (rc == 1 and cmiss == CAUSE_MISSING and not any("VOID" in l for l in lines)
+               and "NO record" in stale_footer(cmiss)
+               and "population moved" not in stale_footer(cmiss))
         ok &= hit
-        print(f"  {'ok  ' if hit else 'FAIL'}  no record at all is STALE (1), not VOID (rc={rc})")
+        print(f"  {'ok  ' if hit else 'FAIL'}  no record at all is STALE(1) with cause"
+              f" {cmiss!r}, and its footer does NOT claim the population moved")
 
         # ⛔ an instrument indexed but absent is a FINDING, never an omission
         lpath.unlink()
@@ -976,19 +997,33 @@ def _rerun_reason(rec, blob):
     return None
 
 
-def stale_footer(lines):
-    """The exit line names the cause `stale_check` actually reported.
+# ⛔ CAUSES ARE VALUES, NOT PROSE. `stale_check` knows exactly why it refused; the first version
+# made `stale_footer` RE-DERIVE that by substring-matching its own rendered output. ★ That is
+# CLASS F — the field was in the output and the next reader did not consult it — committed in the
+# fix that cites CLASS F, and caught in review by TEAMLEAD rather than by me.
+# ⚠ AND THE THIRD CAUSE PROVED IT: a MISSING record rendered "the indexed population moved", which
+#   is false — the population did not move, there is no record to move against. My own PR body
+#   named "a third cause I have not seen" as a risk and shipped it as an acceptable default.
+CAUSE_CLASSIFIER, CAUSE_MISSING, CAUSE_POPULATION = "classifier", "missing", "population"
 
-    ⛔ `stale_check` reports TWO distinct causes — a foreign classifier and a moved population —
-    and one footer saying "the indexed population moved" CONTRADICTS the first, two lines above
-    it. ★ That is CLASS F in this tool's own summary: the discriminating field is in the output
-    and the summarising step throws it away. Extracted so the branch has a control; a footer
-    chosen inline is a branch that regresses in silence.
+_FOOTERS = {
+    CAUSE_CLASSIFIER: ("  FINDING — the CLASSIFIER changed; rows written by another classifier are"
+                       " readings of a different question, not stale readings of this one"),
+    CAUSE_MISSING:    ("  FINDING — there is NO record; nothing has ever been measured. ⛔ This is"
+                       " not a stale reading, it is the absence of one"),
+    CAUSE_POPULATION: ("  FINDING — the indexed population moved; the record no longer answers it"),
+}
+
+
+def stale_footer(cause):
+    """The exit line for a cause `stale_check` RETURNED. ⛔ Never inferred from rendered text.
+
+    ⚠ An unknown cause is NOT silently rendered as the population case — that is how the missing
+    record came to be reported as a moved population. It says it does not know.
     """
-    if any("DIFFERENT classifier" in l for l in lines):
-        return ("  FINDING — the CLASSIFIER changed; rows written by another classifier are"
-                " readings of a different question, not stale readings of this one")
-    return "  FINDING — the indexed population moved; the record no longer answers it"
+    return _FOOTERS.get(cause, "  FINDING — stale for a cause this footer does not recognise"
+                               f" ({cause!r}) ⛔ established: the record is not answerable; NOT"
+                               " established: why")
 
 
 def stale_check(index=None, tools_dir=None, path=None):
@@ -1018,18 +1053,18 @@ def stale_check(index=None, tools_dir=None, path=None):
     try:
         names = sorted(set(ROW.findall(index.read_text(encoding="utf-8"))))
     except OSError as e:
-        return 2, [f"  VOID  cannot read {index}: {e} — established nothing"]
+        return 2, [f"  VOID  cannot read {index}: {e} — established nothing"], None
     if not names:
-        return 2, ["  VOID  the index named no instruments — established nothing"]
+        return 2, ["  VOID  the index named no instruments — established nothing"], None
     try:
         rec = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(rec, dict):
             raise ValueError("not an object")
     except FileNotFoundError:
         return 1, [f"  ⛔ STALE  no record at {path} — nothing has ever been recorded",
-                   f"  ----  refresh with: python3 {Path(__file__).name} --ledger"]
+                   f"  ----  refresh with: python3 {Path(__file__).name} --ledger"], CAUSE_MISSING
     except (OSError, ValueError) as e:
-        return 2, [f"  VOID  {path} could not be read as a record ({e}) — established nothing"]
+        return 2, [f"  VOID  {path} could not be read as a record ({e}) — established nothing"], None
 
     # ⛔ TWO QUESTIONS, AND FOLDING THEM INTO ONE EXIT CODE DESTROYS THE MODE. First draft did:
     #
@@ -1051,7 +1086,7 @@ def stale_check(index=None, tools_dir=None, path=None):
                    f" ({str(classifier_fingerprint())[:8]}).",
                    "  ⚠ Rows written by another classifier are not evidence about this one —"
                    " they are not stale readings, they are readings of a different question.",
-                   f"  ----  refresh with: python3 {Path(__file__).name} --ledger"]
+                   f"  ----  refresh with: python3 {Path(__file__).name} --ledger"], CAUSE_CLASSIFIER
     rec = {k: v for k, v in rec.items() if not k.startswith("_")}
     me = Path(__file__).name
     covered = [n for n in names if n != me]
@@ -1087,7 +1122,7 @@ def stale_check(index=None, tools_dir=None, path=None):
                " produced one — that finding is `--ledger`'s exit code.")
     if stale or gone:
         out.append(f"  ----  refresh with: python3 {Path(__file__).name} --ledger")
-    return (1 if (stale or gone) else 0), out
+    return (1 if (stale or gone) else 0), out, (CAUSE_POPULATION if (stale or gone) else None)
 
 
 def ledger(index=None, tools_dir=None, timeout=TIMEOUT, path=None, write=True):
@@ -1244,7 +1279,7 @@ def main(argv):
     if a.self_test:
         return self_test()
     if a.stale_check:
-        rc, lines = stale_check()
+        rc, lines, cause = stale_check()
         # ⛔ THE FOOTER MUST NOT GENERALISE AWAY THE REASON PRINTED ABOVE IT. `stale_check` reports
         # TWO distinct causes — a foreign classifier, and a moved population — and a single exit
         # line saying "the indexed population moved" contradicts the first one two lines up.
@@ -1257,7 +1292,7 @@ def main(argv):
             print(l)
         print({0: "  the record is CURRENT for the index — not a claim that any instrument"
                   " produced a verdict",
-               1: stale_footer(lines),
+               1: stale_footer(cause),
                2: "  VOID"}[rc])
         return rc
     if a.ledger:
