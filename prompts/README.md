@@ -180,6 +180,72 @@ mature findings as durable artifacts; DEVOPS uses Daintree for transient outages
 for persistent operational work; DEV keeps reasoning that matters to future engineers attached to
 the relevant issue or PR.
 
+### ⛔ A LABEL IS NOT AN ASSIGNMENT EITHER — `role:` is the queue, `dev:N` is usually provenance
+
+⚠ **The limits first, because they bound everything below.** This rule is derived from **15 open
+issues on one board on one night**, all labelled by one pane. ⛔ **It is not derived from a stated
+intent** — nobody wrote down what `dev:N` was supposed to mean, and I did not ask the panes that
+carry it. **What follows is the reading the board best supports, not the reading anyone declared.**
+⇒ **A pane that meant its `dev:N` as an assignment should say so and this rule loses.**
+
+**The defect (#461).** `role:` and `dev:N` are both queryable, both populated, and until this
+paragraph **nothing said which wins.** A pane running `--label dev:5` and a pane running
+`--label role:DEVOPS` both got an authoritative-looking answer naming a different owner, and **#374
+was in both.**
+
+```
+role:X              THE QUEUE. Authoritative for routing, always.
+dev:N + role:DEV    THE ADDRESS within that queue.
+dev:N + any other   PROVENANCE — which pane the content came from.
+                    ⛔ NOT an assignment. No pane should act on it.
+dev:N + no role:    invisible to every role query. Report it; do not act on it.
+```
+
+★ **`role:DEV` is the exception for a measured reason, not a carve-out.** DEV is the **only**
+subdivided role — there is no `dx:N`, no `architect:N`, no `devops:N`. ⇒ For every one-pane role
+`role:X` **is** the address; **`role:DEV` stopped being an address when DEV was split into five, and
+the label did not change.** (Measured by DEV5 on #489.)
+
+#### ⇒ The measurement that picks PROVENANCE over the alternatives
+
+Of the 15 open issues carrying a `dev:N` beside a non-`role:DEV` role, on 2026-08-21:
+
+```
+dev:N names the pane that FILED it            11 of 15   (read from each body's self-naming)
+dev:N names the pane the content is ABOUT      1         (#271 — a capture OF DEV3, promoted by TEAMLEAD)
+dev:N disagrees with the filer                 1         (#282 — filed by DEV3, labelled dev:2)
+filer not determinable from the body           2
+issues containing assignment language          1 of 15   (#268, and it is a section heading)
+```
+
+⇒ **Twelve of thirteen determinable cases record where the work came from. None assigns it.**
+⚠ **The two undetermined and the one disagreement are not explained away** — #282 in particular is
+either a mislabelling or a meaning nobody has stated, and this rule does not settle it.
+
+#### ⛔ Therefore a collision count of ZERO is the wrong target, and driving it there is the defect
+
+**#461's own Done-when says so:** the query can be driven to 0 by stripping labels, which **destroys
+the record of which pane produced the work** and reproduces the *"what is mine?"* gap with a
+clean-looking board. ⇒ **The 15 are intentional under this rule and stay.**
+
+★ **The one shape that IS a defect is a `dev:N` beside a queue that RESERVES action from panes.**
+That already bit: **#319** carried `role:OPERATOR` **and** `dev:2`, so **the board was telling a pane
+to work inside a quarantine the operator had reserved.** From the forge's own timeline:
+
+```
+2026-08-20T19:11:23Z  labeled   dev:2
+2026-08-21T04:25:14Z  labeled   role:OPERATOR   <- the hazard opens here
+2026-08-21T04:47:53Z  unlabeled dev:2           <- and closes, 22m39s later
+```
+
+⇒ **Checked by `tools/label-precedence.py`**, which reports the four kinds separately and **never a
+bare collision count**: exit 1 on a hazard, 0 otherwise, **2 if the forge could not be read.**
+
+⚠ **Its clean run on the live board proves less than it looks like.** `HAZARD 0` today is a board
+**already repaired** — the hazard was removed before the tool existed. ⇒ The known-positive is
+therefore pinned as a **regression test on #319's real historical labels**, both states of the same
+real issue, **not on the current board.**
+
 ## ⚠ Treat these as a baseline, not as settled
 
 The thesis argues that several things these prompts ask an agent to *remember* cannot be solved
