@@ -410,6 +410,7 @@ does not move — a design property, not agent behaviour.
       would have produced the OTHER answer and say which of the three it enters by
       ⛔ "no such case exists" is not an answer. It is this criterion's failure mode.
       ⛔ AND NAMING THE CASE IS NOT ENOUGH — RUN IT. See below.
+      ⛔ AND NAMING THE PREDICATE IS NOT STATING IT — give one another pane can RE-RUN.
       ⛔ AND IF THE CHANNEL CAN TRUNCATE, SHOW THAT IT DID NOT — reconcile the returned
          size against a channel with a DIFFERENT failure mode. A self-check does not
          qualify: `len(rows) >= limit` needs a `limit`, and a DEFAULT limit is a cap
@@ -555,6 +556,71 @@ does not move — a design property, not agent behaviour.
    ⚠ **This is not a sixth criterion and must not become one** — it is criterion 5's population leg
    with *control* substituted for *finding*. **Recorded here so it is not invented a fourth time**,
    which is Class B's remedy stated at the boundary rather than at the instance.
+
+   ### ⛔ Naming the predicate is not stating it (DEV3's measurement, TEAMLEAD's report)
+
+   **Three panes measured *how often a doctrine file is opened unprompted*, on one corpus, in one
+   thread. All three named population, predicate and channel. All three satisfied criterion 5 as
+   written.**
+
+   ```
+   a READ VERB — Read · git show <ref>:<path> · cat            1,619
+   a PATH-SHAPED STRING in any tool input                      7,166
+   every path-shaped string, including outbound messages      17,395     10.7× apart
+   ```
+
+   ⇒ ⛔ **No two were measuring the same act, and none was reproducible from its own description.**
+   `FILE-OPEN EVENT` is **a method choice wearing a noun.**
+
+   > **Give the predicate as something another pane can RE-RUN — a command, a regex, an exact rule —
+   > not a description of one.** ⇒ *"a file-open event"* is a category. *"a read verb: `Read` |
+   > `git show <ref>:<path>` | `cat`"* is a predicate.
+
+   ★ **The test, and it is checkable at authoring time:** *if two panes applying your stated predicate
+   to the same corpus could get different counts, you named a category, not a predicate.*
+
+   ⚠ **This is criterion 4's clause — *a caller that still runs it* — applied to the PREDICATE rather
+   than the control**, and it is a sharpening of criterion 5's predicate leg, not a sixth criterion.
+
+   ⇒ ★ **And it is ONE SURFACE of a wider class DEV3 named from the other side** — *a rule and a
+   bucket name are both claims, and both inherit the scope of the method that produced them.* Three
+   surfaces, one remedy:
+
+   ```
+   a RULE          "garbage flag exits nonzero ⇒ it discriminates"   true in scripts/, false in tools/
+   a BUCKET NAME   "NO-CONTROL" for 20 instruments, 0 control-free   a fact about the PREDICATE
+   a STATED LEG    "predicate: a file-open event"                    a method choice wearing a noun
+   ```
+
+   **The clause above is the DELIVERY of that class for readings.** ⛔ It is not a rival statement of
+   it, and the class itself belongs where a defect appearing at three layers with one remedy belongs.
+   *A criterion that restates must be abolished rather than tuned*, and this does not restate: 5 as
+   written required the **counter-case** to be run, never the predicate to be re-runnable **by someone
+   else**.
+
+   ### ⛔ And the wide predicate did not over-count. It INVERTED the measurement.
+
+   **1,833 of the 17,395 paths sit inside OUTBOUND MESSAGES.** ⇒ Under that predicate, **one pane
+   telling another to read a file is counted as a file-open event** — so the reading counts
+   **solicitation as reading**, which is *the precise quantity it was subtracting*.
+
+   ★ **And it is self-reinforcing:** the more a pane names files in messages, the more "reads" its own
+   predicate manufactures out of its own naming. **The author sent 60+ such messages that evening and
+   then measured the corpus those messages had inflated.** ⇒ That is *a corpus your own intervention
+   moved* (above) **meeting the predicate leg**, and neither finding was derived from the other.
+
+   ⛔ **The general hazard, which is worse than over-counting:** *a predicate whose false positives are
+   concentrated in the very phenomenon it is subtracting.* **Noise you can bound; a false positive
+   correlated with the excluded case is a sign error.**
+
+   ### ⚠ The falsifier, and it is FITTING rather than validation
+
+   > **The amendment does work iff at least one reading that passes criterion 5 today fails it.**
+
+   All three above do, on one corpus, in one thread. ⛔ **But the amendment was DERIVED from those
+   three** — exactly as criterion 5 was derived from its original six, and the same discount applies.
+   ⇒ **The evidence is the first non-reproducible predicate it stops that nobody argued in advance.**
+   `[NOT-YET-MEASURED]`
 
    ### ⛔ The counter-case must be RUN, not named (DEV2, #353)
 
