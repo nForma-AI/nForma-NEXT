@@ -129,20 +129,19 @@ limited() {
     wait "$pid"
 }
 
-gate() {
-    local dir="$1" glob="${2:-*.py}"
-    local pass=0 broke=0 unest=0 unver=0 hung=0 declared=0 excluded=0 ran=0
-    local broke_names="" unest_names="" unver_names="" hung_names="" declared_names="" why=""
-    local excluded_names=""
-    local f b rc grc
-
-    local _saved_limit="$LIMIT"
-    for f in "$dir"/$glob; do
+classify_one() {
+    # ⛔ ONE SUBJECT, ONE VERDICT, NO SHARED STATE. Extracted VERBATIM from the loop body, so the
+    # classification is unchanged and every control still exercises the same code. The counter
+    # increments became `@@VERDICT <bucket> <name>` lines because A SUBSHELL CANNOT INCREMENT ITS
+    # PARENT'S VARIABLES — which is precisely why the loop could not simply be backgrounded, and
+    # why this is an extraction rather than an `&` on the existing body.
+    local f="$1" _saved_limit="$LIMIT"
+    local b why gout bout fout grc brc rc
         [ -f "$f" ] || continue
         [ "$(basename "$f")" = "$(basename "$0")" ] && continue
         b=$(basename "$f")
         if echo "$b" | grep -qE "$IS_A_TEST"; then
-            excluded=$((excluded + 1)); excluded_names="$excluded_names $b"
+            echo "@@VERDICT excluded $b"
             continue
         fi
         # ⛔ THE DECLARATION IS READ BEFORE ANY INVOCATION, not as a branch of the exit code.
@@ -159,17 +158,17 @@ gate() {
             # itself, and that reds the gate. Without this leg one comment line removes any
             # subject from the population, which is the thing every other leg here refuses.
             if grep -qE '^if __name__ *== *.__main__.' "$f"; then
-                broke=$((broke + 1)); broke_names="$broke_names $b"
+                echo "@@VERDICT broke $b"
                 echo "  ⛔ $b declares \`# NOT-EXECUTABLE:\` and HAS a __main__ entry point."
                 echo "     The declaration is false about the file that carries it."
                 continue
             fi
             why=$(sed -n 's/^# NOT-EXECUTABLE: //p' "$f" | head -1)
-            declared=$((declared + 1)); declared_names="$declared_names $b(not-executable)"
+            echo "@@VERDICT declared $b(not-executable)"
             echo "  ---- $b is NOT EXECUTED, declared in-file: $why"
             continue
         fi
-        ran=$((ran + 1))
+        echo "@@VERDICT ran $b"
         case "$f" in
             *.sh) run_it() { limited bash "$f" "$@"; } ;;
             *)    run_it() { limited python3 "$f" "$@"; } ;;
@@ -198,7 +197,7 @@ gate() {
         # fall into the refusal-text checks below and be classified by a message it never
         # printed. Ordering, not a guard — the guard existed and I still had to reason about it.
         if [ "$grc" -eq 124 ]; then
-            hung=$((hung + 1)); hung_names="$hung_names $b"
+            echo "@@VERDICT hung $b"
             echo "  ⛔ $b TIMED OUT after ${LIMIT}s on \`$GARBAGE\` — it did not terminate."
             echo "     ⚠ Not a pass and not a failure. A subject that keeps working on an"
             echo "        argument it does not recognise is not a read-only checker."
@@ -227,8 +226,7 @@ gate() {
         bout=$(cat "$LOG" 2>/dev/null); rm -f "$LOG"
         LIMIT="$_saved_limit"
         if [ "$grc" -eq 0 ]; then
-            unver=$((unver + 1))
-            unver_names="$unver_names $b"
+            echo "@@VERDICT unver $b"
             echo "  ⚠ $b UNVERIFIABLE — it accepts \`$GARBAGE\` and exits 0."
             echo "     ⛔ So \`$FLAG\` exiting 0 establishes NOTHING: the flag may never have"
             echo "        been recognised. Fix the argument surface before trusting the control."
@@ -250,7 +248,7 @@ gate() {
         # the world made from a limit of the invocation.
         case "$fout" in
             *"arguments are required"*|*"the following arguments"*)
-                unest=$((unest + 1)); unest_names="$unest_names $b"
+                echo "@@VERDICT unest $b"
                 echo "  ⚠ $b CANNOT BE INVOKED BARE — \`$FLAG\` alone is rejected for MISSING"
                 echo "     REQUIRED ARGUMENTS, so no control is reachable this way. ⛔ That is not"
                 echo "        'has no self-test'; it is a limit of the invocation, and it needs a"
@@ -271,7 +269,7 @@ gate() {
         # not the neighbouring one is the population defect this repo keeps filing, and I
         # committed it by carrying my own finding across the boundary without re-testing it.
         if [ "$rc" -eq "$grc" ] && [ "$fout" = "$gout" ]; then
-            unest=$((unest + 1)); unest_names="$unest_names $b"
+            echo "@@VERDICT unest $b"
             echo "  ⚠ $b UNESTABLISHED — \`$FLAG\` and \`$GARBAGE\` produce IDENTICAL output and"
             echo "     the same exit ($rc). ⛔ The flag was never DISPATCHED: whatever ran, ran"
             echo "        regardless of it, so its exit says nothing about the control."
@@ -287,14 +285,14 @@ gate() {
         # --zzz` exited 0. An OR is the right shape for "can it refuse at all" and the WRONG
         # shape for "did it read the whole invocation".
         if [ "$brc" -eq 0 ]; then
-            unver=$((unver + 1)); unver_names="$unver_names $b"
+            echo "@@VERDICT unver $b"
             echo "  ⚠ $b UNVERIFIABLE — \`$FLAG $GARBAGE\` exits 0."
             echo "     ⛔ The flag is matched and the rest DISCARDED, so a control result here"
             echo "        describes an invocation that was only half read."
             continue
         fi
         if ! attributable "$grc" "$gout" && ! attributable "$brc" "$bout"; then
-            unver=$((unver + 1)); unver_names="$unver_names $b"
+            echo "@@VERDICT unver $b"
             if [ "$grc" -eq 0 ] || [ "$brc" -eq 0 ]; then
                 echo "  ⚠ $b UNVERIFIABLE — an unknown flag is ACCEPTED and it exits 0"
                 echo "     (\`$GARBAGE\` -> $grc, \`$FLAG $GARBAGE\` -> $brc)."
@@ -320,10 +318,10 @@ gate() {
                 *"unrecognized arguments: $FLAG"*|*"unrecognised argument"*"$FLAG"*)
                     if grep -q "$DECLARES_NONE" "$f"; then
                         why=$(sed -n 's/^# NO-SELF-TEST: //p' "$f" | head -1)
-                        declared=$((declared + 1)); declared_names="$declared_names $b"
+                        echo "@@VERDICT declared $b"
                         echo "  ---- $b has NO self-test (the flag is REJECTED), declared: $why"
                     else
-                        unest=$((unest + 1)); unest_names="$unest_names $b"
+                        echo "@@VERDICT unest $b"
                         echo "  ⚠ $b HAS NO SELF-TEST — it rejects \`$FLAG\` as unrecognised, a"
                         echo "     DEFINITE answer, not an unestablished one. ⛔ It needs a"
                         echo "        \`# NO-SELF-TEST: <reason>\` line, or a control."
@@ -332,26 +330,82 @@ gate() {
             esac
         fi
         if [ "$rc" -eq 124 ]; then
-            hung=$((hung + 1)); hung_names="$hung_names $b"
+            echo "@@VERDICT hung $b"
             echo "  ⛔ $b TIMED OUT after ${LIMIT}s running its own control."
             continue
         fi
         case "$rc" in
-            0) pass=$((pass + 1)) ;;
+            0) echo "@@VERDICT pass $b" ;;
             2) if grep -q "$DECLARES_NONE" "$f"; then
                    why=$(sed -n 's/^# NO-SELF-TEST: //p' "$f" | head -1)
-                   declared=$((declared + 1)); declared_names="$declared_names $b"
+                   echo "@@VERDICT declared $b"
                    echo "  ---- $b has NO self-test, declared in-file: $why"
                else
-                   unest=$((unest + 1)); unest_names="$unest_names $b"
+                   echo "@@VERDICT unest $b"
                    echo "  ⚠ $b UNESTABLISHED (exit 2) — no self-test and NO \`# NO-SELF-TEST:\`"
                    echo "     declaration. ⛔ Undeclared absence is indistinguishable from a"
                    echo "        control that ran and concluded nothing."
                fi ;;
-            *) broke=$((broke + 1)); broke_names="$broke_names $b"
+            *) echo "@@VERDICT broke $b"
                echo "  ⛔ $b CONTROL FAILED (exit $rc) — the checker's own control does not pass." ;;
         esac
+}
+
+gate() {
+    local dir="$1" glob="${2:-*.py}"
+    local pass=0 broke=0 unest=0 unver=0 hung=0 declared=0 excluded=0 ran=0
+    local broke_names="" unest_names="" unver_names="" hung_names="" declared_names="" why=""
+    local excluded_names=""
+    local f b rc grc
+
+    local _saved_limit="$LIMIT"
+    # ⛔ PARALLEL ACROSS SUBJECTS, and the reason is a CORRECTNESS fix rather than convenience.
+    # Measured across five PRs that did not choose it: the serial step costs 185s ± 2s against a
+    # 38s baseline — 4.9×. ⇒ At that price `strict: true` on branch protection is unaffordable,
+    # and `strict: false` is what let a PR merge a GREEN CHECK THAT PREDATED THE GATE IT CLAIMS
+    # TO HAVE PASSED (#374). Parallelism is what makes the stale-check remedy payable, so it
+    # stopped being a nice-to-have the moment that hole was measured.
+    # ⚠ Each subject writes its own result file: interleaved stdout would make a verdict
+    # unattributable, which is the defect this whole gate exists against.
+    local RESDIR JOBS _idx=0 _running=0
+    JOBS="${SUBJ_JOBS:-6}"
+    RESDIR=$(mktemp -d)
+    for f in "$dir"/$glob; do
+        classify_one "$f" > "$RESDIR/$(printf %04d "$_idx").res" 2>&1 &
+        _idx=$((_idx + 1)); _running=$((_running + 1))
+        # ⚠ bash 3.2 has no `wait -n`, so this drains in BATCHES rather than keeping N in flight.
+        # Slower than a true pool by the width of the slowest subject in each batch, and it is a
+        # portability cost stated rather than hidden — `timeout(1)` is absent here too.
+        if [ "$_running" -ge "$JOBS" ]; then wait; _running=0; fi
     done
+
+    wait
+    # ⇒ READ BACK IN FILENAME ORDER, so the report is DETERMINISTIC even though execution was
+    # not. A parallel gate whose output order varies run to run cannot be diffed, and "did this
+    # change?" is the question a reader actually asks of a repeated run.
+    local _r _line _bucket _name
+    for _r in "$RESDIR"/*.res; do
+        [ -f "$_r" ] || continue
+        while IFS= read -r _line; do
+            case "$_line" in
+                "@@VERDICT "*)
+                    _bucket=$(echo "$_line" | cut -d" " -f2)
+                    _name=$(echo "$_line" | cut -d" " -f3-)
+                    case "$_bucket" in
+                        ran)      ran=$((ran + 1)) ;;
+                        pass)     pass=$((pass + 1)) ;;
+                        broke)    broke=$((broke + 1)); broke_names="$broke_names $_name" ;;
+                        unest)    unest=$((unest + 1)); unest_names="$unest_names $_name" ;;
+                        unver)    unver=$((unver + 1)); unver_names="$unver_names $_name" ;;
+                        hung)     hung=$((hung + 1)); hung_names="$hung_names $_name" ;;
+                        declared) declared=$((declared + 1)); declared_names="$declared_names $_name" ;;
+                        excluded) excluded=$((excluded + 1)); excluded_names="$excluded_names $_name" ;;
+                    esac ;;
+                *) echo "$_line" ;;
+            esac
+        done < "$_r"
+    done
+    rm -rf "$RESDIR"
 
     echo
     # ⛔ THE ENVIRONMENT IS PART OF THE READING, AND WITHOUT IT THE SUMMARY WEARS A NOUN IT
@@ -628,6 +682,28 @@ selftest() {
         *) echo "  ok    known-negative: a hung subject is never folded into pass or fail" ;;
     esac
     rm -f "$d/e_hangs.py"
+
+    # ⛔ CONCURRENCY MUST NOT CHANGE THE VERDICT, and this is the leg that makes parallelism an
+    # optimisation rather than a defect. A gate whose classification depends on HOW MANY subjects
+    # run at once would be worse than a slow one — the reader could not tell a finding from a
+    # scheduling artifact.
+    # ⚠ Measured on the real population before this control existed: 49 subjects, 26 passed,
+    # 14 UNESTABLISHED, 9 UNVERIFIABLE at BOTH JOBS=1 (180s) and JOBS=6 (60s), with all 24
+    # non-passing subjects in identical states. This asserts the property on the fixture so it
+    # cannot regress silently.
+    plant_py "$d/p1_ok.py" 'if a == ["--self-test"]: sys.exit(0)' 'if a: void()' 'sys.exit(0)'
+    plant_py "$d/p2_dead.py" 'if a: void()' 'sys.exit(0)'
+    printf '#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n' > "$d/p3_perm.py"
+    local _ser _par
+    _ser=$(SUBJ_BASELINE=9 JOBS=1 gate "$d" 'p[0-9]_*.py' 2>&1 | grep -E "^  (⚠|⛔|----) p[0-9]_" | sort)
+    _par=$(SUBJ_BASELINE=9 JOBS=6 gate "$d" 'p[0-9]_*.py' 2>&1 | grep -E "^  (⚠|⛔|----) p[0-9]_" | sort)
+    if [ "$_ser" = "$_par" ] && [ -n "$_ser" ]; then
+        echo "  ok    CONCURRENCY: JOBS=1 and JOBS=6 produce IDENTICAL per-subject verdicts"
+    else
+        echo "  FAIL  concurrency changed the verdict — parallelism is a defect, not an optimisation"
+        ok=1
+    fi
+    rm -f "$d/p1_ok.py" "$d/p2_dead.py" "$d/p3_perm.py"
 
     # ⛔ THE BASELINE, BOTH DIRECTIONS — the second leg is what makes it a baseline rather than
     # an exemption. A number that only ever subtracts is an allowlist; this one must RED when the
