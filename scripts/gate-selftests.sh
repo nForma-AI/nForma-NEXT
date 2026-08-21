@@ -71,6 +71,23 @@ FLAG="--self-test"
 # because an exclusion nobody can see is how a checker's population quietly stops matching its
 # subject. Silence is the failure mode; a visible skip can be argued with.
 DECLARES_NONE="^# NO-SELF-TEST:"
+# ⛔ TWO DECLARATIONS, DIFFERENT POWERS, AND THE DIFFERENCE IS THE WHOLE POINT.
+#
+#   # NO-SELF-TEST: <reason>    the subject IS STILL RUN. Only an UNESTABLISHED result is
+#                               excused. A control that FAILS still reds the gate.
+#   # NOT-EXECUTABLE: <reason>  the subject is not run at all — it is imported, never invoked.
+#
+# ⚠ I collapsed these into one and the self-test caught it within a minute. Hoisting the
+# NO-SELF-TEST check above the invocation meant a declared subject was never run, so a FAILING
+# control inside it could never be found: THE DECLARATION BECAME AN OFF SWITCH, which is exactly
+# what the control `a declaration does NOT rescue a control that FAILS` exists to prevent. It
+# fired on the person who wrote it.
+#
+# ⇒ NOT-EXECUTABLE is hoisted because a MODULE has no argv surface: `tools/runmarker.py` is
+# imported, never run, and executing it exits 0 having done nothing — indistinguishable from a
+# tool that ACCEPTED a bogus flag. That is a claim about the FILE'S KIND, not about its control,
+# and it is the only reason to skip execution.
+NOT_EXECUTABLE="^# NOT-EXECUTABLE:"
 LIMIT="${SUBJ_TIMEOUT:-30}"
 
 # ⚠ NO `timeout(1)`. It is absent on macOS by default and its absence exits 127 — which this
@@ -107,8 +124,32 @@ gate() {
     for f in "$dir"/$glob; do
         [ -f "$f" ] || continue
         [ "$(basename "$f")" = "$(basename "$0")" ] && continue
-        ran=$((ran + 1))
         b=$(basename "$f")
+        # ⛔ THE DECLARATION IS READ BEFORE ANY INVOCATION, not as a branch of the exit code.
+        # A MODULE forces this: `tools/runmarker.py` is imported, never run, and has no argv
+        # surface at all — running it exits 0 having done nothing, which is indistinguishable
+        # from a tool that ACCEPTED a bogus flag. ⇒ A subject that declares it has no self-test
+        # is never EXECUTED here, so declaring costs nothing and cannot trigger the work the
+        # subject would otherwise do on an argument it does not understand.
+        if grep -q "$NOT_EXECUTABLE" "$f"; then
+            # ⛔ THE DECLARATION IS FALSIFIABLE, OR IT IS AN OFF SWITCH. NOT-EXECUTABLE is a claim
+            # about the file's KIND — imported, never invoked — and a module does not have an
+            # entry point. So the claim is CHECKED, not trusted: a file that declares it and
+            # still carries `if __name__ == "__main__"` is asserting something false about
+            # itself, and that reds the gate. Without this leg one comment line removes any
+            # subject from the population, which is the thing every other leg here refuses.
+            if grep -qE '^if __name__ *== *.__main__.' "$f"; then
+                broke=$((broke + 1)); broke_names="$broke_names $b"
+                echo "  ⛔ $b declares \`# NOT-EXECUTABLE:\` and HAS a __main__ entry point."
+                echo "     The declaration is false about the file that carries it."
+                continue
+            fi
+            why=$(sed -n 's/^# NOT-EXECUTABLE: //p' "$f" | head -1)
+            declared=$((declared + 1)); declared_names="$declared_names $b(not-executable)"
+            echo "  ---- $b is NOT EXECUTED, declared in-file: $why"
+            continue
+        fi
+        ran=$((ran + 1))
         case "$f" in
             *.sh) run_it() { limited bash "$f" "$@"; } ;;
             *)    run_it() { limited python3 "$f" "$@"; } ;;
@@ -213,13 +254,19 @@ gate() {
     echo "  ran $ran subject(s): $pass control(s) passed · $broke FAILED · $unest UNESTABLISHED · $unver UNVERIFIABLE · $hung TIMED OUT"
     echo "  declared NO self-test (skipped, COUNTED and NAMED, never silent):${declared_names:- none}"
 
-    if [ "$ran" -eq 0 ]; then
-        echo "  ⛔ ESTABLISHED NOTHING — zero subjects matched \"$glob\" under $dir/. Not a pass."
-        return 2
-    fi
+    # ⛔ A FINDING OUTRANKS AN EMPTY POPULATION, and the order matters. The other way round, a
+    # run whose only subject was a FALSE `# NOT-EXECUTABLE:` declaration returned 2 ESTABLISHED
+    # NOTHING — a declared subject is never counted as RUN, so `ran` was 0 and a real finding was
+    # reported by a summary saying nothing had been established. The control caught it: got 2,
+    # wanted 1.
     if [ "$broke" -gt 0 ]; then
         echo "  ⛔ CONTROL FAILED:$broke_names"
         return 1
+    fi
+    # ⚠ `declared` counts as examined: a population of nothing but declared subjects HAS been read.
+    if [ "$ran" -eq 0 ] && [ "$declared" -eq 0 ]; then
+        echo "  ⛔ ESTABLISHED NOTHING — zero subjects matched \"$glob\" under $dir/. Not a pass."
+        return 2
     fi
     if [ "$hung" -gt 0 ]; then
         echo "  ⛔ TIMED OUT:$hung_names — blocking. \"Did not terminate\" is not \"concluded no\"."
@@ -354,6 +401,24 @@ selftest() {
         *) echo "  ok    known-negative: refusing garbage alone is NOT sufficient to pass" ;;
     esac
     rm -f "$d/f_half_read.py"
+
+    # ⛔ NOT-EXECUTABLE, BOTH DIRECTIONS. It is the only declaration that skips EXECUTION, so it
+    # is the only one that could become an off switch — and the second leg is what stops it.
+    { echo '#!/usr/bin/env python3'; echo '# NOT-EXECUTABLE: a module; imported, never invoked'
+      echo 'X = 1'; } > "$d/g_module.py"
+    out=$(gate "$d" 'g_module.py' 2>&1); rc=$?
+    # ⚠ EXPECTS 0, and the expectation was wrong before the return order was fixed. A population
+    # of nothing but correctly-declared subjects HAS been examined and nothing failed — reporting
+    # ESTABLISHED NOTHING there would be the overclaim in the other direction.
+    check "a NOT-EXECUTABLE module is skipped WITHOUT being run, and named" 0 \
+          "is NOT EXECUTED, declared in-file: a module; imported, never invoked"
+
+    { echo '#!/usr/bin/env python3'; echo '# NOT-EXECUTABLE: claims to be a module'
+      echo 'import sys'; echo 'if __name__ == "__main__":'; echo '    sys.exit(0)'; } > "$d/h_liar.py"
+    out=$(gate "$d" 'h_liar.py' 2>&1); rc=$?
+    check "a file claiming NOT-EXECUTABLE while carrying __main__ REDS — the declaration is checked" 1 \
+          "declaration is false about the file that carries it"
+    rm -f "$d/g_module.py" "$d/h_liar.py"
 
     # ⛔ THE TIMEOUT STATE, CONTROLLED — it exists because it FIRED on the real population, not
     # because it was imagined: pointing this gate at scripts/*.sh hung for over two minutes on
