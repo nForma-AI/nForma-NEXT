@@ -126,11 +126,21 @@ def documented_codes(src):
 
 # ⚠ Which code does THIS instrument use for "established nothing"? Read from its own docstring,
 # with 2 as a NAMED fallback rather than an assumption.
-REFUSAL_WORDS = re.compile(r"establish|nothing|void|refus|unknown", re.I)
+# ⛔ THE PHRASE, NEVER THE BARE WORD — and the bare word cost two wrong rows before this line
+# existed. `pane-binding.py` documents `1 at least one is not (ESTABLISHED)` and `grant-check.py`
+# documents `1 no live grant (ESTABLISHED)`. In BOTH, "ESTABLISHED" means THE FINDING IS
+# ESTABLISHED — the opposite of "established nothing". A predicate matching bare `establish`
+# picked code 1 as their refusal, turning a real verdict into a refusal in one tool and a real
+# refusal into a verdict in the other.
+# ★ A word-sense collapse inside the remedy for a word-sense collapse. Found only by diffing the
+#   old rows against the new — the audit I had said on #440 that I had not done.
+REFUSAL_WORDS = re.compile(
+    r"establish\w*\s+nothing|nothing\s+(?:is\s+)?establish|"
+    r"\bvoid\b|\brefus\w*|\bno\s+verdict\b|\bcould\s+not\s+(?:read|run|tell)\b", re.I)
 
 
 def refusal_code(src, default=2):
-    """(code, derived) — the exit code this instrument documents as establishing nothing.
+    """(codes, derived) — the exit code(s) this instrument documents as establishing nothing.
 
     ⛔ WHY THIS IS NOT JUST `2`. This file already reads each instrument's docstring to decide
     whether a code is DOCUMENTED — and then ignored that same docstring to decide what 2 MEANS,
@@ -149,15 +159,25 @@ def refusal_code(src, default=2):
     """
     m = EXIT_DOC.search(src or "")
     if not m:
-        return default, False
-    block = " ".join(m.group(1).split())
-    # split on the separators this repo's Exit: lines actually use
-    for part in re.split(r"[·|]|(?<=[a-z])\s+(?=[0-9]\s)", block):
-        part = part.strip()
-        cm = re.match(r"^\**(\d)\**\s+(.*)$", part)
-        if cm and REFUSAL_WORDS.search(cm.group(2)):
-            return int(cm.group(1)), True
-    return default, False
+        return {default}, False
+    # ⛔ SLICE BETWEEN CODE POSITIONS — NEVER SPLIT ON A SEPARATOR. The first version joined the
+    # block to one line and split on `·`, which two instruments do not use: `runnable-condition.py`
+    # and `estate-provenance.py` write an ALIGNED MULTI-LINE block. With no separator to split on,
+    # the WHOLE BLOCK became code 0's description, "ESTABLISHED NOTHING" was found inside it, and
+    # both returned refusal={0}.
+    # ⛔ EXIT 0 READ AS A REFUSAL misclassifies every clean run — strictly worse than the defect
+    #   this function was written to fix. Found by auditing the risk I had named rather than by
+    #   anything announcing itself, which is the third time in this file that was the only route.
+    # ⇒ Separators are NORMALISED to newlines, then each code owns the text up to the NEXT code.
+    block = re.sub(r"[·|]", "\n", m.group(1))
+    marks = list(re.finditer(r"(?m)^[ \t]*\**(\d)\**[ \t]+", block))
+    found = set()
+    for i, mk in enumerate(marks):
+        end = marks[i + 1].start() if i + 1 < len(marks) else len(block)
+        desc = block[mk.end():end]
+        if REFUSAL_WORDS.search(desc):
+            found.add(int(mk.group(1)))
+    return (found, True) if found else ({default}, False)
 
 
 def _norm(r, flag):
@@ -252,8 +272,9 @@ def classify(path, timeout=TIMEOUT):
     if r.returncode not in codes:
         return NEVERRUN, (f"exited {r.returncode}, not in its documented set {sorted(codes)}"
                           f" [{elapsed:.1f}s]")
-    ref, derived = refusal_code(src)
-    if r.returncode == ref:
+    refs, derived = refusal_code(src)
+    if r.returncode in refs:
+        ref = r.returncode
         why = ("its own docstring" if derived
                else "this repo's convention — ⚠ ITS docstring does not say, so this reading is"
                     " the convention's, not the instrument's")
@@ -646,22 +667,63 @@ def self_test():
     EA = '"""x\n\nExit: 0 present on the default ref · 1 present only on other refs'\
          ' · 2 absent everywhere\n      · 3 established nothing.\n"""\n'
     got = refusal_code(EA)
-    ok &= got == (3, True)
-    print(f"  {'ok  ' if got == (3, True) else 'FAIL'}  an instrument documenting 3 as established"
+    ok &= got == ({3}, True)
+    print(f"  {'ok  ' if got == ({3}, True) else 'FAIL'}  an instrument documenting 3 as established"
           f"-nothing has refusal 3, NOT 2 (got {got}) — the exists-anywhere shape")
+
+    # ⛔ THE WORD-SENSE CASE, AND IT IS THE ONE THAT COST TWO WRONG ROWS. Two instruments write
+    # `1 ... (ESTABLISHED)` meaning THE FINDING IS ESTABLISHED — the opposite of "established
+    # nothing". A predicate matching the bare word picks code 1 as their refusal, turning a real
+    # verdict into a refusal in one tool and a real refusal into a verdict in the other.
+    SENSE = ('"""x\n\nExit: 0 every pane BOUND · 1 at least one is not (ESTABLISHED)'
+             ' · 2 established nothing\n      3 the self-test failed\n"""\n')
+    got = refusal_code(SENSE)
+    ok &= got == ({2}, True)
+    print(f"  {'ok  ' if got == ({2}, True) else 'FAIL'}  '(ESTABLISHED)' meaning THE FINDING IS"
+          f" established does not make code 1 a refusal (got {got}) — the pane-binding shape")
+
+    # ⛔ THE ALIGNED MULTI-LINE FORM, which two real instruments use and which defeated the first
+    # splitter completely: with no `·` to split on, the whole block became code 0's description
+    # and "ESTABLISHED NOTHING" was found inside it -> refusal={0}. Exit 0 read as a refusal
+    # misclassifies every clean run.
+    MULTILINE = ('"""x\n\nExit codes:\n'
+                 '    0  every condition read is RUNNABLE          (and both controls fired)\n'
+                 '    1  at least one ASSERTED\n'
+                 '    2  ESTABLISHED NOTHING -- unreadable, empty population, or truncated\n'
+                 '       ⚠ never "all clear"\n'
+                 '    3  CONTROL FAILED -- the positive did not fire\n"""\n')
+    got = refusal_code(MULTILINE)
+    ok &= got == ({2}, True)
+    print(f"  {'ok  ' if got == ({2}, True) else 'FAIL'}  an ALIGNED MULTI-LINE Exit block with no"
+          f" separator yields {{2}}, never {{0}} (got {got}) — the runnable-condition shape")
+
+    # ⚠ and a continuation line belongs to the code ABOVE it, not to a new one
+    got = refusal_code('"""x\n\nExit codes:\n  0  clean\n  1  a finding\n'
+                       '  2  established nothing\n     never read as clean\n"""\n')
+    ok &= got == ({2}, True)
+    print(f"  {'ok  ' if got == ({2}, True) else 'FAIL'}  an unnumbered continuation line stays"
+          f" with the code above it (got {got})")
+
+    # ⚠ and more than one refusal code is a SET, not a first-match
+    TWO = ('"""x\n\nExit: 0 fine · 1 a negative · 2 at least one UNAUDITABLE, establishes nothing'
+           ' · 3 the harness is broken and every verdict is void\n"""\n')
+    got = refusal_code(TWO)
+    ok &= got == ({2, 3}, True)
+    print(f"  {'ok  ' if got == ({2, 3}, True) else 'FAIL'}  an instrument with TWO"
+          f" established-nothing codes yields both (got {got}) — first-match would hide one")
 
     NORMAL = '"""x\n\nExit: 0 clean · 1 findings · 2 established nothing\n"""\n'
     got = refusal_code(NORMAL)
-    ok &= got == (2, True)
-    print(f"  {'ok  ' if got == (2, True) else 'FAIL'}  the ordinary shape still derives 2, and"
+    ok &= got == ({2}, True)
+    print(f"  {'ok  ' if got == ({2}, True) else 'FAIL'}  the ordinary shape still derives 2, and"
           f" derives it from the DOCSTRING rather than assuming (got {got})")
 
     # ⛔ NO REFUSAL VOCABULARY AT ALL: fall back to 2, but the fallback must be VISIBLE. A silent
     # fallback is indistinguishable from a derivation, which is the whole defect one level down.
     SILENT = '"""x\n\nExit: 0 yes · 1 no · 2 maybe\n"""\n'
     got = refusal_code(SILENT)
-    ok &= got == (2, False)
-    print(f"  {'ok  ' if got == (2, False) else 'FAIL'}  a docstring with no refusal vocabulary"
+    ok &= got == ({2}, False)
+    print(f"  {'ok  ' if got == ({2}, False) else 'FAIL'}  a docstring with no refusal vocabulary"
           f" falls back to 2 and REPORTS the fallback (got {got})")
 
     # ⚠ and the fallback must reach the reader, not just the return value
