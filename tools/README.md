@@ -765,7 +765,15 @@ leak; `git` and `python3` are asserted unmoved before anything is measured. ⛔ 
 never 0**: with nothing to shadow, every suite scores hermetic and the clean board is an artefact of the
 machine. *"There was no `gh`"* and *"no suite needs `gh`"* are two states the verdict depends on telling
 apart. ⚠ **With respect to `gh` only** — a suite reaching the network by `curl`, `urllib`, or a git remote
-is not covered and is not thereby clean. **44 of 44 hermetic at `41daed3`; the known-positive is drawn
+is not covered and is not thereby clean. ⇒ **The gap was measured before it was left open, and it is
+currently empty:** across the 45 declared-hermetic suites, `curl` 0 · `wget` 0 · `urllib` 0 · `requests`
+0 · `socket` 0 · a git remote 0. ★ The one `http.` match is `test_daintree_control.py` importing
+`http.server` — **a LOCAL server, which is how a suite is made hermetic, not how it stops being so.**
+⛔ **So the extension was declined, not deferred:** widening the tool to shadow `curl` and friends would
+be building an instrument for a population of zero, and its green would then mean *"nothing to find"*
+rather than *"nothing found."* ⚠ **A count of what a probe did not find is a claim about the probe** —
+this one carries a control (`import` matches 45 of 45, so the zeros are the pipe working, not failing).
+*(measured 2026-08-21 at `6fb0096`.)* **44 of 44 hermetic at `41daed3`; the known-positive is drawn
 from `refs/pr/499`, outside the measured population.**
 
 **`gated-caller.py`** — criterion 4 as amended on 2026-08-21 (#381) made checkable: a control must be
