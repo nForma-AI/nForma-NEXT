@@ -1373,6 +1373,29 @@ when the panes it notified read their files.)
 
 ## Conventions worth copying
 
+### ⛔ `gh --jq` IS NOT `jq` — it corrupts lookarounds before jq sees them
+
+```
+gh ... --jq 'select(.body | test("(?<!NOT )\\bMET\\b"))'
+  ⇒ invalid regular expression "(?P<!NOT )\bMET\b": invalid named capture
+```
+
+★ **`gh` rewrites `(?<` into `(?P<`** — Go's named-capture syntax — **so `(?<!` and `(?<=` become
+malformed captures.** ⚠ **Standalone `jq` handles both fine.** ⇒ **Pipe instead of using `--jq`:**
+
+```
+gh ... --json a,b,c | jq -r '<expression>'
+```
+
+⚠ **It is LATENT here, not live: 0 of 7 files using `--jq` pass a lookaround** — the one candidate a
+file-level scan produced was a **Python** regex in `truncation-guard.py`, and every `--jq` in that
+file is `length` or `.total_count`. **Measured 2026-08-21 across 164 files.**
+
+⛔ **The reason it is worth four lines anyway: when it fires it prints a correct, explicit error, and
+that error goes to STDERR.** ★ **A `2>/dev/null` on the call turns it into an empty result** — the
+author of this note did exactly that and was one step from reading the silence as *"no matches"*.
+
+
 - **Exit 2 for "established nothing."** Absence of a finding and absence of a measurement are
   different states and must not share an exit code.
 - **State the caveat on every run, not in the docs.** Each tool prints what its numbers do
