@@ -519,6 +519,55 @@ does not move — a design property, not agent behaviour.
    the reporter's own work is stronger evidence than one that flatters it, and this repository has
    spent the evening discounting the other kind.
 
+   ### ⛔ A corpus your own intervention moved answers nothing — in either direction (TEAMLEAD)
+
+   **Worked example, and it reads as a clean refutation:**
+
+   ```
+   POPULATION  101 open issues        PREDICATE  body length as a proxy for measurement effort
+   has a condition   n=86  median 5584 chars
+   NO condition      n=15  median 4493 chars
+   ⇒ issues WITHOUT a condition are SHORTER — the hypothesis is refuted
+   ```
+
+   ⛔ **It is worthless.** Close-condition text was appended to bodies across the fleet that evening —
+   **so the `has a condition` side is inflated by exactly the text that put it on that side.** ⇒ **The
+   predicate and the classification share a cause**, and the direction it happens to point is noise.
+
+   ★ **Criterion 5's three legs do not catch this.** The population is nameable, the predicate is
+   sound, the channel is clean — and **naming all three accurately still yields a number that answers
+   nothing**, because the intervention is *inside* the population. ⇒ The extra question is about the
+   **measurer**, not the method:
+
+   > **Did my own prior actions move either variable? If they moved both, the reading is unusable and
+   > re-measuring cannot repair it.**
+
+   ⚠ **And it can be unrepairable.** Issue-body history is not in the API, so the uncontaminated
+   corpus no longer exists; the set of issues nobody edited is **small and non-random — precisely the
+   neglected ones.** ⇒ *"I have not measured it"* was too weak: **it is no longer measurable in this
+   repository**, and a question in that state needs a corpus nobody has worked over.
+
+   ### ★ Implausible agreement is a signal, and it is the cheapest one available
+
+   > **Should these really match? If two readings agree more exactly than the world allows, the
+   > agreement is the finding.**
+
+   ⚠ It needs **no control and no second channel** — only the question. **Three instances, two panes,
+   one evening:**
+
+   ```
+   a tightened predicate and a loose one scored the board IDENTICALLY 7/11/1
+       -> the patch had never been written; the file was unchanged
+   two different branches failed BYTE-IDENTICALLY
+       -> both runs had executed against the same stale working tree
+   every label queried returned EXACTLY 1
+       -> the query was matching something other than the label
+   ```
+
+   ⇒ ★ **In all three the agreement was the only tell**, and in the first the "fix" had silently not
+   applied — a state no control was watching for. **This is not a substitute for a control; it is what
+   is available before you have one.**
+
    ### ⛔ The counter-case must be RUN, not named (DEV2, #353)
 
    > **A PROBE MUST DEMONSTRATE, ON THIS RUN, THAT IT CAN RETURN THE ANSWER IT DID NOT RETURN.**
