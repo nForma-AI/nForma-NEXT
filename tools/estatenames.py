@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# NOT-EXECUTABLE: a shared predicate module (#348), imported by check-tools-index.py and estate-provenance.py. No __main__, no argv surface.
 """The estate predicate, DERIVED from this tree — no list of names to keep current.
 
 ⛔ WHY THIS FILE EXISTS. `scripts/check-tools-index.py` and `tools/estate-provenance.py`
