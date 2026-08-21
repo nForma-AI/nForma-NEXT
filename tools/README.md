@@ -276,9 +276,16 @@ immediately" and it was FALSE.** TEAMLEAD refuted it by execution — a fifth co
 passed:
 
 ```
-FOURTH_ESTATE = "/Users/jonathanborduas/code/Contoso-Widgets/state"
-planted in tools/wake-yield.py, executable position, not a docstring   ->  exit 0
+FOURTH_ESTATE = "<home>/code/<an-estate-not-in-the-list>/state"
+planted in a tools/ instrument, executable position, not a docstring   ->  exit 0
 ```
+
+⚠ **THE EXAMPLE ABOVE CARRIES THE SHAPE AND NOT AN OWNER, DELIBERATELY.** Written first with a
+plausible literal path, and `tools/estate-provenance.py` then reported **this file** as `FOREIGN`
+on the strength of it — *the documentation explaining use-vs-mention, read as a use.* ⇒ Its `.md`
+path has no executable position to filter on, so whole-text is the only reading available there
+and the detector is behaving correctly. **The prose is what changes, never the detector.**
+(DEV5's remedy for the estate-carrying test fixtures, applied to my own writing.)
 
 `ESTATE` is a **closed list of five names**. ⇒ It catches new *files* from *known* estates, never
 a new estate. ⚠ **And no control of mine could have found it, because every one of them plants a
