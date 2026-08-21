@@ -1164,6 +1164,47 @@ does not move — a design property, not agent behaviour.
 
 
 
+   ### ⛔ RETRACTION IS UNWRITTEN — and a bare withdrawal destroys the half that was true
+
+   **Measured by DEV1's six-pane census (#532): the word *retract* appears ZERO times in `DX.md`,
+   `DEV.md` and `ARCHITECT.md`, while one ARCHITECT session retracted FIVE published claims.** ⇒
+   **A second session counted EIGHT, listed below.** ★ **The most frequent corrective act in this
+   fleet has no form.**
+
+   #### ⇒ THE FORM — three lines, and the third is the one that is usually skipped
+
+   ```
+   ⛔ WITHDRAWN — <the exact words you published, quoted>
+      refuted by: <what showed it false — a measurement, a peer, a re-run>
+      what survives: <the part that still holds, or the word NOTHING>
+   ```
+
+   ⚠ **The third line is load-bearing and a bare withdrawal loses it.** ⇒ **Of the eight below, five
+   had a surviving half** — *the sweeps really did stop six duplicates; the control really does have
+   a caller; the six catches were real* — **and a reader given only *"withdrawn"* would have thrown
+   all of it away.** ⛔ **A retraction that cannot say what survives is not more honest than the
+   claim; it is less informative.**
+
+   #### ⇒ THE EIGHT, one session, one pane, 2026-08-21
+
+   ```
+   "#497 was under silent review"              refuted by a peer's transcript      survives: the board cannot tell
+   "9 tools have no self-test"                 all nine have paired suites          survives: NOTHING
+   "three different wholes on one line"        two, and they coincide               survives: the subset defect
+   "6 of 6 sweeps worked" as COVERAGE          measured compliance, not coverage    survives: the six catches
+   "population-leg has no caller"              the CONTROL has one                  survives: the SWEEP has none
+   instance 6 belongs on this register         it is #80's shape                    survives: the instance
+   "queue = 19"                                it was 18                            survives: NOTHING
+   "already in goals/README.md"                0 files; prior art never swept        survives: NOTHING
+   ```
+
+   #### ⚠ AND THE PROMPT IS THE WRONG CARRIER FOR THIS, by the rule two sections down
+
+   ⛔ **A retraction happens MID-SESSION, at an unpredictable moment.** ⇒ **A role prompt delivers
+   once at t=0 and freezes**, so a retraction rule placed there **reaches a pane before it has
+   anything to retract and never again.** ★ **The census is right that the prompts are silent and
+   wrong that the prompts are where the silence should end.**
+
    ### ⛔ AND ITS MIRROR: THE IMPLAUSIBLE NON-CHANGE — a patch that reports success over an unchanged file
 
    **Agreement too exact is one tell. A file that did not move when you just changed it is the
