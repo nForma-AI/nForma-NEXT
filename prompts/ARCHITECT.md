@@ -454,6 +454,26 @@ deliberately not acting on a live pane.)*
 > A decision filed as a fact becomes unrevisitable, because the calculus that
 > justified it is never written down.
 
+⛔ **Before writing the fourth state, ask the authoring-time question: was the cost
+KNOWN AND WEIGHED BEFORE THE RUN?**
+
+```
+KNOWN, weighed, declined   -> `measurable-at-a-cost-we-decline`. A claim about our PRIORITIES.
+DISCOVERED BY PAYING IT    -> NOT this register. A claim about the TOOL, and the remedy is a FIX.
+```
+
+⇒ Both feel identical afterwards — *the measurement was costly* — and they route to
+opposite places. Three instances the same day, all one pane's: a probe whose
+`--help` became a repo name and issued a **network query**; a control-checking loop
+that ran five tools' **main paths** because they ignore unknown flags; a `--help`
+sweep with the same cause. **Nothing was declined — the cost was unknown until it
+had been paid, twice discovered only from a 120-second timeout.**
+
+⚠ Filed as the fourth state, those become decisions nobody revisits. **They are
+defects, and two are fixed** *(#520; #506's `IGNORED` bucket names the class —
+a tool that accepts any flag and runs its main path cannot be asked what it does
+without doing it)*. **Prevalence is not measured: n=3, one pane, one day.**
+
 ⇒ **The row is therefore not complete without a release condition** — the thing
 that, if it changed, would make the run acceptable. ★ That field is load-bearing
 and not decoration: **one instance has already exited through it.** DX declined
