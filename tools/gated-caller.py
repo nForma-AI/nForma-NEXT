@@ -304,6 +304,25 @@ def census(tools_dir=None, timeout=120):
                    " indistinguishable from a clean board. This is NOT the same defect as an"
                    " uninvoked control: a dead control yields a false all-clear, a dead sweep"
                    " yields no signal at all.")
+    # ⛔ NAME THE BOUNDARY OR THE COUNT IS UNREADABLE. This population is `tools/*.py`, NOT a
+    # recursive walk — tools/README.md keeps subdirectories out of scope deliberately. ⚠ But a
+    # reader of "N of M" takes M for the instrument count, and an instrument in a subdirectory is
+    # then not reported as UNCALLED: it is outside the sentence entirely.
+    # ★ #544 is exactly this case — tools/architect-sweeps/prior-art.py is the instrument whose
+    #   skipped run shipped a duplicate, and no caller audit here can see it to say so.
+    # ⇒ Named, not indexed. Only DIRECTORIES and COUNTS are printed; the quarantine's disposition
+    #   is the operator's and contributes 0 qualifying instruments in any case.
+    subdirs = []
+    for d in sorted(x for x in Path(tools_dir).iterdir() if x.is_dir() and x.name != "__pycache__"):
+        n = sum(1 for f in sorted(d.glob("*.py"))
+                if "--self-test" in f.read_text(encoding="utf-8", errors="replace"))
+        if n:
+            subdirs.append((d.name, n))
+    if subdirs:
+        detail = " · ".join(f"{name}/ {n}" for name, n in subdirs)
+        out.append(f"  ⚠ POPULATION BOUNDARY: {sum(n for _, n in subdirs)} instrument(s) exposing"
+                   f" --self-test live in SUBDIRECTORIES and are OUTSIDE the counts above"
+                   f" — {detail}. They are not reported as uncalled; they are not reported.")
     out.append(tree_provenance())
     out.append("  ⚠ RUNNER is INVOCATION, not evidence. A blanket runner passes --self-test to"
                " every subject; whether a given tool's control DISCRIMINATES is a separate"
@@ -432,6 +451,31 @@ def self_test():
         print(f"  {'ok  ' if hit else 'FAIL'}  the census NAMES its own exclusion by file, rather"
               f" than omitting the row")
         (td / Path(__file__).name).unlink()
+
+        # ⛔ THE BOUNDARY LINE NEEDS A DEMONSTRATED INSTANCE, and its ABSENCE needs one too.
+        # ⚠ Asserted as a pair: "the line appears when a subdir instrument exists" passes if the
+        #   line were unconditional; "no line when no subdir" passes if it never printed at all.
+        _, before = census(tools_dir=td, timeout=60)
+        quiet = not any("POPULATION BOUNDARY" in l for l in before)
+        sub = td / "extra-sweeps"
+        sub.mkdir()
+        (sub / "hidden.py").write_text('import sys\nif "--self-test" in sys.argv:\n'
+                                       '    raise SystemExit(0)\nraise SystemExit(0)\n')
+        _, after = census(tools_dir=td, timeout=60)
+        named = any("POPULATION BOUNDARY" in l and "extra-sweeps" in l for l in after)
+        hit = quiet and named
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  a subdirectory instrument is NAMED as outside the "
+              f"population, and the line is ABSENT when there is none (absent={quiet}, "
+              f"named={named}) — an excluded row must not be a silent one")
+
+        # ⛔ A SUBDIR FILE WITHOUT --self-test DOES NOT QUALIFY, so it must not inflate the count.
+        (sub / "plain.py").write_text("raise SystemExit(0)\n")
+        _, after2 = census(tools_dir=td, timeout=60)
+        one = any("BOUNDARY: 1 instrument" in l for l in after2)
+        ok &= one
+        print(f"  {'ok  ' if one else 'FAIL'}  a subdirectory file NOT exposing --self-test is not"
+              f" counted (still 1) — the boundary reports the population, not the directory")
 
         rc, lines = census(tools_dir=td, timeout=60)
         hit = rc == 1 and any("NO CALLER" in l for l in lines)
