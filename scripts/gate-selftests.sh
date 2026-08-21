@@ -226,6 +226,59 @@ gate() {
         brc=$?
         bout=$(cat "$LOG" 2>/dev/null); rm -f "$LOG"
         LIMIT="$_saved_limit"
+        if [ "$grc" -eq 0 ]; then
+            unver=$((unver + 1))
+            unver_names="$unver_names $b"
+            echo "  ⚠ $b UNVERIFIABLE — it accepts \`$GARBAGE\` and exits 0."
+            echo "     ⛔ So \`$FLAG\` exiting 0 establishes NOTHING: the flag may never have"
+            echo "        been recognised. Fix the argument surface before trusting the control."
+            continue
+        fi
+
+        # ⛔ THE THIRD INVOCATION, and it is a state I did not have until DEV5 measured it on
+        # their own files: a real flag AND a typo together. A `case "$1"` or an `in argv`
+        # membership test accepts the flag and silently drops the rest, so the caller reads a
+        # clean control result for an invocation half of which was ignored. Testing the garbage
+        # flag ALONE cannot see it — and my own two gates failed this when I checked.
+        run_it "$FLAG"
+        rc=$?
+        fout=$(cat "$LOG" 2>/dev/null); rm -f "$LOG"
+
+        # ⚠ A SUBJECT THAT CANNOT BE INVOKED BARE IS ITS OWN STATE, not "declared none". Measured:
+        # check-freshness and wake-yield require arguments, so `--self-test` alone cannot REACH a
+        # control even if one exists. Folding that into "has no self-test" would be a claim about
+        # the world made from a limit of the invocation.
+        case "$fout" in
+            *"arguments are required"*|*"the following arguments"*)
+                unest=$((unest + 1)); unest_names="$unest_names $b"
+                echo "  ⚠ $b CANNOT BE INVOKED BARE — \`$FLAG\` alone is rejected for MISSING"
+                echo "     REQUIRED ARGUMENTS, so no control is reachable this way. ⛔ That is not"
+                echo "        'has no self-test'; it is a limit of the invocation, and it needs a"
+                echo "        \`# NO-SELF-TEST:\` line or an invocation this gate can derive."
+                continue ;;
+        esac
+
+        # ⛔ THE FLAG WAS NEVER DISPATCHED IF THE TWO RUNS ARE THE SAME RUN. DEV3's predicate,
+        # and it is better than the message contract below because it needs NO CONTRACT FROM THE
+        # SUBJECT — it is a structural comparison, the cheapest rung of DEFECT-CLASSES.md:1019.
+        #
+        # ⚠ AND IT CORRECTS A RULE I EXPORTED WRONGLY. "Garbage exits nonzero ⇒ the flag surface
+        # discriminates" is sound in `scripts/`, where checkers exit 0 when clean — and WRONG in
+        # `tools/`, where instruments exit nonzero FOR THEIR OWN FINDINGS. Specimen:
+        #     reference-check.py --zzz-not-a-flag  -> rc 1, "3 entries: 0 moved, 3 missing"
+        #     reference-check.py --self-test       -> rc 1, IDENTICAL BYTES
+        # Its exit 1 is its own finding, not a rejection. A rule that holds in one population and
+        # not the neighbouring one is the population defect this repo keeps filing, and I
+        # committed it by carrying my own finding across the boundary without re-testing it.
+        if [ "$rc" -eq "$grc" ] && [ "$fout" = "$gout" ]; then
+            unest=$((unest + 1)); unest_names="$unest_names $b"
+            echo "  ⚠ $b UNESTABLISHED — \`$FLAG\` and \`$GARBAGE\` produce IDENTICAL output and"
+            echo "     the same exit ($rc). ⛔ The flag was never DISPATCHED: whatever ran, ran"
+            echo "        regardless of it, so its exit says nothing about the control."
+            continue
+        fi
+
+
         # ⛔ `$FLAG $GARBAGE` EXITING 0 IS A POSITIVE DEFECT AND THE FALLBACK MUST NOT LAUNDER
         # IT. The flag was matched and the remainder DISCARDED, so a control result there
         # describes an invocation only half read — regardless of how the other probe behaved.
@@ -255,23 +308,6 @@ gate() {
             fi
             continue
         fi
-        if [ "$grc" -eq 0 ]; then
-            unver=$((unver + 1))
-            unver_names="$unver_names $b"
-            echo "  ⚠ $b UNVERIFIABLE — it accepts \`$GARBAGE\` and exits 0."
-            echo "     ⛔ So \`$FLAG\` exiting 0 establishes NOTHING: the flag may never have"
-            echo "        been recognised. Fix the argument surface before trusting the control."
-            continue
-        fi
-
-        # ⛔ THE THIRD INVOCATION, and it is a state I did not have until DEV5 measured it on
-        # their own files: a real flag AND a typo together. A `case "$1"` or an `in argv`
-        # membership test accepts the flag and silently drops the rest, so the caller reads a
-        # clean control result for an invocation half of which was ignored. Testing the garbage
-        # flag ALONE cannot see it — and my own two gates failed this when I checked.
-        run_it "$FLAG"
-        rc=$?
-        fout=$(cat "$LOG" 2>/dev/null); rm -f "$LOG"
         # ⛔ AN ARGPARSE REJECTION OF `--self-test` IS A DEFINITE ANSWER — "this tool has NO
         # self-test" — and must not be read as UNESTABLISHED. #58's collision live inside the
         # population being gated: DEV3 measured 12 tools with no self-test, of which EIGHT exit 2
@@ -402,8 +438,14 @@ selftest() {
     # ⚠ The MESSAGE changed when the two-probe logic landed and the new one is more precise: a
     # subject accepting everything is caught by `$FLAG $GARBAGE` exiting 0, which says exactly
     # what is wrong — the flag was matched and the rest discarded.
-    check "a subject accepting ANY flag is UNVERIFIABLE, not passing" 2 \
-          "UNVERIFIABLE" "only half read"
+    # ⚠ ASSERTS THE STATE AND THE SUBJECT, NOT THE SENTENCE. I rewrote this control's expected
+    # prose THREE times in one sitting as the diagnosis got sharper — "establishes NOTHING", then
+    # "only half read", then "IDENTICAL output" — and each rewrite was the control breaking on an
+    # IMPROVEMENT. ⛔ A control coupled to wording punishes exactly the change you want. What must
+    # hold is that the subject lands in the blocking bucket and is NAMED; which of the several
+    # true causes is reported is the gate getting better at explaining itself.
+    check "a subject accepting ANY flag lands in a BLOCKING state and is NAMED" 2 \
+          "b_permissive"
     case "$out" in
         *"1 control(s) passed"*) echo "  FAIL  a permissive subject was counted as a PASS"; ok=1 ;;
         *) echo "  ok    a permissive subject is never counted as a pass" ;;
