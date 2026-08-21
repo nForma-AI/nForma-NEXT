@@ -181,8 +181,36 @@ def main():
                 bad += 1
             else:
                 print(f"  ✅ GENERATED   {m.group(1)}: byte-identical to its regeneration")
+        # ⛔ THE RATCHET. A tool that CAN generate its row and has not is a future drift with a
+        #    fix already available. ⇒ Adoption becomes monotonic: nothing can regress, and the
+        #    covered population — the one in which #39's class is actually retired — can only
+        #    grow. Same shape as SUBJ_BASELINE, which records a debt that reds if it GROWS.
+        capable, ungenerated = [], []
+        tdir = os.path.join(a.repo, "tools")
+        for fn in sorted(os.listdir(tdir)):
+            if not fn.endswith(".py") or fn.startswith("test_"):
+                continue
+            src = open(os.path.join(tdir, fn), errors="ignore").read()
+            if not re.search(r'add_argument\(\s*["\']--states["\']', src):
+                continue
+            # ⛔ REGISTERING --states IS NOT BEING ABLE TO GENERATE A ROW. The first version
+            #    ratcheted on the flag and immediately named close-condition-scan.py, whose
+            #    --states emits a different format entirely — so --emit VOIDs on it and the
+            #    ratchet was demanding a fix that does not exist. ⇒ Ratchet on the PROPERTY
+            #    (emit_row succeeds), never on the flag. #403's population leg, in a guard.
+            if emit_row(os.path.join(tdir, fn), "probe") is None:
+                continue
+            capable.append(fn)
+            if not any(f"`{fn}`" in l for l in marked):
+                ungenerated.append(fn)
         print(f"\n  rows claiming generation: {len(marked)} · verified: {len(marked)-bad}")
-        return 1 if bad else 0
+        print(f"  instruments exposing --states: {len(capable)} · of those, row NOT generated:"
+              f" {len(ungenerated)}"
+              + (f"  ⇒ {' '.join(ungenerated)}" if ungenerated else ""))
+        if ungenerated:
+            print("⛔ RATCHET — a tool that CAN generate its row and has not is a future drift with"
+                  "\n   the fix already written. Run --emit and commit the result.")
+        return 1 if (bad or ungenerated) else 0
     if a.emit:
         # ⛔ THE QUESTION IS THE AUTHOR'S PROSE; THE EXIT CODES ARE THE TOOL'S. Take the question
         #    FROM the existing row rather than inventing one — a generator that rewrites the
