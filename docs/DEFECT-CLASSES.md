@@ -929,6 +929,86 @@ known-positive control and the zero-side-effect canary, and caught the surface-s
 both.** DEVOPS established the retry cost and **retracted an all-clear of their own, unprompted,
 through the same channel and to the same recipients, within minutes.**
 
+
+## ★ CLASS F — the field was IN the output and the next step dropped it
+
+**Class E is the reason gone *before* the value was produced; the remedy is to CHOOSE a different
+channel. This is its mirror: the discriminating field was PRESENT in what the tool emitted, and a
+downstream step kept less than it was given. The remedy is to STOP DROPPING IT.**
+
+⛔ **Substituting either remedy for the other loses everything.** Apply E's here and you go build a
+channel for data you already had, in hand, one column to the right.
+
+### The number first, because it is stronger than any of the narratives
+
+`tools/stranded-branches.py` prints, on the row:
+
+```
+NO-UPSTREAM-MATCH  dev1/self-audit@a72d589  2 of 2 commit(s), 0/3 paths already upstream  (merged PR #475)
+```
+
+**Measured 2026-08-21 at `origin/main`:**
+
+```
+NO-UPSTREAM-MATCH rows                          46
+  carrying a (merged PR …) annotation           43     93%
+  genuinely unresolved                           3
+```
+
+⇒ **The dropped field was not rare. It was the norm.** ★ A category that is **93% self-resolving in
+the tool's own output**, routed as though it were 100% open, is the argument for this class — a
+reader who kept the annotation column would have had three actionable rows instead of forty-six
+ambiguous ones.
+
+### Four instances, four DIFFERENT downstream steps
+
+⚠ Not one layer with four examples — that would be a subtype. These are four distinct places where
+a complete output was narrowed:
+
+| step | what was dropped | where |
+|---|---|---|
+| a peer **message** | the row's `(merged PR #475)` field | #407 |
+| a tool's own **summariser** | `selftest_state` returned `(state, detail)`; only the state was printed | #485 |
+| a runner's **aggregator** | 49 subjects folded into one `FAILURE`, losing the subject name | #425 |
+| a **reader** | `SELFTEST-DECLARED 1` was produced, complete, and unread | #2 |
+
+### ⛔ Why the symptom is Class A and the cause is not
+
+At the reader, `NO-UPSTREAM-MATCH` alone collapses *resolved* and *genuinely open* into one value —
+that **is** Class A's shape. ⛔ **But A's remedy is *introduce a third value at the boundary*, and
+the third value already exists.** ⇒ One class at the author, another at the reader; classify by the
+remedy you need. Here neither A's nor E's is it.
+
+### The candidate remedy
+
+> **A summary of a structured output must name which fields it dropped.**
+
+⚠ **Not "carry everything"** — that defeats summarising. The check is narrower: **can a reader tell
+that a fuller form exists?** A row reduced to its state, with no sign that a detail column stood
+beside it, cannot be re-opened by anyone downstream.
+
+### ⚠ What is NOT established
+
+- **Four instances, three roles, one night.** That is a shape, not a rate. No historical sampling
+  was done and it may be a property of a busy night rather than of the fleet.
+- ⛔ **Three of the four are self-reported** — two by DEV1, one by ARCHITECT — **which is the
+  weakest class of evidence this repository admits**, and carries the same discount applied to every
+  other self-catch here.
+- ⚠ **The `43 of 46` was not independently re-derived.** It is DEV1's, first-hand; ARCHITECT ruled
+  on the shape rather than on the count.
+- ⚠ Whether instances 1 and 4 carry their fuller channel **by design or by accident** is unexamined,
+  and that distinction may change the remedy.
+- ⛔ **This is a sixth letter, and this document warns that a taxonomy accommodating everything
+  explains nothing.** The bar for a finding to sit OUTSIDE the frame is lower after this than before
+  it. That cost is accepted because the remedy is genuinely distinct — **not because the instances
+  are numerous.**
+
+⚠ **Attribution:** the instances and this write-up are DEV1's; the ruling that it is a class, and its
+placement against E, are ARCHITECT's (session `c83ecf77`). ★ **Two of the four instances are DEV1's
+own reporting steps**, committed during the same night spent filing about this shape — which is the
+property worth carrying: it does not feel like data loss. You look at a well-formed line, summarise
+it faithfully by your own lights, and drop the field the next reader needed.
+
 ## Applying this
 
 **Authoring a check:**
