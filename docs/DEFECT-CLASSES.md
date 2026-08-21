@@ -1013,3 +1013,92 @@ whether it has the same defect (#80). ⚠ **Untested** — see below.
   four with no DEV leg. Recorded rather than invented here.
 
 ---
+
+---
+
+## ★ Three ways to establish a fact, ranked by cost — and we reach for the dearest one first
+
+⚠ **This is not a class.** It carries no letter and claims none — ARCHITECT rules placement. It is a
+**method note**, filed because the same mis-ordering happened twice in one evening to three roles who
+had spent that evening building the expensive option.
+
+> **When a matcher cannot reach the answer, look for a property of the thing that makes the answer
+> unnecessary.**
+
+| rung | move | cost | worked on |
+|---|---|---|---|
+| **1** | **no probe** — a *structural property* of the hypothesis settles it | one argument | an all-or-nothing setting; a multiset comparison |
+| **2** | **another channel** — one that never discarded the reason | one call | `GraphQL` vs a REST `403` |
+| **3** | **a better probe** — known-positive + known-negative controls | an instrument | `probe-validity.py` |
+
+⇒ **We reached rung 3 first, both times, because it is the one that generalises.** It is also the
+only one that costs a tool.
+
+### Rung 1 — the property makes the question unnecessary
+
+**Was `delete_branch_on_merge` on during the retention collapse?** The setting has **no history in the
+API**, so the obvious channel could not answer it. It did not need to:
+
+```
+collapse window   116 PRs
+branches KEPT      11   (9%)
+```
+
+⇒ ⛔ **9% retention is impossible under a setting that deletes every head branch.** The hypothesis is
+**all-or-nothing**, and one structural fact refutes it without any history at all.
+
+**Did the reorder change the document, or only its order?**
+
+```
+diff <(sort before) <(sort after)  ->  IDENTICAL     1015 -> 1015 lines
+```
+
+⇒ **A multiset comparison presupposes no matcher**, which is why it survived where **four content
+probes died** — one of them a `grep -c` for a phrase that turned out to be a PR title and had never
+been in the file at all.
+
+★ **Both were reached by running out of channels, not by choosing.** That is the defect this note
+exists to fix: the move works just as well when taken **first**.
+
+### Rung 2 — ask the channel that kept what the other threw away
+
+```
+REST     POST /pulls/N/reviews {"event":"APPROVE"}  -> 403 Forbidden   (a status CLASS)
+GraphQL  gh pr review --approve                     -> "Can not approve your own
+                                                       pull request"  (a REASON)
+```
+
+⇒ The same proposition was **untestable over one channel and trivially testable over the other**.
+Four attempts, three of them VOID, went into recovering a reason a second channel had never
+discarded. ⇒ This is Class E's remedy stated as a *first move* rather than a diagnosis.
+
+### Rung 3 — build the probe, and validate it
+
+Correct, general, and the most expensive. `probe-validity.py` exists because six broken probes ran in
+one evening. ⚠ **Nothing here retires it** — when no structural property exists and no second channel
+exists, the probe *is* the move, and using it is not a failure.
+
+## ⇒ The rule, and the reason it is an ordering rather than a preference
+
+> **Before building an instrument to answer a question, ask whether a property of the subject, or a
+> second channel to the same fact, answers it already.**
+
+⛔ **The failure is not using rung 3. It is arriving there without having looked at 1 or 2** — and
+that is what happened both times, to people who could name all three.
+
+### ⚠ What this does NOT establish
+
+- **Not a law, and not measured.** Four instances, one evening, three roles. **The ordering is a
+  heuristic derived from a handful of cases**, and it is stated here so the next person can find it —
+  not because a count supports it.
+- **Not that rungs 1 and 2 are usually available.** Most facts have no all-or-nothing structure and
+  no second channel. ⇒ **The claim is only that they are cheaper WHEN they exist, and that nobody
+  checked.**
+- ⛔ **Not a licence to skip controls.** A structural argument can be wrong, and a second channel can
+  be wrong. Rung 1 and rung 2 answers are *readings*, and everything this document says about
+  readings still applies to them.
+
+⚠ **Attribution:** the structural refutation and the multiset proof are TEAMLEAD's and ARCHITECT's;
+the channel finding is Class E; the ranking and this note are DEV3's, at TEAMLEAD's direction, who
+supplied the sharper half — *"I reached for the structural property only after finding the API had no
+history, i.e. by luck of running out of channels."*
