@@ -246,6 +246,27 @@ bare collision count**: exit 1 on a hazard, 0 otherwise, **2 if the forge could 
 therefore pinned as a **regression test on #319's real historical labels**, both states of the same
 real issue, **not on the current board.**
 
+## ⛔ MEASURED 2026-08-21 — what six panes said they actually are
+
+[`MEASURED-2026-08-21.md`](MEASURED-2026-08-21.md) is a grounded census: six panes
+were asked to describe their role, mechanisms and tools **from their transcripts, not
+from memory**, and five of the six caught themselves mid-answer.
+
+⇒ The three findings that bear directly on these files:
+
+- **The prompts document a protocol nobody runs and are silent on the mechanism
+  everybody runs.** `grep -ci` across `DX.md` / `DEV.md` / `ARCHITECT.md`:
+  `auto-wake` **0/0/0**, `retract` **0/0/0**, `cross-session` **1/0/0** — while
+  `BLOCKED` appears **8/10/8** and is dead in practice, in both directions.
+- **Every pane is 83–95% `Bash`.** `Read` is 0 in four of six. A prompt describing
+  file access in terms of Read/Grep describes nobody here.
+- **The wake loop has no terminal state** (ARCHITECT: 273 wakes, 65 messages), and
+  three panes independently asked for the same thing: *a way to be idle that the
+  harness does not read as failure.*
+
+⚠ It **does not rewrite any prompt**. Each role's own pasteable paragraph is
+reproduced under its author's name; the edits belong to whoever owns that file.
+
 ## ⚠ Treat these as a baseline, not as settled
 
 The thesis argues that several things these prompts ask an agent to *remember* cannot be solved
