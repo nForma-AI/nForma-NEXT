@@ -167,6 +167,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `doctrine-watch.py` | which roles' doctrine moved under them, and who has not read it? | 0 nothing to tell · 1 a role is behind · **2 established nothing** |
+| `doctrine-uncommitted.py` | which doctrine is the fleet READING that main does not carry? | 0 reads == landed · 1 drift in any of three directions · **2 established nothing (no repo, bad ref, no file)** |
 | `label-exists.py` | does the label you are about to query actually exist? | 0 all exist · 1 one is absent · **2 established nothing** |
 | `verdict-census.py` | has each indexed instrument ever produced a verdict? (`--ledger` keeps the record · `--stale-check` asks in 0.1s whether it is current) | 0 no finding · 1 a finding · **2 established nothing** · ⚠ `--stale-check`'s 0 means *the record is current*, NOT *they all produce verdicts* |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
@@ -579,6 +580,18 @@ standing conclusion — *"a relaunch is the only complete-delivery channel"* —
 expensive direction: **the read is available on demand and nothing triggers it**, so the fix is a
 nudge rather than a restart. A relaunch buys exactly two things that cannot be delivered live
 (cwd/worktree and process env) and costs every pane its working context.
+
+**`doctrine-uncommitted.py`** — ⛔ **`CLAUDE.md` loads from the WORKING COPY, so an uncommitted edit is fleet doctrine the moment it is written.** There is no landing step between *typed* and *authoritative*. Measured 2026-08-21 in the shared primary checkout: branch `pr1136`, **`.git/MERGE_HEAD` present**, **61 files staged**, `CLAUDE.md` **+79/−2 staged and never committed** — and **44 of those lines were cited as doctrine by four agents that night** while `origin/main` carried **zero** matches. The section is real and correct; it belongs to an **open** PR. ⇒ If that PR is closed unmerged, every conclusion drawn from it rests on text no ref contains. ★ **A role prompt has a version and a delivery channel, and tools exist for both. A repo-root doctrine file has neither** — read by path, from disk, by every agent, with no ref in between. **The file everyone trusts most has the weakest provenance.** ⚠ It reports **both directions**, because they fail differently: `READ-NOT-COMMITTED` means the fleet acts on text no ref carries, while `COMMITTED-NOT-READ` means a stale checkout **hides landed doctrine** and the agent cannot tell it is reading an older world. ⛔ **Neither is an error by itself** — work in progress is normal; the finding is that nothing otherwise *says* which of the two you are holding, so the checkout's own state (branch, merge-in-progress, staged count) is printed as the **explanation**, not as a separate complaint. ⚠ Three ways to print a clean result are three exits: no repo, an unresolvable ref, and no doctrine file present are all **exit 2**, never "reads == landed" — *a doctrine checker that says nothing when it read nothing is the same failure it exists to detect, one level up.* ⚠⚠ **Bound, printed on every run including the clean one: ONE checkout only.** Another agent on another machine reads a different working copy, and a clean report here says nothing about theirs.
+
+⛔⛔ **AND THE FIRST VERSION GOT ITS OWN MOTIVATING CASE WRONG.** It printed *"the fleet is acting on text no ref carries"* about the interpreter section while **three commits on branch `pr1136` carried it**. The claim was **false**, and the remedy was worse than useless: *"commit your work"* is meaningless to someone whose work is committed and awaiting review, and it sends a reviewer hunting unsaved edits that do not exist. ⇒ **Three states, not two — and the middle one is the COMMON one:**
+
+| state | meaning | remedy |
+|---|---|---|
+| `READ-NOT-COMMITTED` | no ref carries it | commit |
+| **`READ-ON-A-BRANCH`** | **a branch carries it, main does not** | **land the PR** |
+| `COMMITTED-NOT-READ` | a stale checkout hides landed doctrine | rebase / refresh |
+
+★ **The middle state is not an anomaly — it is what an open docs PR looks like from the working copy, every time**, and it has a different remedy *and a different owner*. ⇒ The discriminator is free: `git log <ref>..HEAD -- <path>` non-empty means a branch carries it, so the tool **names the branch and lists the commits**. *"CLAUDE.md's interpreter section is on `pr1136`, not on main"* is actionable; *"no ref carries it"* is not, and it was not true.
 
 ⚠ Two behaviours it was given after its own controls refused to pass: it matches the tool CALL
 rather than prose (the first version matched any occurrence of the path and its known-positive
