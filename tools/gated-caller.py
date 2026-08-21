@@ -152,6 +152,12 @@ def census(tools_dir=None, timeout=120):
     seen = probe(suites, tools_dir, names, timeout)
     width = max(len(n) for n in names)
     out, orphan, reached = [], [], []
+    # ⛔ NAMED, never silently omitted. This tool excluded ITSELF and its nested-run peer from its
+    # own output entirely, so "N of M" was reported against a population the reader could not see
+    # had been narrowed. verdict-census.py states this rule and this file did not follow it.
+    if (tools_dir / me).is_file():
+        out.append(f"  SELF-EXCLUDED  {me:<{width}}  not counted — probing it inside its own probe"
+                   f" spawns a nested run that terminates only by timeout")
     for n in names:
         st, rc_ = seen[n]["selftest"], seen[n]["reached"]
         if st:
@@ -259,6 +265,18 @@ def self_test():
         ok &= hit
         print(f"  {'ok  ' if hit else 'FAIL'}  a suite that IMPORTS the subject without the flag "
               f"is REACHED, not NO-CALLER (selftest={r['selftest']}, reached={r['reached']})")
+
+        # ⛔ THE SELF ROW MUST BE NAMED. This tool omitted itself entirely, so "N of M" was
+        # reported against a population the reader could not see had been narrowed — the defect
+        # check-tools-index.py exists against, and one verdict-census.py states in its own source.
+        (td / Path(__file__).name).write_text('import sys\nif "--self-test" in sys.argv:\n'
+                                              '    raise SystemExit(0)\nraise SystemExit(0)\n')
+        _, _lines = census(tools_dir=td, timeout=60)
+        hit = any("SELF-EXCLUDED" in l and Path(__file__).name in l for l in _lines)
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  the census NAMES its own exclusion by file, rather"
+              f" than omitting the row")
+        (td / Path(__file__).name).unlink()
 
         rc, lines = census(tools_dir=td, timeout=60)
         hit = rc == 1 and any("NO CALLER" in l for l in lines)
