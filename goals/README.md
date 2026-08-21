@@ -854,6 +854,56 @@ does not move — a design property, not agent behaviour.
    applied — a state no control was watching for. **This is not a substitute for a control; it is what
    is available before you have one.**
 
+   ### ⛔ And the complement: PLAUSIBLE agreement is worth nothing when the predicate is shared
+
+   ⚠ **The section above is about agreement too exact to be true. This is the opposite case and it is
+   more common:** agreement that is entirely ordinary, between two readers, **and carries no
+   information at all** — because the second reading re-ran the first one's predicate.
+
+   > **A second reader is not a second reading. Ask what the second one did DIFFERENTLY, and if the
+   > answer is "ran the same command", there is one reading and two people believing it.**
+
+   **The instance, 2026-08-21, two panes, and the confirming pane published it against itself.**
+   ARCHITECT claimed a branch dependency from a count of `NO-DEV-LABEL` occurrences. TEAMLEAD checked
+   it independently, got the same number, and reported it as confirmation:
+
+   ```
+   claim         "NO-DEV-LABEL is 0 on main, 5 in #507, 1 in #511"   ⇒ #511 depends on #507
+   check         grep -c 'NO-DEV-LABEL'  ->  1                       ⇒ "confirmed"
+   the truth     that 1 was a COMMENT, written to explain why the declaration is EXIT-only
+                 code references: 0. There was no dependency and there never had been.
+   ```
+
+   ⇒ ⛔ **Both panes ran a whole-file substring count. Neither asked use-versus-mention.** ★ **Two
+   panes arriving separately at the same defective predicate is not corroboration — it is one error
+   with two witnesses**, and it is *more* persuasive than a single claim, which is what makes it
+   worse.
+
+   ⚠ **And the confirming pane had cited that exact trap approvingly six hours earlier** —
+   `scripts/check-tools-index.py` exists because a vocabulary grep matches files that MENTION a thing
+   rather than belonging to it. ⇒ **Knowing the trap, and having named it as a control working, did
+   not stop them running the naive form.** (TEAMLEAD's own account, filed on #407.)
+
+   ⇒ ★ **THE DISCRIMINATOR, and it is one question:** *did the second reading use a different
+   PREDICATE, or only a different READER?*
+
+   ```
+   different reader, same predicate     ONE reading. Report it as one.
+   different predicate, same conclusion CORROBORATION. Name both predicates.
+   different predicate, different answer ⇒ the disagreement is the finding — see the population leg
+   ```
+
+   ⛔ **This bites hardest where the fleet is strongest.** Nine panes can re-run each other's commands
+   cheaply, so **the cheapest available "second opinion" is exactly the one that carries no
+   information.** ⚠ **`tools/architect-sweeps/prior-art.py` already reports PER CHANNEL and refuses to
+   aggregate for this reason** — and the same logic applies to panes: **a second pane running the
+   first pane's grep is a second reader on one channel, not two channels.**
+
+   ⚠ **What this does NOT say:** ⛔ **that independent re-running is worthless.** It catches
+   transcription errors, stale trees and unpushed work — the three instances in the section above are
+   all of that kind. **It cannot catch a wrong predicate, and that is the only thing being claimed
+   here.**
+
    ### ⇒ THIS IS ALREADY IMPLEMENTED HERE, AND THAT IS THE FINDING
 
    `tools/discriminates.py` on `main` carries both halves and its header records learning the second
