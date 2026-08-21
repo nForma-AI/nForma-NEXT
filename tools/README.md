@@ -2005,6 +2005,82 @@ when the panes it notified read their files.)
   staleness of WORK while measuring staleness of DECLARATION. **A number that moves for reasons
   unrelated to what it names is worse than no number.**
 
+## ⛔ THE CONTROL CONVENTION IS TWO-FORMED, AND A SWEEP THAT KNOWS ONE FORM OVER-REPORTS
+
+**#164 judgement 4 recorded this as a judgement — *"the convention forked, not the index, and nobody
+has said so."* ⇒ It is not a judgement any more. It has two measured instances, two panes, a day
+apart, and both were over-reports about work that was already controlled.**
+
+```
+DEVOPS   2026-08-20  a sweep for uncontrolled instruments reported 8; the answer was 2
+                     — it counted files lacking `--self-test`, and `test_*.py` files exist
+ARCHITECT 2026-08-21  #521 leg 2 claimed 9 instruments "have no self-test"
+                     — all nine have a paired suite; all nine run and pass in 10.4s. Leg withdrawn.
+```
+
+⇒ ★ **The second author had read `scripts/gate-selftests.sh` the same day** — the file that excludes
+`test_*` via `IS_A_TEST` *because a test IS the control, not a subject.* **The distinction was on
+screen and did not travel two hundred lines.**
+
+### ⇒ Both forms are legitimate. Neither is deprecated.
+
+```
+--self-test              the tool carries its own control and can be asked for it directly
+tools/test_<name>.py     a paired hermetic suite; `scripts/gate-selftests.sh` runs these as CONTROLS
+                         and excludes them as SUBJECTS
+```
+
+⚠ **A tool with a paired suite and no `--self-test` is NOT missing a control.** ⛔ **Adding the flag to
+those nine would be nine redundant flags closing a gap that does not exist.**
+
+### The partition, measured 2026-08-21
+
+```
+54 non-test instruments in tools/*.py
+  45  carry --self-test          (⚠ some register it with argparse; codestrings.py hand-parses argv)
+   9  have tools/test_<name>.py  api-budget · branch-census · doctrine-watch · fleet-state ·
+                                 issue-coverage · pr-stack · prompt-delivery · text-provenance ·
+                                 transition-report
+   0  UNCOVERED
+⇒ 45 + 9 = 54
+```
+
+### ⛔ AND NO SWEEP COMMAND IS PUBLISHED HERE, BECAUSE THREE DRAFTS OF ONE WERE WRONG
+
+**Every draft of a five-line loop had a population defect, and each was found only by a control —
+never by re-reading it.**
+
+```
+DRAFT 1  ran `--self-test` FIRST
+         ⇒ for a tool that IGNORES unknown flags (5 of 54 do) that runs the MAIN path.
+           The loop exceeded 120s and was killed. A command written to CHECK controls
+           PERFORMED the action. Fixed by testing for the paired file first: 2.6s.
+
+DRAFT 2  treated `exit 0` as "has a self-test"
+         ⇒ a planted subject that ignores argv and exits 0 was counted as CONTROLLED.
+           The loop returned a clean `0` both WITH and WITHOUT the plant.
+
+DRAFT 3  grepped `add_argument(.*--self-test`
+         ⇒ named `codestrings.py` as uncontrolled. It has a WORKING self-test; it parses
+           argv by hand. The predicate named an IMPLEMENTATION where the proposition was
+           a CAPABILITY — the same flag-versus-capability error this section documents,
+           in the third attempt to fix it.
+```
+
+⇒ ★ **Three drafts, three different population defects, zero caught by inspection.** ⛔ **So the
+honest output of this section is the partition and the failure modes, not a one-liner.**
+
+⚠ **`scripts/gate-selftests.sh` already answers this correctly** — it has a real subject/control model,
+excludes `test_*` as subjects, bounds each run, and reports refusals separately from failures.
+★ **Use it. A shell one-liner over this population is a trap with three known entrances.**
+
+### ★ The rule, stated once
+
+⇒ **Any claim of the form *"N instruments have no control"* must state WHICH FORMS it checked.** **A
+count that checked one form is a CEILING on the defect and a FLOOR on the coverage** — and by the
+direction rule in `docs/DEFECT-CLASSES.md` §(d), **printing it as a bare number discards exactly the
+half a reader needs.**
+
 ## Running the checks
 
 ```
