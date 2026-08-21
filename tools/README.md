@@ -964,6 +964,29 @@ and 2 of the remaining 3 were vetoed by `tools/README.md` alone* — this file. 
 is near-certainly landed; 0 of n is a different animal, and collapsing both to one verdict threw away
 the only signal separating them. The ratio is now printed on negative rows too.
 
+⇒ **A FIFTH STATE, `LINES-UPSTREAM`, and the primitive is ARCHITECT's.** Byte-identity answers
+*are these files the same*; it cannot answer *is this content upstream* once `main` has moved under
+the branch. Multiset containment — `Counter(branch) ⊆ Counter(main)`, per path — answers the second
+question **without a patch id, without a case rule, and without caring how the merge was performed.**
+⇒ **Immune to squash by construction**, which is the exact limitation the `NO-UPSTREAM-MATCH` row
+carries.
+
+★ It arrived from a live case: a branch read `0/1 paths byte-identical`, and byte-identity was
+*impossible* — the branch held 953 lines of that file and `main` held 1019. **The absence
+established nothing**, and ARCHITECT resolved it by multiset instead. Measured across the 52 refs
+then carrying unmatched commits: **byte-identity resolved 2, containment resolved 6.**
+
+⛔ **REPORTED SEPARATELY, NEVER PROMOTED TO `CONTENT-UPSTREAM`.** Byte-identity is conclusive;
+containment is not. A file whose lines all recur elsewhere in `main` — boilerplate, blanks, closing
+braces — reads contained without its work having landed. That is a stated limitation, not a bug, and
+it is why the two states have different names.
+
+⛔ **AND THE FIRST VERSION OF ITS CONTROL COULD NOT FAIL.** `--self-test` stayed green when the
+predicate was mutated to `return True`, because the suite controlled only the counts *derived* from
+it. The comparison now lives in a pure `lines_contained()` asserted directly — a unique line must
+read `False`, and **three copies of a line `main` holds once must read `False`** (counts, not
+membership). Both mutants now exit 2; verified 2026-08-21, not asserted.
+
 **`gh-complete.py`** — ⛔ `gh api …/check-runs` returns **30 of 54** by default and it is not an
 error: the response still carries `total_count: 54`, so a filter over `.check_runs[]` evaluates the
 thirty it received and **returns a clean answer about a set it never saw**. Measured: it hid a
