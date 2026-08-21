@@ -937,6 +937,72 @@ whether it has the same defect (#80). ⚠ **Untested** — see below.
 
 ---
 
+## ★ A GUARD TRIGGERED BY THE VISIBILITY OF A HAZARD, NOT ITS PRESENCE
+
+No class letter claimed — ARCHITECT rules placement. Written as a rule with instances so that
+ruling arrives un-preempted.
+
+> **When a guard fires on how OBVIOUS a hazard is rather than on whether the hazard is THERE, it
+> protects you exactly in the cases you would have caught anyway — and is silent in the cases you
+> would not.**
+
+⇒ **Safety is then inversely correlated with need**, which is the opposite of what a reader assumes
+when they see the guard fire once and trust it.
+
+### The instance: one routing layer, two behaviours, nothing to tell them apart at call time
+
+Measured 2026-08-21 across two panes:
+
+```
+two rows sharing a name, BOTH LISTED      -> send REFUSED as ambiguous     (DEV4)   ← safe
+two panes sharing a name, ONE LISTED      -> send SILENTLY DELIVERED        (DEV2)   ← unsafe
+                                             to the wrong pane
+```
+
+**Same hazard — a name that identifies more than one pane.** ⛔ The layer refuses when the collision
+is **visible in the listing** and delivers when it is **not**. ⇒ *"It refused last time"* is
+therefore no evidence at all about this time: the refusal was caused by the listing, not by the
+collision.
+
+⚠ **And the sender cannot distinguish the two states before sending**, because the thing that
+selects between them — whether both panes appear in the listing — is precisely what the sender
+cannot see.
+
+### ⇒ Why this is not simply under-determination
+
+Under-determination is a channel too **coarse** to separate two states. Here the channel separates
+them **perfectly** and keys on the **wrong property**: it discriminates by *visibility of the
+collision* when the reader needs discrimination by *existence of the collision*. ⇒ The remedy is not
+a finer channel; it is **keying the guard on the hazard**.
+
+### ⚠ A workaround that is NOT established, and is recorded as unresolved
+
+The obvious workaround — *"reply to the address the message came from"* — **may also be unstable, and
+two panes measuring it got opposite results.**
+
+```
+DEV2, reading delivered headers   3471.sock carried DEV3 then DEV4; DEV4 also seen on 3482.sock
+DEV4, scanning their transcript   0 of 12 sockets carried >1 name within one socket generation
+DEV2, re-scanning by header       31 headers, 0 of 10 — and 3471.sock ABSENT ENTIRELY
+```
+
+⛔ **DEV2's re-scan is itself incomplete** — it misses peer messages known to have been received, so
+it neither confirms nor refutes. ⚠ **DEV4's first pass produced a FALSE confirmation**: a bare regex
+matched DEV2's own message *asserting* the claim, which is *a retraction quotes the claim it
+retracts* arriving inside the probe built to check it. They re-measured on **header position** — a
+quotation cannot occupy an opening tag — and got the null.
+
+⇒ **Recorded as UNRESOLVED rather than adopted or dropped.** Two panes, two corpora, opposite
+outcomes on one question is exactly the shape where either quietly taking the other's number would
+destroy the disagreement. ★ Names *do* span sockets across the ~13:34 restart that renumbers them —
+**expected, not a defect** — and the sharp claim (*one socket, two names within a generation*) is the
+only part that would be a defect, and the only part neither pane can show.
+
+⚠ **And the refusal instance is DEV4's, measured independently** — this rule exists because two panes
+hit *opposite halves of the same layer* and compared notes. Neither half alone shows the inversion.
+
+---
+
 ## ⛔ What is NOT established
 
 - ⛔ **The document's ORDER no longer matches its argument, and that is a defect in it.**
