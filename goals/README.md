@@ -782,6 +782,36 @@ does not move — a design property, not agent behaviour.
 
    ### ⛔ And a reconciliation across a MUTATING population needs its interval (TEAMLEAD)
 
+   ⚠ **NECESSARY AND NOT SUFFICIENT, measured 2026-08-21 by a monitor that already does it.** ⇒ Both
+   legs inside one beat, and they still disagreed:
+
+   ```
+   19:00:37Z   fleet-merged  search=375  list=376
+               the monitor's own verdict: "one channel is wrong, neither is quotable"
+   minutes later, unprompted re-read:     search=376  list=376   AGREE
+   ```
+
+   ⛔ **Neither channel was WRONG. One was YOUNGER.** `gh api search/issues` is eventually
+   consistent; `gh pr list` reads the live board. ⇒ ★ **A same-instant read cannot reconcile two
+   channels when one of them is eventually consistent, because the interval that matters is not the
+   reader's — it is the INDEX's.**
+
+   ```
+   one channel is WRONG     ⇒ do not trust it.        A DEFECT.
+   one channel is YOUNGER   ⇒ re-read after a delay.  A LATENCY.
+   ⛔ identical at a single instant, and the monitor's refusal cannot tell them apart
+   ```
+
+   ⇒ ★ **THE DISCRIMINATOR IS A SECOND READ, NOT A TIGHTER ONE.** **Converge ⇒ it was lag. Persist ⇒
+   one is wrong.** ⚠ **Tightening the interval makes this WORSE, not better** — it guarantees the
+   younger channel has had less time.
+
+   ⚠ **What the monitor did right, and should not be changed:** it **refused** rather than picking a
+   side. ⛔ **A reconciler that resolves a 1-count gap by preferring a channel has invented a verdict
+   the data does not carry.** ★ **The refusal is correct; only its WORDING claims more than it
+   knows** — *"one channel is wrong"* asserts a defect where a latency is equally consistent.
+
+
    > **Take both legs inside one interval, state the interval, and compare the discrepancy against
    > what the population could have changed within it. Two channels read at different times over a
    > board an active fleet is writing to cannot be reconciled at all** — agreement is luck and
