@@ -113,6 +113,23 @@ def assistant_texts(path):
     return names, texts
 
 
+def declared_clause(turns_ago, total_turns, detail):
+    """Bind the freshness marker SYNTACTICALLY to the payload it describes.
+
+    ⛔ Returns one string, never a pair, because a caller handed two values will
+    put them in two columns and a reader will re-associate them by PROXIMITY.
+    That is the defect this exists to prevent, and it is a property of the
+    LAYOUT rather than of the words.
+    """
+    if turns_ago == 0:
+        age = "this turn"
+    elif turns_ago is None:
+        age = f"0 of {total_turns} turns"
+    else:
+        age = f"{turns_ago} turns ago"
+    return f'declared {age}: "{detail}"'
+
+
 def latest_declaration(texts):
     """The most recent turn that DECLARED, and how many turns back it was.
 
@@ -180,14 +197,24 @@ def main():
         # ⚠ Age the declaration. A BLOCKED from 40 turns ago is a claim about a
         # situation the agent has had 40 turns to change; presenting it identically to
         # one made this turn is how a stale blocker becomes a permanent one.
-        if r["turns_ago"] == 0:
-            age = "this turn"
-        elif r["turns_ago"] is None:
-            age = f"0 of {r['turns']} turns"
-        else:
-            age = f"{r['turns_ago']} turns ago"
+        clause = declared_clause(r["turns_ago"], r["turns"], r["detail"][:50])
+        # ⛔ THE MARKER BINDS TO THE DECLARATION, NEVER TO THE PAYLOAD.
+        #
+        # This used to print the age in a COLUMN beside the detail, and a reader
+        # re-associates by PROXIMITY: `this turn │ context ~98%` reads as "that
+        # pane is at 98% NOW". Measured — TEAMLEAD read exactly that and was one
+        # step from compacting a pane sitting at 38%; it had compacted AFTER
+        # declaring. The marker was true of the LINE and false of the NUMBER IN IT.
+        #
+        # ⚠ The rejected alternative was "panes must not put volatile figures in a
+        # STATE line". That is a rule with no mechanism, and unfalsifiable HERE:
+        # nothing can tell `context ~98%` (perishable) from `#416 open` (durable)
+        # from `BURIED 1→0` (a completed fact). ⇒ The view knows exactly one thing —
+        # WHEN THE LINE WAS WRITTEN — and says only that. Labelling the whole payload
+        # frozen is correct for every payload; labelling per-token is eventually
+        # wrong for one. (Ruled by DEV2; the placement fix is theirs.)
         print(f"{r['session']:<10}{'/'.join(r['names'])[:26]:<27}{label:<18}"
-              f"{age:<14}{r['detail'][:50]}{mark}")
+              f"{clause}{mark}")
 
     declared = sum(1 for r in rows if r["state"])
     current = sum(1 for r in rows if r["turns_ago"] == 0)
