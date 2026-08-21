@@ -745,6 +745,19 @@ def self_test():
         print(f"  {'ok  ' if st == VERDICT else 'FAIL'}  exit 2 meaning 'absent everywhere' is a"
               f" VERDICT, not ESTABLISHED-NOTHING (got {st}) — the inversion this fixes")
 
+
+    # ⛔ --help IS NOT A REFUSAL. argparse exits 0 after printing usage; catching every SystemExit
+    # as "unrecognised arguments" made this tool print its help and then declare it established
+    # nothing (#350). Controlled in BOTH directions, because a fix that returned 0 for everything
+    # would pass the first half and destroy the refusal.
+    import contextlib, io
+    for _flag, _want in (("--help", 0), ("-h", 0), ("--zzz-not-a-real-flag", 2)):
+        _buf = io.StringIO()
+        with contextlib.redirect_stdout(_buf), contextlib.redirect_stderr(_buf):
+            _got = main(["x", _flag])
+        ok &= _got == _want
+        print(f"  {'ok  ' if _got == _want else 'FAIL'}  {_flag} -> {_got} (want {_want})"
+              f"{' — help is not VOID' if _want == 0 else ' — a bogus flag is still VOID'}")
     return 0 if ok else 3
 
 
@@ -1049,7 +1062,17 @@ def main(argv):
                     help="with --ledger: report, but do not write the record")
     try:
         a = ap.parse_args(argv[1:])
-    except SystemExit:
+    except SystemExit as e:
+        # ⛔ argparse EXITS 0 AFTER PRINTING --help / -h. Catching every SystemExit and calling it
+        # "unrecognised arguments" makes the tool REFUSE ITS OWN HELP: it prints the usage text and
+        # then declares, one line below, that it established nothing. Reported by ARCHITECT on #350
+        # against verdict-census.py; measured here across all five instruments sharing this
+        # pattern, which I copied between them.
+        # ⛔ `VOID — established nothing` is this repository's most load-bearing string. Emitting it
+        # for a SUCCESSFUL request is not a cosmetic defect: it is the refusal vocabulary spent on
+        # a non-refusal, which is exactly what makes a real refusal readable.
+        if e.code == 0:
+            return 0
         print("  VOID  unrecognised arguments — established nothing", file=sys.stderr)
         return 2
     if a.self_test:
