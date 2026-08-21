@@ -163,9 +163,12 @@ def main():
     src.add_argument("--witness-file", metavar="PATH",
                      help="witness a body ANY channel produced; - for stdin")
     ap.add_argument("job_id", nargs="?")
-    ap.add_argument("--grep", action="append", default=[],
-                    help="pattern to count; repeatable. Counts are only printed for "
-                         "a WITNESSED log — never over a refusal.")
+    ap.add_argument("--grep", action="append", default=[], metavar="TEXT",
+                    help="LITERAL text to count; repeatable. Not a regex — see --grep-re. "
+                         "Counts are only printed for a WITNESSED log, never over a refusal.")
+    ap.add_argument("--grep-re", action="append", default=[], metavar="PATTERN",
+                    help="regex to count; repeatable. Opt in deliberately: an unescaped "
+                         "metacharacter fails SILENTLY toward 'absent'.")
     ap.add_argument("--show-lines", type=int, default=3,
                     help="matching lines to print per --grep pattern (0 = counts only). "
                          "A count invites a conclusion; a line lets you check it.")
@@ -204,8 +207,27 @@ def main():
     note = "" if raw_b == txt_b else f" ({raw_b} fetched, {raw_b - txt_b} stripped)"
     print(f"✅ witnessed log: {txt_b} bytes{note}, "
           f"{len(LOG_LINE.findall(log))} timestamped line(s)")
+    # ⛔⛔ --grep IS LITERAL, AND IT USED TO BE A REGEX. LIVE FALSE ZERO, 2026-08-21.
+    # A peer asked whether a C0(dfc) "success" was vacuous:
+    #     --grep 'poll_until(pod leaves Running state): timed out after'  ->  0
+    # The string is in the log EXACTLY ONCE. The unescaped `(...)` is a capture
+    # group, so it searched for `poll_untilpod leaves Running state: timed out
+    # after`, which never appears. Measured on the same body:
+    #     literal  body.count(p)                  = 1
+    #     regex    re.findall(p, body)            = 0   <- what the tool printed
+    #     escaped  re.findall(re.escape(p), body) = 1
+    #
+    # ★ THE DIRECTION IS WHY THE DEFAULT FLIPPED. This tool's whole job is
+    # answering ABSENCE questions — "does my change appear in this log?" — and the
+    # natural things to search for in a CI log are full of metacharacters:
+    # `poll_until(...)`, `deploy_custom_sdl -> console_api_1:`, version strings
+    # with dots. Every one of them fails silently toward "not present".
+    # ⇒ A refusal greps as clean; so did a paren. The witness proved the body was a
+    # log and then the matcher lied about its contents.
+    # ⚠ The peer nearly recorded the OPPOSITE conclusion off that 0. Escaped, it
+    # confirmed #1319's C0(dfc) pass IS vacuous.
     for pat in a.grep:
-        hits = [l for l in log.splitlines() if re.search(pat, l, re.I)]
+        hits = [l for l in log.splitlines() if pat.lower() in l.lower()]
         print(f"  {len(hits):5d}  {pat}")
         # ⛔ A COUNT INVITES A CONCLUSION; A LINE LETS YOU CHECK IT. Measured by a
         # peer the same night: `--grep 402` on a B1b failure returned 16, and they
@@ -220,7 +242,27 @@ def main():
             print(f"         │ {l.strip()[:150]}")
         if len(hits) > a.show_lines:
             print(f"         └ … {len(hits) - a.show_lines} more (--show-lines)")
-    if not a.grep:
+    for pat in a.grep_re:
+        try:
+            rx = re.compile(pat, re.I)
+        except re.error as e:
+            print(f"      ⛔  {pat}   INVALID REGEX ({e}) — no count printed, because "
+                  f"a broken pattern and an absent string both produce 0.")
+            continue
+        hits = [l for l in log.splitlines() if rx.search(l)]
+        lit = len([l for l in log.splitlines() if pat.lower() in l.lower()])
+        note = ""
+        if lit != len(hits):
+            # ⚠ the pattern means something different as a regex than as text, and
+            # THAT is the case that produced the false zero. Say so at the point of
+            # use rather than trusting anyone to remember which flag they passed.
+            note = f"   ⚠ literal would give {lit} — the metacharacters are active"
+        print(f"  {len(hits):5d}  {pat}  (regex){note}")
+        for l in hits[:a.show_lines]:
+            print(f"         │ {l.strip()[:150]}")
+        if len(hits) > a.show_lines:
+            print(f"         └ … {len(hits) - a.show_lines} more (--show-lines)")
+    if not a.grep and not a.grep_re:
         sys.stdout.write(log)
     return 0
 

@@ -225,5 +225,42 @@ check("...and the gap is exactly the multi-byte characters",
 check("the real fixtures are multi-byte too, so this is not a toy case",
       len(GCS.encode("utf-8")) >= len(GCS), True)
 
+
+# ── ⛔⛔ A PAREN GREPS AS CLEAN — the live false zero, 2026-08-21 ─────────────
+# `--grep` was a REGEX. A peer asked whether a C0(dfc) "success" was vacuous:
+#     --grep 'poll_until(pod leaves Running state): timed out after'  ->  0
+# The string is in the log EXACTLY ONCE. The unescaped (...) is a capture group,
+# so it searched for `poll_untilpod leaves Running state: timed out after`.
+# ⇒ The witness proved the body was a log, and then the MATCHER lied about it.
+# ★ Direction is everything: this tool answers ABSENCE questions, and every
+# metacharacter mistake fails silently toward "not present".
+_C0 = ("2026-08-21T00:32:46.0445030Z [00:32:46.044] [FAIL] FAIL  "
+       "poll_until(pod leaves Running state): timed out after 60s (19 attempts)\n")
+_PAT = "poll_until(pod leaves Running state): timed out after"
+
+check("the string really IS in the body", _C0.count(_PAT), 1)
+check("KNOWN-BAD control: as a REGEX it returns 0 — the false zero",
+      len(re.findall(_PAT, _C0, re.I)), 0)
+check("...and re.escape recovers it, which is why literal is the right default",
+      len(re.findall(re.escape(_PAT), _C0, re.I)), 1)
+
+# the literal path the tool now uses
+_lit = [l for l in _C0.splitlines() if _PAT.lower() in l.lower()]
+check("--grep is LITERAL and finds it", len(_lit), 1)
+
+# ⛔ and the opt-in regex path must not be able to lie SILENTLY either
+_rx = [l for l in _C0.splitlines() if re.search(_PAT, l, re.I)]
+check("--grep-re still returns 0 (it is a real regex)", len(_rx), 0)
+check("...but literal-vs-regex DISAGREE, which is what the tool now reports",
+      len(_lit) != len(_rx), True)
+
+# a pattern with no metacharacters must behave identically both ways — otherwise
+# the warning would fire on every ordinary search and stop being read.
+for plain in ("should_track_service", "REACH_EVIDENCE",
+              "Console API POST /v1/deployments returned 402"):
+    a_ = len([l for l in REAL.splitlines() if plain.lower() in l.lower()])
+    b_ = len([l for l in REAL.splitlines() if re.search(plain, l, re.I)])
+    check(f"metacharacter-free pattern agrees both ways: {plain[:34]!r}", a_, b_)
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)
