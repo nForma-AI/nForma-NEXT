@@ -78,8 +78,17 @@ established, NotEstablished = _m.established, _m.NotEstablished
 # ★ So the timestamp must sit at a FIELD boundary: line start or after a tab.
 #   Neither fixture alone locates that rule; it took a refusal that contains an
 #   instant and a real log that does not start with one.
+# ⛔ AND A BOM SITS BETWEEN LINE-START AND THE TIMESTAMP. Measured 2026-08-21 while
+# reconciling a peer's line count: their 438 vs this tool's 437. The missing one is
+# the FIRST line, because an Actions log body begins with a UTF-8 BOM:
+#     "\ufeff2026-08-21T00:54:41.8653767Z Current runner version: '2.336.0'"
+# ⚠ `str.strip()` does NOT remove \ufeff — it is not whitespace in Python.
+# ★ THE BUG HIDES BEHIND LENGTH: in a 438-line log the other 437 lines carry it, so
+# nothing is refused. A ONE-LINE log is refused outright — and a short log is
+# exactly the case already under suspicion, so the false refusal lands where it is
+# least likely to be questioned. Pinned both ways in the suite.
 LOG_LINE = re.compile(
-    r"(?:^|\t)(?:\x1b\[[0-9;]*m)*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.?\d*Z\s", re.M)
+    r"(?:^|\t)\ufeff?(?:\x1b\[[0-9;]*m)*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.?\d*Z\s", re.M)
 
 
 def witnessed(body):

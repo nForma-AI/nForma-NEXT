@@ -262,5 +262,45 @@ for plain in ("should_track_service", "REACH_EVIDENCE",
     b_ = len([l for l in REAL.splitlines() if re.search(plain, l, re.I)])
     check(f"metacharacter-free pattern agrees both ways: {plain[:34]!r}", a_, b_)
 
+
+# ── ⛔ A BOM SITS BETWEEN LINE-START AND THE TIMESTAMP ────────────────────────
+# Found by RECONCILING two independent counts of the same object: a peer measured
+# 438 lines, this tool reported 437. The missing one is the FIRST, because an
+# Actions log body opens with a UTF-8 BOM. ⚠ str.strip() does NOT remove \ufeff.
+# ★ THE BUG HIDES BEHIND LENGTH — 437 other lines carried it, so nothing was
+# refused. A ONE-LINE log is refused outright, and a short log is exactly the case
+# already under suspicion.
+with open(os.path.join(_here, "testdata", "bom-first-line-real.txt"),
+          encoding="utf-8") as _fh:
+    BOM1 = _fh.read()
+
+check("the captured first line really does start with a BOM", BOM1[0], "\ufeff")
+check("KNOWN-BAD control: str.strip() does NOT remove it", BOM1.strip()[0], "\ufeff")
+check("a ONE-LINE BOM'd real log is witnessed", isinstance(jl.witnessed(BOM1), str), True)
+check("...and it is a real captured line, not a typed one",
+      "Current runner version" in BOM1, True)
+# ⛔ the length-hiding property, stated as a check so nobody 'simplifies' it away
+check("KNOWN-BAD control: a SECOND line would have hidden the bug",
+      isinstance(jl.witnessed(BOM1 + "2026-08-21T00:54:42.0Z next\n"), str), True)
+
+# ── ⛔ A FIFTH REFUSAL SHAPE: Azure BlobNotFound, and it CONTAINS an ISO ──────
+# A cancelled job has no log blob at all. `gh api …/jobs/{id}/logs` returns 404
+# with a 215-byte XML body — not JSON, not HTML, not empty, and it carries
+# `Time:2026-08-21T04:04:59.6059066Z`.
+# ★ SECOND INDEPENDENT CONFIRMATION OF THE FIELD-BOUNDARY RULE, from a channel
+# that did not exist in the suite when the rule was written: the instant follows
+# "Time:", so free-text search would call a 404 a valid log.
+with open(os.path.join(_here, "testdata", "azure-blobnotfound-body.xml"),
+          encoding="utf-8", errors="replace") as _fh:
+    AZURE = _fh.read()
+
+check("the Azure 404 body is REFUSED", isinstance(jl.witnessed(AZURE), NE), True)
+check("...and it DOES contain an ISO instant", bool(_UNANCHORED.search(AZURE)), True)
+check("KNOWN-BAD control: free-text would accept this 404 as a log",
+      bool(_FREE.search(AZURE)), True)
+check("...while the field-boundary witness refuses it",
+      len(jl.LOG_LINE.findall(AZURE)), 0)
+check("it is XML — a shape no other fixture covers", AZURE.lstrip("\ufeff")[:5], "<?xml")
+
 print(f"\n{len(fails)} failure(s)" if fails else "\nall checks passed")
 sys.exit(1 if fails else 0)
