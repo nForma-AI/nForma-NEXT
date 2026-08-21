@@ -553,6 +553,19 @@ def main():
                   "population reads the same way. It establishes that this run cannot tell the "
                   "two apart.", file=sys.stderr)
 
+    # ⇒ NAME THE DIRECTION OF THE BOUND, and only where it says something.
+    # `docs/DEFECT-CLASSES.md` separates two readings this tool used to blur: **exit 2 means
+    # ESTABLISHED NOTHING**, while **a bound means NO MORE / NO FEWER THAN THIS** — and a bound
+    # read as an establishment is its own defect (the LIVE-PANES ceiling, #489/#500).
+    # ⛔ GUARDED ON A NON-EMPTY FINDING SET. Emitted unconditionally, this line said "at least 0
+    # exist" on a truncated sweep that found nothing — true, useless, and the vacuous-truth shape
+    # this tool already refuses in content_state(). The zero case is exit 2's to describe.
+    if truncated and unmatched_refs:
+        print(f"⇒ THE {len(unmatched_refs)} ABOVE IS A FLOOR, NOT A TOTAL: at least this many "
+              "exist, and refs beyond the prefix may add more. Never an upper bound. ⚠ The "
+              "asymmetry is already in the exit codes — a positive SURVIVES a partial sweep, "
+              "a negative does not.", file=sys.stderr)
+
     code = verdict_exit(len(unmatched_refs), truncated)
     if code == 2:
         print("⛔ no unmatched refs IN THE PREFIX EXAMINED — and the sweep was truncated, so "
