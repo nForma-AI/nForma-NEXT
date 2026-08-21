@@ -27,7 +27,8 @@ by the board to work inside an operator quarantine. That is a HAZARD; the other 
 
     0  no HAZARD collisions -- provenance collisions may exist and are reported, not counted against
     1  at least one HAZARD -- a dev:N beside a reserved queue. A finding, established.
-    2  ESTABLISHED NOTHING -- the forge could not be read. ⛔ NEVER read as "all clear".
+    2  ESTABLISHED NOTHING -- the forge could not be read, OR the buckets did not sum to the
+       stated population (#466). ⛔ NEVER read as "all clear".
 
 ⚠ WHAT THIS TOOL CANNOT DO. It cannot tell an intentional provenance label from a mislabelling:
 both render as `dev:N` on a non-DEV issue. ⇒ It reports the provenance set so a reader can look;
@@ -40,6 +41,8 @@ import subprocess
 import sys
 
 RESERVED = ("role:OPERATOR",)   # queues whose work a pane must not self-assign
+# ⛔ #466: every row must land in one of these, and the sum is asserted against the population.
+KINDS = ("HAZARD", "ADDRESS", "PROVENANCE", "UNROUTED", "NO-DEV-LABEL")
 
 
 def fetch(repo):
@@ -62,7 +65,7 @@ def classify(row):
     devs = sorted(n for n in names if n.startswith("dev:"))
     roles = sorted(n for n in names if n.startswith("role:"))
     if not devs:
-        return None, devs, roles
+        return "NO-DEV-LABEL", devs, roles
     if any(r in RESERVED for r in roles):
         return "HAZARD", devs, roles
     if "role:DEV" in roles:
@@ -81,16 +84,32 @@ def report(repo, out=sys.stdout):
     buckets = {}
     for r in rows:
         kind, devs, roles = classify(r)
-        if kind:
-            buckets.setdefault(kind, []).append((r["number"], devs, roles, r.get("title", "")))
+        buckets.setdefault(kind, []).append((r["number"], devs, roles, r.get("title", "")))
     print(f"dev:N labels on {len(rows)} open issues in {repo}", file=out)
-    for kind in ("HAZARD", "ADDRESS", "PROVENANCE", "UNROUTED"):
+    for kind in KINDS:
         items = buckets.get(kind, [])
         print(f"  {kind:<11} {len(items):>3}", file=out)
         for n, devs, roles, title in items:
             if kind in ("HAZARD", "UNROUTED"):
                 print(f"      #{n:<5} {','.join(devs)} / {','.join(r[5:] for r in roles) or '(none)'}"
                       f"  {title[:52]}", file=out)
+    # ⛔ #466: a count is a partition of a stated population. If the parts do not sum to the
+    # whole, the summary has not measured the thing it names -- so it REFUSES (exit 2, established
+    # nothing) instead of reporting a verdict. ⚠ This convicts the output on its own face; it needs
+    # no reference run and no second environment.
+    # ⚠ Summed over KINDS -- the buckets a reader can SEE -- and NOT over buckets.values().
+    # Summing the dict would include a kind the printer never enumerates, so the total would equal
+    # the population by construction and the check could never fail. It was written that way first
+    # and the known-negative below caught it: an invariant that cannot fail is decoration.
+    shown = sum(len(buckets.get(k, [])) for k in KINDS)
+    print(f"  {'PARTITION':<11} {shown:>3}  = sum of the {len(KINDS)} buckets above", file=out)
+    if shown != len(rows):
+        missing = sorted(set(buckets) - set(KINDS))
+        print(f"⛔ VOID — the printed buckets sum to {shown} against a stated population of"
+              f" {len(rows)}. {len(rows) - shown} row(s) landed in a bucket nothing prints"
+              f" {missing}. A summary that cannot add up has not measured what it names."
+              f" ESTABLISHED NOTHING.", file=out)
+        return 2
     print("", file=out)
     print("⚠ PROVENANCE is not a defect and its count is not a target. Stripping those labels to"
           " reach zero destroys the record of which pane produced the work (#461, Done-when leg 3).",
@@ -116,8 +135,8 @@ def self_test(out=sys.stdout):
         ({"number": 2, "labels": [{"name": "dev:3"}, {"name": "role:DEV"}]}, "ADDRESS"),
         ({"number": 3, "labels": [{"name": "dev:5"}, {"name": "role:DEVOPS"}]}, "PROVENANCE"),
         ({"number": 4, "labels": [{"name": "dev:1"}]}, "UNROUTED"),
-        ({"number": 5, "labels": [{"name": "role:DX"}]}, None),
-        ({"number": 6, "labels": []}, None),
+        ({"number": 5, "labels": [{"name": "role:DX"}]}, "NO-DEV-LABEL"),
+        ({"number": 6, "labels": []}, "NO-DEV-LABEL"),
         # ⚠ the discriminating pair: role:DEV must NOT rescue a reserved queue
         ({"number": 7, "labels": [{"name": "dev:4"}, {"name": "role:DEV"},
                                   {"name": "role:OPERATOR"}]}, "HAZARD"),
@@ -130,7 +149,10 @@ def self_test(out=sys.stdout):
             bad += 1
         print(f"  {flag} #{row['number']}: want={want} got={got}", file=out)
     seen = {classify(r)[0] for r, _ in cases}
-    if seen != {"HAZARD", "ADDRESS", "PROVENANCE", "UNROUTED", None}:
+    # ⛔ Derived from KINDS, never re-typed. A hard-coded copy of the bucket set is #39's shape
+    # inside the check built to catch it: add a bucket to KINDS and the copy keeps the old space.
+    # Found in review by TEAMLEAD -- the definition is 100 lines above and the copy read as correct.
+    if seen != set(KINDS):
         print(f"  FAIL not every bucket exercised: {seen}", file=out)
         bad += 1
     else:
