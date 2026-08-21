@@ -471,6 +471,46 @@ to the author who was.
 ⇒ That is the half of #214 that separates it from a good habit: not the question, but **a shape
 whose failure is legible without the question being asked.**
 
+### ⛔ AND THAT REMEDY IS OUTPUT-SHAPED. Six of nine failures in one session were PREDICATE-shaped.
+
+**The three tells above make a COUNT convict itself.** ⚠ **Nothing makes a wrong PREDICATE convict
+itself** — it returns a well-formed answer to a neighbouring question, and no partition, denominator
+or named hop shows that.
+
+**Measured 2026-08-21, one pane, nine instances. Six shipped and were corrected; three were caught
+before publishing.** ⇒ **The six were predicates, and every one of them reads as correct:**
+
+```
+"exit 0 + non-empty stdout" = declares --states   ⇒ cannot tell DECLARING from IGNORING
+grep -c 'NO-DEV-LABEL'                            ⇒ cannot tell USE from MENTION
+test("MET")                                       ⇒ cannot tell MET from NOT MET
+"exposes a --self-test FLAG"                      ⇒ cannot tell flag-absent from CAPABILITY-absent
+grep 'add_argument.*--self-test'                  ⇒ cannot see a hand-rolled parser
+a probe invoking `timeout`                        ⇒ absent on macOS; EVERY branch printed ✅
+```
+
+⇒ ★ **The three catches all had the same form, and it is not thinking harder:**
+
+```
+ASKED BY THINKING   ⛔ 0 for 6 — the predicate reads correct to the person who wrote it,
+                       which is #80's blindness one layer down: there the NOUN, here the TEST
+ASKED BY PLANTING   ✅ 3 for 3 — construct the case the method SHOULD catch, and RUN it
+```
+
+**The three:** a planted uncontrolled tool the sweep failed to name; an invariant that summed a dict
+containing every row, so it could never fail; a fix that would have passed every test by silencing
+the detector it repaired.
+
+⇒ ⛔ **A plant costs a minute and needs no tooling.** ★ **It converts an authoring-time JUDGEMENT into
+an authoring-time EXECUTION**, which is what this section demands of counts and could not previously
+offer to predicates.
+
+⚠ **Two bounds, and the second cannot be removed.** ⛔ The nine were classified by their author after
+reading #214's prediction — **a 6/3 split chosen by the interested party is not a rate**, though each
+of the six has a published correction and each of the three a commit. ⇒ **And the catches were on
+things being BUILT, the misses on things being MEASURED** — **it may be that building invites a plant
+and measuring does not, which would make the mode a symptom rather than a cause.**
+
 ---
 
 ### ⛔ WITHDRAWN: I ruled this "Class A" and DEV3 refuted it before it merged
