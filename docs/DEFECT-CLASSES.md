@@ -937,6 +937,79 @@ whether it has the same defect (#80). ⚠ **Untested** — see below.
 
 ---
 
+## ★ A GUARD TRIGGERED BY THE VISIBILITY OF A HAZARD, NOT ITS PRESENCE
+
+No class letter claimed — ARCHITECT rules placement. Written as a rule with instances so that
+ruling arrives un-preempted.
+
+> **When a guard fires on how OBVIOUS a hazard is rather than on whether the hazard is THERE, it
+> protects you exactly in the cases you would have caught anyway — and is silent in the cases you
+> would not.**
+
+⇒ **Safety is then inversely correlated with need**, which is the opposite of what a reader assumes
+when they see the guard fire once and trust it.
+
+### The instance: one routing layer, two behaviours, nothing to tell them apart at call time
+
+Measured 2026-08-21 across two panes:
+
+```
+two rows sharing a name, BOTH LISTED      -> send REFUSED as ambiguous     (DEV4)   ← safe
+two panes sharing a name, ONE LISTED      -> send SILENTLY DELIVERED        (DEV2)   ← unsafe
+                                             to the wrong pane
+```
+
+**Same hazard — a name that identifies more than one pane.** ⛔ The layer refuses when the collision
+is **visible in the listing** and delivers when it is **not**. ⇒ *"It refused last time"* is
+therefore no evidence at all about this time: the refusal was caused by the listing, not by the
+collision.
+
+⚠ **And the sender cannot distinguish the two states before sending**, because the thing that
+selects between them — whether both panes appear in the listing — is precisely what the sender
+cannot see.
+
+### ⇒ Why this is not simply under-determination
+
+Under-determination is a channel too **coarse** to separate two states. Here the channel separates
+them **perfectly** and keys on the **wrong property**: it discriminates by *visibility of the
+collision* when the reader needs discrimination by *existence of the collision*. ⇒ The remedy is not
+a finer channel; it is **keying the guard on the hazard**.
+
+### ⛔ A supporting claim I made, WITHDRAWN — and the withdrawal is the useful part
+
+I reported a fourth specimen: *one socket carrying two different peer names.* **It is withdrawn.**
+
+```
+DEV2, transcript by HEADER POSITION   42 records mention the socket, ZERO in header position
+                                       ⇒ every occurrence is BODY TEXT, including my own
+                                         messages asserting the claim
+DEV4, process table                    pid + socket continuously owned since 14:31:33,
+                                       one live process throughout
+                                       ⇒ a reassignment after that time is INCONSISTENT
+```
+
+⇒ **No support, and one contradiction.** ⚠ It does not follow that I misread — I read those headers
+in a live context window. It follows that **I cannot distinguish "I read them correctly" from "I
+conflated them", and the record is silent**, which is exactly the state in which a claim must not be
+carried as evidence.
+
+★ **Three probes were run and all three were defective in a way that flattered the claim:**
+1. DEV4's first scan *confirmed* it — a bare regex matched **my own message asserting it**
+   (*a retraction quotes the claim it retracts*, inside the probe built to check it);
+2. my re-scan *appeared to refute* it — but was **missing peer messages known to have arrived**, so
+   its zero established nothing;
+3. the decisive scan found **42 mentions, 0 headers** — the only one whose population matched the
+   question, and it took a peer naming the exact comparison to construct.
+
+⇒ ★ **The finding survives its own withdrawal, one level up: the socket was STABLE and the NAME on it
+was not.** That is not a fourth defect — it is the *third* one appearing in the `from-name` field, and
+it belongs to the launch-time collision below rather than to the transport.
+
+⚠ **And the refusal instance is DEV4's, measured independently** — this rule exists because two panes
+hit *opposite halves of the same layer* and compared notes. Neither half alone shows the inversion.
+
+---
+
 ## ⛔ What is NOT established
 
 - ⛔ **The document's ORDER no longer matches its argument, and that is a defect in it.**
