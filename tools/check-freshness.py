@@ -19,6 +19,23 @@ different quantities that all sound like "is this PR current":
     merge-base distance how far the BASE is behind main
     check completedAt   when the EVIDENCE was produced   <- the one that mattered
 
+⛔ AND EVERY `first:N` WINDOW IS A SILENT TRUNCATION UNTIL YOU COMPARE IT TO
+`totalCount`. Both windows in the query below were unchecked. Measured 2026-08-21
+on Borduas-Holdings/Blazing-Back:
+
+    branchProtectionRules(first:5)   totalCount 1     -- 5x headroom
+    contexts(first:100)              totalCount 56-57 -- HALF the window, already
+
+⇒ Neither binds today, so nothing was wrong. But 57 of 100 is not margin: this
+board is one CI expansion away from silently dropping contexts out of the
+freshness verdict, and NOTHING would have said so. `totalCount` sits in the same
+response as the `nodes` window, which makes not reading it inexcusable rather
+than merely unlucky.
+
+★ The truncation is worse HERE than in most tools, because `branchProtectionRules`
+decides WHICH contexts count as required. A dropped rule does not shrink the
+answer -- it silently redefines the question, and the output looks identical.
+
 ⚠ THE BOUNDARY IS NOT GUESSABLE and this tool does not guess it. `--since` is
 REQUIRED: the caller states when the condition changed -- a funding floor crossed,
 a runner pool restored, a fix landed -- because only they know what changed. A
@@ -36,10 +53,10 @@ CURRENT, STALE, UNDATED = "CURRENT", "STALE", "UNDATED"
 QUERY = """
 query($owner:String!, $name:String!, $n:Int!) {
   repository(owner:$owner, name:$name) {
-    branchProtectionRules(first:5){nodes{pattern requiredStatusCheckContexts}}
+    branchProtectionRules(first:5){totalCount nodes{pattern requiredStatusCheckContexts}}
     pullRequests(states:OPEN, first:$n, orderBy:{field:UPDATED_AT, direction:DESC}) {
       nodes { number title
-        commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{
+        commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){totalCount nodes{
           __typename
           ... on CheckRun { name conclusion completedAt }
           ... on StatusContext { context state createdAt } }}}}}} } } } }
@@ -99,6 +116,18 @@ def main():
               "board print the same empty table.")
         return 2
 
+    # ⛔ SATURATION FIRST, BEFORE ANY VERDICT. A `first:N` window is a silent
+    # truncation until compared to totalCount, and the branch-protection one is the
+    # dangerous half: dropping a rule does not shrink the answer, it redefines which
+    # contexts are "required" — and the output looks identical either way.
+    bp = d["branchProtectionRules"]
+    if bp["totalCount"] > len(bp["nodes"]):
+        print(f"⛔ ESTABLISHED NOTHING — {bp['totalCount']} branch protection rule(s) "
+              f"exist and the query read {len(bp['nodes'])}. The required set is "
+              f"INCOMPLETE, so every verdict below would be about the wrong question, "
+              f"not merely about fewer PRs.")
+        return 2
+
     req = set()
     for r in d["branchProtectionRules"]["nodes"]:
         if r["pattern"] in ("main", "master"):
@@ -108,13 +137,20 @@ def main():
               "would count as optional, which is a verdict about the QUERY, not the board.")
         return 2
 
+    truncated_prs = []
     buckets = {CURRENT: [], STALE: [], UNDATED: []}
     prs = d["pullRequests"]["nodes"]
     for p in prs:
         cm = p["commits"]["nodes"]
         if not cm or not cm[0]["commit"]["statusCheckRollup"]:
             continue
-        for c in cm[0]["commit"]["statusCheckRollup"]["contexts"]["nodes"]:
+        ctx_conn = cm[0]["commit"]["statusCheckRollup"]["contexts"]
+        if ctx_conn["totalCount"] > len(ctx_conn["nodes"]):
+            # ⚠ NOT fatal, unlike the rules above: a dropped CONTEXT loses rows from
+            # one PR's verdict, it does not change what "required" means. But it must
+            # be named — a missing red check reads as a green PR.
+            truncated_prs.append((p["number"], ctx_conn["totalCount"], len(ctx_conn["nodes"])))
+        for c in ctx_conn["nodes"]:
             if c["__typename"] == "CheckRun":
                 nm, st, when = c.get("name"), c.get("conclusion"), c.get("completedAt")
             else:
@@ -124,6 +160,15 @@ def main():
             buckets[classify(when, since)].append((p["number"], nm, when))
 
     total = sum(len(v) for v in buckets.values())
+    # ⇒ printed on success too: a line that appears only on failure is one nobody
+    # has ever seen working, and its absence then reads as "fine".
+    if truncated_prs:
+        print(f"  ⛔ {len(truncated_prs)} PR(s) had MORE contexts than the window read: "
+              + " · ".join(f"#{n} {t}>{g}" for n, t, g in truncated_prs[:6]))
+        print("     ⇒ a missing red check reads as a green PR. Counts below are LOWER bounds.")
+    else:
+        print(f"  windows: {bp['totalCount']}/5 protection rule(s), "
+              f"all context lists within the 100 read — no truncation")
     print(f"── {len(prs)} open PR(s) · {len(req)} required context(s) · "
           f"condition changed {a.since}")
     if not total:
