@@ -70,6 +70,44 @@ def emit_row(path, question):
             + " | ⚙ GENERATED-FROM: --states |")
 
 
+
+# ⛔ WIDENED 2026-08-21 from "exit codes" to "what the tool emits", after the Class B test:
+#    the justification — the index should carry what the tool emits — survives the wider noun.
+#    ⇒ A verdict TOKEN absent from a tool's row is the same defect as an exit code absent
+#      from it. Measured: CONTROL-FAILED is emitted by 6 instruments and appears in
+#      tools/README.md ZERO times, while exit 3 IS documented — in three different paraphrases.
+#      The state is indexed under a name that is not the one the tool prints.
+STOP = set("""HOME PASS FIXTURE MINUTES ARCHITECT DEVOPS TEAMLEAD DEV1 DEV2 DEV3 DEV4 DEV5 DEVX
+NFORMA-RUN NFORMA-RESULT UTF ASCII JSON HTTP HEAD MAIN README TODO NOTE GENERATED-FROM""".split())
+TOKEN = re.compile(r'"([A-Z][A-Z0-9_-]{2,})"')
+
+
+def tokens_absent(path, readme_text, toolname):
+    """Verdict-shaped tokens a tool emits that its OWN ROW does not carry.
+
+    ⚠ UPPER BOUND, always. The predicate is "an uppercase quoted string", which cannot tell a
+    verdict from a constant — HOME, PASS and FIXTURE matched the original screen and are not
+    verdicts. A stoplist removes the ones already seen; it cannot remove the ones not yet seen.
+    ⇒ Run it per token. The total is not a finding and this tool never prints one as if it were.
+
+    ⛔ A SHARPER PREDICATE WAS TRIED AND REJECTED BY ITS OWN KNOWN-POSITIVE. "A verdict is a
+    token the tool PRINTS, not one it merely holds" — restrict to tokens on a line containing
+    `print(`. Measured before adopting: close-condition-scan.py went held=12 -> printed=0,
+    and CONTROL-FAILED — a token that IS printed — scored zero, because these tools build
+    output through f-strings, variables and dicts rather than literals beside `print(`.
+    ⇒ It flagged NOTHING and looked precise. Recorded here because a rejected refinement is
+      exactly the thing that gets re-invented by the next author.
+    """
+    row = None
+    for line in readme_text.splitlines():
+        if line.startswith("|") and f"`{toolname}`" in line:
+            row = line
+            break
+    if row is None:
+        return None
+    src = open(path, errors="ignore").read()
+    return sorted({t for t in TOKEN.findall(src) if t not in STOP and t not in row})
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -78,12 +116,42 @@ def main():
     ap.add_argument("--self-test", action="store_true")
     ap.add_argument("--emit", metavar="TOOL",
                     help="print the canonical README row for TOOL, generated from its --states")
+    ap.add_argument("--tokens", action="store_true",
+                    help="report verdict-shaped tokens a tool emits that its own row omits")
     ap.add_argument("--verify", action="store_true",
                     help="regenerate every row marked GENERATED-FROM and compare byte-for-byte")
     a = ap.parse_args()
     print("NFORMA-RUN states-index-check", file=sys.stderr)
     if a.self_test:
         return self_test()
+    if a.tokens:
+        tools_dir = os.path.join(a.repo, "tools")
+        readme = os.path.join(tools_dir, "README.md")
+        if not os.path.isfile(readme):
+            print("⛔ VOID  tools/README.md unreadable — ESTABLISHED NOTHING.", file=sys.stderr)
+            return 2
+        text = open(readme).read()
+        subjects = flagged = 0
+        for fn in sorted(os.listdir(tools_dir)):
+            if not fn.endswith(".py") or fn.startswith("test_"):
+                continue
+            miss = tokens_absent(os.path.join(tools_dir, fn), text, fn)
+            if miss is None:
+                print(f"  ⛔ NO ROW      {fn}")
+                continue
+            subjects += 1
+            if miss:
+                flagged += 1
+                print(f"  emits, row omits   {fn:<26} {' '.join(miss)[:64]}")
+        if subjects == 0:
+            print("⛔ VOID  no indexed instrument read — ESTABLISHED NOTHING.", file=sys.stderr)
+            return 2
+        print(f"\n  indexed instruments read: {subjects} · with at least one omitted token: {flagged}")
+        if subjects >= 3 and flagged in (0, subjects):
+            print(f"⛔ NON-DISCRIMINATING — all {subjects} scored the same. Establishes nothing.")
+        print("⚠ UPPER BOUND. The predicate is an uppercase quoted string and cannot tell a verdict"
+              "\n   from a constant. Run it per token; the total is not a finding.")
+        return 1 if flagged else 0
     if a.verify:
         # ⛔ THE MARKER IS A CLAIM. Without this, `⚙ GENERATED-FROM: --states` asserts the row was
         #    produced by the generator and NOTHING re-runs it — a name carrying its method only
