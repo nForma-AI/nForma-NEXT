@@ -1,0 +1,3 @@
+# No log entries found for workers-stable in last 30 minutes
+# filter: resource.type="k8s_container" AND resource.labels.namespace_name="control-plane" AND resource.labels.container_name="worker" AND labels."k8s-pod/app"="workers-stable" AND timestamp>="2026-08-21T00:36:12Z"
+

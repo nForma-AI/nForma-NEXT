@@ -1,0 +1,137 @@
+Reauthentication required.
+Traceback (most recent call last):
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gsutil"[0m, line [35m21[0m, in [35m<module>[0m
+    [31mgsutil.RunMain[0m[1;31m()[0m
+    [31m~~~~~~~~~~~~~~[0m[1;31m^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gsutil.py"[0m, line [35m158[0m, in [35mRunMain[0m
+    sys.exit([31mgslib.__main__.main[0m[1;31m()[0m)
+             [31m~~~~~~~~~~~~~~~~~~~[0m[1;31m^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/__main__.py"[0m, line [35m459[0m, in [35mmain[0m
+    return _RunNamedCommandAndHandleExceptions(
+        command_runner,
+    ...<6 lines>...
+        perf_trace_token=perf_trace_token,
+        user_project=user_project)
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/__main__.py"[0m, line [35m809[0m, in [35m_RunNamedCommandAndHandleExceptions[0m
+    [31m_HandleUnknownFailure[0m[1;31m(e)[0m
+    [31m~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/__main__.py"[0m, line [35m656[0m, in [35m_RunNamedCommandAndHandleExceptions[0m
+    return [31mcommand_runner.RunNamedCommand[0m[1;31m(command_name,[0m
+           [31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^[0m
+                                          [1;31margs,[0m
+                                          [1;31m^^^^^[0m
+    ...<5 lines>...
+                                          [1;31mcollect_analytics=True,[0m
+                                          [1;31m^^^^^^^^^^^^^^^^^^^^^^^[0m
+                                          [1;31muser_project=user_project)[0m
+                                          [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/command_runner.py"[0m, line [35m421[0m, in [35mRunNamedCommand[0m
+    return_code = command_inst.RunCommand()
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/commands/ls.py"[0m, line [35m706[0m, in [35mRunCommand[0m
+    [31mlisting_helper.ExpandUrlAndPrint[0m[1;31m(storage_url)[0m)
+    [31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/utils/ls_helper.py"[0m, line [35m388[0m, in [35mExpandUrlAndPrint[0m
+    [31mtop_level_iterator.PeekException[0m[1;31m()[0m
+    [31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/plurality_checkable_iterator.py"[0m, line [35m111[0m, in [35mPeekException[0m
+    raise [31msix.reraise[0m[1;31m(exception_tuple[1].__class__, exception_tuple[1],[0m
+          [31m~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                      [1;31mexception_tuple[2])[0m
+                      [1;31m^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/third_party/six/six.py"[0m, line [35m724[0m, in [35mreraise[0m
+    raise value
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/plurality_checkable_iterator.py"[0m, line [35m70[0m, in [35m_PopulateHead[0m
+    e = next(self.base_iterator)
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/wildcard_iterator.py"[0m, line [35m538[0m, in [35mIterAll[0m
+    for blr in [31mself.__iter__[0m[1;31m(bucket_listing_fields=bucket_listing_fields,[0m
+               [31m~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                             [1;31mexpand_top_level_buckets=expand_top_level_buckets)[0m:
+                             [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/wildcard_iterator.py"[0m, line [35m189[0m, in [35m__iter__[0m
+    get_object = self.gsutil_api.GetObjectMetadata(
+        self.wildcard_url.bucket_name,
+    ...<2 lines>...
+        provider=self.wildcard_url.scheme,
+        fields=get_fields)
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/cloud_api_delegator.py"[0m, line [35m314[0m, in [35mGetObjectMetadata[0m
+    return [31mself._GetApi(provider).GetObjectMetadata[0m[1;31m(bucket_name,[0m
+           [31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^[0m
+                                                    [1;31mobject_name,[0m
+                                                    [1;31m^^^^^^^^^^^^[0m
+                                                    [1;31mgeneration=generation,[0m
+                                                    [1;31m^^^^^^^^^^^^^^^^^^^^^^[0m
+                                                    [1;31mfields=fields)[0m
+                                                    [1;31m^^^^^^^^^^^^^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/gcs_json_api.py"[0m, line [35m1047[0m, in [35mGetObjectMetadata[0m
+    object_metadata = self._GetObjectMetadataHelper(bucket_name,
+                                                    object_name,
+                                                    generation=generation,
+                                                    fields=fields)
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/gcs_json_api.py"[0m, line [35m1004[0m, in [35m_GetObjectMetadataHelper[0m
+    return [31mself.api_client.objects.Get[0m[1;31m(apitools_request,[0m
+           [31m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^[0m
+                                       [1;31mglobal_params=global_params)[0m
+                                       [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/third_party/storage_apitools/storage_v1_client.py"[0m, line [35m1124[0m, in [35mGet[0m
+    return [31mself._RunMethod[0m[1;31m([0m
+           [31m~~~~~~~~~~~~~~~[0m[1;31m^[0m
+        [1;31mconfig, request, global_params=global_params,[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+        [1;31mdownload=download)[0m
+        [1;31m^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/third_party/apitools/apitools/base/py/base_api.py"[0m, line [35m744[0m, in [35m_RunMethod[0m
+    http_response = http_wrapper.MakeRequest(
+        http, http_request, **opts)
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/third_party/apitools/apitools/base/py/http_wrapper.py"[0m, line [35m359[0m, in [35mMakeRequest[0m
+    [31mretry_func[0m[1;31m(ExceptionRetryArgs(http, http_request, e, retry,[0m
+    [31m~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+                                  [1;31mmax_retry_wait, total_wait_sec))[0m
+                                  [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/utils/retry_util.py"[0m, line [35m65[0m, in [35mWarnAfterManyRetriesHandler[0m
+    [31mhttp_wrapper.HandleExceptionsAndRebuildHttpConnections[0m[1;31m(retry_args)[0m
+    [31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/third_party/apitools/apitools/base/py/http_wrapper.py"[0m, line [35m304[0m, in [35mHandleExceptionsAndRebuildHttpConnections[0m
+    raise retry_args.exc
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/third_party/apitools/apitools/base/py/http_wrapper.py"[0m, line [35m348[0m, in [35mMakeRequest[0m
+    return _MakeRequestNoRetry(
+        http, http_request, redirections=redirections,
+        check_response_func=check_response_func)
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/third_party/apitools/apitools/base/py/http_wrapper.py"[0m, line [35m397[0m, in [35m_MakeRequestNoRetry[0m
+    info, content = [31mhttp.request[0m[1;31m([0m
+                    [31m~~~~~~~~~~~~[0m[1;31m^[0m
+        [1;31mstr(http_request.url), method=str(http_request.http_method),[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+        [1;31mbody=http_request.body, headers=http_request.headers,[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+        [1;31mredirections=redirections, connection_type=connection_type)[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/vendored/oauth2client/oauth2client/transport.py"[0m, line [35m159[0m, in [35mnew_request[0m
+    [31mcredentials._refresh[0m[1;31m(orig_request_method)[0m
+    [31m~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/gslib/vendored/oauth2client/oauth2client/client.py"[0m, line [35m761[0m, in [35m_refresh[0m
+    [31mself._do_refresh_request[0m[1;31m(http)[0m
+    [31m~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/third_party/google-reauth-python/google_reauth/reauth_creds.py"[0m, line [35m112[0m, in [35m_do_refresh_request[0m
+    self._update(*[31mreauth.refresh_access_token[0m[1;31m([0m
+                  [31m~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^[0m
+            [1;31mhttp_request,[0m
+            [1;31m^^^^^^^^^^^^^[0m
+    ...<5 lines>...
+            [1;31mscopes=list(self.scopes),[0m
+            [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+            [1;31mheaders=headers)[0m)
+            [1;31m^^^^^^^^^^^^^^^^[0m
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/third_party/google-reauth-python/google_reauth/reauth.py"[0m, line [35m283[0m, in [35mrefresh_access_token[0m
+    rapt = get_rapt_token(
+        http_request,
+    ...<4 lines>...
+        scopes=scopes,
+    )
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/third_party/google-reauth-python/google_reauth/reauth.py"[0m, line [35m194[0m, in [35mget_rapt_token[0m
+    rapt_token = _obtain_rapt(
+        http_request,
+        content['access_token'],
+        requested_scopes=scopes)
+  File [35m"/opt/homebrew/share/google-cloud-sdk/platform/gsutil/third_party/google-reauth-python/google_reauth/reauth.py"[0m, line [35m142[0m, in [35m_obtain_rapt[0m
+    raise errors.ReauthUnattendedError()
+[1;35mgoogle_reauth.errors.ReauthUnattendedError[0m: [35mReauthentication challenge could not be answered because you are not in an interactive session.[0m
