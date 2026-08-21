@@ -25,7 +25,7 @@ file can still be incompatible — one deletes a function the other starts calli
 An `independent` verdict is the absence of a textual signal and never a claim of
 compatibility.
 """
-import argparse, itertools, json, subprocess, sys
+import argparse, itertools, json, re, subprocess, sys
 
 
 def sh(*a, check=False):
@@ -49,6 +49,20 @@ def open_prs(repo=None, limit=50):
     except ValueError:
         return None
     return [(r["number"], r["headRefName"], r["title"]) for r in rows] or None
+
+
+def local_remote():
+    """owner/name of this checkout's origin, or None if it cannot be determined."""
+    url = sh("git", "remote", "get-url", "origin", check=True)
+    if not url:
+        return None
+    m = re.search(r"[:/]([^/:]+/[^/]+?)(?:\.git)?/?$", url.strip())
+    return m.group(1) if m else None
+
+
+def same_repo(a, b):
+    """Case-insensitive owner/name comparison — GitHub treats them that way."""
+    return a and b and a.strip().lower() == b.strip().lower()
 
 
 def files_of(ref, base):
@@ -101,8 +115,21 @@ def main():
         ahead = sh("git", "rev-list", "--count", f"{a.base}..{ref}") or "0"
         rows.append((n, head, ref, int(behind), int(ahead), files_of(ref, a.base)))
     if not rows:
-        print("⛔ ESTABLISHED NOTHING — no PR head could be resolved locally. "
-              "Run `git fetch origin` first.")
+        # ⛔ A REFUSAL WITH THE WRONG REMEDY SENDS SOMEONE DOWN A DEAD END. The
+        # first version said "Run `git fetch origin` first" unconditionally. When
+        # --repo names a DIFFERENT repository than the checkout, fetching this one
+        # can never resolve that one's heads — the advice was not just unhelpful,
+        # it was unfollowable. Refusing correctly is not enough if the reason is
+        # wrong.
+        here = local_remote()
+        if a.repo and here and not same_repo(a.repo, here):
+            print(f"⛔ ESTABLISHED NOTHING — you asked about {a.repo} from a checkout "
+                  f"of {here}.\n   PR heads are resolved against the LOCAL git repo, so "
+                  "no fetch of this one can\n   ever resolve those. Run from a checkout "
+                  f"of {a.repo}, or drop --repo.")
+        else:
+            print("⛔ ESTABLISHED NOTHING — no PR head could be resolved locally. "
+                  "Run `git fetch origin` first.")
         return 2
 
     print(f"── {len(rows)} open PR(s) against {a.base}"
