@@ -170,3 +170,50 @@ def scan_strings(strings, ident):
                 seen.add((kind, matched))
                 out.append((kind, matched, estate))
     return sorted(out)
+
+
+def _self_test():
+    """Controls for the derived predicate. ⛔ Two-sided, and the negatives are the point."""
+    est = "-".join(("fixture", "estate", "not", "an", "owner"))
+    pre = "-Users" + "-o" + "-code-"
+    ident = Identity("nForma-NEXT", pre + "nForma-NEXT", "nForma-NEXT")
+    k = lambda t: sorted({a for a, _, _ in foreign_in(t, ident)})       # noqa: E731
+    checks = {
+        "code-dir fires": k("p = '/Users/o/code/%s/x'" % est) == ["code-dir"],
+        "project-slug fires": k("'~/.claude/projects/%s%s/a'" % (pre, est)) == ["project-slug"],
+        "forge-url fires": k("'https://github.com/%s/%s.git'" % (est, est)) == ["forge-repo"],
+        # ⛔ THE FLOOD CONTROL. Our own names are the SAME SHAPE; a predicate that reds here
+        # matches every path in the tree and is worthless.
+        "our code dir is not foreign": k("p = '/Users/o/code/nForma-NEXT/x'") == [],
+        "our slug is not foreign": k("'~/.claude/projects/%snForma-NEXT/a'" % pre) == [],
+        "case differs, same estate": k("p = '~/code/nforma-next/x'") == [],
+        # `tools/README.md` is exactly `X/Y`; matching that shape anywhere floods the tree.
+        "bare dir/file is not a repo": k("'tools/README.md'") == [],
+        # ⛔ -R is also grep's recursive flag.
+        "grep -R is not a forge ref": k("grep -R docs/README.md") == [],
+        "gh -R IS a forge ref": k("gh pr list -R %s/%s" % (est, est)) == ["forge-repo"],
+        # ⛔ No comparand means ESTABLISHED NOTHING, and the caller must treat it as VOID.
+        # ⛔ ASSEMBLED like the rest. A bare literal here felt inert — the identity is
+        # incomplete, so no comparison happens — but the SCANNER reading this file is a
+        # different reader, and it flagged `~/code/x`. The fixture needs the SHAPE, never
+        # the OWNER (docs/ESTATE-BOUNDARY.md), and that holds even where the value is unused.
+        "no identity -> no claim": foreign_in("p='/Users/o/code/%s/y'" % est,
+                                              Identity(None, None, None)) == [],
+        "incomplete is not complete": Identity("a", "b", None).complete() is False,
+    }
+    for name, ok in checks.items():
+        print("  %-4s %s" % ("PASS" if ok else "FAIL", name))
+    return 0 if all(checks.values()) else 2
+
+
+if __name__ == "__main__":
+    import sys as _sys
+    _args = [a for a in _sys.argv[1:] if a.startswith("-")]
+    _unknown = [a for a in _args if a != "--self-test"]
+    if _unknown:
+        print("⛔ VOID: unrecognised flag(s): %s. Known: --self-test" % ", ".join(_unknown),
+              file=_sys.stderr)
+        _sys.exit(2)
+    if "--self-test" in _args:
+        _sys.exit(_self_test())
+    # ⚠ Bare run stays silent, exit 0, matching tools/runmarker.py — see codestrings.py.

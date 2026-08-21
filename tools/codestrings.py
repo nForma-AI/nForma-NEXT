@@ -56,3 +56,48 @@ def code_strings(path):
     except OSError:
         return []
     return code_strings_from_source(src, path.suffix)
+
+
+def _self_test():
+    """Controls for the position filter itself. ⛔ Two-sided: it must EXCLUDE and INCLUDE."""
+    src = ('"""module docstring naming estate-x"""\n'
+           'import os\n'
+           '# comment naming estate-y\n'
+           'PATH = "executable-literal"\n'
+           'def f():\n'
+           '    """inner docstring naming estate-z"""\n'
+           '    return "inner-literal"\n')
+    got = code_strings_from_source(src, ".py")
+    checks = {
+        "executable literal INCLUDED": "executable-literal" in got,
+        "inner literal INCLUDED": "inner-literal" in got,
+        # ⛔ THE KNOWN-NEGATIVE. Without it the filter can stop excluding and every
+        # docstring mention scores as a use, which is the defect it exists to prevent.
+        "module docstring EXCLUDED": not any("estate-x" in g for g in got),
+        "inner docstring EXCLUDED": not any("estate-z" in g for g in got),
+        "comment EXCLUDED": not any("estate-y" in g for g in got),
+        # A SyntaxError yields no strings, which reads as CLEAN — stated, not guarded.
+        "unparseable yields nothing": code_strings_from_source("def (", ".py") == [],
+        # Non-.py takes the coarse path and keeps whole lines.
+        "shell path keeps lines": code_strings_from_source("echo hi # c\n", ".sh") == ["echo hi "],
+    }
+    for name, ok in checks.items():
+        print("  %-4s %s" % ("PASS" if ok else "FAIL", name))
+    return 0 if all(checks.values()) else 2
+
+
+if __name__ == "__main__":
+    import sys as _sys
+    _args = [a for a in _sys.argv[1:] if a.startswith("-")]
+    _unknown = [a for a in _args if a != "--self-test"]
+    if _unknown:
+        # ⛔ Equality over a known set. Membership accepts a flag without rejecting anything
+        # else, so `--self-test --zzz` used to exit 0 and prove nothing (#321).
+        print("⛔ VOID: unrecognised flag(s): %s. Known: --self-test" % ", ".join(_unknown),
+              file=_sys.stderr)
+        _sys.exit(2)
+    if "--self-test" in _args:
+        _sys.exit(_self_test())
+    # ⚠ A bare run stays SILENT and exit 0, matching tools/runmarker.py. This is a module;
+    # changing that would alter what scripts/exit-code-gate.sh sees for every module at once,
+    # and that is DEVOPS's gate to re-scope, not mine to change from one file.
