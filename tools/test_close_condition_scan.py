@@ -65,6 +65,34 @@ class ExitContract(unittest.TestCase):
         self.assertEqual(code, 1, out)
         self.assertIn("BURIED", out)
 
+    def test_the_accepted_form_prints_BESIDE_a_NONE_finding(self):
+        """⛔ DEV2's finding: both requirements were discoverable only by READING THE
+        REGEX. Nothing in the template, goals/README.md, or this tool's output said a
+        comment scores BURIED or that the pattern is line-anchored — which is how
+        TEAMLEAD produced twelve BURIED and ARCHITECT four prose ones, neither
+        carelessly. The remedy must reach the writer AT THE MOMENT OF THE FINDING."""
+        code, out, _ = run([], 2, [issue(1, "## Done when\nx"), issue(2, "nothing")])
+        self.assertEqual(code, 1)
+        self.assertIn("WHAT COUNTS", out)
+        self.assertIn("must start a LINE", out)
+        self.assertIn("scores BURIED", out)
+
+    def test_the_accepted_form_is_SILENT_when_there_is_no_NONE(self):
+        """The other direction — advice printed on a clean board is noise, and a
+        remedy that always prints teaches its reader to skip it."""
+        code, out, _ = run([], 2, [issue(1, "## Done when\nx"),
+                                   issue(2, "**Closes when** y")])
+        self.assertEqual(code, 0)
+        self.assertNotIn("WHAT COUNTS", out)
+
+    def test_the_BURIED_remedy_warns_about_superseded_dispositions(self):
+        """⚠ Promoting the FIRST clause can promote a WITHDRAWN one — two issues on
+        this board carry corrected dispositions."""
+        code, out, _ = run([], 1, [issue(1, "no clause", ["## Done when\nx"])])
+        self.assertEqual(code, 1)
+        self.assertIn("LAST comment", out)
+        self.assertIn("WITHDRAWN", out)
+
     def test_empty_board_is_void_not_clean(self):
         """⚠ Zero open issues is what a MISTYPED LABEL returns. `gh issue list
         --label <nonexistent>` exits 0 with zero bytes on stdout and stderr, which is
