@@ -481,6 +481,47 @@ def self_test():
         print(f"  {'ok  ' if hit else 'FAIL'}  a confirmed verdict from unchanged bytes is NOT "
               f"re-run — this is the whole saving")
 
+        # ⛔ THE FINGERPRINT MUST MOVE FOR A CLASSIFICATION CHANGE AND HOLD FOR A COSMETIC ONE.
+        # Controlled in BOTH directions: one that never moves preserves wrong rows forever, and
+        # one that always moves discards 49 rows for a docstring fix and costs 12 minutes (#465).
+        _fp0 = classifier_fingerprint()
+        _real_words = REFUSAL_WORDS
+        try:
+            globals()["REFUSAL_WORDS"] = re.compile(r"zzz-not-the-real-vocabulary", re.I)
+            _fp1 = classifier_fingerprint()
+        finally:
+            globals()["REFUSAL_WORDS"] = _real_words
+        ok &= _fp1 != _fp0
+        print(f"  {'ok  ' if _fp1 != _fp0 else 'FAIL'}  changing the refusal VOCABULARY moves the"
+              f" fingerprint — a constant that decided three rows today is covered")
+
+        _real_doc = globals()["documented_codes"]
+        try:
+            def _alt(src):          # a DIFFERENT classifying implementation
+                return {0, 1, 2}
+            globals()["documented_codes"] = _alt
+            _fp2 = classifier_fingerprint()
+        finally:
+            globals()["documented_codes"] = _real_doc
+        ok &= _fp2 != _fp0
+        print(f"  {'ok  ' if _fp2 != _fp0 else 'FAIL'}  changing a classifying FUNCTION moves the"
+              f" fingerprint")
+
+        ok &= classifier_fingerprint() == _fp0
+        print(f"  {'ok  ' if classifier_fingerprint() == _fp0 else 'FAIL'}  and it returns to the"
+              f" original once both are restored — it is a function of the code, not of the run")
+
+        # ⛔ a name in CLASSIFYING that no longer exists is VOID, never a quietly shorter hash
+        _real_cls = globals()["CLASSIFYING"]
+        try:
+            globals()["CLASSIFYING"] = _real_cls + ("no_such_function_here",)
+            _fp3 = classifier_fingerprint()
+        finally:
+            globals()["CLASSIFYING"] = _real_cls
+        ok &= _fp3 is None
+        print(f"  {'ok  ' if _fp3 is None else 'FAIL'}  a CLASSIFYING name that does not exist"
+              f" returns None (-> VOID), rather than hashing what is left")
+
         # ⛔ THE SELF ROW MUST BE NAMED, NOT OMITTED. census() states this rule; the ledger path
         # broke it and reported "22 of 49" for a population of 50. An invisible narrowing is the
         # defect check-tools-index.py exists against.
@@ -813,6 +854,45 @@ def self_test():
 # file's own `git log` — never written into it, because a written date is the thing that rots.
 
 
+# ⛔ THE FINGERPRINT COVERS WHAT DETERMINES A VERDICT, NOT THE WHOLE FILE, and the first version
+# got this wrong at real cost. Hashing every byte meant that ADDING A CONTROL or FIXING A DOCSTRING
+# discarded all 49 rows and forced a 12-minute re-measure — which then finished STALE, because six
+# instruments landed while it ran (#465).
+# ★ Neither edit can change a single classification. ⇒ A fingerprint that invalidates a record for
+#   a change that cannot alter its contents is not conservative, it is WRONG in the expensive
+#   direction: it trains its owner to avoid improving the tool.
+# ⚠ THE RISK RUNS THE OTHER WAY TOO and is stated rather than assumed: if a function that DOES
+#   affect classification is left out of this list, rows survive a change that should have voided
+#   them. ⇒ The list is NAMED here, derived from live source at run time (never a stored hash),
+#   and every name in it is a function whose output feeds a state in the census vocabulary.
+CLASSIFYING = ("documented_codes", "refusal_code", "classify", "selftest_state", "_norm")
+
+
+def classifier_fingerprint():
+    """Hash of the code that DETERMINES a verdict, plus the constants those functions read.
+
+    ⚠ Derived from the module's own live source via `inspect.getsource`, so a renamed or deleted
+    function fails loudly here rather than silently dropping out of the hash.
+    """
+    import inspect
+    parts = []
+    for name in CLASSIFYING:
+        fn = globals().get(name)
+        if fn is None:
+            # ⛔ NOT a silent skip. A name in CLASSIFYING that no longer exists means this list and
+            # the code have diverged, and every row keyed on it is of unknown provenance.
+            return None
+        parts.append(inspect.getsource(fn))
+    # ⚠ CONSTANTS COUNT. `REFUSAL_WORDS` alone decided three rows wrongly today; a fingerprint over
+    # functions only would have let that change ride on an unchanged record.
+    parts += [repr(REFUSAL_WORDS.pattern), repr(sorted(DOC_CODES_CONSTS))]
+    return blob_id("".join(parts).encode("utf-8"))
+
+
+DOC_CODES_CONSTS = (VERDICT, NOTHING, NOVOCAB, NEVERRUN, SLOW, STPASS, STFAIL, STNONE, STDECL,
+                    SELFTEST, BOGUS)
+
+
 def blob_id(data):
     """git's own blob hash of `data`, so the key is checkable with `git cat-file -p`."""
     import hashlib
@@ -911,10 +991,10 @@ def stale_check(index=None, tools_dir=None, path=None):
     # ⚠ AND STATE THE OTHER HALF, because the codes are close enough to swap by accident:
     #   exit 0 HERE means "the record is current". It does NOT mean every instrument has a
     #   verdict. That finding is --ledger's exit code, and it is 1.
-    if rec.get("_classifier") != blob_id(Path(__file__).read_bytes()):
+    if rec.get("_classifier") != classifier_fingerprint():
         return 1, [f"  ⛔ STALE  the record was written by a DIFFERENT classifier"
                    f" ({str(rec.get('_classifier'))[:8]}) than the one asking"
-                   f" ({blob_id(Path(__file__).read_bytes())[:8]}).",
+                   f" ({str(classifier_fingerprint())[:8]}).",
                    "  ⚠ Rows written by another classifier are not evidence about this one —"
                    " they are not stale readings, they are readings of a different question.",
                    f"  ----  refresh with: python3 {Path(__file__).name} --ledger"]
@@ -986,7 +1066,10 @@ def ledger(index=None, tools_dir=None, timeout=TIMEOUT, path=None, write=True):
     #   READING was right. A wrong positive is the one case the design had no recovery path for —
     #   the row would never be re-run, so it could never self-correct.
     # ⇒ The classifier's own blob is part of the key. When it moves, every row is re-measured.
-    my_blob = blob_id(Path(__file__).read_bytes())
+    my_blob = classifier_fingerprint()
+    if my_blob is None:
+        return 2, ["  VOID  a name in CLASSIFYING no longer exists — this list and the code have"
+                   " diverged, so no record can be keyed. Established nothing."], {}
     try:
         prior = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(prior, dict):
