@@ -112,8 +112,21 @@ def main():
         print("  ⚠ A self-test showing only passes cannot tell a reader which case could fail.")
         return 0 if ok else 1
 
-    merged = gh_json(["pr", "list", "-R", a.repo, "--state", "merged", "--limit", "40",
-                      "--json", "number,mergedAt"])
+    # ⛔ `gh pr list` SORTS BY CREATION, NOT BY MERGE. This gauge takes max(mergedAt),
+    # so the window must CONTAIN the newest merge — and a long-lived branch that
+    # finally lands sits deep in created-order. Measured 2026-08-21 on Blazing-Back:
+    # of the 20 most-recently-merged PRs, three sat at positions 97, 101 and 102.
+    # A --limit 40 window could not see them.
+    #
+    # ⚠ DIRECTION: it would report a LONGER gap than reality — a FALSE STALL on the
+    # one gauge built because a real stall ran 126 minutes unseen. A gauge that
+    # cries wolf gets muted, which costs more than the bug.
+    #
+    # ⇒ `--search sort:updated-desc` puts recently-touched PRs in the window.
+    # Verified: plain --limit 40 contained NONE of #923/#937/#919; sorted contained
+    # all three. Raising the number alone does not fix an ordering defect.
+    merged = gh_json(["pr", "list", "-R", a.repo, "--state", "merged", "--limit", "60",
+                      "--search", "sort:updated-desc", "--json", "number,mergedAt"])
     openp = gh_json(["pr", "list", "-R", a.repo, "--state", "open", "--limit", "100",
                      "--json", "number,mergeable"])
     if merged is None or openp is None or not merged:
