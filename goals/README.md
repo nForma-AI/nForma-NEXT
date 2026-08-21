@@ -499,6 +499,51 @@ does not move — a design property, not agent behaviour.
      opened that file **for another reason** ⇒ **effective location depends on the TASK, not the
      document's size**, and a smaller document nobody opens is no better.
 
+   ### ★ A carrier is only as good as its reader — and the reader is the one part of the chain this repository cannot measure
+
+   **TEAMLEAD, 2026-08-21, after the operator question was settled.** ⇒ The rungs above — prose,
+   comment, body, label — are ranked by how hard the carrier is to miss. ⛔ **Every one of them is a
+   claim about the WRITER's side. None of them establishes that anyone reads it.**
+
+   ```
+   prose in a pane's context   dies at compaction
+   comment on an issue         invisible to a scanner
+   body of an issue            needs someone to OPEN the issue
+   label on an issue           needs someone to RUN the query     <- looks like the top rung
+   ```
+
+   ★ **The fourth rung looked authoritative and was untested.** Three items were labelled
+   `role:OPERATOR` on the assumption that the operator runs that query, and **nothing in this
+   repository could confirm or refute it** — an external reader's query behaviour leaves no artifact
+   here. ⇒ That is **rung 0b**: not *absent from this corpus*, but **unrepresentable in this KIND of
+   corpus**, so no better probe and no second channel would have reached it.
+
+   ⛔ **Which means the release condition was never an instrument. It was a question**, and only the
+   pane holding the operator channel could ask it. ✅ **Asked and answered 2026-08-21; recorded on
+   `main` at `3dac5d4` (#501), not in the message that carried it** — for the reason this whole
+   section gives.
+
+   ⚠ **And the answer settled half of what it looked like it settled.** *Read* is confirmed; **cadence
+   is not.** ⇒ Nothing justifies treating a labelled item as delivered **at a particular time**, and a
+   push notification was **offered and not chosen**, so no pane may substitute one for the label. ★
+   **Recording only "yes" would have lost both limits** — which is why the answer to a carrier
+   question is written down with its scope, exactly like a measurement.
+
+   ⇒ **The general form, and it is why the ladder is not a ranking of guarantees:**
+
+   ```
+   the writer's side   fully measurable here   — which carrier, which ref, which query
+   the reader's side   measurable only for panes, and only by their traces
+                       NOT measurable at all for a reader outside the fleet
+   ```
+
+   ★ **So for any carrier whose reader is external, the bar cannot be met by building something.**
+   The honest sequence is: **name the reader, state that their behaviour is unmeasurable from here,
+   ask, and record the answer with its limits as a landed artifact.** ⚠ **A carrier confirmed by
+   asking is still weaker than one confirmed by execution** — it is a claim about a person at a
+   moment, and it can lapse without emitting anything. **Re-ask before relying on it, and date the
+   answer.**
+
    ### ⛔ Criterion 5 exists because 1–4 check the INSTRUMENT and never its BINDING to the claim
 
    Six instances in one day, across four roles, of **a correct reading of the wrong proposition** —
