@@ -80,6 +80,40 @@ def _scan(rc, stdout, low, kind):
     return (True, hits)
 
 
+
+def _positive_from_channels(repo, merged_limit):
+    """A per-channel positive term, taken from each channel's own first row."""
+    out = {}
+    rc, o = gh("pr", "list", "-R", repo, "--state", "open", "--limit", "1", "--json", "title")
+    out["open-prs"] = _first_word(rc, o)
+    rc, o = gh("pr", "list", "-R", repo, "--state", "merged", "--limit", "1", "--json", "title")
+    out["merged-prs"] = _first_word(rc, o)
+    out["main-tree"] = "README"          # a tracked file that exists at any ref worth searching
+    res = {}
+    for ch, term in out.items():
+        if not term:
+            res[ch] = (False, [])         # no row to draw from -> unreadable, not "no hits"
+        else:
+            res[ch] = search(term, repo, merged_limit)[ch]
+    return res
+
+
+def _first_word(rc, stdout):
+    if rc != 0 or not stdout.strip():
+        return None
+    try:
+        rows = json.loads(stdout)
+    except ValueError:
+        return None
+    if not rows:
+        return None
+    for w in (rows[0].get("title") or "").split():
+        w = w.strip("`*_:,.()[]")
+        if len(w) >= 6 and w.isascii():
+            return w
+    return None
+
+
 def controls(repo, merged_limit):
     """⛔ TWO-SIDED, per DEV2 (#353): a probe must demonstrate ON THIS RUN that it can return
     the answer it did not return. A one-sided control catches a false ABSENT and is blind to
@@ -90,9 +124,16 @@ def controls(repo, merged_limit):
 
     ⚠ The nonce is generated per run, so no mention of it can exist anywhere (#36: match on
     something a mention cannot produce)."""
-    pos = search("README", repo, merged_limit)
+    # ⛔ THE POSITIVE CONTROL MUST BE DRAWN FROM THE CHANNEL UNDER TEST, not chosen by me.
+    #    Measured 2026-08-21: a fixed term ("README") missed the open-prs channel entirely --
+    #    the channel had rows, none mentioned README, and the tool reported CONTROL DID NOT
+    #    FIRE. That is a THIRD state I had already conflated twice: not a broken predicate,
+    #    not an empty population, but A CONTROL WHOSE INPUT I CHOSE AND THE POPULATION DID
+    #    NOT CONTAIN. ⇒ DEVOPS's rule (#164) inverted: a control's input must come FROM the
+    #    population it certifies, or it tests my guess about that population instead.
+    pos = _positive_from_channels(repo, merged_limit)
     neg = search("prior-art-nonce-" + uuid.uuid4().hex[:16], repo, merged_limit)
-    fired, blind = [], []
+    fired, blind, empty = [], [], []
     for ch in CHANNELS:
         ok_p, hits_p = pos[ch]
         ok_n, hits_n = neg[ch]
@@ -100,10 +141,34 @@ def controls(repo, merged_limit):
             continue                       # unreadable: reported separately, not scored
         if hits_p and not hits_n:
             fired.append(ch)
+        elif not hits_p and not hits_n and _population_empty(ch, repo, merged_limit):
+            # ⛔ AN EMPTY POPULATION IS NOT A BROKEN CONTROL. Measured 2026-08-21: with zero
+            #    open PRs on the board, the positive control cannot find ANYTHING in the
+            #    open-prs channel, and this tool exited 3 CONTROL FAILED. That conflates
+            #    "the predicate is broken" with "there was nothing to predicate over" --
+            #    a collapsed pair, in the tool built to keep channels apart.
+            # ⇒ The reading from such a channel is CORRECT AND UNCERTIFIABLE. Reported as
+            #   its own state so a reader is not told a working tool is broken, and not
+            #   told an uncertified answer was verified.
+            empty.append(ch)
         else:
             blind.append(f"{ch}: positive={'hit' if hits_p else 'MISS'} "
                          f"negative={'FALSE-HIT' if hits_n else 'clean'}")
-    return fired, blind
+    return fired, blind, empty
+
+
+def _population_empty(ch, repo, merged_limit):
+    """Did the channel have anything to search at all? ⚠ Distinguishes 'found nothing'
+    from 'there was nothing', which is this repository's oldest collapse."""
+    if ch == "open-prs":
+        rc, out = gh("pr", "list", "-R", repo, "--state", "open", "--limit", "1",
+                     "--json", "number")
+        return rc == 0 and out.strip() in ("[]", "")
+    if ch == "merged-prs":
+        rc, out = gh("pr", "list", "-R", repo, "--state", "merged", "--limit", "1",
+                     "--json", "number")
+        return rc == 0 and out.strip() in ("[]", "")
+    return False
 
 
 def main():
@@ -122,7 +187,7 @@ def main():
         print("⛔ no term given — ESTABLISHED NOTHING.", file=sys.stderr)
         return 2
 
-    fired, blind = controls(a.repo, a.merged_limit)
+    fired, blind, empty = controls(a.repo, a.merged_limit)
     res = search(a.term, a.repo, a.merged_limit)
 
     print(f"prior art for {a.term!r} in {a.repo}\n")
@@ -133,14 +198,23 @@ def main():
             print(f"  ⛔ VOID        {ch:<12} channel unreadable — ESTABLISHED NOTHING")
             unread.append(ch)
             continue
-        ctl = "control fired" if ch in fired else "⛔ CONTROL DID NOT FIRE"
+        ctl = ("control fired" if ch in fired else
+               "⚠ EMPTY POPULATION — answer correct, NOT certified" if ch in empty else
+               "⛔ CONTROL DID NOT FIRE")
         print(f"  {'FOUND' if hits else 'none ':<12} {ch:<12} {len(hits):>3} hit(s)   [{ctl}]")
         for h in hits[:6]:
             print(f"                   {h}")
         total += len(hits)
 
     print(f"\n  channels read {len(CHANNELS) - len(unread)} of {len(CHANNELS)}"
-          f" · controls fired on {len(fired)} · hits {total}")
+          f" · controls fired on {len(fired)}"
+          + (f" · {len(empty)} channel(s) EMPTY (uncertified)" if empty else "")
+          + f" · hits {total}")
+    if empty:
+        print("\n⚠ An EMPTY channel's 'none' is correct and UNCERTIFIABLE: no control can fire"
+              "\n   over a population with nothing in it. Not a broken tool, and not a verified"
+              "\n   absence — a third thing, and it is the channel this tool exists for that goes"
+              "\n   empty first, because open PRs are what a quiet board has none of.")
     if blind:
         print("\n⛔ CONTROL FAILED — a channel could not demonstrate it can answer both ways:")
         for b in blind:
