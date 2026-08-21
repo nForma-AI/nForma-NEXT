@@ -32,6 +32,28 @@ FLEET_ROLES = ("TEAMLEAD", "ARCHITECT", "DEVOPS", "DX",
                "DEV1", "DEV2", "DEV3", "DEV4", "DEV5")
 
 
+def _is_real_user_turn(rec):
+    """Does this user RECORD end an agent turn?
+
+    ⛔ In this harness a tool result is delivered as ``role="user"``. So the
+    obvious boundary — "a record with role user" — fires once per TOOL CALL,
+    which is exactly the unit that made this parser unsatisfiable.
+
+    A record ends a turn only if it carries at least one block that is NOT a
+    tool_result, or is a bare string.
+    """
+    msg = rec.get("message") or {}
+    if msg.get("role") != "user":
+        return False
+    content = msg.get("content")
+    if isinstance(content, str):
+        return bool(content.strip())
+    if isinstance(content, list):
+        return any(isinstance(b, dict) and b.get("type") != "tool_result"
+                   for b in content)
+    return False
+
+
 def assistant_texts(path):
     """EVERY non-empty assistant text turn, in order, and the names the file answers to.
 
@@ -47,6 +69,7 @@ def assistant_texts(path):
     are different states and only the second is silence.
     """
     names, texts = [], []
+    span = []                      # assistant texts since the last REAL user turn
     for line in open(path, errors="replace"):
         if '"custom-title"' in line or '"agent-name"' in line:
             try:
@@ -56,6 +79,18 @@ def assistant_texts(path):
             n = rec.get("customTitle") or rec.get("agentName")
             if n and n not in names:
                 names.append(n)
+            continue
+        if '"user"' in line:
+            # ⛔ A USER RECORD IS NOT A USER TURN. Tool results come back with
+            # role="user", and treating them as boundaries reinstates the very
+            # unit this function exists to stop counting.
+            try:
+                urec = json.loads(line)
+            except Exception:
+                continue
+            if _is_real_user_turn(urec) and span:
+                texts.append("\n".join(span))
+                span = []
             continue
         if '"assistant"' not in line:
             continue
@@ -72,7 +107,9 @@ def assistant_texts(path):
         blocks = [b.get("text", "") for b in content
                   if isinstance(b, dict) and b.get("type") == "text" and b.get("text", "").strip()]
         if blocks:
-            texts.append("\n".join(blocks))
+            span.append("\n".join(blocks))
+    if span:
+        texts.append("\n".join(span))
     return names, texts
 
 
