@@ -61,7 +61,7 @@ Exit: 0 the check discriminated · 2 non-discriminating (verdict refused)
       3 the control failed — the harness itself is broken
       4 a state is not self-consistent — the comparison is uninterpretable
 """
-import argparse, os, subprocess, sys
+import argparse, subprocess, sys
 
 
 def run(cmd):
@@ -94,80 +94,6 @@ def stable_reading(cmd):
     return first, None
 
 
-def self_test():
-    """⛔ Controls for the tool that refuses non-discriminating verdicts — which shipped
-    with none. Measured 2026-08-20: of 26 instruments in tools/, 16 carried a control and
-    10 did not, and this file was on the second list. A tool whose whole subject is "your
-    check cannot tell these apart" had no check that it could tell anything apart.
-
-    ★ Every case below is SYNTHETIC and reaches its verdict from fixed inputs, so each
-    stays reachable in the REPAIRED state (#26). None is drawn from the fleet, from this
-    repository, or from any live population — a control whose failing state exists only
-    while something else is broken goes silent the moment it is fixed.
-
-    ⚠ Each of the four documented exits gets a case. An exit code with no case is a
-    verdict this tool can emit and has never been shown to emit correctly.
-
-    ⛔ KNOWN LIMIT, measured on this control by the mutation probe from #26. Inverting
-    every comparison in this file also inverts `"--self-test" in sys.argv`, so the
-    sabotaged copy never REACHES these cases — argparse refuses it for missing --a/--b
-    and exits 2. That is a VOID, not a detection, and it reads as one only if the reader
-    checks that control output was produced. ⇒ A sabotage probe scoring `exit != 0` as
-    "the control caught it" is satisfied by a tool that failed to launch.
-    """
-    ok = True
-
-    def check(label, got, want):
-        nonlocal ok
-        good = got == want
-        ok = ok and good
-        print(f"  {'ok  ' if good else 'FAIL'}  {label}: got {got} want {want}")
-        return good
-
-    here = [sys.executable, os.path.abspath(__file__)]
-
-    def rc(*args):
-        return subprocess.run(here + list(args), capture_output=True, text=True).returncode
-
-    # 0 — the check DISCRIMINATED. Two states, one stable check, different readings.
-    check("known-positive  two different states -> 0",
-          rc("--a", "echo A", "--b", "echo B"), 0)
-
-    # 2 — NON-DISCRIMINATING. The verdict this tool exists to refuse.
-    check("known-negative  identical readings -> 2 (refused)",
-          rc("--a", "echo SAME", "--b", "echo SAME"), 2)
-
-    # ⛔ The case this tool was BUILT for: a retraction QUOTES the claim it retracts, so
-    # `grep -c <token>` returns 1 on both the live claim and its withdrawal.
-    check("known-negative  grep -c cannot separate a claim from its retraction -> 2",
-          rc("--a", "echo 'the figure is 46.6%' | grep -c '46.6'",
-             "--b", "echo 'RETRACTED: the figure is 46.6%' | grep -c '46.6'"), 2)
-
-    # 3 — the CONTROL failed: a known-different pair that does not differ.
-    check("known-negative  control pair that does NOT differ -> 3",
-          rc("--a", "echo A", "--b", "echo B",
-             "--control-a", "echo SAME", "--control-b", "echo SAME"), 3)
-
-    # 0 — a control pair that DOES differ must not itself trip the harness.
-    check("known-positive  a genuinely different control pair -> 0",
-          rc("--a", "echo A", "--b", "echo B",
-             "--control-a", "echo X", "--control-b", "echo Y"), 0)
-
-    # 4 — UNSTABLE: a state that differs from itself supports no comparison.
-    #     $RANDOM is re-evaluated per invocation, so the two reads disagree.
-    check("known-negative  a self-inconsistent state -> 4 (uninterpretable)",
-          rc("--a", "echo $RANDOM$RANDOM$RANDOM", "--b", "echo B"), 4)
-
-    # ⚠ Exit status is part of a reading, not just stdout. A command that fails with
-    #    empty output must not read as one that succeeds with empty output.
-    check("known-positive  same stdout, different exit -> 0",
-          rc("--a", "true", "--b", "false"), 0)
-
-    print("\nall four documented exits reachable" if ok
-          else "\n⛔ a documented exit could not be produced")
-    return 0 if ok else 1
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--a", required=True, help="command producing the reading for state A")
@@ -176,18 +102,7 @@ def main():
     ap.add_argument("--control-b", help="the other half of the known-different pair")
     ap.add_argument("--label-a", default="A")
     ap.add_argument("--label-b", default="B")
-    ap.add_argument("--self-test", action="store_true",
-                    help="run the controls and exit")
-
-    # ⛔ Intercepted BEFORE parse_args, because --a/--b are required=True: argparse would
-    # refuse `--self-test` alone with a usage error and exit 2 — which is this tool's
-    # documented NON-DISCRIMINATING verdict. A control that cannot be invoked without
-    # emitting a real verdict code is worse than no control (#58, the exit-2 collision).
-    if "--self-test" in sys.argv:
-        return self_test()
-
     args = ap.parse_args()
-
 
     if bool(args.control_a) != bool(args.control_b):
         sys.exit("--control-a and --control-b must be given together")

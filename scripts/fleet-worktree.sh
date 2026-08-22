@@ -68,35 +68,17 @@ where() {
     }'
 }
 
-n_missing=0; n_outside=0; n_dup=0; n_nodoctrine=0
-missing_list=""; outside_list=""; dup_list=""; nodoctrine_list=""
+n_missing=0; n_outside=0; n_dup=0; missing_list=""; outside_list=""; dup_list=""
 report=""
 for r in $ROLES; do
   line=$(where "$r")
   st=${line%%	*}; pa=${line#*	}
-  # ⛔ A tree can exist, sit in the conventional location, and still be USELESS.
-  # `create` builds from a ref, and on a fresh vendoring that ref predates the
-  # doctrine. Measured: 8 trees provisioned from origin/main before the fleet
-  # artifacts had been pushed there — all reporting `ok`, every pane dying on its
-  # first instruction, `cat $NFORMA_ROLE_PROMPT`. The check that exists to catch
-  # exactly that certified it.
-  #
-  # ⚠ PROPOSITION TESTED, precisely: this tree's HEAD commit contains a `prompts/`
-  # entry. NOT that this role's own prompt resolves — the recipe's
-  # NFORMA_ROLE_PROMPT is the authority there and this script does not read it, so
-  # a tree carrying prompts/ but missing one role's file still passes here. Stated
-  # because a heading claiming more than the predicate tests is how the
-  # basename/location mismatch above survived authoring.
-  if [ "$st" = "ok" ] && ! git -C "$pa" cat-file -e 'HEAD:prompts' 2>/dev/null; then
-    st=NODOCTRINE
-  fi
   report="$report$(printf '  %-8s %-10s %s' "$st" "$r" "$pa")
 "
   case "$st" in
     MISSING) n_missing=$((n_missing+1)); missing_list="$missing_list $r" ;;
     OUTSIDE) n_outside=$((n_outside+1)); outside_list="$outside_list $r" ;;
     DUP)     n_dup=$((n_dup+1));     dup_list="$dup_list $r" ;;
-    NODOCTRINE) n_nodoctrine=$((n_nodoctrine+1)); nodoctrine_list="$nodoctrine_list $r" ;;
   esac
 done
 
@@ -156,16 +138,7 @@ check)
     printf '  They work in the SHARED tree, where a collision is now less expected\n'
     printf '  rather than less likely. Run: %s create\n' "$0"
   fi
-  if [ "$n_nodoctrine" -gt 0 ]; then
-    printf '\n⛔ %d role(s) have a tree that does NOT carry the doctrine:%s\n' \
-      "$n_nodoctrine" "$nodoctrine_list"
-    printf '  The tree exists, in the conventional location, and its HEAD has no prompts/.\n'
-    printf '  Every pane launched into it dies on its first instruction, `cat $NFORMA_ROLE_PROMPT`.\n'
-    printf '  This is `create` run against a ref that predates the fleet artifacts.\n'
-    printf '  ⇒ Re-create from a ref that carries them: %s create <ref>\n' "$0"
-  fi
-  [ "$n_missing" -gt 0 ] || [ "$n_outside" -gt 0 ] || [ "$n_dup" -gt 0 ] \
-    || [ "$n_nodoctrine" -gt 0 ] && exit 1
+  [ "$n_missing" -gt 0 ] || [ "$n_outside" -gt 0 ] || [ "$n_dup" -gt 0 ] && exit 1
   printf '\nall roles provisioned in the conventional location\n'
 
   ;;
@@ -176,42 +149,17 @@ create)
       "$outside_list" "$WT_DIR"
     exit 0
   fi
-  # Detached on purpose: it claims no branch name, so it cannot collide with a
-  # role's own branch, and `git checkout -b` from it inherits the base rather than
-  # a peer's unmerged work — the failure this whole line started from.
-  #
-  # ⛔ The REF IS A PARAMETER because the fresh-install case is the FIRST run, not
-  # an edge case. onboard.md step 2 copies the artifacts into the WORKING TREE and
-  # step 6 creates the worktrees; in between, origin/main carries none of them. The
-  # hardcoded default therefore built 8 trees with no prompts/ and no goals/, and
-  # nothing in the documented order says "commit and push first".
-  BASE_REF="${2:-${FLEET_WORKTREE_REF:-origin/main}}"
-  # ⚠ Fetch only for a remote-tracking ref. Failing a LOCAL ref on a network error
-  # would refuse to work offline for a base that needs no network — a guard whose
-  # failing state is unrelated to what it guards.
-  case "$BASE_REF" in
-    origin/*) git fetch -q origin || { echo "fetch failed — refusing to create trees from a stale base" >&2; exit 2; } ;;
-  esac
-  git rev-parse --verify --quiet "$BASE_REF^{commit}" >/dev/null 2>&1 || {
-    echo "ref does not resolve to a commit: $BASE_REF" >&2; exit 2; }
+  # Detached at origin/main on purpose: it claims no branch name, so it cannot
+  # collide with a role's own branch, and `git checkout -b` from it inherits main
+  # rather than a peer's unmerged work — the failure this whole line started from.
+  git fetch -q origin || { echo "fetch failed — refusing to create trees from a stale base" >&2; exit 2; }
   rc=0
   for r in $missing_list; do
     p="$WT_DIR/$r"
-    if git worktree add --detach "$p" "$BASE_REF" >/dev/null 2>&1; then
-      # ⛔ Verify what was built, not that the command exited 0. `worktree add`
-      # succeeds against a ref with no doctrine in it, and the resulting tree is
-      # indistinguishable from a good one to every path-shaped check.
-      if git -C "$p" cat-file -e 'HEAD:prompts' 2>/dev/null; then
-        printf '  created %-10s detached at %s (%s)\n' \
-          "$r" "$(git -C "$p" rev-parse --short HEAD)" "$BASE_REF"
-      else
-        printf '  created %-10s detached at %s ⛔ NO prompts/ AT THIS REF\n' \
-          "$r" "$(git -C "$p" rev-parse --short HEAD)"
-        printf '             every pane in it dies on `cat $NFORMA_ROLE_PROMPT`\n'
-        rc=1
-      fi
+    if git worktree add --detach "$p" origin/main >/dev/null 2>&1; then
+      printf '  created %-10s detached at %s\n' "$r" "$(git -C "$p" rev-parse --short HEAD)"
     else
-      printf '  FAILED  %-10s (path in use, or %s unreachable)\n' "$r" "$BASE_REF"; rc=1
+      printf '  FAILED  %-10s (path in use, or origin/main unreachable)\n' "$r"; rc=1
     fi
   done
   printf '\nnext, INSIDE your tree: cd %s/<role> || exit 1\n' "$WT_DIR"
@@ -219,8 +167,5 @@ create)
   exit $rc
   ;;
 *)
-  echo "usage: $0 [check|create [ref]]" >&2
-  echo "  ref defaults to \$FLEET_WORKTREE_REF, then origin/main." >&2
-  echo "  On a fresh install the artifacts are not on origin/main yet — pass HEAD." >&2
-  exit 2 ;;
+  echo "usage: $0 [check|create]" >&2; exit 2 ;;
 esac

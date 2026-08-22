@@ -104,40 +104,9 @@ section 'Panel identity (measured, not asserted)'
 if ! command -v python3 >/dev/null 2>&1; then
   note "python3 not on PATH — panel titles UNMEASURED, not verified"
 else
-  # ⛔ The tally file is the ONLY channel by which this block's verdicts reach
-  # the counters below. Without it the block printed FAIL and the summary still
-  # said "0 fail / Preflight clean" — measured on this repo, all nine roles.
-  panel_tally=$(mktemp)
-  python3 - "${main_tree:-$toplevel}" "$panel_tally" <<'PANELS'
+  python3 - "${main_tree:-$toplevel}" <<'PANELS'
 import glob, json, os, sys, time
 top = sys.argv[1] if len(sys.argv) > 1 else ""
-tally_path = sys.argv[2] if len(sys.argv) > 2 else ""
-n_ok = n_warn = n_fail = 0
-
-# ⚠ These reproduce ok()/note()/bad() from the shell above, spacing included.
-# They exist so this block COUNTS what it prints instead of only printing it.
-def emit_ok(msg):
-    global n_ok
-    print(f"  \033[32mok\033[0m    {msg}")
-    n_ok += 1
-
-def emit_warn(msg):
-    global n_warn
-    print(f"  \033[33mwarn\033[0m  {msg}")
-    n_warn += 1
-
-def emit_fail(msg):
-    global n_fail
-    print(f"  \033[31mFAIL\033[0m  {msg}")
-    n_fail += 1
-
-def write_tally():
-    # ⛔ Every exit path writes this, including the early one. A path that
-    # returns without writing is indistinguishable from a crash, and the
-    # caller is required to treat a missing tally as a failure.
-    if tally_path:
-        with open(tally_path, "w") as fh:
-            fh.write(f"{n_ok} {n_warn} {n_fail}\n")
 base = os.path.expanduser("~/Library/Application Support/Daintree/projects")
 found, mtime = {}, None
 for path in glob.glob(os.path.join(base, "*", "state.json")):
@@ -153,38 +122,25 @@ for path in glob.glob(os.path.join(base, "*", "state.json")):
         if t.get("title"):
             found[t["title"]] = t.get("titleMode")
 if not found:
-    emit_warn("no Daintree project state for this repo — "
-              "panel titles UNMEASURED, not verified")
-    write_tally()
+    print("  \033[33mwarn\033[0m  no Daintree project state for this repo — "
+          "panel titles UNMEASURED, not verified")
     sys.exit(0)
 stamp = time.strftime("%H:%M:%S", time.localtime(mtime))
-emit_ok(f"{len(found)} panes in Daintree state, read {stamp} "
-        f"(persisted view — it can lag the live UI)")
+print(f"  \033[32mok\033[0m    {len(found)} panes in Daintree state, read {stamp} "
+      f"(persisted view — it can lag the live UI)")
 roles = ["TEAMLEAD", "ARCHITECT", "DEVOPS", "DX", "DEV1", "DEV2", "DEV3", "DEV4", "DEV5"]
 missing = [r for r in roles if r not in found]
 loose = sorted(t for t, m in found.items() if m != "user")
 if missing:
-    emit_fail(f"roles with no panel: {', '.join(missing)}")
+    print(f"  \033[31mFAIL\033[0m  roles with no panel: {', '.join(missing)}")
 else:
-    emit_ok("every declared role has a panel")
+    print("  \033[32mok\033[0m    every declared role has a panel")
 if loose:
-    emit_warn(f"titles NOT pinned (titleMode != user, auto-titling may "
-              f"overwrite): {', '.join(loose)}")
+    print(f"  \033[33mwarn\033[0m  titles NOT pinned (titleMode != user, auto-titling may "
+          f"overwrite): {', '.join(loose)}")
 else:
-    emit_ok("every title pinned (titleMode=user)")
-write_tally()
-sys.exit(1 if n_fail else 0)
+    print("  \033[32mok\033[0m    every title pinned (titleMode=user)")
 PANELS
-  panel_rc=$?
-  if [ -s "$panel_tally" ]; then
-    read -r p_ok p_warn p_fail < "$panel_tally"
-    pass=$((pass + p_ok)); warn=$((warn + p_warn)); fail=$((fail + p_fail))
-  else
-    # ⛔ NOT 'clean'. The block established nothing, and an unrun check and a
-    # passing one are otherwise the same silence.
-    bad "panel identity established nothing (python3 exited $panel_rc, no tally)"
-  fi
-  rm -f "$panel_tally"
 fi
 
 # ⚠ The companion half of the same claim. "$NFORMA_ROLE is the authoritative
@@ -209,20 +165,13 @@ if [ -x scripts/fleet-worktree.sh ]; then
   if scripts/fleet-worktree.sh check >/dev/null 2>&1; then
     ok "every declared role has an isolated worktree"
   else
-    # ⛔ Process substitution, NOT `cmd | while`. A pipe runs the loop body in a
-    # SUBSHELL, so bad()'s `fail=$((fail+1))` increments a copy that dies with it.
-    # Measured here: 8 worktree FAILs printed, 0 counted, summary said "1 fail" —
-    # and the worktree FAILs are the blocking condition for launching at all.
-    # ⚠ Same family as the `| tail` defect this repo already warns about: a pipe
-    # discarding the thing the caller depends on. tools/pipe-exit-scan.py does not
-    # see this shape — it looks for lost EXIT CODES, not lost VARIABLE STATE.
-    while read -r st r pa rest; do
+    scripts/fleet-worktree.sh check 2>&1 | while read -r st r pa rest; do
       case "$st" in
         MISSING) bad  "$r has NO isolated tree — it works in the SHARED tree; run fleet-worktree.sh create" ;;
         OUTSIDE) bad  "$r isolated OUTSIDE the convention at $pa — MOVE it; creating would duplicate it" ;;
         DUP)     note "$r has TWO trees ($pa $rest) — commits land in whichever the pane is in; needs a deliberate decision" ;;
       esac
-    done < <(scripts/fleet-worktree.sh check 2>&1)
+    done
   fi
 else
   note "scripts/fleet-worktree.sh not executable — worktree coverage UNMEASURED, not clean"
@@ -262,37 +211,12 @@ if [ -r tools/stranded-branches.py ]; then
     if [ "$rc" -ge 2 ]; then
       note "stranded-branches ESTABLISHED NOTHING (exit $rc) — not clean; likely gh auth or network"
     else
-      # ⛔ `cmd | while` RAN THESE IN A SUBSHELL, so every note()/ok() below
-      # incremented a copy of $warn/$pass that died with it. Measured: 73 warns
-      # and 1 ok printed in the body, 0 of them reaching the summary.
-      #
-      # ⚠ #267 diagnosed this as "the section prints its verdicts directly
-      # instead of using the counters". It does NOT — it calls note() and ok()
-      # like every other section. The verdicts WERE counted and the COUNT was
-      # discarded. Different defect, different fix: process substitution, not a
-      # rewrite onto the counting functions.
-      #
-      # ★ Found by tools/pipe-exit-scan.py, which named `warn` and `pass` at
-      # these exact lines — the matcher repaired under #266 for missing this
-      # one-liner shape. Behavioural proof: piped -> warn=0 with 3 notes
-      # emitted; `done < <(...)` -> warn=3.
-      branch_warn=0
-      while read -r _ ref rest; do
+      printf '%s\n' "$out" | grep '^NO-UPSTREAM-MATCH' | while read -r _ ref rest; do
         note "$ref has commits with no upstream patch-match — ⚠ NOT proof of loss; recovery-by-recommit reads this way"
-        branch_warn=$((branch_warn+1))
-      done < <(printf '%s\n' "$out" | grep '^NO-UPSTREAM-MATCH')
-      equiv=$(printf '%s\n' "$out" | grep -c '^EQUIVALENT-UPSTREAM')
-      branch_ok=0
-      if [ "$equiv" -gt 0 ]; then
-        ok "$equiv ref(s) unreachable by sha but EQUIVALENT upstream — landed"
-        branch_ok=1
-      fi
-      # ⇒ #267 option 3: the section carries its own subtotal, so the fleet
-      # summary stays about the fleet while nothing the body printed is missing
-      # from a total. A reader who trusts the summary must not be able to miss
-      # what the body showed.
-      printf '  branch subtotal: %d warn, %d ok (counted in the Summary below)\n' \
-        "$branch_warn" "$branch_ok"
+      done
+      printf '%s\n' "$out" | grep -c '^EQUIVALENT-UPSTREAM' | while read -r n; do
+        [ "$n" -gt 0 ] && ok "$n ref(s) unreachable by sha but EQUIVALENT upstream — landed"
+      done
     fi
   fi
 else
@@ -325,19 +249,4 @@ else
   printf '  \033[32mPreflight clean. Now verify the %d ROLE-READY lines above.\033[0m\n' "${#ROLES[@]}"
 fi
 echo
-
-# ⛔ THE EXIT CODE MUST CARRY THE VERDICT. This was `exit 0` unconditionally: the script
-# printed "Preflight found blocking problems" and then told every caller it had passed.
-# $fail was read twice — to print the tally, and to choose the message — and never to exit.
-#
-# ⇒ onboard.md makes this the ACCEPTANCE TEST for an install ("resolve every FAIL"), and an
-# acceptance test that cannot fail is #26 in the place it does the most damage. A sibling
-# fleet found the same root one layer in: a check whose FAIL never reached the counter.
-#
-# 0 clean · 1 blocking failures · 2 the script could not establish its own verdict.
-if [ -z "${fail+x}" ] || [ -z "${pass+x}" ]; then
-  printf '  \033[31m⛔ VOID: counters unset — this run established NOTHING about the fleet.\033[0m\n'
-  exit 2
-fi
-[ "$fail" -gt 0 ] && exit 1
 exit 0

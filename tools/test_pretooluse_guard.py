@@ -28,19 +28,6 @@ import os
 import subprocess
 import sys
 
-# ⛔ A STALE __pycache__ SILENTLY SERVES THE PRE-MUTATION MODULE, and the dangerous
-# class is the COMMON one: Python invalidates a .pyc on mtime + SIZE, so a
-# SIZE-PRESERVING mutation (==/!=, a flag flip, a token swap) applied in the same
-# second leaves both unchanged and the cache is served. Measured with a
-# 4-cell table: {clean,mutant} x {cache cleared,stale} -> the mutant PASSED on a stale
-# cache and failed 3 checks once cleared. Every suite here loads its tool through
-# spec_from_file_location, so a false SURVIVED sends you rewriting a correct test.
-# CI is safe (fresh checkout, no cache); local mutation testing was not.
-sys.dont_write_bytecode = True
-# ⚠ and the env var too: a SUBPROCESS does not inherit sys.dont_write_bytecode,
-# which is why three suites still produced a cache after the first fix.
-os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
-
 _here = os.path.dirname(os.path.abspath(__file__))
 TOOL = os.path.join(_here, "pretooluse-guard.py")
 _spec = importlib.util.spec_from_file_location("guard", TOOL)
@@ -56,24 +43,9 @@ def sevs(cmd):
     return sorted(s for _, s in guard.check(cmd))
 
 
-
-# ⛔ HERMETIC CORPUS. This suite used to read the developer's real ~/.claude/projects, so
-# its assertions ("names its scope", "warns when unscoped") passed or failed according to
-# what this machine happened to hold — and failed on a clean runner, where they were
-# classified as "fleet-dependent". They are not: they are assertions about OUTPUT SHAPE,
-# and a fixture states the input they were always implicitly assuming.
-import importlib.util as _ilu
-_fx_spec = _ilu.spec_from_file_location(
-    "corpus_fixture", os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                   "test_corpus_fixture.py"))
-_fx = _ilu.module_from_spec(_fx_spec)
-_fx_spec.loader.exec_module(_fx)
-FIXTURE_ENV = _fx.env()
-
-
 def run(*args, stdin=""):
     p = subprocess.run([sys.executable, TOOL, *args], input=stdin,
-                       capture_output=True, text=True, env=FIXTURE_ENV)
+                       capture_output=True, text=True)
     return p.returncode, p.stdout + p.stderr
 
 

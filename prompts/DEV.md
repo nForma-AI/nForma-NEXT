@@ -611,52 +611,6 @@ declaration read from one line does.
 
 ---
 
-## ⛔ And SEND on transition — the STATE line is a pull, this is the push
-
-The STATE line above is read by a monitor, which makes it exactly as timely as that monitor's
-next sweep. Go FREE one second after a sweep and nothing knows for a whole cycle. So when you
-cross **into** `FREE` or `BLOCKED`, also send TEAMLEAD one message.
-
-On `FREE`:
-
-```
-QUEUE EMPTY
-done: <one line each>
-proposing: 1) … 2) … 3) …
-```
-
-On `BLOCKED`:
-
-```
-BLOCKED — <the decision, in ONE line, phrased so "yes" or "no" answers it>
-everything else I hold: <one line>
-```
-
-⛔ **On TRANSITION, not on every turn.** A message per wake is a channel TEAMLEAD stops reading,
-and an unread channel is worse than no channel because it still looks like one. The trigger is
-your STATE *changing*: five consecutive FREE turns are one message, not five.
-
-⛔ **"Blocked on item 1" is not blocked.** Move to the next queue item first. `BLOCKED` means the
-whole queue is stopped behind one decision. If anything else is workable you are `WORKING`, and
-you are holding a question you could have carried on past.
-
-★ **Propose, do not merely report.** `QUEUE EMPTY` with no `proposing:` hands TEAMLEAD the job of
-finding you work. You hold context it does not; three candidates cost one line each and convert
-an interrupt into a choice.
-
-⚠ **This is audited, and the audit is deliberately one-sided.** `tools/transition-report.py`
-pairs every FREE/BLOCKED transition in your transcript with the messages sent since your previous
-declaration. A row that carried nothing is strong — you sent nothing, so you cannot have announced
-it here. A row that carried something is weak: the tool cannot read what a message was about and
-does not pretend to. It finds omissions. It is not a compliance score.
-
-⚠ **This section reaches you only if it was in your bootstrap.** Measured 2026-08-20: of eight
-running fleet sessions, the committed prompts had reached **one**. See
-`docs/prompt-delivery-gap.md` — the file you are reading is a specification, and on the current
-launch path it is not the artifact panes are started from.
-
----
-
 # 23. Operating Invariants
 
 Your `/goal` is durable.

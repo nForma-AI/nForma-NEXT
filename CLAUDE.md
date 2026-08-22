@@ -27,7 +27,6 @@ disagree, the README wins and this file is the defect.
 
 | path | contents | its own doc |
 |---|---|---|
-| `./onboard.md` | **the entry point for a coding agent installing this fleet elsewhere** — hand it the one-line bootstrap and it reads this | — |
 | `docs/` | the thesis the rest is derived from | — |
 | `prompts/` | five role prompts (`TEAMLEAD` `ARCHITECT` `DEVOPS` `DX` `DEV`) | `prompts/README.md` |
 | `goals/` | per-role standing goals + the standard they must meet | `goals/README.md` |
@@ -55,34 +54,13 @@ Each is explained in full at the pointer; none of it is restated here.
 
 ## Facts with a measurement date, not standing claims
 
-- ⛔ **~~No CI.~~ FALSE since 2026-08-20 — CI exists and GATES.** `.github/workflows/tools.yml`
-  is present on `main` and on multiple refs; `hermetic suites (gating)` is a **required check**
-  and has blocked a merge. *(re-measured 2026-08-20 at `2effc63`, `git ls-tree -r` over remote refs;
-  #272.)*
-  ★ **The commit that falsified this claim cited it as its justification** — *"this repository
-  had no CI, so 23 instruments and 19 suites had never run"* (`239639a`). ⇒ **A measurement is
-  most likely to be falsified by work it caused**, which is exactly when nobody re-checks it: the
-  author of the fix already knows, and the files asserting it are not in the fix's blast radius.
-  ⚠ The old line carried a date, a SHA, a method, and *"re-measure before relying on either"* —
-  **all four, and it still decayed for ~7 hours.** Dating a claim tells a reader it CAN decay; it
-  does not tell them it HAS. ⇒ `scripts/check-orientation.py` now re-measures this one.
+- **No CI.** Zero workflow or `*.yml`/`*.yaml` files on any local or remote ref.
+  *(measured 2026-08-19 at `c465e8e`, 9 refs, `git ls-tree -r` per ref.)* Nothing here gates on
+  a green check, and opening a PR draws no runner.
 - **One git credential for all panes** — GitHub records the operator for whatever any pane
   posts, so name yourself in the body of anything you file. *(issue #4.)*
 
 ⇒ Re-measure before relying on either. A number without a date is a rumour.
-
----
-
-## Onboarding someone else's repository
-
-One line, handed to a coding agent — it is a **pointer, not a copy**, so it stays valid while the
-instructions change under it:
-
-> Clone https://github.com/nForma-AI/nForma-NEXT, then read `./onboard.md` at the root — it contains
-> your full instructions for onboarding me through this tool.
-
-⚠ `./onboard.md` installs **four things, not one**: the recipe, the prompts, `scripts/validate-recipe.py`,
-and the goals. ⛔ Without the validator its validation step establishes nothing and reports no error.
 
 ---
 

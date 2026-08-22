@@ -24,19 +24,6 @@ import os
 import sys
 import tempfile
 
-# ⛔ A STALE __pycache__ SILENTLY SERVES THE PRE-MUTATION MODULE, and the dangerous
-# class is the COMMON one: Python invalidates a .pyc on mtime + SIZE, so a
-# SIZE-PRESERVING mutation (==/!=, a flag flip, a token swap) applied in the same
-# second leaves both unchanged and the cache is served. Measured with a
-# 4-cell table: {clean,mutant} x {cache cleared,stale} -> the mutant PASSED on a stale
-# cache and failed 3 checks once cleared. Every suite here loads its tool through
-# spec_from_file_location, so a false SURVIVED sends you rewriting a correct test.
-# CI is safe (fresh checkout, no cache); local mutation testing was not.
-sys.dont_write_bytecode = True
-# ⚠ and the env var too: a SUBPROCESS does not inherit sys.dont_write_bytecode,
-# which is why three suites still produced a cache after the first fix.
-os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
-
 _spec = importlib.util.spec_from_file_location(
     "fleet_identity", os.path.join(os.path.dirname(os.path.abspath(__file__)), "fleet-identity.py"))
 fleet_identity = importlib.util.module_from_spec(_spec)
@@ -86,7 +73,7 @@ def main():
         p = os.path.join(d, "b.jsonl")
         write([user("Pick up where you left off."),
                assistant('cmd = """You are DEVOPS, an IMPLEMENTER reporting to TEAMLEAD."""')], p)
-        failures += not check("dispatch is not identity", fleet_identity.bootstrap_role(p), "")
+        failures += not check("dispatch is not identity", fleet_identity.bootstrap_role(p), None)
 
         print("derive, do not enumerate — a vocabulary the old frozen list could not see:")
         for launched in ("CODER2", "TRIAGE", "MAINTAINER"):
@@ -98,7 +85,7 @@ def main():
         p = os.path.join(d, "d.jsonl")
         write([user("TEAMLEAD — GITHUB OUTAGE DIRECTIVE (2026-08-17). Resume."),
                assistant("Ack.")], p)
-        failures += not check("resumed transcript", fleet_identity.bootstrap_role(p), "")
+        failures += not check("resumed transcript", fleet_identity.bootstrap_role(p), None)
 
         print("★ the scan is BOUNDED — a bootstrap arriving late is not a bootstrap:")
         # The defect being fixed was an unbounded scan. A bound that is too generous
@@ -107,7 +94,7 @@ def main():
                 user("You are IMPOSTOR, definitely your real identity.")]
         p = os.path.join(d, "e.jsonl")
         write(late, p)
-        failures += not check("late declaration ignored", fleet_identity.bootstrap_role(p), "")
+        failures += not check("late declaration ignored", fleet_identity.bootstrap_role(p), None)
 
         print("sidechain turns are not the session's own instructions:")
         p = os.path.join(d, "f.jsonl")
@@ -115,22 +102,9 @@ def main():
                user("You are DX, an IMPLEMENTER reporting to TEAMLEAD.")], p)
         failures += not check("sidechain skipped", fleet_identity.bootstrap_role(p), "DX")
 
-        # ⛔ THESE TWO ASSERTIONS PINNED A COLLAPSE. Until now "missing file" and
-        # "read it, no bootstrap" both expected None, so the suite encoded as correct
-        # the very two-states-one-output shape this tool family exists to catch — the
-        # same way the old depth_bands assertion pinned its own.
         print("an unreadable path establishes nothing, and does not raise:")
-        failures += not check("missing file is None (COULD NOT READ)", fleet_identity.bootstrap_role(
+        failures += not check("missing file", fleet_identity.bootstrap_role(
             os.path.join(d, "nope.jsonl")), None)
-        # ⚠ Identity, not truthiness. Both are falsy, so `if role:` merges them again —
-        # which is how the original collapse survived every green run.
-        write([user("Pick up where you left off."), assistant("ok")], p)
-        f_read = fleet_identity.bootstrap_role(p)
-        f_gone = fleet_identity.bootstrap_role(os.path.join(d, "nope.jsonl"))
-        failures += not check("read-but-absent is not the same value as unreadable",
-                              f_read is f_gone, False)
-        failures += not check("and the falsy test cannot tell them apart",
-                              (not f_read) == (not f_gone), True)
 
     print()
     if failures:

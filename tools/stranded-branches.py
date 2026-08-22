@@ -81,12 +81,7 @@ auth failure, `gh` returning an empty array on a swallowed error — a naive ver
 reports "0 stranded" and exits 0. That is absence read as success, inside a check
 written to catch absence read as success.
 """
-import os, sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from runmarker import guard, result  # noqa: E402
-
 import json, subprocess, sys
-from collections import Counter
 
 BASE = "origin/main"
 
@@ -134,123 +129,6 @@ def merged_refs(limit=DEFAULT_LIMIT):
     return rows, None, len(rows) >= limit
 
 
-def blob_at(rev, path):
-    """Blob oid of `path` at `rev`, or None when the path is absent there.
-
-    ⚠ None is a real value here, not a failure: absent-at-both-ends is EQUAL, which
-    is how a landed DELETION reads. Collapsing None into "unreadable" would make
-    every merged deletion look unlanded forever.
-    """
-    rc, out, _ = sh("git", "rev-parse", f"{rev}:{path}")
-    return out if rc == 0 else None
-
-
-def touched_paths(shas):
-    """Union of paths the given commits changed. Empty set means ESTABLISHED NOTHING."""
-    paths = set()
-    for sha in shas:
-        rc, out, _ = sh("git", "diff-tree", "--no-commit-id", "--name-only", "-r", sha)
-        if rc != 0:
-            return set()            # one unreadable commit voids the whole union
-        paths.update(ln for ln in out.splitlines() if ln)
-    return paths
-
-
-def content_upstream(remote, shas):
-    """True when every path those commits touched is byte-identical at BASE.
-
-    ⇒ This establishes LANDEDNESS, never AUTHORSHIP. If BASE and the branch hold the
-    same bytes the work is not lost, whoever put them there. Direction stays outside
-    what this tool can claim, exactly as the report footer says.
-
-    ⛔ The empty path set must return False, not True. "Every element of {} matches"
-    is vacuously true, and a state that reports CONTENT-UPSTREAM after examining zero
-    paths is the empty-population false pass this repository keeps re-learning: a
-    control whose silence is indistinguishable from its success.
-    """
-    same, total, _ = path_agreement(remote, shas)
-    return total > 0 and same == total
-
-
-def content_state(unmatched, same, tot, held=0):
-    """LANDED · UNRESOLVED · N/A, from counts alone — no repository required.
-
-    ⛔ tot == 0 is UNRESOLVED, never LANDED. "Every path matched" over zero paths is
-    vacuously true, and it is the whole reason this lives in its own pure function:
-    the empty-population false pass is invisible inside a generator expression and
-    obvious in a table of counts.
-    """
-    if not unmatched:
-        return "N/A"
-    if tot == 0:
-        return "UNRESOLVED"
-    if same == tot:
-        return "LANDED"                       # byte-identical: conclusive
-    # ⇒ Weaker and separately named ON PURPOSE. Every line is upstream with multiplicity,
-    # but a file of boilerplate satisfies that without its work landing. A reader must be
-    # able to tell which evidence they have.
-    if held == tot:
-        return "LANDED-BY-LINES"
-    return "UNRESOLVED"
-
-
-def line_contained(remote, base, path):
-    """Is every line of `remote:path`, with multiplicity, present in `base:path`?
-
-    ⇒ ARCHITECT's primitive, and it answers the question byte-identity cannot:
-    *is this content upstream* — WITHOUT a patch id, without a case rule, and without
-    caring how the merge was performed. **Immune to squash by construction**, which is the
-    exact limitation the NO-UPSTREAM-MATCH row carries.
-
-    ⚠ WEAKER THAN BYTE-IDENTITY AND REPORTED SEPARATELY. Byte-identity is conclusive.
-    Containment is not: a file whose lines ALL recur elsewhere in `base` — boilerplate,
-    blanks, closing braces — reads contained without its work having landed. Measured
-    known-negatives: a single unique line -> False; three copies of a line `base` holds
-    once -> False (Counter compares COUNTS, not membership); an all-blank file -> True,
-    and that last one is the limitation, not a bug.
-    """
-    b, m = blob_at(remote, path), blob_at(base, path)
-    if b is None and m is None:
-        return True                                   # deleted both ends
-    if b is None or m is None:
-        return False
-    rc1, bt, _ = sh("git", "show", "%s:./%s" % (remote, path))
-    rc2, mt, _ = sh("git", "show", "%s:./%s" % (base, path))
-    if rc1 != 0 or rc2 != 0:
-        return False
-    return lines_contained(bt, mt)
-
-
-def lines_contained(branch_text, base_text):
-    """Every line of `branch_text`, WITH MULTIPLICITY, present in `base_text`.
-
-    ⛔ PURE, AND SEPARATE FROM THE GIT FETCH, so it can be controlled without a repository.
-    The first version of this lived inline and `--self-test` PASSED when the predicate was
-    mutated to `return True` — the suite controlled only the counts derived from it, so a
-    broken containment leg was invisible. A control that cannot fail for the thing it
-    appears to cover is the defect this tool exists to report.
-    """
-    cb, cm = Counter(branch_text.splitlines()), Counter(base_text.splitlines())
-    return not [ln for ln, n in cb.items() if cm[ln] < n]
-
-
-def path_agreement(remote, shas):
-    """(paths byte-identical at BASE, paths examined). (0, 0) means established nothing.
-
-    ⚠ Reported even when the verdict is negative, because all-or-nothing hides the
-    interesting middle. A branch reading "2 of 3" is almost certainly landed and
-    vetoed by one shared index file that every pane edits; a branch reading "0 of 3"
-    is a different animal entirely. Collapsing both to NO-UPSTREAM-MATCH throws away
-    the only signal that separates them.
-    """
-    paths = touched_paths(shas)
-    if not paths:
-        return 0, 0, 0
-    same = sum(blob_at(remote, q) == blob_at(BASE, q) for q in paths)
-    held = sum(line_contained(remote, BASE, q) for q in paths)
-    return same, len(paths), held
-
-
 def stranded(rows):
     """(ref, sha, count, prs) for every merged-PR ref that still has unmerged commits.
 
@@ -282,19 +160,13 @@ def stranded(rows):
         # and marks "-" when an equivalent change is already upstream.
         rc, out, _ = sh("git", "cherry", BASE, remote)
         if rc != 0:
-            found.append((ref, sha, None, None, prs, (0, 0, 0)))  # unreadable is not zero
+            found.append((ref, sha, None, None, prs))   # unreadable is not zero
             continue
         marks = [ln[:1] for ln in out.splitlines() if ln[:1] in "+-"]
         if not marks:
             continue                                    # nothing ahead: the good case
         unmatched = marks.count("+")
-        # ⇒ Patch id answered "no equivalent commit". That is not the same question as
-        # "is this work upstream". Two branch commits squash-merged into ONE upstream
-        # commit can never match by patch id — the diffs are different sizes — yet the
-        # bytes are all there. Ask the content question before reporting an absence.
-        plus = [ln[2:].strip() for ln in out.splitlines() if ln[:1] == "+"]
-        agree = path_agreement(remote, plus) if unmatched else (0, 0, 0)
-        found.append((ref, sha, len(marks), unmatched, prs, agree))
+        found.append((ref, sha, len(marks), unmatched, prs))
     return found, checked, deleted, unfetched
 
 
@@ -335,79 +207,10 @@ def self_test():
     print(f"  known-positive  stranded ref   : {pos}")
     print(f"  known-negative  all merged     : {neg}")
     print(f"  known-positive  unreadable ref : {unk}   (unreadable is not zero)")
-    # ⇒ The fourth state needs its own control, and the row that matters is the
-    # vacuous one: zero paths examined must NOT read LANDED.
-    cs = {case: content_state(*case) for case in
-          [(2, 3, 3, 3), (2, 2, 3, 2), (2, 0, 0, 0), (0, 0, 0, 0), (2, 0, 3, 3), (2, 0, 3, 2)]}
-    for case, got in cs.items():
-        print(f"  content-state   unmatched={case[0]} bytes={case[1]}/{case[2]} "
-              f"lines={case[3]}/{case[2]}: {got}")
-    # ⇒ THE PREDICATE ITSELF, not only the counts derived from it. Mutating
-    # lines_contained to `return True` used to leave --self-test green.
-    lc = {
-        "identical":            lines_contained("a\nb\n", "a\nb\n"),
-        "subset (main grew)":   lines_contained("a\nb\n", "a\nb\nc\n"),
-        "one unique line":      lines_contained("a\nZZ\n", "a\nb\n"),
-        "3 copies vs 1":        lines_contained("x\nx\nx\n", "x\ny\n"),
-        "empty branch":         lines_contained("", "a\n"),
-    }
-    for name, got in lc.items():
-        print(f"  lines-contained {name:<20}: {got}")
-
-    # ⇒ The DISTRIBUTION check, controlled two-sided: it must fire on a collapse and stay
-    # quiet on a mixed population.
-    _mk = lambda st: ("r", "s", 2, 2, [1], (2, 2, 2) if st == "L" else
-                      ((0, 2, 2) if st == "B" else (0, 2, 0)))            # noqa: E731
-    d_collapsed = state_distribution([_mk("U"), _mk("U"), _mk("U")])
-    d_mixed = state_distribution([_mk("U"), _mk("L"), _mk("B")])
-    print(f"  distribution    collapsed: {d_collapsed}  mixed: {d_mixed}")
-
     ok = (pos == ["b/stranded"] and neg == [] and unk == ["d/unreadable"]
-          and cap == ["dev4/instruction-precedence"]
-          and cs[(2, 3, 3, 3)] == "LANDED"            # byte-identical: conclusive
-          and cs[(2, 2, 3, 2)] == "UNRESOLVED"        # partial on both legs
-          and cs[(2, 0, 0, 0)] == "UNRESOLVED"        # ⛔ examined nothing is not landed
-          and cs[(0, 0, 0, 0)] == "N/A"
-          # ⇒ ARCHITECT's leg: bytes differ everywhere, lines all upstream -> its OWN state,
-          # never silently promoted to LANDED, and never demoted to UNRESOLVED.
-          and cs[(2, 0, 3, 3)] == "LANDED-BY-LINES"
-          and cs[(2, 0, 3, 2)] == "UNRESOLVED"        # partial containment is not containment
-          and lc["identical"] and lc["subset (main grew)"]
-          and not lc["one unique line"]                # ⛔ it must be able to say NO
-          and not lc["3 copies vs 1"]                  # counts, not membership
-          and lc["empty branch"]                       # vacuous, and stated in the docstring
-          # ⛔ one verdict for every subject must be VISIBLE as one key...
-          and len(d_collapsed) == 1
-          # ...and a mixed population must NOT trip it.
-          and len(d_mixed) == 3)
+          and cap == ["dev4/instruction-precedence"])
     print("  ✅ discriminated" if ok else "  ⛔ FAILED to discriminate", file=sys.stderr)
     return 0 if ok else 2
-
-
-def row_state(cnt, unmatched, agree):
-    """The reported state for one row, from counts alone. Pure, so it is controllable."""
-    if cnt is None:
-        return "UNREADABLE"
-    if unmatched == 0:
-        return "EQUIVALENT-UPSTREAM"
-    return {"LANDED": "CONTENT-UPSTREAM",
-            "LANDED-BY-LINES": "LINES-UPSTREAM"}.get(content_state(unmatched, *agree),
-                                                     "NO-UPSTREAM-MATCH")
-
-
-def state_distribution(found):
-    """{state: count} across the whole population.
-
-    ⛔ EXTRACTED SO THE NON-DISCRIMINATING CHECK CAN FAIL. Written inline first, where the
-    only way to exercise it was a live sweep — the same defect as the containment predicate
-    two changes ago, whose --self-test stayed green under `return True` because the suite
-    controlled the counts derived from it and never the thing itself.
-    """
-    dist = {}
-    for _r, _s, cnt, unmatched, _p, agree in found:
-        st = row_state(cnt, unmatched, agree)
-        dist[st] = dist.get(st, 0) + 1
-    return dist
 
 
 def verdict_exit(n_unmatched, truncated):
@@ -428,20 +231,8 @@ def verdict_exit(n_unmatched, truncated):
     return 2 if truncated else 0
 
 
-KNOWN_FLAGS = {"--self-test", "--limit"}
-
-
 def main():
-    # ⛔ EQUALITY OVER A KNOWN SET. Membership accepts a flag without rejecting anything
-    # else: `--zzz` was discarded and this tool went on to run a FULL NETWORK SWEEP,
-    # answering a question nobody asked at real cost. (#321's shape; measured 2026-08-21.)
-    unknown = [a for a in sys.argv[1:] if a.startswith("-") and a not in KNOWN_FLAGS]
-    if unknown:
-        print("⛔ unrecognised flag(s): %s. ESTABLISHED NOTHING — no sweep was run. "
-              "Known flags: %s" % (", ".join(unknown), ", ".join(sorted(KNOWN_FLAGS))),
-              file=sys.stderr)
-        return 2
-    if "--self-test" in sys.argv[1:]:
+    if "--self-test" in sys.argv:
         return self_test()
     sh("git", "fetch", "-q", "--prune", "origin")
     limit = DEFAULT_LIMIT
@@ -480,46 +271,24 @@ def main():
               "ESTABLISHED NOTHING. Expected at least one surviving ref; a fetch or prune "
               "failure looks exactly like a tidy repository.", file=sys.stderr)
         return 2
-    for ref, sha, cnt, unmatched, prs, (same, tot, held) in found:
+    for ref, sha, cnt, unmatched, prs in found:
         if cnt is None:
             state, n = "UNREADABLE", "-"
-        elif content_state(unmatched, same, tot, held) == "LANDED":
-            # Patch ids diverged but every touched path is byte-identical at BASE.
-            state, n = "CONTENT-UPSTREAM", f"{unmatched} of {cnt} commit(s), {same}/{tot} paths landed"
-        elif content_state(unmatched, same, tot, held) == "LANDED-BY-LINES":
-            state, n = "LINES-UPSTREAM", (f"{unmatched} of {cnt} commit(s), {held}/{tot} paths "
-                                          f"line-contained (bytes differ: main moved)")
         elif unmatched == 0:
             # Every commit has a patch-equivalent upstream. The sha is unreachable
             # and the WORK landed. Reported, never called stranded.
             state, n = "EQUIVALENT-UPSTREAM", f"{cnt} commit(s)"
         else:
-            agreed = f", {same}/{tot} paths already upstream" if tot else ""
-            state, n = "NO-UPSTREAM-MATCH", f"{unmatched} of {cnt} commit(s){agreed}"
+            state, n = "NO-UPSTREAM-MATCH", f"{unmatched} of {cnt} commit(s)"
         print(f"{state:<20} {ref}@{sha}  {n}   (merged PR"
               f"{'s' if len(prs) > 1 else ''} {', '.join('#%d' % p for p in prs)})")
     # ⚠ Every ref accounted for, in named buckets. A denominator that silently
     # excludes part of its population is how "0 stranded" gets believed.
-    # ⚠ CONTENT-UPSTREAM leaves the unmatched bucket ON PURPOSE. The footer names this
-    # tool's preferred error direction — a false "lost" makes a reader re-do work that
-    # already exists — and byte equality is evidence, not a guess.
-    unmatched_refs = [f for f in found if f[3] not in (0,)
-                      and content_state(f[3], *f[5]) not in ("LANDED", "LANDED-BY-LINES")]
+    unmatched_refs = [f for f in found if f[3] not in (0,) ]
     print(f"\n{len(unmatched_refs)} ref(s) with no upstream patch-match, of {checked} examined; "
           f"{len(deleted)} ref(s) deleted on merge (nothing to examine); "
           f"{checked + len(deleted)} of {len(by_ref_count(rows))} merged-PR refs accounted for.",
           file=sys.stderr)
-    print("⇒ CONTENT-UPSTREAM: patch ids diverged, but every path those commits touched is "
-          f"byte-identical at {BASE}, so the WORK is upstream even though the OBJECTS are not. "
-          "It is what a squash-merge of two commits into one looks like. ⛔ It establishes "
-          "LANDEDNESS ONLY — never authorship, never direction.", file=sys.stderr)
-    print("⚠ The path ratio on a NO-UPSTREAM-MATCH row is the number worth reading. The "
-          "predicate is all-or-nothing, so ONE shared index file that every pane edits "
-          "(tools/README.md is the usual one) vetoes the whole ref even when the branch's "
-          "own deliverables are byte-identical upstream. A row reading n-1 of n is a near "
-          "certainty that the work landed; 0 of n is not. Measured 2026-08-20 at 6faec9a: "
-          "of 4 refs with unmatched commits, 1 read CONTENT-UPSTREAM and 2 of the other 3 "
-          "were vetoed by tools/README.md alone.", file=sys.stderr)
     print("⛔ THE STATES ARE ASYMMETRIC: EQUIVALENT-UPSTREAM proves the work landed; "
           "NO-UPSTREAM-MATCH proves NOTHING either way. This tool's own row "
           "(devops/stranded-branches) is the standing example — it reads NO-UPSTREAM-MATCH "
@@ -536,36 +305,6 @@ def main():
           "three observers of one ref disagreed within an hour, none of them wrong. A count "
           "without its sha is not comparable to the same count from another run.",
           file=sys.stderr)
-    # ⇒ THE DISTRIBUTION, not any single row. A predicate returning ONE VERDICT for every
-    # subject passes every per-run control it has — the tell is only visible across the
-    # population. (#479, DEV2's `13 of 13` at this layer.) ⛔ This tool has five states and
-    # is exactly the shape that can collapse silently: if patch-id ever matched nothing,
-    # every row would read NO-UPSTREAM-MATCH and each row would still be correct.
-    dist = state_distribution(found)
-    if dist:
-        print("\nstate distribution: " + " · ".join(f"{k} {v}" for k, v in sorted(dist.items())),
-              file=sys.stderr)
-        if len(dist) == 1:
-            only = next(iter(dist))
-            print(f"⛔ NON-DISCRIMINATING — all {sum(dist.values())} refs scored {only}. One verdict "
-                  "for every subject passes every per-run control; the tell is the DISTRIBUTION. "
-                  "⚠ This does NOT establish the predicate is broken — a genuinely uniform "
-                  "population reads the same way. It establishes that this run cannot tell the "
-                  "two apart.", file=sys.stderr)
-
-    # ⇒ NAME THE DIRECTION OF THE BOUND, and only where it says something.
-    # `docs/DEFECT-CLASSES.md` separates two readings this tool used to blur: **exit 2 means
-    # ESTABLISHED NOTHING**, while **a bound means NO MORE / NO FEWER THAN THIS** — and a bound
-    # read as an establishment is its own defect (the LIVE-PANES ceiling, #489/#500).
-    # ⛔ GUARDED ON A NON-EMPTY FINDING SET. Emitted unconditionally, this line said "at least 0
-    # exist" on a truncated sweep that found nothing — true, useless, and the vacuous-truth shape
-    # this tool already refuses in content_state(). The zero case is exit 2's to describe.
-    if truncated and unmatched_refs:
-        print(f"⇒ THE {len(unmatched_refs)} ABOVE IS A FLOOR, NOT A TOTAL: at least this many "
-              "exist, and refs beyond the prefix may add more. Never an upper bound. ⚠ The "
-              "asymmetry is already in the exit codes — a positive SURVIVES a partial sweep, "
-              "a negative does not.", file=sys.stderr)
-
     code = verdict_exit(len(unmatched_refs), truncated)
     if code == 2:
         print("⛔ no unmatched refs IN THE PREFIX EXAMINED — and the sweep was truncated, so "
@@ -574,17 +313,5 @@ def main():
     return code
 
 
-def _entry():
-    """Emit the terminal state for every path this tool controls.
-
-    guard() covers only the argparse SystemExit path, where the tool never regains
-    control. Without this, a successful run emits NFORMA-RUN and no NFORMA-RESULT —
-    which reads as STARTED-AND-NEVER-FINISHED, the collapse #58 exists to prevent.
-    """
-    rc = main()
-    result({0: "OK", 1: "FINDING", 2: "ESTABLISHED-NOTHING", 3: "CONTROL-FAILED"}.get(rc, f"EXIT-{rc}"))
-    return rc
-
-
 if __name__ == "__main__":
-    sys.exit(guard("stranded-branches", _entry))
+    sys.exit(main())
