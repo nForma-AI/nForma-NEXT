@@ -116,5 +116,46 @@ class SurvivesThePipe(unittest.TestCase):
         self.assertIn("NFORMA-RESULT", err)
 
 
+
+def test_tree_distance_is_silent_when_current_and_never_guesses():
+    """⛔ THREE STATES, and the third is the one that matters (#205).
+
+    The shared tree has been pinned 365 commits behind `origin/main` for two days, with
+    CLAUDE.md differing by 25 lines and goals/ by 2046 — and nothing said so. ⇒ CI cannot
+    detect that: a workflow checks out fresh, so a gate NEVER sees a pane's working tree.
+    The marker can, because 13 instruments import this module and run IN the pane.
+
+    ⚠ UNMEASURABLE MUST NOT READ AS CURRENT. Returning 0 for "no repository" or "no
+    origin/main" would report the confident wrong answer this convention exists against.
+    """
+    import subprocess, tempfile, os
+    import runmarker
+
+    # current tree -> SILENT. A label on every line is a label nobody reads.
+    here = runmarker.tree_distance()
+    assert here == "" or "behind-origin/main" in here or here == " tree=UNKNOWN", here
+
+    # ⛔ no repository at all -> UNKNOWN, never 0
+    with tempfile.TemporaryDirectory() as d:
+        cwd = os.getcwd()
+        try:
+            os.chdir(d)
+            assert runmarker.tree_distance() == " tree=UNKNOWN"
+        finally:
+            os.chdir(cwd)
+
+
+def test_begin_carries_the_distance_into_the_marker():
+    """The distance is useless if it does not reach the line a reader sees."""
+    import io, contextlib, runmarker
+    buf = io.StringIO()
+    with contextlib.redirect_stderr(buf):
+        runmarker.begin("probe")
+    line = buf.getvalue().strip()
+    assert line.startswith("NFORMA-RUN probe"), line
+    # ⚠ asserts the SHAPE, not the number — the number is a property of the tree, and a
+    # control coupled to it would fail every time someone merged.
+    assert line == "NFORMA-RUN probe" or " tree=" in line, line
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -30,19 +30,6 @@ import subprocess
 import sys
 import tempfile
 
-# ⛔ A STALE __pycache__ SILENTLY SERVES THE PRE-MUTATION MODULE, and the dangerous
-# class is the COMMON one: Python invalidates a .pyc on mtime + SIZE, so a
-# SIZE-PRESERVING mutation (==/!=, a flag flip, a token swap) applied in the same
-# second leaves both unchanged and the cache is served. Measured with a
-# 4-cell table: {clean,mutant} x {cache cleared,stale} -> the mutant PASSED on a stale
-# cache and failed 3 checks once cleared. Every suite here loads its tool through
-# spec_from_file_location, so a false SURVIVED sends you rewriting a correct test.
-# CI is safe (fresh checkout, no cache); local mutation testing was not.
-sys.dont_write_bytecode = True
-# ⚠ and the env var too: a SUBPROCESS does not inherit sys.dont_write_bytecode,
-# which is why three suites still produced a cache after the first fix.
-os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
-
 _here = os.path.dirname(os.path.abspath(__file__))
 TOOL = os.path.join(_here, "pipe-exit-scan.py")
 _spec = importlib.util.spec_from_file_location("pes", TOOL)
@@ -63,25 +50,13 @@ def hits(line):
                 or pes.PIPESTATUS.search(code))
 
 
-import importlib.util as _ilu
-_fx_spec = _ilu.spec_from_file_location(
-    "corpus_fixture", os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                   "test_corpus_fixture.py"))
-_fx = _ilu.module_from_spec(_fx_spec)
-_fx_spec.loader.exec_module(_fx)
-FIXTURE_ENV = _fx.env()
-
-
 def run(*args):
     # ⚠ cwd is the REPO ROOT, not tools/. The tool resolves `git ls-files` paths and
     # its own fixture relative to the root; running it from tools/ made the self-test
     # exit 2 and read as a defect. Harness, not code — the second time in this suite
     # family that a portability bug in the test presented as a finding.
-    # ⛔ AND a fixture HOME, for the same reason as the cwd note above: the "warns when
-    # unscoped" assertion needs a corpus spanning two project dirs, and reading the
-    # developer's real one made this suite pass here and fail on a clean runner.
     p = subprocess.run([sys.executable, TOOL, *args], capture_output=True, text=True,
-                       cwd=os.path.dirname(_here), env=FIXTURE_ENV)
+                       cwd=os.path.dirname(_here))
     return p.returncode, p.stdout + p.stderr
 
 

@@ -27,19 +27,6 @@ import os
 import subprocess
 import sys
 
-# ⛔ A STALE __pycache__ SILENTLY SERVES THE PRE-MUTATION MODULE, and the dangerous
-# class is the COMMON one: Python invalidates a .pyc on mtime + SIZE, so a
-# SIZE-PRESERVING mutation (==/!=, a flag flip, a token swap) applied in the same
-# second leaves both unchanged and the cache is served. Measured with a
-# 4-cell table: {clean,mutant} x {cache cleared,stale} -> the mutant PASSED on a stale
-# cache and failed 3 checks once cleared. Every suite here loads its tool through
-# spec_from_file_location, so a false SURVIVED sends you rewriting a correct test.
-# CI is safe (fresh checkout, no cache); local mutation testing was not.
-sys.dont_write_bytecode = True
-# ⚠ and the env var too: a SUBPROCESS does not inherit sys.dont_write_bytecode,
-# which is why three suites still produced a cache after the first fix.
-os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
-
 _here = os.path.dirname(os.path.abspath(__file__))
 _spec = importlib.util.spec_from_file_location("wake_yield", os.path.join(_here, "wake-yield.py"))
 wake_yield = importlib.util.module_from_spec(_spec)

@@ -95,21 +95,9 @@ Concretely, and each is checkable:
 **not** restate the list: hand-maintained duplication is the defect #78 ruled against, and four
 copies had already drifted within one evening.
 
-⚠ **One union reservation was not in this file before that ruling and binds now:** *assigning work
-to another role*. Recorded because a reservation adopted fleet-wide is invisible to a role that only
-ever re-reads its own file.
-
-⛔ **RE-TAKEN 2026-08-20, and the earlier reading was wrong in the OVER-RESTRICTING direction.** This
-file also listed *closing another role's issue* as binding. It was adopted on 2026-08-19 and
-**WITHDRAWN the same day** on three independent grounds — it contradicted a standing ruling, and its
-trigger was unevaluable in a way that locked rung 2 for the whole fleet (29 of 31 issues carry no
-assignee, so the safe reading was *do not close*). **Closure is not reserved.**
-
-⇒ ⚠ **Over-restriction produces no error signal.** A reservation held after its withdrawal costs
-work that is never attempted, and nothing goes red. I carried it for a day because I read the union
-once and recorded the result, and a reservation that quietly lapses looks identical to one that
-still binds. ⇒ **Re-reading the source is not optional maintenance; it is the only thing that
-distinguishes them.** [measured: nForma-NEXT 2026-08-20, #145]
+⚠ **Two of the union's reservations were NOT in this file before that ruling** and bind now:
+**closing another role's issue**, and **assigning work to another role**. Recorded because a
+reservation adopted fleet-wide is invisible to a role that only ever re-reads its own file.
 
 ### ⇒ Harness configuration is now in the union, and this file no longer carries it
 
@@ -138,17 +126,6 @@ that proposed the adoption. Read it in `goals/RESERVED-ACTIONS.md`.
 The imported revision reserved CI runs on that basis. [measured: Blazing-Back 2026-08-19]
 
 ⇒ The **justification does not transfer**: zero workflow files on any ref here.
-[measured: nForma-NEXT 2026-08-19, ARCHITECT via #42]
-
-⛔ **STALE AS OF 2026-08-20 — `.github/workflows/tools.yml` is on `main` with passing runs.**
-The count is now 1, not 0. ⇒ The *conclusion* is unchanged and the *basis* moved: the
-reservation was already re-founded locally (TEAMLEAD owns admission of work), so it does not
-depend on the count. But a calibration that is quoted as a live measurement and has silently
-flipped is exactly what this file's provenance scheme exists to prevent.
-
-⚠ **I did not notice; another role did, while telling me about something else.** A number
-with a date reads as current until someone re-takes it, and nothing re-takes calibrations.
-[measured: nForma-NEXT 2026-08-20]
 [measured: nForma-NEXT 2026-08-19, ARCHITECT via #42]
 
 ⚠ **And "zero workflows" is not "no CI" — this pane got that wrong first.** PR #14 immediately ran

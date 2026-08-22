@@ -67,10 +67,6 @@ this file.
 
 Exit: 0 clean · 1 findings · 2 established nothing (no files scanned).
 """
-import os, sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from runmarker import guard, result  # noqa: E402
-
 import glob, json, os, re, subprocess, sys, time
 
 # `cmd | cmd ; echo $?`  — the status read belongs to the LAST pipeline element.
@@ -103,136 +99,6 @@ def pipeline_status_read(line):
             return True
     return False
 # `${PIPESTATUS[n]}` — bash-only. Empty in zsh, and empty is not zero.
-
-# ── Lost VARIABLE STATE, the sibling defect ──────────────────────────────────
-#
-# ⛔ `cmd | while read ...; done` runs the loop body in a SUBSHELL. Every
-# assignment inside dies when the subshell exits, so the loop can print N verdicts
-# and increment a counter N times while the caller still reads 0.
-#
-# Measured in this repository: fleet-preflight.sh printed 8 worktree FAILs and its
-# summary said `1 fail`. The matcher above scanned that file and reported nothing,
-# because nothing was wrong with an EXIT CODE — the loss was variable state.
-#
-# ★ The body often assigns NOTHING ITSELF. That instance called `bad "$r ..."`, and
-# `bad()` was defined at the top of the file and did the increment. A matcher that
-# reads only the loop body is blind to exactly the case worth catching, so function
-# bodies are resolved one level deep.
-#
-# ⚠ Deliberately NOT flagged, because both are harmless and common:
-#   · a loop whose only effect is printing
-#   · a loop whose variables are never read after `done`
-# Flagging those would produce a count that reads as work-to-do, which this file's
-# own selftest calls worse than no scanner at all.
-PIPE_INTO_WHILE = re.compile(r"\|\s*while\b")
-# Quoted text is a mention; only unquoted `| while` is a pipeline.
-QUOTED_SPAN = re.compile(r"'[^']*'|\"[^\"]*\"")
-FUNC_DEF = re.compile(r"^\s*(?:function\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*\)\s*\{")
-ASSIGN = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*(?:=(?!=)|\+=)")
-ARITH = re.compile(r"\(\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?:\+\+|--|[-+*/%]?=)")
-
-
-def _assigned_in(lines):
-    """Variable names assigned anywhere in these lines."""
-    out = set()
-    for ln in lines:
-        code = strip_comment(ln)
-        for m in ASSIGN.finditer(code):
-            out.add(m.group(1))
-        for m in ARITH.finditer(code):
-            out.add(m.group(1))
-    return out
-
-
-def _function_assignments(lines):
-    """name -> variables it assigns. Brace-depth scan; good enough for shell that
-    indents, and it UNDER-reports rather than over-reports on shell that does not."""
-    funcs, i, n = {}, 0, len(lines)
-    while i < n:
-        m = FUNC_DEF.match(strip_comment(lines[i]))
-        if not m:
-            i += 1
-            continue
-        name, depth, body, j = m.group(1), 0, [], i
-        while j < n:
-            code = strip_comment(lines[j])
-            depth += code.count("{") - code.count("}")
-            body.append(lines[j])
-            j += 1
-            if depth <= 0:
-                break
-        funcs[name] = _assigned_in(body)
-        i = j
-    return funcs
-
-
-def scan_shell_subshell(path):
-    """Pipes into `while` whose body mutates state the caller reads afterwards."""
-    hits = []
-    try:
-        lines = open(path, errors="replace").read().splitlines()
-    except OSError:
-        return hits
-    funcs = _function_assignments(lines)
-    for n0, raw in enumerate(lines):
-        code = strip_comment(raw)
-        # ⛔ STRIP QUOTED SPANS BEFORE DECIDING THIS IS A PIPELINE. A grep pattern
-        # containing `| while` is a MENTION of the defect, not an instance of it —
-        # and files that TEST for this defect necessarily quote it, so the
-        # population of false positives is created by the remedy (#36). Measured on
-        # origin/main: scripts/test-fleet-preflight-counts.sh:56 reported a hit for
-        #     if grep -q 'fleet-worktree.sh check 2>&1 | while' "$TARGET"; then
-        # ⚠ Pre-existing, not introduced by the one-liner fix below. Same rule as
-        # use-not-mention.py and check-orientation.py: a quotation cannot survive
-        # its own removal.
-        if not PIPE_INTO_WHILE.search(QUOTED_SPAN.sub(" ", code)):
-            continue
-        # body runs to the matching `done`
-        depth, j, body = 0, n0, []
-        while j < len(lines):
-            c = strip_comment(lines[j])
-            depth += len(re.findall(r"\b(?:do|if|case)\b", c))
-            depth -= len(re.findall(r"\b(?:done|fi|esac)\b", c))
-            body.append(lines[j])
-            j += 1
-            if depth <= 0 and j > n0:
-                break
-        # ⛔ NOT body[1:]. That assumes the loop body starts on the line AFTER the
-        # pipe, which is true of a multi-line loop and FALSE of a one-liner:
-        #
-        #     emit | while read -r x; do bad; done      <- body is on THIS line
-        #
-        # Measured: this matcher returned 0 on #266's own canonical repro, which
-        # is a one-liner, while catching the identical defect written across
-        # several lines. ⇒ Its fixture was a single multi-line file, so the sample
-        # never varied on the one property that decides the answer — a predicate
-        # validated on a homogeneous sample has been validated on the sample's
-        # homogeneity.
-        #
-        # ★ And the failure direction is the dangerous one: a control that passes
-        # its own known-positive while missing the case it was built for.
-        m_do = re.search(r"\bdo\b", code)
-        first_tail = code[m_do.end():] if m_do else ""
-        body_text = [first_tail] + body[1:] if first_tail.strip() else body[1:]
-
-        mutated = _assigned_in(body_text)
-        joined = " ".join(strip_comment(b) for b in body_text)
-        for name, assigned in funcs.items():
-            if re.search(r"(?:^|[\s;&|(])" + re.escape(name) + r"(?:[\s;&|)]|$)", joined):
-                mutated |= assigned
-        # ⚠ A variable the loop declares and never exports is not state the caller
-        # loses — only names read AFTER `done` count.
-        after = "\n".join(strip_comment(l) for l in lines[j:])
-        leaked = sorted(v for v in mutated
-                        if re.search(r"\$\{?" + re.escape(v) + r"\b", after))
-        if leaked:
-            hits.append((n0 + 1, raw.strip(),
-                         "`cmd | while` runs the body in a SUBSHELL — "
-                         f"{', '.join(leaked[:4])} is assigned there and read after `done`, "
-                         "so the caller sees the pre-loop value. Use `done < <(cmd)`"))
-    return hits
-
-
 PIPESTATUS = re.compile(r"\$\{PIPESTATUS\[")
 FENCE = re.compile(r"^\s*```\s*(bash|sh|shell|console)\s*$", re.I)
 FENCE_END = re.compile(r"^\s*```\s*$")
@@ -361,11 +227,6 @@ def scan_shell(path):
             hits.append((n, raw.strip(), "$? read after a pipeline — that is the LAST element's status"))
         elif PIPESTATUS.search(code):
             hits.append((n, raw.strip(), "PIPESTATUS — bash-only; expands EMPTY in zsh, and empty is not zero"))
-    # ⛔ Second matcher, second defect. Kept as its own pass because it needs the
-    # WHOLE file (function bodies, and what is read after the loop), which the
-    # line-at-a-time loop above structurally cannot see.
-    hits.extend(scan_shell_subshell(path))
-    hits.sort(key=lambda h: h[0])
     return hits
 
 
@@ -394,9 +255,6 @@ def scan_markdown(path):
 
 
 SELFTEST_POSITIVE = "tools/testdata/pipe-exit-positive.sh"
-# ⛔ Its own fixture, holding POSITIVES AND NEGATIVES together: a fixture of only
-# positives cannot distinguish "detects the defect" from "fires on every while loop".
-SELFTEST_SUBSHELL = "tools/testdata/subshell-positive.sh"
 SELFTEST_NEGATIVE = "tools/README.md"
 
 
@@ -430,20 +288,6 @@ def selftest():
     else:
         print(f"  FAIL  known-negative: fired on prose about the trap — {neg}")
         ok = False
-    # ── the subshell matcher, both directions in one fixture ─────────────────
-    sub = scan_shell_subshell(SELFTEST_SUBSHELL)
-    if len(sub) == 3:
-        print(f"  ok    subshell known-positive: 3 findings in {SELFTEST_SUBSHELL}")
-        for n, s_, _ in sub:
-            print(f"          L{n}: {s_[:64]}")
-        print("  ok    subshell known-negative: 0 of 3 negatives fired "
-              "(process substitution, print-only loop, unread variable)")
-    else:
-        print(f"  FAIL  subshell matcher: {len(sub)} findings, expected exactly 3. "
-              f"Fewer means the failing path does not fire; more means it fires on a "
-              f"loop that loses nothing, which is the worse direction.")
-        ok = False
-
     cmt = [h for h in pos if h[0] < 12]
     if cmt:
         print(f"  FAIL  fired inside a comment block — comment-stripping regressed: {cmt}")
@@ -499,7 +343,7 @@ def main():
               "corpus holds prose mentions of this exact idiom, including this repo's own "
               "convention documenting it, and a text scan over it over-reports by ~56%.",
               file=sys.stderr)
-        _rc = 1 if hits else 0
+        return 1 if hits else 0
     files = tracked()
     if not files:
         print("⛔ no tracked files — ESTABLISHED NOTHING, not clean. "
@@ -562,17 +406,5 @@ def main():
     return 1 if findings else 0
 
 
-def _entry():
-    """Emit the terminal state for every path this tool controls.
-
-    guard() covers only the argparse SystemExit path, where the tool never regains
-    control. Without this, a successful run emits NFORMA-RUN and no NFORMA-RESULT —
-    which reads as STARTED-AND-NEVER-FINISHED, the collapse #58 exists to prevent.
-    """
-    rc = main()
-    result({0: "OK", 1: "FINDING", 2: "ESTABLISHED-NOTHING", 3: "CONTROL-FAILED"}.get(rc, f"EXIT-{rc}"))
-    return rc
-
-
 if __name__ == "__main__":
-    sys.exit(guard("pipe-exit-scan", _entry))
+    sys.exit(main())

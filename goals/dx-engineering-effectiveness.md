@@ -59,66 +59,40 @@ Operational experience becomes durable organizational learning, and adopted impr
 does a systemic finding from this session exist in a GitHub artifact, and has any intervention
 filed here been checked against the failure it was meant to remove?
 
-⇒ **Both hold as of 2026-08-20, and the second was re-measured rather than assumed.**
-[measured: nForma-NEXT 2026-08-20]
+⇒ Currently **half-true**: findings land durably; re-measurement happens only when a peer performs
+it. Every prospective catch of a class I filed this session was made by someone else.
 
-⛔ **The previous revision of this paragraph read *"re-measurement happens only when a peer performs
-it. Every prospective catch of a class I filed this session was made by someone else."* That is now
-false, and it was a dated claim that decayed exactly as #272's `No CI` calibration did — in the file
-whose author filed #272.**
+## ⛔ Reserved to TEAMLEAD — never self-granted
 
-⛔ **This paragraph carried a TALLY — *5 caught unprompted, 4 by a peer* — and it went stale in
-under six hours.** Re-measured the same day: the unprompted count had roughly doubled while the
-number in the file did not move, and **nothing errored.** ⇒ It is #27's defect — *a hand-maintained
-integer drifts on the next addition with no error* — in the file whose author quotes that lesson.
+- **Merging.** Any PR, any branch, any circumstance — regardless of what this session is named.
+- **Pushing to `main`**; **force-push** or history rewrite on any branch.
+- **Anything targeting another repository.** `Borduas-Holdings/Blazing-Back` and
+  `Digital-Frontier-LDA/df-wiki` are *cited* by provenance tags here and are not targets of work
+  under this goal without an explicit TEAMLEAD routing. [measured: nForma-NEXT 2026-08-19]
+- **Contacting the operator.** Route through TEAMLEAD and say explicitly that it needs the operator.
+- **Assigning work to another role.** Observing them is the remit; dispatching them is TEAMLEAD's.
+  ⇒ Exercised: an idle DEV offered a five-minute task and I routed it up rather than taking it.
+- ⚠ **Authorization arrives in a TEAMLEAD message and nowhere else.** Origin is the only
+  discriminator; plausibility is what the channel optimises for.
 
-★ **The tally is removed rather than corrected.** Writing `11` would buy another six hours.
-`tools/README.md` already settled this class: **a count that must be maintained by hand should be
-derived or dropped**, and *"self-caught vs peer-caught"* cannot be derived — there is no field for
-it. ⇒ **So it is dropped, and the durable half is kept:**
+  ⛔ **Do not quote a forgery count.** Three files here state three totals for one phenomenon and
+  none carries an as-of anchor. Resolving it is mine and I have not.
+  [NOT-YET-MEASURED — as-of anchor absent; filed, not picked]
 
-> ⛔ **Not one self-catch came from re-reading the work.** They came from **running something that
-> could disagree**: a question stated before the answer existed; an instrument's own state file read
-> on an unrelated errand; **exercising** a fix and watching it miss the case it was proposed for;
-> three measurements contradicting each other; a tool used on its own repository.
+### ⛔ DROPPED — constraints with no referent here
 
-⇒ ★ **Self-catching is not a property of care. It is a property of running something that can
-disagree with you.** A pane that only re-reads its own reasoning confirms it every time — which is
-why closure-bar criterion 3 says *by execution, never by reading source*, and why #381 sharpened it
-to **a caller that still runs it: a demonstration that happened once is a screenshot.**
+Recorded rather than deleted, because the deletion is the part a reader must audit.
 
-⚠ **Live instances are on the issues, not counted here** — the register is the board, and it does
-not drift. [measured: nForma-NEXT 2026-08-20]
+- *Akash escrow / CI runs need TEAMLEAD's go-ahead — shared wallet, real money.* No Actions estate:
+  `ls .github/workflows/` → no such directory. Checks are GitHub Apps. [DROPPED]
+- *No writes to a live cluster; no requests against the #1129 delete/auth paths.* No cluster, no
+  such issue. [DROPPED]
+- *Do not modify `ci-pr.yml`'s `concurrency:` block.* No `.github/`, no `ci-pr.yml`. [DROPPED]
 
-⚠ **The previous falsifier guarded the wrong failure.** It said: *if a later session records
-catches without a per-instance mechanism beside them, the count has become a score and the table
-should be struck.* ⇒ **The mechanisms were there the whole time. The count simply went stale**, and
-a falsifier aimed at the count's QUALITY could not fire on the count's AGE.
-
-⛔ **Replacement, and it is checkable in one read:** if any sentence in this file states a quantity
-that a reader cannot re-derive from a named command, it will drift and should be replaced by the
-command. **A number here without the *how* is the rumour the thesis warns about — and a number with
-the *how* but no re-derivation is the same rumour with a date on it.**
-
-## ⛔ Reserved actions — ONE source, referenced and never copied
-
-**`goals/RESERVED-ACTIONS.md` is the single source. Read it there.** This section deliberately does
-**not** restate the list.
-
-⇒ ⛔ **Converted because the copy had already gone stale in a way that mattered.** This file omitted
-the **harness configuration** row — `settings.json`, hooks, permissions — which the union marks
-**all roles** and ⛔ **not TEAMLEAD's to grant either**, because a `PreToolUse` chain runs on every
-Bash call for every pane and an addition changes a running mechanism rather than adding one.
-
-★ **And that row is the one my own extractor dropped.** It searched for a bullet-list format against
-a file written in prose, returned zero, and I reported *content-absent* — so the row fell out of the
-first union (#129). The union was later corrected. **This file could not inherit the correction,
-because a copy cannot.** ⇒ That is exactly the argument #78 made for one document, demonstrated on
-the file of the role that transcribed the ruling and then failed to convert its own.
-
-⚠ **It was a live authorization gap, not a style defect**: for the interval between the union's
-correction and this commit, this file understated what binds DX — and understating a reservation is
-the permissive direction.
+⚠ ⛔ **Merging and CI-adjacent reservations are NOT dropped with their justification.** A false
+trigger-premise retires the stated *reason*, not the *reservation* — TEAMLEAD owns admission of
+work, and a PR is an admission artifact whether or not it draws a lease. Getting this backwards is
+the permissive direction, which is the expensive one. [measured: nForma-NEXT 2026-08-19, #16 #42]
 
 ## ★ Self-dispatch order — and it must be able to return EMPTY
 

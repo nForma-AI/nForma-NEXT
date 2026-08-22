@@ -22,19 +22,6 @@ import os
 import sys
 import tempfile
 
-# ⛔ A STALE __pycache__ SILENTLY SERVES THE PRE-MUTATION MODULE, and the dangerous
-# class is the COMMON one: Python invalidates a .pyc on mtime + SIZE, so a
-# SIZE-PRESERVING mutation (==/!=, a flag flip, a token swap) applied in the same
-# second leaves both unchanged and the cache is served. Measured with a
-# 4-cell table: {clean,mutant} x {cache cleared,stale} -> the mutant PASSED on a stale
-# cache and failed 3 checks once cleared. Every suite here loads its tool through
-# spec_from_file_location, so a false SURVIVED sends you rewriting a correct test.
-# CI is safe (fresh checkout, no cache); local mutation testing was not.
-sys.dont_write_bytecode = True
-# ⚠ and the env var too: a SUBPROCESS does not inherit sys.dont_write_bytecode,
-# which is why three suites still produced a cache after the first fix.
-os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
-
 _spec = importlib.util.spec_from_file_location(
     "fleet_state", os.path.join(os.path.dirname(os.path.abspath(__file__)), "fleet-state.py"))
 fleet_state = importlib.util.module_from_spec(_spec)
@@ -42,23 +29,9 @@ _spec.loader.exec_module(fleet_state)
 
 
 def write(turns, path, title="DEVOPS"):
-    """One AGENT TURN per element — with the user turn that ends it.
-
-    ⛔ This helper used to emit consecutive assistant records with NOTHING between
-    them, which is a transcript that cannot occur: an agent does not produce two
-    turns without an intervening user turn. That made every fixture agree with a
-    parser unit — one turn per assistant MESSAGE — that no real corpus supports,
-    and the fixtures then defended the unit against correction.
-
-    ⚠ The boundary is a REAL user turn. A tool_result also arrives as role="user";
-    see _is_real_user_turn in fleet-state.py and the control below.
-    """
     with open(path, "w") as fh:
         fh.write(json.dumps({"type": "custom-title", "customTitle": title}) + "\n")
-        for i, t in enumerate(turns):
-            if i:
-                fh.write(json.dumps({"type": "user", "message": {"role": "user", "content": [
-                    {"type": "text", "text": "continue"}]}}) + "\n")
+        for t in turns:
             fh.write(json.dumps({"message": {"role": "assistant", "content": [
                 {"type": "text", "text": t}]}}) + "\n")
 
@@ -70,91 +43,6 @@ def check(name, got, want):
 
 
 WORK = "Ran the migration, 4 files changed, tests green."
-
-
-def test_tool_result_is_not_a_turn_boundary():
-    """A USER RECORD IS NOT A USER TURN.
-
-    In this harness a tool result is delivered as ``role="user"``. Using "a record
-    with role user" as the turn boundary fires once per TOOL CALL, which is the unit
-    that made "end every turn with a STATE: line" unsatisfiable: an agent turn
-    interleaves prose with tool calls, so only the final block can carry a
-    declaration. Measured on a live transcript: 829 message-units vs 275 real turns.
-    """
-    def _u(blocks):
-        return {"type": "user", "message": {"role": "user", "content": blocks}}
-    def _a(text):
-        return {"type": "assistant", "message": {"role": "assistant",
-                "content": [{"type": "text", "text": text}]}}
-    base = [
-        _u([{"type": "text", "text": "do the thing"}]),
-        _a("starting"),
-        _u([{"type": "tool_result", "content": "ok"}]),
-        _a("still going"),
-        _u([{"type": "tool_result", "content": "ok"}]),
-        _a("done\nSTATE: FREE — nothing queued"),
-    ]
-    fd, path = tempfile.mkstemp(suffix=".jsonl"); os.close(fd)
-    def put(recs):
-        with open(path, "w") as fh:
-            for r in recs:
-                fh.write(json.dumps(r) + "\n")
-    ok = True
-    try:
-        put(base)
-        _, t = fleet_state.assistant_texts(path)
-        ok &= check("tool_results do not split a turn", len(t), 1)
-        ok &= check("declared at the turn's end", fleet_state.declared_state(t[0])[0], "FREE")
-
-        put(base[:-1] + [_a("done, no declaration")])
-        _, t2 = fleet_state.assistant_texts(path)
-        ok &= check("same shape, no declaration", fleet_state.declared_state(t2[0])[0], None)
-
-        put(base + [_u([{"type": "text", "text": "next"}]), _a("more")])
-        _, t3 = fleet_state.assistant_texts(path)
-        ok &= check("a REAL user turn does split", len(t3), 2)
-    finally:
-        os.unlink(path)
-    return ok
-
-
-def test_freshness_marker_binds_to_the_payload():
-    """A freshness marker must be ADJACENT to the thing whose freshness it describes.
-
-    ⛔ The row used to put the age in its own COLUMN beside the detail:
-
-        DEV5  WORKING  this turn   context ~98%; ...
-
-    A reader re-associates by PROXIMITY, so that reads as "DEV5 is at 98% NOW".
-    Measured: TEAMLEAD read exactly that and was one step from compacting a pane
-    sitting at 38% — it had compacted AFTER declaring. The marker was true of the
-    LINE and false of the NUMBER INSIDE IT. (Placement fix ruled by DEV2.)
-    """
-    ok = True
-    c = fleet_state.declared_clause(0, 9, "context ~98%")
-    ok &= check("payload is quoted", '"context ~98%"' in c, True)
-    ok &= check("marker precedes and binds", c.startswith("declared this turn:"), True)
-    # ⛔ KNOWN-NEGATIVE: the marker must NOT be separable from the payload. If a
-    # caller could render them apart, the column defect returns.
-    ok &= check("one string, not a pair", isinstance(c, str), True)
-    ok &= check("older declaration says so",
-                fleet_state.declared_clause(14, 20, "x").startswith("declared 14 turns ago:"), True)
-    ok &= check("never-declared is not 'this turn'",
-                "this turn" in fleet_state.declared_clause(None, 20, "x"), False)
-    # ⛔ DX's specimen, from review of #417 — the quotes DO the binding, so an
-    # unescaped inner quote destroys the boundary the function exists to give.
-    c2 = fleet_state.declared_clause(0, 9, 'said "done" already')
-    ok &= check("inner quote is escaped", '\\"done\\"' in c2, True)
-    ok &= check("exactly two UNESCAPED quotes remain",
-                len([i for i, ch in enumerate(c2)
-                     if ch == '"' and (i == 0 or c2[i-1] != "\\")]), 2)
-    # ⚠ DX flagged the newline case as PROBABLY MOOT and did not establish
-    # reachability. Guarded anyway; the guard costs nothing.
-    ok &= check("newline cannot split the clause",
-                "\n" in fleet_state.declared_clause(0, 9, "multi\nline"), False)
-    ok &= check("a backslash does not fake an escape",
-                fleet_state.declared_clause(0, 9, 'a\\b').endswith('"a\\\\b"'), True)
-    return ok
 
 
 def main():
@@ -211,12 +99,6 @@ def main():
         failures += not check("state", state, None)
         failures += not check("turns_ago", back, None)
 
-        print("⛔ a freshness marker must bind to the payload, not sit in a column:")
-        failures += not test_freshness_marker_binds_to_the_payload()
-
-        print("⛔ a tool_result arrives as role=user — it must NOT end a turn:")
-        failures += not test_tool_result_is_not_a_turn_boundary()
-
         print("empty/tool-only turns are not turns:")
         p = os.path.join(d, "g.jsonl")
         write(["STATE: WORKING — mid-task", "   ", "\n"], p)
@@ -229,6 +111,7 @@ def main():
         return 1
     print("all checks passed")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

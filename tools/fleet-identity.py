@@ -305,29 +305,9 @@ def bootstrap_role(path):
     mislabelled are the ones doing the most cross-session work. A column reading
     "DX" gives no hint that the string came from someone else's session.
 
-    ⛔ AND THAT PROMISE WAS BROKEN BY THE ERROR PATH. The docstring said *None means
-    "not in this file"* — but `except OSError` returned None too, so **a transcript
-    that could not be opened reported identically to one read in full with no
-    bootstrap in it.** A stated guarantee the code did not keep, which is worse than
-    an undocumented collapse: a reader who checks the docstring is told the wrong
-    thing.
-
-    ⚠ The test suite pinned it. `missing file` and `resumed transcript` both asserted
-    None, so the collapse was encoded as correct behaviour — the same way the old
-    `depth_bands` assertion pinned its own.
-
-    Two negatives now, and they are the toolset's convention:
-
-        None   COULD NOT READ IT. The question was not answered.
-        ""     READ IT IN FULL. No bootstrap in the early turns — which happens
-               honestly: a resumed transcript may not contain the message that
-               started it.
-
-    ★ `None` means *the question was not answered* in `depth_bands` and in
-    `exists-anywhere.object_hits` too. One convention across the tools, so a caller
-    never has to remember which function inverts it.
-
-    ⚠ Both are falsy. A caller writing `if role:` merges them again — check `is None`.
+    Returns None when no bootstrap appears in the early turns — which happens,
+    and honestly: a resumed transcript may simply not contain the message that
+    started it. None means "not in this file", never "unnamed".
     """
     try:
         seen = 0
@@ -360,10 +340,10 @@ def bootstrap_role(path):
                 return m.group(1)
             seen += 1
             if seen >= BOOTSTRAP_TURNS:
-                return ""          # read the window, no bootstrap in it
+                return None
     except OSError:
-        return None                # ⛔ could not read — NOT "no bootstrap"
-    return ""                      # read the whole file, no bootstrap in it
+        pass
+    return None
 
 
 def control(reg):

@@ -977,37 +977,6 @@ the dedupe could not be derived and had to be remembered instead.
 
 ---
 
-## ★ You CAN observe the fleet without this pane's own MCP — `tools/daintree-control.py`
-
-⛔ **Measured 2026-08-20 (#265): a TEAMLEAD concluded it could not observe the fleet while this
-tool sat unmentioned in this document.** It was never named here — `grep -c` over this file
-returned **0** for `daintree-control`, `mcpServers` and `MCP`.
-
-It reads the Daintree endpoint and bearer from `~/.claude.json` and goes over **HTTP via curl**.
-⇒ It needs **no MCP tool surface in the calling pane** and touches **no other worktree**, so a
-session guard that refuses cross-worktree `git` calls does not block it. Run from any pane:
-
-```
-$ python3 tools/daintree-control.py
-✅ control passes — 9 panes, states ['waiting', 'working'], at least one `working` as required
-```
-
-⚠ **Its VOID message names the remedy, not just the absence** — if no `daintree` entry exists in
-`mcpServers`, it says so and says the operator can add one. ⛔ That message *"was read, quoted and
-BUILT AROUND for four hours because it named the absence and not the remedy"* — its own words. **A
-tool reporting a fixable gap is not a tool reporting a wall.**
-
-⚠⚠ **AND IT DOES NOT SOLVE THE SECTION BELOW.** It returns the same `waiting`/`working` states,
-so it still cannot separate *finished* from *blocked-on-TEAMLEAD*. ⇒ **Two different questions:**
-
-```
-can I observe the fleet at all?          YES — this tool, from any pane
-what does a pane's state MEAN?           NO observational discriminator exists (below)
-```
-
-⛔ Do not read this section as retiring the next one. It removes the *capability* gap and leaves
-the *semantic* one exactly where it was.
-
 ## ⛔ End every turn with a declared STATE line
 
 The orchestrator's monitor cannot tell *finished* from *blocked-on-TEAMLEAD*. Measured:
@@ -1039,40 +1008,6 @@ declaring `FREE` while holding unpushed work — at which point the orchestrator
 8 sessions consumed context and mutated nothing** — roughly 40% of the cost, spent re-prompting
 agents that were correctly waiting. Tuning the wake threshold does not touch that. A
 declaration read from one line does.
-
----
-
-## ⛔ QUEUE EMPTY and BLOCKED now ARRIVE — what you owe an inbound one
-
-The four implementer prompts require a push on transition: crossing into `FREE` sends you a
-`QUEUE EMPTY` with proposals, crossing into `BLOCKED` sends you one decision phrased so that
-"yes" or "no" closes it. You are the only recipient, so the protocol is worth exactly what you
-do with the messages.
-
-```
-QUEUE EMPTY                                   BLOCKED — <one-line decision>
-done: <one line each>                         everything else I hold: <one line>
-proposing: 1) … 2) … 3) …
-```
-
-★ **Answer a `BLOCKED` with a decision, not with acknowledgement.** It is written to be closable
-in one word. "Noted, looking into it" leaves the agent exactly as stopped as before while
-converting your unread queue into a read one, which is worse: it retires the signal without
-retiring the block.
-
-★ **A `QUEUE EMPTY` that proposes is a menu, and picking from it is cheaper than composing.**
-Prefer one of the three. The agent has context you do not, and rejecting all three is itself the
-useful answer — it tells the agent its model of the board is wrong.
-
-⚠ **Silence is a decision you are making.** An agent that declared `BLOCKED` and was not answered
-re-declares, re-wakes, and burns context on a question only you can close — measured at seven
-wakes between 88% and 93% context with the blockers unchanged and unchangeable by the agent.
-`tools/fleet-state.py --blocked-only` is the list; leaving it long is a choice.
-
-⚠ **Do not infer non-compliance from a quiet inbox.** `tools/transition-report.py` audits the
-sending side, and `docs/prompt-delivery-gap.md` records why the count will be low for reasons
-that have nothing to do with the agents: measured 2026-08-20, the committed prompts had reached
-one of eight running sessions. Fix the delivery before reading the silence.
 
 ---
 

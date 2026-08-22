@@ -90,10 +90,6 @@ reads is unestablished. [NOT-YET-MEASURED]
 
 Exit: 0 clean · 1 would warn · 2 established nothing.
 """
-import os, sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from runmarker import guard, result  # noqa: E402
-
 import glob, json, os, re, sys
 
 RULES = [
@@ -233,9 +229,7 @@ def measure(project=None):
           "4 true / 1 false on 204 commands; it is NOT re-derived here, because "
           "classifying a hit as true or false needs a human reading the intent.",
           file=sys.stderr)
-    _rc = 1 if fired else 0
-    result({0: "OK", 1: "FINDING", 2: "ESTABLISHED-NOTHING", 3: "CONTROL-FAILED"}.get(_rc, f"EXIT-{_rc}"))
-    return _rc
+    return 1 if fired else 0
 
 
 def self_test():
@@ -270,17 +264,5 @@ def main():
     return 1 if hits else 0
 
 
-def _entry():
-    """Emit the terminal state for every path this tool controls.
-
-    guard() covers only the argparse SystemExit path, where the tool never regains
-    control. Without this, a successful run emits NFORMA-RUN and no NFORMA-RESULT —
-    which reads as STARTED-AND-NEVER-FINISHED, the collapse #58 exists to prevent.
-    """
-    rc = main()
-    result({0: "OK", 1: "FINDING", 2: "ESTABLISHED-NOTHING", 3: "CONTROL-FAILED"}.get(rc, f"EXIT-{rc}"))
-    return rc
-
-
 if __name__ == "__main__":
-    sys.exit(guard("pretooluse-guard", _entry))
+    sys.exit(main())

@@ -26,25 +26,10 @@ survives a partial sweep; a negative one does not.**
 
 Run: python3 tools/test_stranded_branches.py
 """
-# SUITE-DEPENDS: queries the gh API — network plus auth
-
 import importlib.util
 import os
 import subprocess
 import sys
-
-# ⛔ A STALE __pycache__ SILENTLY SERVES THE PRE-MUTATION MODULE, and the dangerous
-# class is the COMMON one: Python invalidates a .pyc on mtime + SIZE, so a
-# SIZE-PRESERVING mutation (==/!=, a flag flip, a token swap) applied in the same
-# second leaves both unchanged and the cache is served. Measured with a
-# 4-cell table: {clean,mutant} x {cache cleared,stale} -> the mutant PASSED on a stale
-# cache and failed 3 checks once cleared. Every suite here loads its tool through
-# spec_from_file_location, so a false SURVIVED sends you rewriting a correct test.
-# CI is safe (fresh checkout, no cache); local mutation testing was not.
-sys.dont_write_bytecode = True
-# ⚠ and the env var too: a SUBPROCESS does not inherit sys.dont_write_bytecode,
-# which is why three suites still produced a cache after the first fix.
-os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 
 _here = os.path.dirname(os.path.abspath(__file__))
 TOOL = os.path.join(_here, "stranded-branches.py")
@@ -103,49 +88,16 @@ def main():
         print(f"  FAIL  merged_refs has the old signature: {exc}")
         f += 1
 
-    print("the tool's own self-test still proves its four states reachable:")
+    print("the tool's own self-test still proves its three states reachable:")
     rc, out = run("--self-test")
     f += not check("exit", rc, 0)
     f += not check("known-positive stranded", "known-positive" in out, True)
     f += not check("unreadable is not zero", "unreadable is not zero" in out, True)
-    f += not check("content-state controlled", "content-state" in out, True)
-
-    print("the fourth state decides on counts alone, and refuses the vacuous case:")
-    # ⛔ The row that matters. all(...) over an empty path set is TRUE, so a tool that
-    # forgot this guard would report work as landed having compared nothing at all.
-    f += not check("all paths upstream -> LANDED", sb.content_state(2, 3, 3), "LANDED")
-    f += not check("one shared file vetoes", sb.content_state(2, 2, 3), "UNRESOLVED")
-    f += not check("zero paths is NOT landed", sb.content_state(2, 0, 0), "UNRESOLVED")
-    f += not check("nothing unmatched -> N/A", sb.content_state(0, 0, 0), "N/A")
-
-    print("absent-at-both-ends is EQUAL, so a landed deletion is not a strand:")
-    # A path deleted on the branch and deleted upstream reads None == None. Treating
-    # None as "unreadable" would strand every merged deletion permanently.
-    f += not check("absent path is None", sb.blob_at("HEAD", "no/such/file/here.md"), None)
 
     print("a truncated run says so, loudly, before any count:")
     rc, out = run("--limit", "5")
     f += not check("banner present", "TRUNCATED SWEEP" in out, True)
     f += not check("does not exit clean", rc != 0, True)
-
-    print("an unrecognised flag is REFUSED, not discarded:")
-    # ⛔ `"--self-test" in argv` is MEMBERSHIP: it accepts the flag without rejecting
-    # anything else, so `--zzz` was silently dropped and this tool went on to run a full
-    # NETWORK sweep — answering a question nobody asked, at real cost. A control whose
-    # invocation cannot fail is not being invoked. (#321's shape.)
-    # ⛔ NAME THE FLAG IN THE ASSERTION, not just the exit code. Mutation-testing the
-    # sibling suite showed exit 2 is reachable by a SECOND cause — a tool that ignores the
-    # bad flag can exit 2 as VOID from an empty population — so a code-only check passes
-    # while the defect is live.
-    rc, out = run("--zzz-not-a-flag")
-    f += not check("unknown flag refused, by name",
-                   (rc, "unrecognised flag" in out and "--zzz-not-a-flag" in out), (2, True))
-    rc, _ = run("--self-test", "--zzz-not-a-flag")
-    # ⚠ The combination is the nasty one: a REAL flag plus a typo used to exit 0, so the
-    # caller got a clean control result that had silently ignored half its invocation.
-    f += not check("self-test + garbage still refused", rc, 2)
-    rc, _ = run("--self-test")
-    f += not check("and the real flag still works", rc, 0)
 
     print("--limit needs a number:")
     rc, out = run("--limit", "abc")

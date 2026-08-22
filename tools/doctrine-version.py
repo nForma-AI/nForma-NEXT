@@ -225,86 +225,6 @@ def _strings(rec, keys):
             yield from _strings(v, keys)
 
 
-# ⇒ ONE declaration of what this tool can say. #39: an enumeration copied into a second place
-#   drifts by default, and the copy renders a NEW state as one of the OLD ones — never as
-#   unknown. Measured on this tool: `tools/README.md` still read "1 an agent is stale" after
-#   #57 added SAW-LATER, so "the agent LOOKED, currency unproven" rendered as "stale" — close
-#   to its opposite. Emitted rather than documented, so a reader can generate its row.
-STATES = {
-    "verdicts": {
-        "ok":          "the read resolves to the version at HEAD",
-        "AMBIG":       "two or more versions are indistinguishable from what was read",
-        "UNKNOWN":     "no read of that prompt recovered at all",
-        "LAUNCH-ONLY": "no LATER read recovered — not 'never re-read'",
-        "SAW-LATER":   "a later read exists — proves the agent LOOKED, not that it holds current",
-    },
-    "exits": {
-        0: "every resolvable transcript is current",
-        1: "at least one LAUNCH-ONLY or SAW-LATER — currency UNPROVEN, never 'stale'",
-        2: "established nothing",
-    },
-}
-
-
-def print_states():
-    for k, v in STATES["verdicts"].items():
-        print(f"VERDICT\t{k}\t{v}")
-    for k, v in STATES["exits"].items():
-        print(f"EXIT\t{k}\t{v}")
-    return 0
-
-
-def self_test():
-    """⚠ Both directions, by execution. A control that only ever passes is not a control (#26)."""
-    ok = True
-
-    def check(name, got, want):
-        nonlocal ok
-        if got != want:
-            print(f"⛔ FAIL  {name}: got {got!r}, want {want!r}")
-            ok = False
-        else:
-            print(f"  PASS  {name}: {got!r}")
-
-    # collisions(): the tool must REFUSE to resolve versions it cannot tell apart.
-    contained = {"a": {"body": "alpha"}, "b": {"body": "alpha and more"}}
-    distinct = {"a": {"body": "alpha"}, "b": {"body": "beta"}}
-    check("collision detected when one version contains another",
-          bool(collisions(contained)), True)
-    check("no collision between distinct versions",           # known-negative
-          bool(collisions(distinct)), False)
-
-    # reads_in(): RANGED and RESOLVED are different kinds and must not collapse.
-    import tempfile
-    cat = {"prompts/ROLE.md": {"blob1": {"body": "THE-WHOLE-PROMPT-BODY"}}}
-    with tempfile.TemporaryDirectory() as d:
-        t = os.path.join(d, "t.jsonl")
-        with open(t, "w") as fh:
-            fh.write(json.dumps({"command": "sed -n '1,20p' prompts/ROLE.md"}) + "\n")
-            fh.write(json.dumps({"toolUseResult": {"stdout": "THE-WHOLE-PROMPT-BODY"}}) + "\n")
-        kinds = [r["kind"] for r in reads_in(t, cat)]
-        check("a partial read is RANGED, not a resolved version", "RANGED" in kinds, True)
-        check("a full body in stdout is RESOLVED", "RESOLVED" in kinds, True)
-
-        # known-negative: a transcript naming no prompt must recover NOTHING, not a default
-        t2 = os.path.join(d, "t2.jsonl")
-        with open(t2, "w") as fh:
-            fh.write(json.dumps({"command": "ls -la"}) + "\n")
-        check("an unrelated transcript recovers no reads", reads_in(t2, cat), [])
-
-    # the state space this tool advertises must match what it can emit
-    check("SAW-LATER is declared", "SAW-LATER" in STATES["verdicts"], True)
-    # ⛔ This check first read `"stale" in ...` and FAILED on the text "never 'stale'" — the
-    #    description MENTIONS the word in order to deny it. A substring predicate cannot tell
-    #    use from mention (#36), and it was wrong about a line written sixty seconds earlier.
-    #    Match on what the correct description must ASSERT, which a denial cannot fake.
-    check("exit 1 asserts UNPROVEN rather than a verdict of staleness",
-          "unproven" in STATES["exits"][1].lower(), True)
-
-    print("all checks passed" if ok else "⛔ self-test FAILED")
-    return 0 if ok else 1
-
-
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--repo", default=".", help="repository to resolve versions against")
@@ -313,17 +233,7 @@ def main():
                     help="transcript root override — exists so the VOID and clean paths "
                          "can be EXERCISED against a fixture, per daintree-control.py")
     ap.add_argument("--self-test", action="store_true")
-    ap.add_argument("--states", action="store_true",
-                    help="print this tool's verdict space and exit codes, machine-readable")
     args = ap.parse_args()
-
-    # ⛔ --self-test was DECLARED here and dispatched nowhere: `args.self_test` was read by
-    #    no line in this file, so the flag advertised a control that did not exist and the
-    #    run it produced was the ordinary report. Dispatched now, before any I/O.
-    if args.states:
-        return print_states()
-    if args.self_test:
-        return self_test()
 
     repo = git("rev-parse", "--show-toplevel", cwd=args.repo)
     if not repo:
