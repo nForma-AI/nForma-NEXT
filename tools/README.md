@@ -10,7 +10,7 @@ below is taken over it.**
 ```
 INSTRUMENT  ≡  a non-test executable directly under tools/, EXCLUDING quarantined subdirectories
 
-   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 55.  Run it; do not trust the number below.
+   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 57.  Run it; do not trust the number below.
 ```
 
 ⚠ **The first draft of this section declared 54 and published a command that returns 55** — off by the
@@ -18,18 +18,26 @@ single `.sh`. ⛔ **In the section whose entire purpose is removing that ambigui
 RUNNING the command rather than trusting it.** ★ **`merge-watch.sh` is an instrument; a definition
 that excludes it because of its extension is drawing the population around a file suffix.**
 
-**Measured 2026-08-21 at `c7b5a46`, one second, all six readings, so a reader meeting an older figure
+**Measured 2026-08-22 at `e66aeb4`, one second, all six readings, so a reader meeting an older figure
 can place it:**
 
 ```
-top-level non-test executables (.py + .sh)  55   ⇐ THE DECLARED POPULATION
-  of which .py                              54   ⚠ every count published on 2026-08-21 used THIS subset
-top-level tools/*.py, including test_      109
-ALL .py under tools/ recursively           132
-ALL .py under tools/ excluding test_        74
-rows in the index table below               57
+top-level non-test executables (.py + .sh)  57   ⇐ THE DECLARED POPULATION
+  of which .py                              56   ⚠ every count published on 2026-08-21 used THIS subset
+top-level tools/*.py, including test_      112
+ALL .py under tools/ recursively           135
+ALL .py under tools/ excluding test_        76
+rows in the index table below               58
 files under tools/teamlead/                 23   ⛔ QUARANTINED — belonging is an OPEN QUESTION
 ```
+
+⛔ **ALL SEVEN of these drifted in ONE DAY** — 55→57, 54→56, 109→112, 132→135, 74→76, 57→58 — **and
+the sentence *"Run it; do not trust the number below"* did not catch any of them, because nothing ran
+it.** ★ **That sentence is PRINCIPLE-shaped, and principle-shaped rules bind 0 of 5 times here;
+event-attached ones bind 3 of 3.** ⇒ **`scripts/check-tools-index.py` now EXTRACTS the command from
+the fence above and runs it, and exits 1 when the declaration and its own command disagree.** ⚠ **It
+is a gate, not a promise: this table's other six rows are still unguarded, and only the declared row
+has a catcher.**
 
 ⚠ **SUBDIRECTORIES ARE OUT OF SCOPE AND THAT IS NOT AN OVERSIGHT.** `scripts/check-tools-index.py`
 holds them to a **weaker contract by design** — *named in their own README, not row + prose + count* —
