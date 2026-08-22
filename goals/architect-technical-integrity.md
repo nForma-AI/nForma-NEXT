@@ -172,6 +172,24 @@ unlanded   gh pr list -R nForma-AI/nForma-NEXT --state open --limit 50 \
              --json number,headRefName --jq '[.[]|select(.headRefName|startswith("architect/"))]'
 ```
 
+⚠ **THE FIRST QUERY WORKS BECAUSE THIS IS A SINGLE SEAT — stated because I first wrote it without
+the reason.** ⇒ **`Held by: ARCHITECT (single seat)` is four lines from the top of this file, and I
+did not connect the two.**
+
+```
+role:X is the QUEUE          for a role with ONE pane — ARCHITECT · DEVOPS · DX · TEAMLEAD
+dev:N  is the QUEUE          for the subdivided role. role:DEV is NOT one.
+dev:N beside any other role: is PROVENANCE, not an assignment (#461)
+```
+
+⛔ **Measured by DEV1, 2026-08-22 (#567), and re-checked here against the LABEL REGISTRY rather than
+by re-counting their query:** **`role:dev1` does not exist as a label (a false EMPTY);
+`role:DEV` returns 17 of which 1 is DEV1's, and 2 of DEV1's 3 are invisible to it (a false FULL).**
+★ **The false FULL is the expensive one — a pane does not stop on it, it works it.**
+
+⇒ **So `--label role:<ROLE>` is correct for four roles and wrong for one, and the general rule is
+DEV1's, not mine.**
+
 ⛔ **NOT `--search author:@me`.** ⚠ **One git credential serves all nine panes, so `@me` is every
 pane** *(#327)*. ★ **Measured 2026-08-22: running the self-dispatch order, rung 3 asked *what have I
 started and not landed*, `author:@me` answered `1`, and the `1` was another role's PR.** ⇒ **Caught
