@@ -114,8 +114,16 @@ def parse_ts(value):
         return None
 
 
-def scan(path, since):
-    """Return (cost, mutations, reads, unclassified, text_turns) after `since`."""
+def scan(path, since, until=None):
+    """Return (cost, mutations, reads, unclassified, text_turns) in [since, until].
+
+    ⛔ `until` EXISTS BECAUSE AN UNBOUNDED WINDOW ANSWERS THE WRONG QUESTION. Measured by
+    ARCHITECT on #489: reading liveness at a past instant with `--since 07:00Z` ran the window
+    to NOW — 12.1 hours — so a pane that STALLED at 08:54Z and resumed later scored WORK. Two
+    of eight verdicts missed, and both misses were the window rather than the predicate.
+    ⇒ Liveness is a question about an INSTANT. Without an upper bound this tool can only ever
+      answer "did anything happen since", which is a different proposition and always the more
+      generous one.""" 
     first_depth = last_depth = None
     mutations = reads = unclassified = text_turns = 0
     for line in open(path, errors="replace"):
@@ -133,9 +141,9 @@ def scan(path, since):
                      + u.get("cache_creation_input_tokens", 0) + u.get("output_tokens", 0))
             if ts and ts < since:
                 first_depth = depth            # last reading BEFORE the window
-            else:
-                last_depth = depth
-        if not ts or ts < since:
+            elif until is None or (ts and ts <= until):
+                last_depth = depth             # ⇒ never a reading from AFTER the window
+        if not ts or ts < since or (until is not None and ts > until):
             continue
         if msg.get("role") != "assistant":
             continue
@@ -164,12 +172,63 @@ def scan(path, since):
     return cost, mutations, reads, unclassified, text_turns
 
 
+def self_test():
+    """⛔ THE FLAG MUST BE SHOWN TO EXCLUDE, and its ABSENCE shown to include — as a pair.
+    "activity after --until is dropped" passes if the window dropped everything; "the same
+    activity without --until is counted" passes if nothing were ever dropped. Neither alone.
+    """
+    import tempfile
+    ok = True
+    print("wake-yield --self-test")
+
+    def rec(ts, tool):
+        return json.dumps({"timestamp": ts, "message": {"role": "assistant",
+                "content": [{"type": "tool_use", "name": tool, "input": {}}]}}) + "\n"
+
+    with tempfile.TemporaryDirectory() as d:
+        f = os.path.join(d, "s.jsonl")
+        with open(f, "w") as fh:
+            fh.write(rec("2026-08-21T08:00:00Z", "Write"))     # inside any window
+            fh.write(rec("2026-08-21T20:00:00Z", "Write"))     # AFTER the bounded end
+        since = parse_ts("2026-08-21T07:00:00Z")
+        end = parse_ts("2026-08-21T09:00:00Z")
+
+        _, mut_b, _, _, _ = scan(f, since, end)
+        _, mut_u, _, _, _ = scan(f, since, None)
+        hit = mut_b == 1 and mut_u == 2
+        ok &= hit
+        print(f"  {'ok  ' if hit else 'FAIL'}  --until EXCLUDES later activity ({mut_b} of 2) and "
+              f"its absence INCLUDES it ({mut_u} of 2) — the pair, not either half")
+
+        # ⛔ the stall case this exists for: work only AFTER the window must read as none.
+        f2 = os.path.join(d, "stalled.jsonl")
+        with open(f2, "w") as fh:
+            fh.write(rec("2026-08-21T20:00:00Z", "Write"))
+        _, mut_s, _, _, _ = scan(f2, since, end)
+        ok &= mut_s == 0
+        print(f"  {'ok  ' if mut_s == 0 else 'FAIL'}  a pane whose ONLY work is after the window "
+              f"scores {mut_s} mutations — the #489 miss, which read WORK on a 12.1h window")
+    print("all checks passed" if ok else "⛔ FINDINGS")
+    return 0 if ok else 1
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--since", required=True,
+    # ⚠ NOT argparse-required: --self-test must run without a window, or the control cannot be
+    # invoked by a blanket runner that passes only the flag. Enforced below instead.
+    ap.add_argument("--since", default=None,
                     help="ISO timestamp of the wake, e.g. 2026-08-19T17:29:16Z")
     ap.add_argument("--active-hours", type=float, default=6.0)
+    ap.add_argument("--until", default=None,
+                    help="ISO timestamp bounding the window's END. Without it the window runs "
+                         "to NOW, so a pane that stalled and later resumed scores WORK (#489).")
+    ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
+    if args.self_test:
+        return self_test()
+    if not args.since:
+        print("⛔ --since is required (or use --self-test) — established nothing", file=sys.stderr)
+        return 2
 
     since = parse_ts(args.since if args.since.endswith("Z") else args.since + "Z")
     if since is None:
@@ -184,15 +243,31 @@ def main():
         sys.exit(f"⛔ --since {since.isoformat()} is in the FUTURE (now {now.isoformat()[:19]}Z). "
                  f"This would return zero sessions and look like a quiet fleet. "
                  f"Local time is not Z — convert it.")
-    if (now - since).total_seconds() > 12 * 3600:
-        print(f"⚠ window is {(now - since).total_seconds()/3600:.1f}h wide — it will span "
+    until = None
+    if args.until:
+        until = parse_ts(args.until if args.until.endswith("Z") else args.until + "Z")
+        if until is None:
+            sys.exit(f"unparseable timestamp: {args.until}")
+        if until <= since:
+            sys.exit(f"⛔ --until {until.isoformat()} is not after --since {since.isoformat()}. "
+                     f"An empty window returns zero and reads like a quiet fleet.")
+
+    # ⛔ STALENESS MUST BE MEASURED FROM THE WINDOW'S END, NOT FROM NOW. --active-hours drops
+    # files by mtime; with --until in the past, "not touched in 6h" is measured against the
+    # wrong instant and DISCARDS EXACTLY THE STALLED SESSIONS the bounded window exists to find.
+    # ⇒ A pane that died at 08:54 has an old mtime by definition. Filtering on it would delete
+    #   the finding and leave a clean board.
+    horizon = until or now
+    _end = until or now
+    if (_end - since).total_seconds() > 12 * 3600:
+        print(f"⚠ window is {(_end - since).total_seconds()/3600:.1f}h wide — it will span "
               f"compactions, and a session that compacted inside it reports a NEGATIVE cost "
               f"that is a context reset, not a saving.", file=sys.stderr)
 
     rows = []
     for proj in glob.glob(os.path.expanduser("~/.claude/projects/*")):
         for path in glob.glob(os.path.join(proj, "*.jsonl")):
-            if (datetime.now(timezone.utc).timestamp() - os.path.getmtime(path)
+            if (horizon.timestamp() - os.path.getmtime(path)
                     > args.active_hours * 3600):
                 continue
             names = []
@@ -205,7 +280,7 @@ def main():
                     n = rec.get("customTitle") or rec.get("agentName")
                     if n and n not in names:
                         names.append(n)
-            cost, mut, rd, unk, txt = scan(path, since)
+            cost, mut, rd, unk, txt = scan(path, since, until)
             if cost is None and not (mut or rd or unk or txt):
                 continue
             rows.append((os.path.basename(path)[:8], "/".join(names) or "(unnamed)",
