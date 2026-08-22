@@ -400,20 +400,24 @@ def declared_population(root, text):
     # against the repository, not smuggled into a function meant to work on any tree.
     if not cmd_m and not row_m:
         return None, ["  ----  tools/README.md declares no population — that leg NOT CHECKED",
-                      "        (a tree that never declared one is not drifting; see selftest)"]
+                      "        (a tree that never declared one is not drifting; see selftest)"], None
     if not cmd_m or not row_m:
         missing = "the published command" if not cmd_m else "the ⇐ THE DECLARED POPULATION row"
-        return 2, [f"  VOID  a population IS declared but {missing} is absent — established nothing"]
+        return 2, [f"  VOID  a population IS declared but {missing} is absent — established nothing"], None
 
     cmd, beside = cmd_m.group(1), int(cmd_m.group(2))
     label, declared = row_m.group(1).strip(), int(row_m.group(2))
     try:
-        r = subprocess.run(["sh", "-c", cmd + " | wc -l"], cwd=str(root),
+        r = subprocess.run(["sh", "-c", cmd], cwd=str(root),
                            capture_output=True, text=True, timeout=20)
-        got = int(r.stdout.strip())
+        # ⚠ NAMES, not just a count. TEAMLEAD read "declared 57" and "instruments on disk: 55"
+        # four lines apart and did the subtraction; resolving 57−55 cost them a set difference
+        # this function could have printed. A gate that makes a reader compute is half a gate.
+        declared_names = sorted({x.split("/")[-1] for x in r.stdout.split() if x.strip()})
+        got = len(declared_names)
     except (subprocess.TimeoutExpired, ValueError) as e:
         return 2, [f"  VOID  the README's own command produced no count ({e!r}) — established",
-                   f"        nothing. cmd: {cmd}"]
+                   f"        nothing. cmd: {cmd}"], None
 
     lines = [f"  ----  declared population: {declared}  ({label})",
              f"  ----  the README's own command returns: {got}",
@@ -428,8 +432,8 @@ def declared_population(root, text):
         bad.append(f"  DRIFT the number beside the command ({beside}) and the declared row"
                    f" ({declared}) are not the same number")
     if bad:
-        return 1, lines + bad
-    return 0, lines + ["  ok    declaration, published command, and tree all agree"]
+        return 1, lines + bad, declared_names
+    return 0, lines + ["  ok    declaration, published command, and tree all agree"], declared_names
 
 
 def check(root):
@@ -463,7 +467,7 @@ def check(root):
     # ⚠ Placed AFTER `unchecked` is declared, not beside the other README parsing 13 lines up,
     # where the first attempt put it and would have raised NameError on every run. Caught by
     # asserting the two line numbers against each other rather than by running it.
-    pop_rc, pop_lines = declared_population(root, text)
+    pop_rc, pop_lines, pop_names = declared_population(root, text)
     out.extend(pop_lines)
     if pop_rc is None:
         unchecked.append("declared population")
@@ -547,6 +551,33 @@ def check(root):
         return 2, out + ["  VOID  every top-level instrument is quarantined — the index leg"
                          " established nothing"], True
     out.append(f"  instruments on disk: {len(actual)}  ({', '.join(actual)})")
+    # ⛔ TWO DIFFERENT NOUNS, FOUR LINES APART, WITH NOTHING BETWEEN THEM SAYING SO.
+    # "declared population: 57" and "instruments on disk: 55" print near each other and a reader
+    # subtracts them — TEAMLEAD did, on the merged version, and had to run `comm` to learn the 2
+    # were quarantined. 57−55 sitting above rc=0 has the SHAPE of a verdict contradicting its own
+    # report. It is not one, and the fix is to say which two files and why, computed not asserted.
+    if pop_names is not None:
+        only_declared = [n for n in pop_names if n not in set(actual)]
+        only_disk = [n for n in actual if n not in set(pop_names)]
+        if only_declared or only_disk:
+            # ⚠ read_ack returns (set, why-void), NOT a set. Testing `n in ack` against the
+            # TUPLE answers False for every name and would have printed a confidently wrong
+            # reason for both files. Caught by inspecting the return shape, not by running it.
+            held, _ = read_ack(tools_dir)
+            held = {q.split("/")[-1] for q in (held or ())}
+
+            def why(n):
+                if n in held:
+                    return "quarantined (tools/QUARANTINE.txt)"
+                if not n.endswith(".py"):
+                    return "not .py — the index leg globs tools/*.py only"
+                return "declared by the command but outside the index population"
+            out.append(f"  ----  the two counts differ by {len(only_declared) + len(only_disk)} and"
+                       f" they are DIFFERENT NOUNS, not a discrepancy:")
+            for n in only_declared:
+                out.append(f"          {n}: declared, not indexed — {why(n)}")
+            for n in only_disk:
+                out.append(f"          {n}: indexed, not declared — outside the published command")
     # Named, never merely counted — see NOT_AN_INSTRUMENT.
     out.append("  ----  excluded from the population as tests: "
                + (", ".join(excluded) if excluded else "none")
