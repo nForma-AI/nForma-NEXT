@@ -164,6 +164,27 @@ earlier PRs — a green that means it did not look — and `Review completed` on
 green check as a review without checking which it was.
 [NOT-YET-MEASURED — ceiling observed, never quantified]
 
+## ⛔ "What is mine" — the obvious query is REFUTED, and these are the two that work
+
+```
+queue      gh issue list -R nForma-AI/nForma-NEXT --state open --label role:ARCHITECT --limit 1000
+unlanded   gh pr list -R nForma-AI/nForma-NEXT --state open --limit 50 \
+             --json number,headRefName --jq '[.[]|select(.headRefName|startswith("architect/"))]'
+```
+
+⛔ **NOT `--search author:@me`.** ⚠ **One git credential serves all nine panes, so `@me` is every
+pane** *(#327)*. ★ **Measured 2026-08-22: running the self-dispatch order, rung 3 asked *what have I
+started and not landed*, `author:@me` answered `1`, and the `1` was another role's PR.** ⇒ **Caught
+only because a monitor reading branch prefixes said `0` and the two channels disagreed.**
+
+⚠ **The branch-prefix form is exact FOR A PANE THAT NAMES ITS OWN BRANCHES and is not a general
+identity claim** — **DX measured `dx/` at 0 of 17 for their own session.** ⛔ **It works here because
+this role prefixes every branch `architect/`, not because prefixes identify panes.**
+
+★ **A QUERY read at session start is not a rule read at session start.** ⇒ **A query persists in
+context and is re-read; a rule must be RECALLED at a moment you first have to notice.** *(That is why
+the §22 predecessor query holds and why line 76 below did not.)*
+
 ## ★ Self-dispatch order — and it must be able to return EMPTY
 
 Structure adopted from `goals/README.md`; the ordering is not obvious and is highest-first.
