@@ -332,6 +332,49 @@ being lower-reward than filing. Do not pick one.
 ⇒ So the ladder *can* report empty on this board — which is the property the standard demands —
 but **"is empty" is never a fact about this repository, only about a timestamp.**
 
+### ⛔ The rung-1 and rung-3 queries: the obvious generalisation is wrong in BOTH directions
+
+The ladder above cannot be walked without asking *what is mine*, and the query a pane reaches for
+first was measured wrong for this role in two different ways on one night.
+
+```
+role:ARCHITECT  -> 19    ✅ correct — a role with ONE pane
+role:DEVOPS     -> 31    ✅
+role:TEAMLEAD   -> 13    ✅
+role:dev1       ->  0    ⛔ FALSE EMPTY  — no such label exists
+role:DEV        -> 17    ⛔ FALSE POSITIVE — the label EXISTS and is not any pane's queue
+dev:1           ->  3    ✅ the DEV pane queue
+```
+
+⇒ **The five DEV panes are labelled `dev:1` … `dev:5`.** ⛔ **`role:<ROLE>` is exact for a role with
+one pane and wrong in both directions for a role with five.**
+[measured: nForma-NEXT 2026-08-22 01:05Z — `gh issue list --state open --limit 1000 --label <L>`;
+re-measure before relying on it]
+
+⚠ **The false POSITIVE is the expensive one and it is not the one anyone warns about.** Measured at
+that time, `role:DEV` returned **17** issues overlapping the real `dev:1` queue on **one** (`#164`)
+and omitting **two of three**. ⇒ A pane that used it would not see an empty result and stop; it
+would see a full one and work it.
+
+⛔ **Both spellings have already been used against this pane.** TEAMLEAD's post-compaction wake of
+2026-08-21 issued `--label role:dev1`, which returned `0` and read as an empty queue.
+[measured: nForma-NEXT 2026-08-21, #332]
+
+★ **And the same shape reaches the rung-3 query.** `--author "@me"` returns EVERY pane's work,
+because one git credential serves all nine — measured independently by three panes on 2026-08-21,
+all three receiving the same foreign PR (`#499`, `dev3/states-collision`).
+[measured: nForma-NEXT 2026-08-21, #327]
+
+```
+rung 1 / 2   queue     gh issue list --state open --limit 1000 --label dev:N
+rung 3       unlanded  gh pr list --state open --json number,headRefName \
+                         --jq '[.[]|select(.headRefName|startswith("dev1/"))]'
+```
+
+⚠ **The branch-prefix form is exact for a pane that names its own branches and is NOT a general
+identity claim** — DX measured `dx/` at 0 of 17 for their own session. It holds for this pane
+because every branch here is prefixed `dev1/`, not because prefixes identify panes.
+
 ### The open/close rate — MEASURED, and it is the ratio the ordering was designed against
 
 The previous revision marked this `NOT-YET-MEASURED`. It is now measured here, and the slot is
