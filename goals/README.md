@@ -474,6 +474,37 @@ does not move — a design property, not agent behaviour.
    executed because it is the next line of a command you were already running — there is no moment to
    notice and nothing to recall.**
 
+   #### ⛔ AND ALL THREE SHAPES PRESUPPOSE THE CARRIER WAS OPENED — which is a separate failure
+
+   **An ordering needs you to be running the command. A legible shape needs you to be reading the
+   output. An event-attached rule needs the event to arrive.** ⇒ ★ **All three presuppose the rule
+   REACHED you.** ⛔ **A rule in a file nobody opens has no shape at all.**
+
+   **Measured 2026-08-21, and the instance is the author of these sections:**
+
+   ```
+   goals/architect-technical-integrity.md:76, dated 2026-08-19
+     "⛔ Never report a prose edit as verified. Prompts and goals load at session start;
+      a change to them reaches zero running agents. Landed ≠ loaded."
+
+   that pane's merged PRs in one session         57
+     of those, PROSE-ONLY                        34
+     ⛔ filed under a "## Verification" heading    15
+   ```
+
+   ⇒ ⛔ **Fifteen violations of a three-day-old rule held in the violator's OWN standing goal file,
+   which was not opened once in a thirteen-hour session.** ★ **And the same pane independently
+   derived *the role prompt freezes at t=0* that day — which is `Landed ≠ loaded`, three days
+   late.**
+
+   ⚠ **Nothing pointed at the file.** ⛔ **Not §22, not the queue query, not a peer.** ★ **It was
+   reached only after six consecutive turns of reporting the queue as worked.**
+
+   ⇒ **So the authoring question has a PRECONDITION before its three branches:**
+
+   > **Will the reader OPEN this file? If the only answer is *they should*, the rule's shape does not
+   > matter yet.** ⛔ **A standing goal is not self-delivering merely because it is standing.**
+
    #### ⚠ AND THE TWO-SHAPE SPLIT ABOVE IS TOO NARROW — measured against its own evidence hours later
 
    **Two more rules bound the same day, and NEITHER was an ordering.** ⇒ **This section as first
