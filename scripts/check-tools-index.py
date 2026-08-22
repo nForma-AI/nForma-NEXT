@@ -363,6 +363,75 @@ def parse_count(tok):
     return WORDS.get(tok.lower())
 
 
+# ⛔ THE DECLARED POPULATION DECAYS, AND THE SENTENCE GUARDING IT IS PRINCIPLE-SHAPED.
+# tools/README.md declares a number AND publishes the command that produces it, under the sentence
+# "Run it; do not trust the number below." Nothing ran it. On 2026-08-22 the declaration read 55
+# and its own command returned 57 — and all seven rows of that table had drifted in one day.
+# Principle-shaped rules bind 0 of 5 times in this repository; event-attached ones bind 3 of 3.
+# This is the event.
+#
+#   POPULATION  the declared instrument count in tools/README.md
+#   PREDICATE   equals what the command published beside it returns
+#   CHANNEL     the working tree this gate was pointed at, via sh -c, cwd=root
+#
+# ⚠ The command is EXTRACTED from the README, never re-implemented here. Re-implementing it would
+# make this gate a SEVENTH reading of a noun that already had six (#345), and the two would drift
+# apart silently. Extracting it also catches the case a hand-written predicate would miss: editing
+# the command without editing the number.
+DECLARED_CMD = re.compile(r"^\s*(ls tools/[^\n]*?)\s+⇒\s*(\d+)\.", re.M)
+DECLARED_ROW = re.compile(r"^(.*?)\s+(\d+)\s+⇐ THE DECLARED POPULATION\s*$", re.M)
+
+
+def declared_population(root, text):
+    """(rc, lines). rc None = this tree declares no population, so the check does not apply."""
+    cmd_m = DECLARED_CMD.search(text)
+    row_m = DECLARED_ROW.search(text)
+
+    # ⛔ "NEVER DECLARED" AND "DECLARATION DELETED" ARE DIFFERENT PROPOSITIONS (class A, a collapsed
+    # pair). The first draft returned VOID for both and broke two existing self-tests, which run
+    # check() over minimal FIXTURE trees whose README never carried a declaration. A fixture that
+    # never declared a population is not drifting — the check does not apply to it.
+    #
+    #   BOTH absent ⇒ N/A, joins the unchecked legs, reports PARTIAL, never 'clean'.
+    #   ONE absent  ⇒ VOID. A half-present declaration IS mutilated, and no fixture has that shape.
+    #
+    # ⚠ That leaves "someone deletes the declaration from the REAL README" uncatchable HERE, by
+    # construction. selftest() carries that one instead — a repository-specific fact asserted
+    # against the repository, not smuggled into a function meant to work on any tree.
+    if not cmd_m and not row_m:
+        return None, ["  ----  tools/README.md declares no population — that leg NOT CHECKED",
+                      "        (a tree that never declared one is not drifting; see selftest)"]
+    if not cmd_m or not row_m:
+        missing = "the published command" if not cmd_m else "the ⇐ THE DECLARED POPULATION row"
+        return 2, [f"  VOID  a population IS declared but {missing} is absent — established nothing"]
+
+    cmd, beside = cmd_m.group(1), int(cmd_m.group(2))
+    label, declared = row_m.group(1).strip(), int(row_m.group(2))
+    try:
+        r = subprocess.run(["sh", "-c", cmd + " | wc -l"], cwd=str(root),
+                           capture_output=True, text=True, timeout=20)
+        got = int(r.stdout.strip())
+    except (subprocess.TimeoutExpired, ValueError) as e:
+        return 2, [f"  VOID  the README's own command produced no count ({e!r}) — established",
+                   f"        nothing. cmd: {cmd}"]
+
+    lines = [f"  ----  declared population: {declared}  ({label})",
+             f"  ----  the README's own command returns: {got}",
+             f"        {cmd}"]
+    bad = []
+    if got != declared:
+        bad.append(f"  DRIFT the ⇐ THE DECLARED POPULATION row says {declared}, its own command"
+                   f" says {got}")
+    if beside != declared:
+        # ⚠ Two numbers inside one README disagreeing is a DIFFERENT failure from either
+        # disagreeing with the tree. Naming them apart is what lets a reader fix the right one.
+        bad.append(f"  DRIFT the number beside the command ({beside}) and the declared row"
+                   f" ({declared}) are not the same number")
+    if bad:
+        return 1, lines + bad
+    return 0, lines + ["  ok    declaration, published command, and tree all agree"]
+
+
 def check(root):
     """Return (exit_code, lines). Pure enough to test against a fixture tree."""
     out = []
@@ -390,6 +459,14 @@ def check(root):
 
     failed = False
     unchecked = []          # legs that established NOTHING, so the summary cannot claim them
+
+    # ⚠ Placed AFTER `unchecked` is declared, not beside the other README parsing 13 lines up,
+    # where the first attempt put it and would have raised NameError on every run. Caught by
+    # asserting the two line numbers against each other rather than by running it.
+    pop_rc, pop_lines = declared_population(root, text)
+    out.extend(pop_lines)
+    if pop_rc is None:
+        unchecked.append("declared population")
 
     held = set()            # names impounded at the TOP level (for the `extra` leg only)
     held_paths = set()      # every impounded path, tools/-relative — the ack file's population
@@ -651,7 +728,13 @@ def check(root):
     if unchecked and not failed:
         out.append(f"  PARTIAL  rows and prose verified; {len(unchecked)} leg(s) established"
                    f" NOTHING: {', '.join(unchecked)} — not 'clean'")
-    return (1 if failed else 0), out, bool(unchecked)
+    # ⛔ pop_rc MUST REACH THE EXIT CODE. The first draft printed "DRIFT ... says 55, its own
+    # command says 57" and then exited 0, because the lines went into `out` and the code was never
+    # read. That is class D — the verdict contradicts its own report — committed inside the gate
+    # whose job is catching drift. A caller reading only the status saw a clean tree.
+    if pop_rc == 2:
+        return 2, out, bool(unchecked)
+    return (1 if (failed or pop_rc) else 0), out, bool(unchecked)
 
 
 def selftest():
@@ -1121,6 +1204,25 @@ def selftest():
         rc, _, _ = check(root)
         ok &= (rc == 2)
         print(f"  {'ok  ' if rc == 2 else 'FAIL'}  void: an unparseable index exits 2, not 0 (got {rc})")
+    # ⛔ THE ONE CASE declared_population() CANNOT CATCH, ASSERTED WHERE IT BELONGS.
+    # It treats "no declaration at all" as N/A so it still works on fixture trees; the cost is that
+    # deleting the declaration from the REAL tools/README.md would go quiet. This is that catcher.
+    real = Path(__file__).resolve().parent.parent / "tools" / "README.md"
+    if not real.is_file():
+        print("  FAIL  tools/README.md unreadable from the checkout — cannot assert")
+        ok = False
+    else:
+        rt = real.read_text(encoding="utf-8")
+        hit_cmd, hit_row = bool(DECLARED_CMD.search(rt)), bool(DECLARED_ROW.search(rt))
+        if hit_cmd and hit_row:
+            print("  ok    the real tools/README.md still declares a population AND publishes"
+                  " its command")
+        else:
+            print("  FAIL  the real tools/README.md lost %s — the declaration is what this gate"
+                  % ("its published command" if not hit_cmd else "its ⇐ THE DECLARED POPULATION row"))
+            print("        is aimed at, and removing it must not read as passing")
+            ok = False
+
     return 0 if ok else 3
 
 
