@@ -1136,6 +1136,88 @@ which is #345's *noun with no shared definition* one layer down, and the mismatc
 
 **`check-freshness.py`** — ⛔ **a red check is evidence about the MOMENT IT RAN, not about now.** Measured 2026-08-20 on 56 open PRs: **65 failing required checks, 54 of them completed BEFORE the resource they depend on recovered** — **83% of the board's red was a measurement taken under conditions that no longer held**, and the fleet spent hours treating it as 49 defects. ★ **Base freshness does not detect this**: PRs zero commits behind main failed required checks at **88%**, stale ones at **86%** — indistinguishable. A PR can sit exactly on main's tip while its checks are four hours old. ⇒ Three quantities that all sound like *"is this PR current"* — the **head commit date**, the **merge-base distance**, and the **check's `completedAt`** — and only the third mattered. ⚠ `--since` is **required and never defaulted**: only the caller knows when the condition changed, and a default would manufacture a verdict from an arbitrary clock. ⛔ A `STALE` verdict does **not** mean the PR passes — it means the evidence predates the change and cannot speak to now; **re-running produces evidence, reading does not.** ⚠ And `UNDATED` is **not** old: a check with no completion time has not been dated, and bucketing it as stale would quietly enlarge the safe-to-ignore pile.
 
+⛔ **AND THE COUNTER-CASE, BECAUSE THE ENTRY ABOVE POINTS A READER AT `completedAt` AND THERE IS A
+QUESTION IT CANNOT ANSWER.** ★ *"Only the third mattered"* is true of **is this evidence current**. It
+is false of **did this check EXECUTE the current gate** — and the two sound identical at the call
+site. ⚠ **Measured 2026-08-22 on `#570`, by TEAMLEAD, in their own merge guard:**
+
+```
+gate changed   2fa1a3b   2026-08-22T01:30:03Z
+check finished           2026-08-22T01:33:26Z    ⇒ 3m23s LATER, so the clock says PASS
+git merge-base --is-ancestor 2fa1a3b <merge-base>   ⇒ FALSE
+                                                   ⇒ the gate change was NOT in the tested tree
+```
+
+⇒ ⛔ **The check finished three minutes after the new gate landed and ran the OLD gate anyway.**
+★ **Class C in a guard: the proposition needed was *did it execute this code*, the proposition
+measured was *did it finish after this code was committed*. Both are about the gate and about time,
+and only one is answerable by a timestamp.**
+
+⚠⚠ **A SECOND TRAP SITS ON TOP OF THE FIRST, and it is why the wrong question also gets a wrong
+answer:** `git log --format=%cI` prints `02:30:03+01:00` and the GitHub API prints `01:33:26Z`.
+⛔ **Comparing them unnormalised is a one-hour error HERE, and an arbitrary one elsewhere.**
+
+⛔ **AND NOT FOR THE REASON THIS ENTRY FIRST GAVE.** ★ **`%cI` is IMMUNE to `TZ`. It prints the
+offset STORED IN THE COMMIT — the committer's zone at commit time — so it does not follow the
+reader at all:**
+
+```
+TZ=UTC                  %cI                ⇒ 2026-08-22T02:30:03+01:00
+TZ=Asia/Tokyo           %cI                ⇒ 2026-08-22T02:30:03+01:00   UNCHANGED
+TZ=America/Los_Angeles  %cI                ⇒ 2026-08-22T02:30:03+01:00   UNCHANGED
+TZ=Asia/Tokyo           %cd --date=local   ⇒ Sat Aug 22 10:30:03 2026    THIS one moves
+```
+
+⇒ ⛔ **So "an error in whichever direction the OPERATOR sits" is false — the operator does not enter
+into it.** ★ **A Tokyo-authored commit carries `+09:00`, and a reader sitting in UTC mis-compares by
+nine hours WITHOUT LEAVING UTC.** ⚠ **The skew belongs to the COMMIT, not to the reader.**
+
+★★ **This entry's own thesis, one level down: nine panes on one machine means committer-zone and
+operator-zone are always equal here, so the wrong explanation produced right answers every time.**
+⛔ **Right by coincidence of TOPOLOGY.** *(Found by TEAMLEAD on this entry, 2026-08-23, by varying
+`TZ` — the control the first version did not run.)*
+
+**The normalising form, and why it works:**
+
+```
+TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ 2fa1a3b
+  ⇒ 2026-08-22T01:30:03Z
+```
+
+⚠ **`format-local` DOES honour `TZ` — the opposite property from `%cI`, which is the whole reason it
+works.** ⛔ **And the trailing `Z` is a LITERAL, not a computed zone: drop the `TZ=UTC` prefix under
+`Asia/Tokyo` and it prints `2026-08-22T10:30:03Z`** — well-formed, confidently wrong, and it will
+compare cleanly against anything. ★ **The `TZ=UTC` is load-bearing, not decoration.**
+
+★ **The remedy is TEAMLEAD's and it does not involve a clock:** `git merge-tree --write-tree` →
+`commit-tree` → `worktree add --detach` → **run the CURRENT gate against the actual merge result** —
+with a control that the new leg is *present* in that tree, **because running a new gate against a
+tree that lacks it prints a clean pass, and a clean pass is what you are looking for.**
+
+⚠ **Read that control's EXIT CODE, not its stdout.** ⛔ **`grep -c` has THREE outcomes and only two
+are distinguishable on stdout:**
+
+```
+match       stdout="1"   rc=0
+no match    stdout="0"   rc=1
+unreadable  stdout=""    rc=2      ⇐ and "" is not 0, but `n=$(grep -c …)` swallows it either way
+```
+
+⇒ ★ **A presence control reading only stdout cannot tell ABSENT from UNREADABLE**, and a missing
+file is exactly the state a freshly-constructed worktree can be in. **Use `grep -c … ; rc=$?` and
+treat `rc=2` as VOID.** *(TEAMLEAD, against their own published control.)*
+
+⚠ **REPRODUCING THE MEASUREMENT ABOVE AFTER #570 MERGED: `merge-base` no longer denotes what it did.**
+Before the merge it was `e66aeb4`, a fork point; now it is `894869b`, **which IS the head** — once a
+PR lands, its head is an ancestor of `main` and the merge-base collapses onto it. ⛔ **The verdict is
+`FALSE` either way, so the command still agrees** — ★ **and agreement from a command that is now
+answering a different question is not confirmation.**
+
+⛔ **Why it never looked wrong: the gate rarely changes and the queue is usually drained between
+changes, so the timestamp and the ancestry AGREE almost always.** ★ **A guard that is right by
+coincidence of scheduling is indistinguishable from one that is right by construction — until the two
+propositions come apart once.** *(#570; the same instrument refuted the two-dot guard 5 the same day.)*
+
 ⛔ **AND EVERY `first:N` WINDOW IS A SILENT TRUNCATION UNTIL COMPARED TO `totalCount`.** Both windows in its query were unchecked. Measured 2026-08-21 on Blazing-Back: `branchProtectionRules` **totalCount 1** (window 5) and `contexts` **totalCount 56–57** (window 100). ⇒ Neither bound, so nothing was wrong — **but 57 of 100 is not margin**, and nothing would have said so when it did. `totalCount` sits in the *same response* as the `nodes` window, which makes not reading it inexcusable rather than merely unlucky. ★★ **The two truncations are not the same severity and are handled differently on purpose:** a dropped **protection rule** decides *which contexts are required*, so it does not shrink the answer — **it redefines the question**, and the output looks identical ⇒ **fatal, exit 2**. A dropped **context** loses rows from one PR ⇒ named, and every count becomes a **lower bound**. ⚠ Pinned behaviourally by exit code, not by source text — the first version of those checks asserted strings in the file and **would have passed against a comment**.
 
 **`established.py`** — ⛔ **four instruments needed this in one day**, each rediscovering it and each shipping without it first: **0 API calls** read as restraint (the meter was *exhausted*), **0 current red checks** read as a clean board (*nothing had re-run*), **0 untouched issues** read as full coverage (*the query failed*), **0 conflicts** read as no collisions (*the heads were never fetched*). ★ **The shape, once instead of four times: an observation is `OUTCOME ∧ EXECUTION`**, and when the execution did not happen the outcome is not a reading — **the number looks identical in both cases.** ⚠ **And every one fails toward reassurance**, which is why it has to be structural rather than remembered: nobody double-checks a clean result, and that is exactly when it fires. ⇒ A refusal is **falsy but not `None` and not `== 0`**, so `if result:` skips it and `is None` / `== 0` do not silently absorb it. ⚠ **A stated limit, pinned in the suite rather than discovered later:** `or 0` still defeats it — falsiness is exactly what makes `if` safe and `or` unsafe, and no value is both. Use `isinstance(x, NotEstablished)`. ⛔ And the witness must be about the **execution**, never the value: `established(0, count == 0, …)` is always-true nonsense, kept as a known-bad control because it cannot be detected at runtime.
