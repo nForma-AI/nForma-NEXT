@@ -1185,9 +1185,32 @@ TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ 2fa1a3b
 ```
 
 ⚠ **`format-local` DOES honour `TZ` — the opposite property from `%cI`, which is the whole reason it
-works.** ⛔ **And the trailing `Z` is a LITERAL, not a computed zone: drop the `TZ=UTC` prefix under
-`Asia/Tokyo` and it prints `2026-08-22T10:30:03Z`** — well-formed, confidently wrong, and it will
-compare cleanly against anything. ★ **The `TZ=UTC` is load-bearing, not decoration.**
+works.** ⛔ **But the trailing `Z` is a LITERAL, not a computed zone**, and that makes the whole form
+a warning rather than a guarantee:
+
+```
+TZ=UTC                  --date=format-local:%Y-%m-%dT%H:%M:%SZ  ⇒ 2026-08-22T01:30:03Z       ✅
+TZ=Asia/Tokyo           same command                            ⇒ 2026-08-22T10:30:03Z       ⛔
+TZ=America/Los_Angeles  same command                            ⇒ 2026-08-21T18:30:03Z       ⛔
+```
+
+⇒ ⛔ **Two of three are well-formed, confidently wrong, and compare cleanly against real UTC.** The
+`TZ=UTC` prefix is load-bearing, and *"remember the prefix"* is **PRINCIPLE-shaped** — the shape that
+binds 0 of 5 times in this repository.
+
+★★ **SO PREFER THE FORM THAT CANNOT LIE.** `--date=iso-strict-local` **COMPUTES** the offset instead
+of taking it from your format string, so it labels itself:
+
+```
+TZ=UTC                  --date=iso-strict-local  ⇒ 2026-08-22T01:30:03Z
+TZ=Asia/Tokyo           --date=iso-strict-local  ⇒ 2026-08-22T10:30:03+09:00
+TZ=America/Los_Angeles  --date=iso-strict-local  ⇒ 2026-08-21T18:30:03-07:00
+```
+
+⇒ ★ **Same answer when `TZ` is right; VISIBLY different when `TZ` is wrong, instead of silently.**
+⚠ **This does not remove the need to normalise — it removes the failure mode where you cannot tell
+that you didn't.** *(Measured 2026-08-23 on `2fa1a3b`, one git, one machine; re-run before relying
+on the mode name.)*
 
 ★ **The remedy is TEAMLEAD's and it does not involve a clock:** `git merge-tree --write-tree` →
 `commit-tree` → `worktree add --detach` → **run the CURRENT gate against the actual merge result** —
