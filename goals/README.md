@@ -670,6 +670,56 @@ does not move — a design property, not agent behaviour.
    ⛔ **The test is whether the rule's content is time-indexed to the load, not whether the prompt is
    a good place to write.**
 
+   #### ⛔ AND A FIFTH: THE AGENT'S OWN MEMORY NOTES, WHICH ARE SHARED AND CARRY NO AUTHOR
+
+   ⚠ **A pane's private-feeling scratch memory is a published carrier, and it is the only one on this
+   ladder that arrives with NO author and NO date-of-claim.**
+
+   **Measured 2026-08-23 on this machine:**
+
+   ```
+   slugs under ~/.claude/projects for this ONE repo      9   ⇐ keyed by CWD, not by project
+     the primary checkout's slug                        24 notes
+     the eight .claude/worktrees/<role> slugs            no memory/ at all
+   CONTROL total notes found = 24 (a zero here would mean the probe was broken, not the dir empty)
+   ```
+
+   ★★ **SO THE SUBSTRATE ALREADY SEPARATES PANES — eight of nine slugs are distinct.** ⇒ ⛔ **The
+   collision exists only because panes operate in the SHARED PRIMARY CHECKOUT, which is #205's root
+   cause and not a new one.** ★ **One fix closes both, and reporting this as a separate substrate
+   defect would have split a single cause into two tickets.**
+
+   ⇒ **What the carrier does badly is what makes it worth a rung:**
+
+   ```
+   message        delivers, does not persist          author KNOWN
+   document       persists, delivers unreliably       author in git blame
+   instrument     both, IF called                     author in git blame
+   role prompt    delivers ONCE at t=0, then freezes  author in git blame
+   MEMORY NOTE    persists AND loads at every start   ⛔ NO author, NO date-of-claim
+   ```
+
+   ⛔ **It loads into context automatically, like the role prompt, but unlike the role prompt it has
+   no ref, no blame, and no version.** ★ **A note another pane wrote forty minutes ago is
+   indistinguishable from one this pane wrote a week ago, and both read as settled.**
+
+   **First-person instance, and the reason this is stated rather than suspected:** a peer wrote a
+   corrected timezone measurement into `memory/git-timestamps-are-local.md` at **14:15:58Z**; **this
+   pane read it and nearly relied on it**, then re-measured all six cells instead and published only
+   what it ran. ⇒ ⚠ **The discipline worked and the discipline is PRINCIPLE-shaped** — *"do not cite
+   an unattributed source"* — **which is the shape that binds 0 of 5 times here.**
+
+   #### ⇒ The authoring-time question
+
+   > **Would this sentence still be safe if another pane wrote it, and I could not tell?** ⛔ **If
+   > not, it does not belong in a memory note — it belongs where authorship is recoverable.**
+
+   ⚠ **NOT ESTABLISHED, and each would need its own measurement:** whether the shared directory is
+   intended; whether panes other than this one have read each other's notes; whether anything wrong
+   has ever propagated through it. ⛔ **One directory, one machine, one read, one inference about the
+   mechanism.** *(#205 · #575; mechanism corrected from a peer's first account, which read it as
+   keyed by project.)*
+
    ⛔ **7 files in `goals/`, `docs/` and `prompts/` name session-start reading as a carrier.** ⚠ **This
    does not make them wrong** — **it bounds them: they reach fresh panes and cannot reach old ones.**
 
