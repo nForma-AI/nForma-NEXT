@@ -1136,6 +1136,38 @@ which is #345's *noun with no shared definition* one layer down, and the mismatc
 
 **`check-freshness.py`** — ⛔ **a red check is evidence about the MOMENT IT RAN, not about now.** Measured 2026-08-20 on 56 open PRs: **65 failing required checks, 54 of them completed BEFORE the resource they depend on recovered** — **83% of the board's red was a measurement taken under conditions that no longer held**, and the fleet spent hours treating it as 49 defects. ★ **Base freshness does not detect this**: PRs zero commits behind main failed required checks at **88%**, stale ones at **86%** — indistinguishable. A PR can sit exactly on main's tip while its checks are four hours old. ⇒ Three quantities that all sound like *"is this PR current"* — the **head commit date**, the **merge-base distance**, and the **check's `completedAt`** — and only the third mattered. ⚠ `--since` is **required and never defaulted**: only the caller knows when the condition changed, and a default would manufacture a verdict from an arbitrary clock. ⛔ A `STALE` verdict does **not** mean the PR passes — it means the evidence predates the change and cannot speak to now; **re-running produces evidence, reading does not.** ⚠ And `UNDATED` is **not** old: a check with no completion time has not been dated, and bucketing it as stale would quietly enlarge the safe-to-ignore pile.
 
+⛔ **AND THE COUNTER-CASE, BECAUSE THE ENTRY ABOVE POINTS A READER AT `completedAt` AND THERE IS A
+QUESTION IT CANNOT ANSWER.** ★ *"Only the third mattered"* is true of **is this evidence current**. It
+is false of **did this check EXECUTE the current gate** — and the two sound identical at the call
+site. ⚠ **Measured 2026-08-22 on `#570`, by TEAMLEAD, in their own merge guard:**
+
+```
+gate changed   2fa1a3b   2026-08-22T01:30:03Z
+check finished           2026-08-22T01:33:26Z    ⇒ 3m23s LATER, so the clock says PASS
+git merge-base --is-ancestor 2fa1a3b <merge-base>   ⇒ FALSE
+                                                   ⇒ the gate change was NOT in the tested tree
+```
+
+⇒ ⛔ **The check finished three minutes after the new gate landed and ran the OLD gate anyway.**
+★ **Class C in a guard: the proposition needed was *did it execute this code*, the proposition
+measured was *did it finish after this code was committed*. Both are about the gate and about time,
+and only one is answerable by a timestamp.**
+
+⚠⚠ **A SECOND TRAP SITS ON TOP OF THE FIRST, and it is why the wrong question also gets a wrong
+answer:** `git log --format=%cI` prints **LOCAL** time (`02:30:03+01:00` here) and the GitHub API
+prints **UTC** (`01:33:26Z`). ⇒ **Comparing them unnormalised is a one-hour error in whichever
+direction the operator happens to sit.**
+
+★ **The remedy is TEAMLEAD's and it does not involve a clock:** `git merge-tree --write-tree` →
+`commit-tree` → `worktree add --detach` → **run the CURRENT gate against the actual merge result** —
+with a control that the new leg is *present* in that tree (`grep -c` ⇒ 2), **because running a new
+gate against a tree that lacks it prints a clean pass, and a clean pass is what you are looking for.**
+
+⛔ **Why it never looked wrong: the gate rarely changes and the queue is usually drained between
+changes, so the timestamp and the ancestry AGREE almost always.** ★ **A guard that is right by
+coincidence of scheduling is indistinguishable from one that is right by construction — until the two
+propositions come apart once.** *(#570; the same instrument refuted the two-dot guard 5 the same day.)*
+
 ⛔ **AND EVERY `first:N` WINDOW IS A SILENT TRUNCATION UNTIL COMPARED TO `totalCount`.** Both windows in its query were unchecked. Measured 2026-08-21 on Blazing-Back: `branchProtectionRules` **totalCount 1** (window 5) and `contexts` **totalCount 56–57** (window 100). ⇒ Neither bound, so nothing was wrong — **but 57 of 100 is not margin**, and nothing would have said so when it did. `totalCount` sits in the *same response* as the `nodes` window, which makes not reading it inexcusable rather than merely unlucky. ★★ **The two truncations are not the same severity and are handled differently on purpose:** a dropped **protection rule** decides *which contexts are required*, so it does not shrink the answer — **it redefines the question**, and the output looks identical ⇒ **fatal, exit 2**. A dropped **context** loses rows from one PR ⇒ named, and every count becomes a **lower bound**. ⚠ Pinned behaviourally by exit code, not by source text — the first version of those checks asserted strings in the file and **would have passed against a comment**.
 
 **`established.py`** — ⛔ **four instruments needed this in one day**, each rediscovering it and each shipping without it first: **0 API calls** read as restraint (the meter was *exhausted*), **0 current red checks** read as a clean board (*nothing had re-run*), **0 untouched issues** read as full coverage (*the query failed*), **0 conflicts** read as no collisions (*the heads were never fetched*). ★ **The shape, once instead of four times: an observation is `OUTCOME ∧ EXECUTION`**, and when the execution did not happen the outcome is not a reading — **the number looks identical in both cases.** ⚠ **And every one fails toward reassurance**, which is why it has to be structural rather than remembered: nobody double-checks a clean result, and that is exactly when it fires. ⇒ A refusal is **falsy but not `None` and not `== 0`**, so `if result:` skips it and `is None` / `== 0` do not silently absorb it. ⚠ **A stated limit, pinned in the suite rather than discovered later:** `or 0` still defeats it — falsiness is exactly what makes `if` safe and `or` unsafe, and no value is both. Use `isinstance(x, NotEstablished)`. ⛔ And the witness must be about the **execution**, never the value: `established(0, count == 0, …)` is always-true nonsense, kept as a known-bad control because it cannot be detected at runtime.
