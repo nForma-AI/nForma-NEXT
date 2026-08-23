@@ -540,6 +540,67 @@ does not move — a design property, not agent behaviour.
    catchers are why.** ★ **It says the catcher is part of the rule, not a fallback**, and a principle
    shipped alone has shipped without the half that makes it hold.
 
+   #### ⛔ THE CATCHER BINDS ONLY OVER THE POPULATION ITS CHANNEL CAN SEE
+
+   ⚠ **This is a boundary condition on the rule immediately above, found by testing it rather than
+   by doubting it.** ⇒ **An event-attached catcher can be present, current, correct, and CONFIRM the
+   claim it was built to refute.**
+
+   **The case.** `CLAUDE.md` on `origin/main` carries a struck line and the reason it was struck:
+
+   ```
+   ⛔ ~~No CI.~~ FALSE since 2026-08-20 — CI exists and GATES.
+      ⇒ scripts/check-orientation.py now re-measures this one.
+   ```
+
+   ★ **That is the strongest shape in this document: a decayed claim, given an event-attached
+   catcher, by an author who had already been burned by it.** ⛔ **Run it in a stale checkout and it
+   passes the refuted claim:**
+
+   ```
+   same tree (a163854), two gate versions
+     the tree's OWN check-orientation.py         exit 0
+     origin/main's check-orientation.py          "workflow files present : 0"
+                                                 "un-struck 'no CI' lines: 1"
+                                                 "⇒ claim and world agree: no workflows, claim stands"
+
+   .github/workflows/ at a163854   0 files
+   .github/workflows/ at e66aeb4   1 file
+   ```
+
+   ⇒ ⛔ **The catcher is not broken and did not drift. It counted `.github/workflows/` in the tree it
+   was run from, and in THAT tree the claim is TRUE.**
+
+   ★ **THE CLAIM'S POPULATION IS THE REPOSITORY. THE MEASUREMENT'S POPULATION IS THE CHECKOUT.**
+   ⇒ **They are the same sentence only while the checkout is current, and nothing in the output says
+   which one you are holding.**
+
+   ⚠ **Why this is not just "pull more often."** ⛔ **A stale checkout is SELF-CONSISTENT.** The gate,
+   the doctrine it guards, and the world it measures are all the same age, so **every internal check
+   agrees** — and agreement is the signal a reader trusts. ★ **The staler the tree, the more
+   coherent it looks.**
+
+   #### ⇒ What this adds to the closure bar
+
+   **Criterion 5 already demands the CHANNEL be pinned to the proposition.** ⚠ **This is the case
+   that shows WHY, and it is not the usual one:** the channel was not wrong, unavailable, or
+   ambiguous — **it was a working tree, which every reader assumes is the repository and which
+   silently is not.**
+
+   > **A catcher that reads the filesystem is measuring ONE CHECKOUT. If the claim is about the
+   > repository, say the ref, or the catcher answers a smaller question with the bigger question's
+   > confidence.**
+
+   ⚠ **What this does NOT say:** ⛔ **not that event-attached rules are weak** — they still bind 3 of
+   3 here, and this one *would* have fired on a current tree. **It says the shape decides whether a
+   rule can bind, and the CHANNEL decides what it binds OVER — two separate questions, and only the
+   first was written down.**
+
+   ⚠ **n = 1, one claim, one gate, one machine, and I found it sideways** — I copied a script out of
+   the shared checkout, got a 276-line file where `origin/main` has 1155, and produced an 894-line
+   deletion. **The exposure is measured in #205; the resulting-error count is zero and I am not
+   claiming otherwise.** *(measured 2026-08-22 at `e66aeb4` vs `a163854`; #205 · #29 · #272.)*
+
    ⚠ **n is 5 + 1, one pane, one day, and the confound is not removable from this data:** the
    ordering was the author's most RECENT rule as well as the only procedural one. ⛔ **Recency is
    fully consistent with the result.** ★ **What argues against it: the five failures were recent
