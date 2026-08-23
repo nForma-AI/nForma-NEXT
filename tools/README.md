@@ -2239,13 +2239,18 @@ author of this note did exactly that and was one step from reading the silence a
 
   **Swept 2026-08-21 — 6 of 19 author-facing instruments resolved, named rather than counted:**
 
+  ⇒ ⚠ **`check-orientation.py` moved ⛔ → ✅ on 2026-08-23** when its population widened (#272). The
+  fix was not a new print statement: **widening the population forced enumeration**, because a count
+  over 34 files is useless without saying which. ⇒ *The sweep's own thesis, arrived at from the
+  other direction — enumeration is what a wider population makes unavoidable.*
+
   | instrument | failure path | states the accepted form |
   |---|---|---|
   | `tools.yml` fleet-dependent step | reached | ✅ reprints the author's `$why` |
   | `tools.yml` hermetic step | reached | ⛔ no |
   | `close-condition-scan.py` | reached | ⛔ no — `Done when` ×0, no anchoring or body guidance |
   | `check-goal-conformance.py` | reached | ⛔ no — `SCOPE:` ×0 on the MENTION-ONLY line |
-  | `check-orientation.py` | reached | ⛔ no — says *un-struck*, never shows `~~…~~` or `FALSE` |
+  | `check-orientation.py` | reached | ✅ enumerates `file:line` + prints both accepted forms (#272) |
   | `fleet-state.py` | reached | ⛔ no — and its **unit** is unpublished (see below) |
 
   ★ **SWEEP COMPLETED TO 11 OF 19, and the split is not about care — it is ENUMERATE vs SUMMARISE.**
@@ -2256,7 +2261,8 @@ author of this note did exactly that and was one step from reading the silence a
   | ✅ | `doctrine-watch.py` | `watermark` ×22 |
   | ✅ | `bootstrap-audit.py` | `ROLE-READY` ×9 |
   | ✅ | `pipe-exit-scan.py` | names `PIPESTATUS` |
-  | ⛔ | `close-condition-scan` · `check-goal-conformance` · `check-orientation` · `fleet-state` · `tools.yml` hermetic step · `reference-check` · `index-watch` | 0 |
+  | ✅ | `check-orientation.py` | enumerates `file:line`, then names both correction forms |
+  | ⛔ | `close-condition-scan` · `check-goal-conformance` · `fleet-state` · `tools.yml` hermetic step · `reference-check` · `index-watch` | 0 |
 
   ⇒ **Every tool that PASSES enumerates its instances; every tool that FAILS prints a verdict or a
   count.** Enumerating reprints the author's own text **for free** — the marker has to appear because

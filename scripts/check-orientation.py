@@ -22,6 +22,7 @@ Exit: 0 all pointers resolve · 1 at least one is dangling · 2 established noth
 """
 import argparse
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -75,6 +76,42 @@ def main():
         assert missing_probe, "existence probe cannot detect a missing file"
         print("self-test ok — extractor skips templates, dedupes, and the probe can fail")
 
+        # ── no_ci_hits(): the population widening (#272) ────────────────────────────
+        # ⚠ Prove the failure path here too. Every one of these fails on a plausible
+        # wrong implementation, and the fourth fails on the one this file shipped first.
+        assert no_ci_hits("this repo has no CI today") == [(1, "this repo has no CI today")], \
+            "a plain-prose claim must be FOUND"
+        assert no_ci_hits("```\nsays: no CI\n```") == [], \
+            "a claim inside a fence is a transcript — a MENTION, not an assertion"
+        assert no_ci_hits("the `no CI` calibration decayed") == [], \
+            "a claim inside an inline span is a citation — a MENTION"
+
+        # ⛔⛔ THE REGRESSION CONTROL, AND IT TOOK THREE TRIES TO MAKE IT SHARP.
+        # The first draft matched inline spans with `re.S`. Backticks are everywhere in
+        # markdown, so an UNBALANCED one pairs with another far below and blanks
+        # everything between. Measured on PR #572's tools/README.md: 72% of the file
+        # erased, taking the claim this function exists to catch.
+        #
+        # ★ That draft PASSED the whole-corpus known-negative — a checker that reads
+        # nothing reports zero findings, byte-identically to one that read everything.
+        #
+        # ⚠ Two earlier fixtures here were NOT controls: a well-formed fenced document
+        # is stripped identically by the broken and the correct pattern, so both passed.
+        # The trigger is an UNBALANCED backtick spanning the claim, which is why this
+        # fixture is shaped the way it is and not the obvious way.
+        unbalanced = "see `opt\n\nand this repo has no CI.\n\nand `end`\n"
+        assert no_ci_hits(unbalanced) == [(3, "and this repo has no CI.")], \
+            "an unbalanced backtick blanked a real claim below it"
+
+        # Section scope: a correction anywhere in the section retracts the claim…
+        assert no_ci_hits("## h\nthis repo has no CI\n\n⛔ STALE AS OF 2026-08-20\n") == [], \
+            "a `⛔ STALE AS OF` block must retract the claim above it"
+        # …and does NOT reach into a different section.
+        two = "## a\nno CI here\n\n⛔ STALE AS OF x\n\n## b\nno CI here too\n"
+        assert no_ci_hits(two) == [(7, "no CI here too")], \
+            "a correction must not silence a claim in another section"
+        print("self-test ok — no_ci_hits separates use from mention and survives fences")
+
     if not paths:
         print("VOID  extracted 0 paths from CLAUDE.md", file=sys.stderr)
         print("      the pointer syntax changed, or the file no longer carries a map;", file=sys.stderr)
@@ -89,8 +126,18 @@ def main():
     print("⚠ Checks existence only. It does not establish that a pointer still leads to what "
           "CLAUDE.md says is there.")
 
-    decayed = check_no_ci_claim()
+    ci_claim = check_no_ci_claim()
     unpinned = check_pin_doctrine()
+
+    # ⛔ VOID IS NOT A PASS AND NOT A FAILURE. If the tracked-*.md population could not
+    # be enumerated, this script established NOTHING about the No-CI claim — and 2 is
+    # this repository's word for that. Folding it into 0 would report "claim and world
+    # agree" on a run that never opened a file.
+    if ci_claim == "void":
+        print("\n⛔ established nothing about the No-CI claim — exit 2, NOT a clean run.",
+              file=sys.stderr)
+        return 2
+    decayed = ci_claim == "decayed"
 
     if missing:
         print("\nCLAUDE.md points at paths that do not exist:", file=sys.stderr)
@@ -117,52 +164,167 @@ def main():
 # ⚠ Scope, stated: this re-measures ONE claim. It is not a general calibration
 # checker and must not be read as one — every other dated fact in CLAUDE.md still
 # relies on a reader.
+def _tracked_markdown():
+    """Every tracked `*.md` path, or None when the population cannot be established.
+
+    ⛔ RETURNS None RATHER THAN FALLING BACK TO A FILESYSTEM WALK, and the refusal is
+    the design. `ROOT.rglob("*.md")` descends into `.claude/worktrees/`, where ELEVEN
+    sibling checkouts each hold their own CLAUDE.md at their own age. So the fallback
+    does not scan a WIDER population than git — it scans a DIFFERENT one, in which
+    every stale sibling asserts the falsified claim and the checker fires forever on
+    files nobody is editing.
+
+    ⇒ A checker whose population silently changes under it is worse than one that
+    refuses, because the verdict keeps arriving and stops meaning anything.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(ROOT), "ls-files", "-z", "--", "*.md"],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    names = [n for n in out.stdout.split("\0") if n]
+    return names or None
+
+
+# ⛔ ORDER MATTERS, AND `re.S` ON THE INLINE SPAN IS A MEASURED DEFECT, NOT A STYLE
+# CHOICE. The first draft of this widening used one pattern `"[^"]*"|`[^`]*`` with
+# re.S. Backticks are everywhere in markdown, so that pairs a fence-opening backtick
+# with one thousands of characters later and blanks everything between. Measured on
+# PR #572's tools/README.md: **72% of the file erased**, taking with it the very claim
+# this function exists to catch.
+#
+# ★ AND THE KNOWN-NEGATIVE STILL PASSED. A checker that reads nothing reports zero
+# findings, byte-identically to one that read everything and found nothing. ⇒ The clean
+# run was not evidence. Only the known-positive separated them — which is this
+# repository's own rule about preferring the control whose failure mode is a false PASS.
+_FENCE = re.compile(r"^[ \t]*```.*?^[ \t]*```", re.S | re.M)
+_INLINE = re.compile(r"`[^`\n]*`")          # ⚠ no re.S: an inline span cannot cross a line
+_DQUOTE = re.compile(r'"[^"]*"', re.S)
+_CLAIM = re.compile(r"\bno CI\b|[Zz]ero workflow", re.I)
+# ⚠ A TIGHT, ENUMERATED SET. Loose words ("no longer", "superseded") would let ordinary
+# prose silence a live claim. These four are the markers this corpus actually uses.
+_CORRECTED = re.compile(r"~~|FALSE|STALE AS OF|INVERTED")
+
+
+def _blank(m):
+    """Blank a span, preserving line count and column offsets.
+
+    ⛔ Collapsing a multi-line span to a single space renumbers every line beneath it,
+    so the `file:line` this module prints would be precise-looking and false — the
+    failure `goals/` names as citing by position instead of by content.
+    """
+    return re.sub(r"[^\n]", " ", m.group(0))
+
+
+def _strip_mentions(text):
+    """Fences (transcripts, sample output), then inline spans, then quotes."""
+    return _DQUOTE.sub(_blank, _INLINE.sub(_blank, _FENCE.sub(_blank, text)))
+
+
+def no_ci_hits(text):
+    """[(lineno, line)] for un-struck 'no CI' assertions in one markdown document.
+
+    ⛔ THE EXCLUSION IS SECTION-SCOPED, NOT PER-LINE, AND THE CORPUS FORCES IT. This
+    repository retracts a decayed claim in TWO shapes, measured 2026-08-23 on main:
+
+        CLAUDE.md                       inline   ⛔ **~~No CI.~~ FALSE since 2026-08-20**
+        goals/devops-…-fleet.md:140     a BLOCK  claim on 140, `⛔ STALE AS OF` on 143
+
+    A per-line test sees the first and not the second, so widening the population
+    without widening the exclusion reports a correctly-corrected file as a live defect —
+    the remedy manufacturing its own false positives (#36) one layer above where this
+    module already documents doing exactly that.
+
+    ⚠ THE COST, STATED: a section holding one corrected claim and one live claim masks
+    the live one. That is a real false negative, and it is the price of not red-flagging
+    every correctly-corrected file. ⇒ Read a clean section as *this section carries a
+    correction*, never as *this section makes no claim*.
+    """
+    lines = _strip_mentions(text).splitlines()
+    heads = [i for i, ln in enumerate(lines) if ln.lstrip().startswith("#")]
+    hits = []
+    for i, ln in enumerate(lines):
+        if not _CLAIM.search(ln):
+            continue
+        lo = max([h for h in heads if h <= i], default=0)
+        hi = min([h for h in heads if h > i], default=len(lines))
+        if _CORRECTED.search("\n".join(lines[lo:hi])):
+            continue
+        hits.append((i + 1, ln.strip()))
+    return hits
+
+
 def check_no_ci_claim():
-    """True if CLAUDE.md still asserts 'no CI' while workflows exist."""
+    """'decayed' | 'clean' | 'void' — does any tracked .md still assert 'no CI'?
+
+    ⛔ THE POPULATION WAS `CLAUDE.md` ALONE, AND THAT WAS THE DEFECT (#272).
+
+    #272's close condition declared a POPULATION of *every tracked `*.md` that asserts
+    this repository has no CI* and a CHANNEL of this script — which opened one file. The
+    gap was written into that issue as its own proxy test (*"a NEW file asserting no-CI
+    would satisfy every criterion and leave the defect live"*), and then it arrived: PR
+    #572 reinstates the struck sentence in `tools/README.md`, a file this checker did
+    not open.
+
+    ★ A catcher binds only over the population its CHANNEL can see (#573). Declaring the
+    wider population does not widen it — the declaration and the glob are two states
+    that must be shown to agree, not one.
+    """
     wf = sorted((ROOT / ".github" / "workflows").glob("*.y*ml")) \
         if (ROOT / ".github" / "workflows").is_dir() else []
-    try:
-        text = (ROOT / "CLAUDE.md").read_text(errors="replace")
-    except OSError:
-        print("\n⛔ CLAUDE.md unreadable — the No-CI claim is UNCHECKED, not absent.",
-              file=sys.stderr)
-        return False
-    # An asserted claim, not a struck one. `~~No CI.~~` and a line marked FALSE are
-    # corrections; they must not trip this.
-    # ⛔⛔ STRIP QUOTED SPANS FIRST — MULTI-LINE. A correction must QUOTE the false
-    # claim to explain it, so a corrected file necessarily contains the string this
-    # checker hunts. Measured: the first version of this function fired on this
-    # repository's own correction, matching the commit message it cites
-    # ("…had no CI, so 23 instruments…") — the population of false positives is
-    # created by the remedy (#36), in a detector written by the author of that
-    # finding, the same day.
-    #
-    # ★ Same rule as use-not-mention.py's command_positions(): remove quoted spans,
-    # then match what remains. A quotation cannot survive its own removal.
-    # ⚠ Spans are stripped across NEWLINES because the citation that fooled this
-    # opens on one line and closes on another — a per-line strip does not reach it.
-    QUOTED = re.compile(r'"[^"]*"', re.S)
-    stripped = QUOTED.sub(" ", text)
-    asserted = [ln for ln in stripped.splitlines()
-                if re.search(r"\bno CI\b|[Zz]ero workflow", ln)
-                and "~~" not in ln and "FALSE" not in ln]
+
+    files = _tracked_markdown()
+    if files is None:
+        print(f"\n  workflow files present : {len(wf)}")
+        print("  ⛔ VOID — could not enumerate tracked *.md (no git, or not a work tree).")
+        print("     The No-CI claim is UNCHECKED, not absent. Established nothing.")
+        return "void"
+
+    asserted = []
+    for name in files:
+        try:
+            text = (ROOT / name).read_text(errors="replace")
+        except OSError:
+            # ⛔ An unreadable member is not an absent claim. One file we could not open
+            # means the population was not covered, so the whole verdict is void.
+            print(f"\n  ⛔ VOID — {name} is unreadable; the population was not covered.")
+            return "void"
+        asserted += [(name, n, ln) for n, ln in no_ci_hits(text)]
+
     print(f"\n  workflow files present : {len(wf)}"
           f"{'  (' + ', '.join(f.name for f in wf) + ')' if wf else ''}")
+    print(f"  tracked *.md scanned   : {len(files)}")
     print(f"  un-struck 'no CI' lines: {len(asserted)}")
     if wf and asserted:
-        print("\n⛔ CLAUDE.md still asserts this repository has no CI, and it has "
-              f"{len(wf)} workflow file(s). The claim has DECAYED (#272):", file=sys.stderr)
-        for ln in asserted:
-            print(f"    {ln.strip()[:96]}", file=sys.stderr)
-        return True
+        print(f"\n⛔ {len(asserted)} tracked file(s) still assert this repository has no CI, "
+              f"and it has {len(wf)} workflow file(s). The claim has DECAYED (#272):",
+              file=sys.stderr)
+        for name, n, ln in asserted:
+            print(f"    {name}:{n}: {ln[:88]}", file=sys.stderr)
+        # ⛔ STATE THE ACCEPTED FORM ON THE FAILURE PATH. `tools/README.md`'s sweep put
+        # this instrument in the ⛔ column — *"says un-struck, never shows `~~…~~` or
+        # FALSE"* — and the finding there is that a guard which prints only a COUNT
+        # makes the author go hunting for the shape it wants. Enumerating the offending
+        # lines above reprints the author's own text for free; these two lines add the
+        # form, quoted from the corpus so the example is real and not invented.
+        print("\n   ⇒ ACCEPTED FORMS — retract in place, do not delete (both are live "
+              "on main):", file=sys.stderr)
+        print("     inline   ⛔ **~~No CI.~~ FALSE since 2026-08-20 — CI exists and GATES.**",
+              file=sys.stderr)
+        print("     a block  put `⛔ **STALE AS OF <date>**` under the claim, in the same "
+              "section", file=sys.stderr)
+        return "decayed"
     if not wf and asserted:
         print("  ⇒ claim and world agree: no workflows, claim stands")
     elif wf and not asserted:
         print("  ⇒ claim and world agree: workflows exist, no un-struck claim")
     else:
         print("  ⚠ no workflows and no claim — nothing asserted, nothing to check")
-    return False
-
+    return "clean"
 
 def check_pin_doctrine():
     """True if tools/README.md has LOST the correct directory-pin form (#291).
