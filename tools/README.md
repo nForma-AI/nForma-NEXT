@@ -1154,14 +1154,64 @@ measured was *did it finish after this code was committed*. Both are about the g
 and only one is answerable by a timestamp.**
 
 ⚠⚠ **A SECOND TRAP SITS ON TOP OF THE FIRST, and it is why the wrong question also gets a wrong
-answer:** `git log --format=%cI` prints **LOCAL** time (`02:30:03+01:00` here) and the GitHub API
-prints **UTC** (`01:33:26Z`). ⇒ **Comparing them unnormalised is a one-hour error in whichever
-direction the operator happens to sit.**
+answer:** `git log --format=%cI` prints `02:30:03+01:00` and the GitHub API prints `01:33:26Z`.
+⛔ **Comparing them unnormalised is a one-hour error HERE, and an arbitrary one elsewhere.**
+
+⛔ **AND NOT FOR THE REASON THIS ENTRY FIRST GAVE.** ★ **`%cI` is IMMUNE to `TZ`. It prints the
+offset STORED IN THE COMMIT — the committer's zone at commit time — so it does not follow the
+reader at all:**
+
+```
+TZ=UTC                  %cI                ⇒ 2026-08-22T02:30:03+01:00
+TZ=Asia/Tokyo           %cI                ⇒ 2026-08-22T02:30:03+01:00   UNCHANGED
+TZ=America/Los_Angeles  %cI                ⇒ 2026-08-22T02:30:03+01:00   UNCHANGED
+TZ=Asia/Tokyo           %cd --date=local   ⇒ Sat Aug 22 10:30:03 2026    THIS one moves
+```
+
+⇒ ⛔ **So "an error in whichever direction the OPERATOR sits" is false — the operator does not enter
+into it.** ★ **A Tokyo-authored commit carries `+09:00`, and a reader sitting in UTC mis-compares by
+nine hours WITHOUT LEAVING UTC.** ⚠ **The skew belongs to the COMMIT, not to the reader.**
+
+★★ **This entry's own thesis, one level down: nine panes on one machine means committer-zone and
+operator-zone are always equal here, so the wrong explanation produced right answers every time.**
+⛔ **Right by coincidence of TOPOLOGY.** *(Found by TEAMLEAD on this entry, 2026-08-23, by varying
+`TZ` — the control the first version did not run.)*
+
+**The normalising form, and why it works:**
+
+```
+TZ=UTC git log -1 --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ 2fa1a3b
+  ⇒ 2026-08-22T01:30:03Z
+```
+
+⚠ **`format-local` DOES honour `TZ` — the opposite property from `%cI`, which is the whole reason it
+works.** ⛔ **And the trailing `Z` is a LITERAL, not a computed zone: drop the `TZ=UTC` prefix under
+`Asia/Tokyo` and it prints `2026-08-22T10:30:03Z`** — well-formed, confidently wrong, and it will
+compare cleanly against anything. ★ **The `TZ=UTC` is load-bearing, not decoration.**
 
 ★ **The remedy is TEAMLEAD's and it does not involve a clock:** `git merge-tree --write-tree` →
 `commit-tree` → `worktree add --detach` → **run the CURRENT gate against the actual merge result** —
-with a control that the new leg is *present* in that tree (`grep -c` ⇒ 2), **because running a new
-gate against a tree that lacks it prints a clean pass, and a clean pass is what you are looking for.**
+with a control that the new leg is *present* in that tree, **because running a new gate against a
+tree that lacks it prints a clean pass, and a clean pass is what you are looking for.**
+
+⚠ **Read that control's EXIT CODE, not its stdout.** ⛔ **`grep -c` has THREE outcomes and only two
+are distinguishable on stdout:**
+
+```
+match       stdout="1"   rc=0
+no match    stdout="0"   rc=1
+unreadable  stdout=""    rc=2      ⇐ and "" is not 0, but `n=$(grep -c …)` swallows it either way
+```
+
+⇒ ★ **A presence control reading only stdout cannot tell ABSENT from UNREADABLE**, and a missing
+file is exactly the state a freshly-constructed worktree can be in. **Use `grep -c … ; rc=$?` and
+treat `rc=2` as VOID.** *(TEAMLEAD, against their own published control.)*
+
+⚠ **REPRODUCING THE MEASUREMENT ABOVE AFTER #570 MERGED: `merge-base` no longer denotes what it did.**
+Before the merge it was `e66aeb4`, a fork point; now it is `894869b`, **which IS the head** — once a
+PR lands, its head is an ancestor of `main` and the merge-base collapses onto it. ⛔ **The verdict is
+`FALSE` either way, so the command still agrees** — ★ **and agreement from a command that is now
+answering a different question is not confirmation.**
 
 ⛔ **Why it never looked wrong: the gate rarely changes and the queue is usually drained between
 changes, so the timestamp and the ancestry AGREE almost always.** ★ **A guard that is right by
