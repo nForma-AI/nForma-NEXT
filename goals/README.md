@@ -1270,6 +1270,60 @@ does not move — a design property, not agent behaviour.
    is the failure mode on the other side**, and *"if it becomes load-bearing it needs a different
    channel, not a wider sample of the same one"* is the correct standing disposition.
 
+   #### ⛔ A FOURTH COLLAPSE, AND IT ARRIVES WITH A GREEN CHECK: THE PARTITION THAT SUMS
+
+   ⚠ **A partition looks like the strongest check in this document — it is the shape tell (a) asks
+   for — and it can be a SINGLE predicate wearing two sides.**
+
+   **Measured 2026-08-23. TEAMLEAD published a signing accounting with a control:**
+
+   ```
+   TEAMLEAD 8 + ARCHITECT 2 + unsigned 15 = 25 = total *.md      ✅ BALANCES
+   ```
+
+   **Re-measured by a predicate that was not the one being partitioned — *does the file have
+   frontmatter* against *does it match `*.md`*:**
+
+   ```
+   notes (frontmatter present)   24        MEMORY.md first line "- [Determinism bel…"  ⇒ NO frontmatter
+   TEAMLEAD 8 · ARCHITECT 2 · unsigned 14  ⇒ 24 = 24
+   files without frontmatter      1        the INDEX — no frontmatter, never a claim
+   ```
+
+   ⇒ ⛔ **The unsigned count was 14, not 15. The index had been counted as an unsigned note.**
+
+   ★★ **AND THE CONTROL BALANCED BECAUSE BOTH SIDES DREW FROM THE SAME WRONG POPULATION.** ⇒ **`*.md`
+   and `grep -L` are the same glob, so the index landed on both sides of the equation and CANCELLED.**
+
+   > ⛔ **A PARTITION CANNOT DETECT AN ERROR THAT ENTERS THROUGH ITS OWN DENOMINATOR.**
+   > **Summing verifies the ARITHMETIC. The population is upstream of the arithmetic, and no amount
+   > of adding reaches it.**
+
+   ⚠ **This one is worse than neutral, which is why it earns its own entry: a BALANCED partition is
+   MORE convincing than an unbalanced one.** ⇒ **The check fired clean, in green, and the confidence
+   it produced was proportional to nothing.**
+
+   #### ⇒ Three control shapes, and only two are checkable at the moment you read them
+
+   ```
+   a NUMBER control   "found 0"            AMBIGUOUS — 0 is both a finding and a failure,
+                                           and the meaning must be written BEFORE the run
+   a NAME control     "MISSING <file>"     CHECKABLE — against a directory listing, on the spot
+   a BALANCE control  "8 + 2 + 15 = 25"    NEITHER — checkable only against the POPULATION,
+                                           which is the one thing it does not measure
+   ```
+
+   ★ **TEAMLEAD's operative form, and it is the remedy:**
+
+   > **State the population by a predicate that is NOT the one you are partitioning by.**
+   > **Two predicates over the same set, not one predicate summed — and the DISAGREEMENT is the
+   > finding.**
+
+   ⚠ **What this does NOT say:** ⛔ **not that partitions are worthless** — tell (a) catches real
+   population errors and this document is built on them. ★ **It says a partition is a control on the
+   COUNTING and never on the COUNTED**, and that the second predicate is what tell (a) has always
+   been silently assuming. *(n=1, one accounting, one machine; #356 · #576.)*
+
    #### ★ And the reciprocal arrived by EXECUTION: the re-check CONFIRMED the claim
 
    ⛔ **This section would be a machine for discrediting peers if downgrading were the only outcome it
