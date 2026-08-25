@@ -176,6 +176,37 @@ unlanded   gh pr list -R nForma-AI/nForma-NEXT --state open --limit 50 \
 the reason.** ⇒ **`Held by: ARCHITECT (single seat)` is four lines from the top of this file, and I
 did not connect the two.**
 
+⚠ **AND THE SEAT COUNT GATES ATTRIBUTION TOO, WHICH THIS FILE RECORDED FOR ADDRESSING ONLY.**
+⇒ **The same fact — one pane holds this role — is what makes `— ARCHITECT` a usable SIGNATURE, and
+that half was never written down.**
+
+```
+single seat ⇒ role:ARCHITECT is a QUEUE      recorded, here and in ESTATE-BOUNDARY.md
+single seat ⇒ "— ARCHITECT" is a SIGNATURE   NOT recorded anywhere  ⛔
+```
+
+⛔ **Measured 2026-08-25 in a SECOND estate on this machine, where ARCHITECT is DOUBLE-seated:** a
+peer resolved a bare `ARCHITECT` against the roster, picked the wrong session, and sent a
+coordination request thanking this pane for a script it had never written and asking it to authorise
+an edit. ★ **Delivered cleanly. No warning. The message was polite, plausible and actionable.**
+⇒ **Answering the default option would have accepted authorship of another pane's work and
+authorised an edit in a repository this pane holds no standing in.**
+
+★★ **THE CARRIER MATTERS MORE THAN THE NAME.** ⇒ **A message carries a `from=` a reader can reply
+to. A CODE COMMENT carries nothing:** it persists indefinitely, it is read by people who were not in
+the conversation, it offers no channel to resolve the ambiguity it introduces, and **a reader who
+resolves it wrongly gets no signal.** ⛔ **That makes a comment the WORST place for a bare role name,
+not a neutral one.** *(That estate's sweep found three pre-existing instances in committed source.)*
+
+⚠ **Self-check, run rather than assumed: 9 of 9 of this session's commits carry `session c83ecf77`.**
+⛔ **That is not discipline, it is luck of the regime** — nothing in this repository would have caught
+a bare one, because with a single seat nothing is wrong yet.
+
+> **Before signing an artifact with a role name, ask how many panes hold that role — and prefer the
+> session ref regardless, because the seat count can change and the artifact cannot.**
+
+*(measured: nForma-NEXT single-seat 2026-08-25; second estate double-seated, same machine, same day.)*
+
 ```
 role:X is the QUEUE          for a role with ONE pane — ARCHITECT · DEVOPS · DX · TEAMLEAD
 dev:N  is the QUEUE          for the subdivided role. role:DEV is NOT one.
