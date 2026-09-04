@@ -10,7 +10,7 @@ below is taken over it.**
 ```
 INSTRUMENT  ≡  a non-test executable directly under tools/, EXCLUDING quarantined subdirectories
 
-   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 57.  Run it; do not trust the number below.
+   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 58.  Run it; do not trust the number below.
 ```
 
 ⚠ **The first draft of this section declared 54 and published a command that returns 55** — off by the
@@ -18,18 +18,25 @@ single `.sh`. ⛔ **In the section whose entire purpose is removing that ambigui
 RUNNING the command rather than trusting it.** ★ **`merge-watch.sh` is an instrument; a definition
 that excludes it because of its extension is drawing the population around a file suffix.**
 
-**Measured 2026-08-22 at `e66aeb4`, one second, all six readings, so a reader meeting an older figure
-can place it:**
+**Re-measured 2026-09-04 on `cf263fe` + the `close-mechanism.py` pair, one second, all seven
+readings, so a reader meeting an older figure can place it:**
 
 ```
-top-level non-test executables (.py + .sh)  57   ⇐ THE DECLARED POPULATION
-  of which .py                              56   ⚠ every count published on 2026-08-21 used THIS subset
-top-level tools/*.py, including test_      112
-ALL .py under tools/ recursively           135
-ALL .py under tools/ excluding test_        76
-rows in the index table below               58
+top-level non-test executables (.py + .sh)  58   ⇐ THE DECLARED POPULATION
+  of which .py                              57   ⚠ every count published on 2026-08-21 used a SMALLER subset
+top-level tools/*.py, including test_      114
+ALL .py under tools/ recursively           137
+ALL .py under tools/ excluding test_        77
+rows in the index table below               60
 files under tools/teamlead/                 23   ⛔ QUARANTINED — belonging is an OPEN QUESTION
 ```
+
+⚠ **AND ONE ROW HAD ALREADY DRIFTED BEFORE THIS RE-MEASUREMENT, recorded as a PAIR rather than
+swapped out.** At `cf263fe`, *before* the `close-mechanism.py` pair was added, `rows in the index
+table below` measured **59** against a published **58** — reproduced by two independent readings
+(`grep -cE '^\| *`[a-z0-9._-]+\.(py|sh)`'` and `check-tools-index.py`'s own row count). The other
+six reproduced exactly. ⇒ **A block stamped "one second, all readings" decays row by row, not as a
+set**, and a reader who checks one row and finds it good has established nothing about the other six.
 
 ⛔ **ALL SEVEN of these drifted in ONE DAY** — 55→57, 54→56, 109→112, 132→135, 74→76, 57→58 — **and
 the sentence *"Run it; do not trust the number below"* did not catch any of them, because nothing ran
@@ -364,6 +371,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `marker-reachability.py` | can any CI invocation actually collect this test? | 0 all reachable · 1 unreachable found · **2 established nothing** |
 | `close-condition-scan.py` | which open issues carry no close condition — and which hide one in a comment? | 0 every open issue has one **in its body** · 1 `NONE` or `BURIED` found · **2 established nothing (failed query, empty board, or a truncated reading)** · **3 known-positive failed** · `--self-test` `--states` |
 | `runnable-condition.py` | can this close condition be RUN, or only agreed with? | 0 every condition RUNNABLE · 1 at least one ASSERTED · 2 established nothing · 3 control failed | ⚙ GENERATED-FROM: --states |
+| `close-mechanism.py` | what does closing each open issue REQUIRE — and can any pane do it? | 0 census produced · 1 at least one issue has NO close path reachable by any pane · **2 established nothing (empty population, truncated reading, or a single-bucket census)** · `--self-test` |
 | `states-index-check.py` | does a tool's README row agree with the exit codes the tool ITSELF emits? | 0 every tool exposing --states has a row agreeing with it · 1 a row disagrees with its tool's emitted exit codes · 2 established nothing: no tool exposes --states, or the index is unreadable · 3 CONTROL FAILED | ⚙ GENERATED-FROM: --states |
 | `truncation-guard.py` | can we show this reading was not truncated by a page bound? | 0 **SAFE** (bound known AND count strictly below it) · 1 **TRUNCATED** (count == bound) · **2 UNKNOWN — no bound determinable; ⛔ never read as SAFE** · **3 known-positive failed** · `--self-test` `--quiet` |
 | `probe-validity.py` | can this probe return the answer it did NOT return? | 0 **VALIDATED** (both controls fired, same template) · 1 **INVALID** — the probe cannot return an answer it must · **2 UNESTABLISHED (no case with a known answer exists)** · **3 own known-positive failed** · `--self-test` |
@@ -1095,6 +1103,8 @@ for six hours while merging two PRs from a transcript this machine does not hold
 ⛔ **AND A FULL WINDOW IS NOT A COMPLETE BOARD — measured LIVE on this tool's own default.** Blazing-Back had **61** open PRs; `--limit 50` returned exactly **50**. Eleven invisible — and because the product is **pairs**, the loss compounds: **1830 pairs → 1225, so 605 (33%) were never examined** and nothing said so. ★ **This file already carried the argument one level down**, about unfetched heads — *"a smaller number that looks like better news"* — and the guard was only on the inner window. **The same sentence is true of an unlisted PR.** ⇒ A saturated window is now **refused** (`exit 2`), not warned about, because every unlisted PR can only **remove** conflicts from the result: this is the one output whose error direction is always reassuring. ⚠ The test is `len(rows) >= limit`, **never** a comparison against an assumed total — the caller does not know the total, which is the whole problem. A board of *exactly* the window size is therefore also called saturated, and that is the safe error: it refuses a complete board rather than blessing an incomplete one.
 
 **`close-condition-scan.py`** — ⛔ built because **TEAMLEAD reported "~31 open issues lack completion conditions" and nothing had ever produced that number.** Measured on the first run: **61 of 85**, roughly double. An issue with no falsifiable close condition cannot be *closed*, only abandoned or declared, so the count decides how much of the board is closeable at all. ★ **The second state is why this is a tool and not a grep.** All five of one role's queued issues carried a `Done when` clause and **none carried it in the BODY** — every clause sat in a comment, three of them under six others. A closer who opens the issue and reads it sees no condition. ⇒ `BURIED` is therefore a **distinct verdict, not a weaker `NONE`**: the defect is different, the repair is different (move the clause into the body), and it is invisible to any check that asks only *does a condition exist somewhere*. Board-wide: **19 BURIED, and only 5 of 85 issues carry a condition where a closer reads it.** ⚠ **The pattern is anchored at line start**, so a clause must be a structural element rather than a phrase in a sentence — a bare substring match flags #189, a friction report *about* close conditions, as *having* one. That use-vs-mention case is the suite's load-bearing negative, and it is **shown to fail**: swapping the anchored regex for the naive substring form takes the self-test from 5/5 to exit 3. ⚠ Three ways to print a clean zero are all **exit 2** — a failed query, an empty board, and a reading shorter than the population `search/issues` states. ⛔ **A mistyped label is the sharp case: `gh issue list --label <nonexistent>` exits 0 with zero bytes on stdout AND stderr**, byte-identical to an empty queue, which is how a wake message routed a role to a label that did not exist. ⛔⛔ **THE BOUND: it detects PRESENCE, never FALSIFIABILITY.** `## Done when: it feels done` passes. Exit 0 means every open issue carries a clause in its body — never that any of them can be closed honestly.
+
+**`close-mechanism.py`** — ⛔ built because a 108-issue board offers no way to answer *what can move today?*, and the obvious axis is measured **wrong here twice**. #296 §5: *"'wrong proposition' is a GENUS, not a species — ~19 instances across 6 sub-shapes. Ruling on it as one class would itself have been an instance, and a remedy attaches to a sub-shape, never to the genus."* #87 was **closed** for the same reason: *a register organised by symptom keeps growing without becoming actionable, because no single remedy addresses six mechanisms.* ★ **The axis that works is CLOSE MECHANISM, and the board already wrote it down** — 91 of 108 open issues carry their own `Done when` block, so this reports **what each issue says about itself** rather than imposing a scheme. ⛔⛔ **That distinction is the whole design, because the alternative is measured and merged.** #165 PART 2c: a reviewer's four-state taxonomy became *a constraint on what the measurer reported* — *"I bent two measurements to fit a taxonomy rather than reporting that the taxonomy was short … it is in a merged artifact."* A derived reading cannot do that: an issue matching no blocker lands in the residual, **and the residual is printed as untrustworthy.** ⇒ **Verdicts OVERLAP by construction and the counts sum to more than the population**, because an issue can be a capture AND operator-terminal AND lack an instrument; a partition would pick one and hide two (#355). ⚠ **`NO-CALLER` and `NO-INSTRUMENT` are split deliberately** — wire a caller and build a tool are different repairs, and an exploratory pass that folded them under a bare `DOES NOT EXIST` over-reported 39 where the anchored form reads 22. ★ **Presence and truncation are DELEGATED, not re-implemented**: `close-condition-scan.py`'s `classify()`, `fetch()` and `stated_total()` are *called*, so its `BURIED` verdict and its `search/issues` truncation guard are this tool's (#405 — *a second implementation is the defect*). ⛔ **A mistyped label VOIDs**: `--label role:dev3` — #317's own specimen — exits 2 rather than reading as a clean board. ⛔ **A single-bucket census VOIDs** too, per `branch-census.py`'s rule: a census with one bucket has relabelled the population, not discriminated it. ⛔⛔ **THE BOUND, inherited whole:** it does not check whether a condition is FALSIFIABLE — `## Done when: it feels done` scores `ACTIONABLE` here. And a tag is derived from the **body**, so a claim withdrawn only in a comment still reads as live (#300). ⚠ **`ACTIONABLE` is a RESIDUAL** — defined by the absence of a matched blocker, never by readiness; a blocker phrased in words these patterns do not carry lands there and looks ready to work.
 
 **`runnable-condition.py`** — ⛔ built because `close-condition-scan.py` states its own limit:
 **PRESENCE ONLY**, so `## Done when: it feels done` scores `BODY`, and so did *"once the file
