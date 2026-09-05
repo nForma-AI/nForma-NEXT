@@ -15,6 +15,7 @@ test is the one the tool actually returns.
 import importlib.util
 import io
 import sys
+from datetime import datetime, timezone
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -30,6 +31,9 @@ def load():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+NOW_ISO = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def prd(base="main", gate="SUCCESS", reviews=None, state="OPEN",
@@ -221,6 +225,24 @@ class ExitContract(unittest.TestCase):
         self.assertEqual(rc, 0, "the shape legs pass; the holder leg is not evaluated")
         self.assertIn("SKIPPED", out)
         self.assertIn("establishes\nNOTHING about who may merge".replace("\n", " "), out)
+
+    def test_shape_only_SKIPS_leg5_because_a_NEW_pr_is_seconds_old(self):
+        """⛔ THE KNOWN-POSITIVE, measured on PR #599: `5 age at merge  9s since creation`.
+
+        A workflow triggered by the PR's own creation sees an age of seconds by construction.
+        It is not merging, so it cannot ask whether the PR was old enough AT MERGE. This is the
+        third merge-time leg in this tool (0 holder, 2 gate, 5 age) and the last to be fixed."""
+        rc, out, _ = drive(self.mod, prd(created=NOW_ISO), ["1", "--shape-only"], session=OTHER)
+        self.assertEqual(rc, 0, "a seconds-old PR must not fail an ADVISORY shape check")
+        self.assertIn("a merge that has not happened", out)
+
+    def test_the_SAME_new_pr_is_still_BLOCKED_from_a_real_merge(self):
+        """★ THE KNOWN-NEGATIVE. Identical input, --shape-only removed. #224 measured 25 of 100
+        PRs merged inside 60s of creation; that guard must survive this exemption intact."""
+        rc, out, _ = drive(self.mod, prd(created=NOW_ISO), ["1"])
+        self.assertEqual(rc, 1, "a seconds-old PR is still BLOCKED from merging")
+        self.assertIn("5 age at merge", out)
+        self.assertNotIn("a merge that has not happened", out)
 
     def test_shape_only_does_NOT_need_the_authority_file(self):
         """⛔ Found by CodeRabbit reviewing this PR, confirmed by measurement first.

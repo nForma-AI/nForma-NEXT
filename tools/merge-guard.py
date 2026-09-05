@@ -207,13 +207,26 @@ def evaluate(n, session, authority_text, shape_only=False):
             detail += f"  ⛔ net-negative in {len(losers)} file(s): {top}{more}"
         leg("4 three-dot diff", add >= dele, detail)
 
-    created = d.get("createdAt") or ""
-    try:
-        age = (datetime.now(timezone.utc)
-               - datetime.fromisoformat(created.replace("Z", "+00:00"))).total_seconds()
-        leg("5 age at merge", age >= 120, f"{int(age)}s since creation")
-    except Exception:
-        leg("5 age at merge", False, f"UNESTABLISHED — unparseable createdAt {created!r}")
+    # ⛔ --shape-only OMITS LEG 5 TOO — the THIRD merge-time leg in this tool, and the one I
+    # left behind after fixing the other two. Measured on PR #599:
+    #     ⛔ 5 age at merge   9s since creation     -> the advisory job went red
+    # A workflow triggered BY the PR's creation observes an age of seconds BY CONSTRUCTION,
+    # and it is not merging, so "was this old enough at merge?" is not a question it can ask.
+    # ⇒ Legs 0, 2 and 5 are facts about THE MERGE EVENT; only 1, 3 and 4 are facts about the
+    # PR's SHAPE. ⚠ The name was right from the start and the implementation kept not catching
+    # up: I fixed leg 0, then leg 2, and each time treated it as a one-off instead of reading
+    # the remaining legs for the same property. Three instances is a class, not a coincidence.
+    if shape_only:
+        leg("5 age at merge", True, "⚠ SKIPPED — --shape-only. A run triggered BY this PR "
+                                    "cannot judge its age at a merge that has not happened.")
+    else:
+        created = d.get("createdAt") or ""
+        try:
+            age = (datetime.now(timezone.utc)
+                   - datetime.fromisoformat(created.replace("Z", "+00:00"))).total_seconds()
+            leg("5 age at merge", age >= 120, f"{int(age)}s since creation")
+        except Exception:
+            leg("5 age at merge", False, f"UNESTABLISHED — unparseable createdAt {created!r}")
 
     return legs
 
