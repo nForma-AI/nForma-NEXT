@@ -57,6 +57,14 @@ one day, once on `or` -> `and`.
   Such sessions are excluded from the authorship candidates and labelled, because
   after a round of asking they are the majority of the hits.
 """
+# NO-SELF-TEST: controlled by tools/test_text_provenance.py, which the CI glob gates and which
+# passes on main. ⛔ This is a DECLARATION of where the control lives, not a
+# claim that none exists — tools/README.md records two control conventions in
+# one directory (`--self-test` and `test_*.py`, the fork #164 §4 named), and
+# this tool uses the second. ⚠ Verified anchored: the suite carries no
+# `^# SUITE-DEPENDS:` line, so it is in the gating population rather than
+# self-exempt. A loose `grep -c SUITE-DEPENDS` reads 1 on some of these and
+# matches a SENTENCE ABOUT the marker — use-versus-mention, measured here.
 import argparse, glob, json, os, re, sys
 
 ROOT = "~/.claude/projects/*/*.jsonl"

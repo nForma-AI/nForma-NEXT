@@ -32,6 +32,14 @@ a role IS NOT READ. Measured 2026-08-21, three such sessions had opened 25, 2 an
 recency window it replaced varied with the clock -- but it is not free, and it is
 the reason `--recency` still exists as a cross-check rather than being deleted.
 """
+# NO-SELF-TEST: controlled by tools/test_issue_coverage.py, which the CI glob gates and which
+# passes on main. ⛔ This is a DECLARATION of where the control lives, not a
+# claim that none exists — tools/README.md records two control conventions in
+# one directory (`--self-test` and `test_*.py`, the fork #164 §4 named), and
+# this tool uses the second. ⚠ Verified anchored: the suite carries no
+# `^# SUITE-DEPENDS:` line, so it is in the gating population rather than
+# self-exempt. A loose `grep -c SUITE-DEPENDS` reads 1 on some of these and
+# matches a SENTENCE ABOUT the marker — use-versus-mention, measured here.
 import argparse, collections, glob, json, os, re, subprocess, sys
 from datetime import datetime, timezone
 
