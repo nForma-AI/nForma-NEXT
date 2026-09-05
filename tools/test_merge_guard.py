@@ -212,6 +212,30 @@ class ExitContract(unittest.TestCase):
             sys.argv = old
         self.assertEqual(rc_void, 2, "an unreadable authority file is still VOID")
 
+    # ── --shape-only, for CI ──
+
+    def test_shape_only_SKIPS_leg0_and_says_so(self):
+        """⛔ It must not read as authorization. A runner has no holder session and
+        cannot have one, so leg 0 is OMITTED and NAMED — never quietly passed."""
+        rc, out, _ = drive(self.mod, prd(), ["1", "--shape-only"], session=OTHER)
+        self.assertEqual(rc, 0, "the shape legs pass; the holder leg is not evaluated")
+        self.assertIn("SKIPPED", out)
+        self.assertIn("establishes\nNOTHING about who may merge".replace("\n", " "), out)
+
+    def test_shape_only_still_catches_a_revert(self):
+        """The whole point: #572's class caught at PR time, not merge time."""
+        rc, out, _ = drive(self.mod, prd(), ["1", "--shape-only"], session=OTHER,
+                           numstat="1\t900\ttools/README.md")
+        self.assertEqual(rc, 1)
+        self.assertIn("net-negative in 1 file(s)", out)
+
+    def test_shape_only_without_a_pr_is_VOID_not_a_holder_check(self):
+        """⛔ The bypass that must not exist: --shape-only with no PR could otherwise
+        read as 'this session may merge'. It refuses."""
+        rc, _, err = drive(self.mod, prd(), ["--shape-only"], session=OTHER)
+        self.assertEqual(rc, 2)
+        self.assertIn("not a holder check", err)
+
     # ── ⛔ criterion 4: shown to FAIL ──
 
     def test_control_can_fail(self):

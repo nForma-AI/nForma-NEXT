@@ -120,14 +120,24 @@ def pr_json(n, fields):
         raise Unestablished(f"gh --json {fields} was not parseable: {exc}")
 
 
-def evaluate(n, session, authority_text):
+def evaluate(n, session, authority_text, shape_only=False):
     legs = []
 
     def leg(name, ok, detail):
         legs.append((name, ok, detail))
 
-    ok, detail = holder_check(authority_text, session)
-    leg("0 holder == session", ok, detail)
+    # ⛔ --shape-only OMITS leg 0 AND SAYS SO. It exists for CI, which has no holder
+    # session and cannot have one: the holder is a running pane, not a runner. A flag
+    # that made leg 0 PASS without a session would be a hole shaped exactly like the
+    # thing this tool guards, so it is omitted and named rather than defaulted true.
+    # ⇒ Shape-only ESTABLISHES NOTHING ABOUT AUTHORITY. It answers #510 leg 1's other
+    # half — "a check exists, CI step OR merge-time" — and only that half.
+    if shape_only:
+        leg("0 holder == session", True, "⚠ SKIPPED — --shape-only. This run establishes "
+                                         "NOTHING about who may merge.")
+    else:
+        ok, detail = holder_check(authority_text, session)
+        leg("0 holder == session", ok, detail)
 
     d = pr_json(n, "baseRefName,mergeStateStatus,reviews,headRefOid,createdAt,state,statusCheckRollup")
     if d.get("state") != "OPEN":
@@ -236,6 +246,9 @@ def main():
     ap.add_argument("--session", default=os.environ.get("CLAUDE_CODE_SESSION_ID", ""),
                     help="session id to test as (default: $CLAUDE_CODE_SESSION_ID)")
     ap.add_argument("--authority", default=AUTHORITY, help=f"path to {AUTHORITY}")
+    ap.add_argument("--shape-only", action="store_true",
+                    help="omit the holder leg — for CI, which has no holder session. "
+                         "⛔ Establishes nothing about authority.")
     ap.add_argument("--self-test", action="store_true", help="run the controls; no network")
     args = ap.parse_args()
 
@@ -248,6 +261,10 @@ def main():
     # condition's own command could not be satisfied by the instrument written for it.
     # ⇒ A holder check needs no PR: "may this session merge at all?" is answerable, and
     # is exactly the question those four issues pose.
+    if not args.prs and args.shape_only:
+        print("⛔ VOID — --shape-only needs a PR: without one there is no shape to check, "
+              "and it is not a holder check.", file=sys.stderr)
+        return 2
     if not args.prs:
         try:
             text = Path(args.authority).read_text(encoding="utf-8")
@@ -272,7 +289,7 @@ def main():
     for arg in args.prs:
         print(f"══ PR #{arg} ══")
         try:
-            legs = evaluate(int(arg), args.session, text)
+            legs = evaluate(int(arg), args.session, text, args.shape_only)
         except (Unestablished, ValueError) as exc:
             print(f"  ⛔ UNESTABLISHED — {exc}")
             print("  ⇒ BLOCK. A leg that cannot be measured is not a leg that passed.\n")
