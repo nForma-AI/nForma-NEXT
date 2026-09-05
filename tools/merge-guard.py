@@ -145,13 +145,30 @@ def evaluate(n, session, authority_text, shape_only=False):
 
     leg("1 base == main", d["baseRefName"] == "main", d["baseRefName"])
 
-    rollup = d.get("statusCheckRollup") or []
-    req = [c for c in rollup if (c.get("name") or c.get("context") or "") == "hermetic suites (gating)"]
-    if not req:
-        leg("2 required gate", False, "UNESTABLISHED — 'hermetic suites (gating)' absent from rollup")
+    # ⛔ --shape-only OMITS LEG 2 TOO, and for a reason measured on this tool's own PR.
+    # A CI job asking "is the required gate green?" from INSIDE the run that CONTAINS
+    # that gate is asking a self-referential question. Measured on PR #597, both jobs
+    # in the same run:
+    #     hermetic suites (gating)     started 23:22:19  completed 23:23:29  success
+    #     PR shape (advisory)          started 23:22:19  completed 23:22:25  FAILURE
+    # ⇒ pr-shape read the gate SIX SECONDS in, 64s before the gate finished. The gate
+    # was necessarily unfinished, so leg 2 was necessarily unestablished, and the job
+    # went red for a fact about ITS OWN CONCURRENCY rather than about the PR.
+    # ⚠ `needs:` would serialise it, but that is the wrong fix: it makes an ADVISORY job
+    # a prerequisite of nothing while doubling the run's latency, and it still leaves the
+    # runner asserting a green gate that the merger must re-read at merge time anyway.
+    # ⇒ The honest move is the same one leg 0 already makes: SKIP AND SAY SO.
+    if shape_only:
+        leg("2 required gate", True, "⚠ SKIPPED — --shape-only. A run cannot establish "
+                                     "the outcome of a gate it CONTAINS. Re-read at merge.")
     else:
-        concl = req[0].get("conclusion") or req[0].get("state") or ""
-        leg("2 required gate", concl == "SUCCESS", concl or "UNESTABLISHED")
+        rollup = d.get("statusCheckRollup") or []
+        req = [c for c in rollup if (c.get("name") or c.get("context") or "") == "hermetic suites (gating)"]
+        if not req:
+            leg("2 required gate", False, "UNESTABLISHED — 'hermetic suites (gating)' absent from rollup")
+        else:
+            concl = req[0].get("conclusion") or req[0].get("state") or ""
+            leg("2 required gate", concl == "SUCCESS", concl or "UNESTABLISHED")
 
     revs = d.get("reviews") or []
     changes = [r for r in revs if r.get("state") == "CHANGES_REQUESTED"]

@@ -222,6 +222,35 @@ class ExitContract(unittest.TestCase):
         self.assertIn("SKIPPED", out)
         self.assertIn("establishes\nNOTHING about who may merge".replace("\n", " "), out)
 
+    def test_shape_only_SKIPS_leg2_because_the_gate_is_IN_ITS_OWN_RUN(self):
+        """⛔ THE KNOWN-POSITIVE, and it is this tool's own PR #597.
+
+        A pr-shape job and the gating job start in the SAME run at the same instant.
+        pr-shape finished at 23:22:25; the gate finished at 23:23:29. So pr-shape read
+        a gate with `conclusion: null` and went red for a fact about concurrency, not
+        about the PR. Modelled here EXACTLY as GitHub reports it: an in-progress check
+        run carries conclusion null, not a falsy string."""
+        d = prd()
+        d["statusCheckRollup"] = [{"name": "hermetic suites (gating)",
+                                   "conclusion": None, "status": "IN_PROGRESS"}]
+        rc, out, _ = drive(self.mod, d, ["1", "--shape-only"], session=OTHER)
+        self.assertEqual(rc, 0, "an unfinished gate must not fail an ADVISORY shape check")
+        self.assertIn("a gate it CONTAINS", out)
+
+    def test_the_SAME_pending_gate_still_BLOCKS_a_real_merge(self):
+        """★ THE KNOWN-NEGATIVE, without which the fix above is just a hole.
+
+        Identical input, `--shape-only` removed. The skip must be scoped to the advisory
+        path ONLY: at merge time a pending gate is not a green one, and leg 2 must still
+        refuse. Same data, opposite verdict — that is what makes the pair evidence."""
+        d = prd()
+        d["statusCheckRollup"] = [{"name": "hermetic suites (gating)",
+                                   "conclusion": None, "status": "IN_PROGRESS"}]
+        rc, out, _ = drive(self.mod, d, ["1"])          # HOLDER session, no --shape-only
+        self.assertEqual(rc, 1, "a pending gate BLOCKS a merge")
+        self.assertIn("2 required gate", out)
+        self.assertNotIn("a gate it CONTAINS", out)
+
     def test_shape_only_still_catches_a_revert(self):
         """The whole point: #572's class caught at PR time, not merge time."""
         rc, out, _ = drive(self.mod, prd(), ["1", "--shape-only"], session=OTHER,
