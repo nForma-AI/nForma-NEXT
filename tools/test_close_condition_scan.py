@@ -11,11 +11,22 @@ under test is the one the tool actually returns -- not a re-implementation of it
 """
 import importlib.util
 import io
+import os
 import json
 import sys
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+
+# ⛔ A STALE .pyc SURVIVES A SIZE-PRESERVING EDIT, and this suite was bitten by it.
+# The --states fix MOVED a block: same bytes, same length, so mtime+size — the key
+# CPython caches on — did not change enough to invalidate. The suite kept executing
+# the PRE-fix bytecode and reported FAILED against a file that was already correct.
+# ⇒ Two readings of one run: 'the fix does not work' and 'the cache is stale' are
+# byte-identical in the output. 32 of 54 suites here already carry this guard; this
+# was one of the 22 without it. (The same preamble #572 deletes from 14 files.)
+sys.dont_write_bytecode = True
+os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 
 HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location("ccs", HERE / "close-condition-scan.py")
