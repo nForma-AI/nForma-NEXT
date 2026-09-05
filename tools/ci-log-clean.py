@@ -43,7 +43,8 @@ Usage:
     gh run view <id> --log | python3 tools/ci-log-clean.py
     gh run view <id> --log | python3 tools/ci-log-clean.py --stats
 
-Exit: 0 cleaned · 2 established nothing (no discriminator, or empty input)
+Exit: 0 cleaned (or `--self-test` passed) · 1 a control failed
+      · 2 established nothing (no discriminator, empty input, or a bad flag)
 """
 import re
 import sys
@@ -92,7 +93,93 @@ def clean(text):
     return out, {"lines": len(lines), "dropped": dropped, "marked": marked, "groups": groups}
 
 
+def self_test():
+    """⛔ TWO-SIDED AND NAMED. Every fixture is a LITERAL, so the control survives a
+    repair to `clean()` — and every case comes from a measurement recorded in this
+    file's own docstring rather than from what the implementation happens to do.
+
+    ★ Hermetic by construction: `clean()` is text-in/text-out, so this needs no log,
+    no network and no `gh`. That is why this tool gets a control rather than a
+    `# NO-SELF-TEST:` declaration — declaring an absence that is cheap to fill is
+    dodging, not honesty."""
+    ok = True
+
+    def check(name, got, want):
+        nonlocal ok
+        good = got == want
+        ok &= good
+        print(f"  {'PASS' if good else 'FAIL'}  {name}: got {got!r}, want {want!r}")
+
+    def cleaned(text):
+        """⛔ A fixture that SHOULD clean but raises is a FAILED control, not a crash.
+        Without this the sabotage path exits 1 from an unhandled ValueError — and a
+        crash and a reported failure are the same exit code, which is #58's collision
+        arriving inside the control itself. Measured: breaking CYAN_BOLD produced
+        exit 1 with ZERO `FAIL` lines."""
+        try:
+            return clean(text)
+        except ValueError as exc:
+            check(f"clean() must not refuse this fixture ({exc.args[0][:38]}…)", False, True)
+            return [], {"lines": 0, "dropped": 0, "marked": 0, "groups": 0}
+
+    CB = "^[[36;1m"          # what `gh` actually emits — measured: 218 pairs, 0 real ESC
+    ESCB = "\x1b[36;1m"     # a real ESC byte, the form a reader would guess
+
+    print("⛔ the defect this exists for: an echoed script counted as output")
+    log = "\n".join([
+        f"{CB}grep -c FAILED $FAILED_FILES^[[0m",
+        "0",
+    ])
+    out, st = cleaned(log)
+    check("the echoed grep line is dropped", any("FAILED" in l for l in out), False)
+    check("the real output survives", out, ["0"])
+    check("it was the MARKER that fired", st["marked"], 1)
+
+    print("★ and the known-NEGATIVE, without which over-stripping reads the same")
+    real = "\n".join([f"{CB}pytest^[[0m", "3 FAILED"])
+    out2, _ = cleaned(real)
+    check("a REAL failure line is kept", out2, ["3 FAILED"])
+
+    print("⛔ the escape is `^[` two chars, not ESC — both must match")
+    out3, s3 = clean("\n".join([f"{ESCB}echo hi\x1b[0m", "hi"]))
+    check("a real ESC byte also marks", s3["marked"], 1)
+    check("and its output survives", out3, ["hi"])
+
+    print("ENVELOPE fallback: group markers with no cyan-bold")
+    env = "\n".join(["##[group]Run pytest", "shell: bash", "##[endgroup]", "3 FAILED"])
+    out4, s4 = cleaned(env)
+    check("group envelope drops the preamble", out4, ["3 FAILED"])
+    check("it was the ENVELOPE that fired", (s4["marked"], s4["groups"]), (0, 1))
+
+    print("⛔ refusals — a log with no discriminator must NOT pass through")
+    for name, text in (("empty input", "   \n  "),
+                       ("no discriminator", "3 FAILED\nsome output")):
+        try:
+            clean(text)
+            check(f"{name} raises", False, True)
+        except ValueError:
+            check(f"{name} raises", True, True)
+
+    print("surviving lines have ANSI removed")
+    out5, _ = clean("\n".join([f"{CB}x^[[0m", "^[[31mred^[[0m"]))
+    check("ANSI stripped from kept lines", out5, ["red"])
+
+    print("\n" + ("all controls pass" if ok else "⛔ CONTROLS FAILED"))
+    return 0 if ok else 1
+
+
 def main():
+    if "--self-test" in sys.argv:
+        # ⛔ Dispatched BEFORE the stdin read, or `--self-test` blocks on a terminal.
+        # ⚠ And a companion flag is still refused: measured across this repo, a
+        # `--self-test` that ignores an unknown flag produces an exit 0 that cannot be
+        # told from the flag being dropped (#591).
+        _extra = [a for a in sys.argv[1:] if a != "--self-test"]
+        if _extra:
+            print(f"\u26d4 unrecognised argument(s) alongside --self-test: {_extra}",
+                  file=sys.stderr)
+            return 2
+        return self_test()
     text = sys.stdin.read()
     try:
         out, stats = clean(text)
