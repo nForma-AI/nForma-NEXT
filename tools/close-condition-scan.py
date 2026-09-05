@@ -218,6 +218,29 @@ def main():
         result("SELF-TEST-PASS" if rc == 0 else "SELF-TEST-FAILED")
         return rc
 
+    if a.states:
+        # ⇒ The DECLARE relation, conforming to tools/states-index-check.py's contract:
+        #   VERDICT\t<name>\t<meaning>   the state space
+        #   EXIT\t<code>\t<meaning>      what a caller reads
+        # ⛔ Emitted BEFORE any network call, so declaring the space never depends on
+        # reaching the forge — a tool that cannot say what it CAN report is worse than
+        # one that cannot report.
+        for name, why in (
+            ("BODY", "a close condition is in the issue BODY, where a closer reads it"),
+            ("BURIED", "a condition exists ONLY in a comment — a body-reader sees none"),
+            ("NONE", "no close condition anywhere — cannot be closed, only declared"),
+        ):
+            print(f"VERDICT\t{name}\t{why}")
+        for code, why in (
+            (0, "every open issue carries a clause in its body"),
+            (1, "NONE or BURIED found — a finding, established"),
+            (2, "established nothing (failed query, empty board, or a truncated reading)"),
+            (3, "the known-positive control failed"),
+        ):
+            print(f"EXIT\t{code}\t{why}")
+        result("STATES-DECLARED")
+        return 0
+
     # ⛔ The control runs before every real scan. A tool that only self-tests when
     # asked is one whose caller never asks.
     for body, comments, expected in (
@@ -260,29 +283,6 @@ def main():
     buckets = {"BODY": [], "BURIED": [], "NONE": []}
     for it in issues:
         buckets[classify(it)].append(it)
-
-    if a.states:
-        # ⇒ The DECLARE relation, conforming to tools/states-index-check.py's contract:
-        #   VERDICT\t<name>\t<meaning>   the state space
-        #   EXIT\t<code>\t<meaning>      what a caller reads
-        # ⛔ Emitted BEFORE any network call, so declaring the space never depends on
-        # reaching the forge — a tool that cannot say what it CAN report is worse than
-        # one that cannot report.
-        for name, why in (
-            ("BODY", "a close condition is in the issue BODY, where a closer reads it"),
-            ("BURIED", "a condition exists ONLY in a comment — a body-reader sees none"),
-            ("NONE", "no close condition anywhere — cannot be closed, only declared"),
-        ):
-            print(f"VERDICT\t{name}\t{why}")
-        for code, why in (
-            (0, "every open issue carries a clause in its body"),
-            (1, "NONE or BURIED found — a finding, established"),
-            (2, "established nothing (failed query, empty board, or a truncated reading)"),
-            (3, "the known-positive control failed"),
-        ):
-            print(f"EXIT\t{code}\t{why}")
-        result("STATES-DECLARED")
-        return 0
 
     if a.by_state:
         for state in ("NONE", "BURIED", "BODY"):
