@@ -24,6 +24,14 @@ other.
 made no calls all session gets the 403. That is why per-role attribution is the
 useful output: the quota is a commons and nothing here shows a pane its own share.
 """
+# NO-SELF-TEST: controlled by tools/test_api_budget.py, which the CI glob gates and which
+# passes on main. ⛔ This is a DECLARATION of where the control lives, not a
+# claim that none exists — tools/README.md records two control conventions in
+# one directory (`--self-test` and `test_*.py`, the fork #164 §4 named), and
+# this tool uses the second. ⚠ Verified anchored: the suite carries no
+# `^# SUITE-DEPENDS:` line, so it is in the gating population rather than
+# self-exempt. A loose `grep -c SUITE-DEPENDS` reads 1 on some of these and
+# matches a SENTENCE ABOUT the marker — use-versus-mention, measured here.
 import argparse, collections, glob, json, os, re, subprocess, sys, time
 
 TRANSCRIPTS = "~/.claude/projects/*/*.jsonl"

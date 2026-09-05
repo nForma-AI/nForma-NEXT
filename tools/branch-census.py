@@ -31,6 +31,14 @@ Exit: 0 the census discriminated · 2 ESTABLISHED NOTHING — no remote refs, or
 branch fell in one bucket. A census with one bucket has not classified a population,
 it has relabelled it (#58). ⛔ 2 must never be read as "all clear".
 """
+# NO-SELF-TEST: controlled by tools/test_branch_census.py, which the CI glob gates and which
+# passes on main. ⛔ This is a DECLARATION of where the control lives, not a
+# claim that none exists — tools/README.md records two control conventions in
+# one directory (`--self-test` and `test_*.py`, the fork #164 §4 named), and
+# this tool uses the second. ⚠ Verified anchored: the suite carries no
+# `^# SUITE-DEPENDS:` line, so it is in the gating population rather than
+# self-exempt. A loose `grep -c SUITE-DEPENDS` reads 1 on some of these and
+# matches a SENTENCE ABOUT the marker — use-versus-mention, measured here.
 import argparse, collections, subprocess, sys
 
 MERGED, SQUASH, LIVE, STRANDED = "MERGED", "SQUASH-MERGED", "LIVE", "STRANDED"

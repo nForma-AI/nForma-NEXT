@@ -30,6 +30,14 @@ channel was silent, not that TEAMLEAD was uninformed. Verify one before reportin
 
 Exit: 0 audited · 2 the control failed — the run established nothing.
 """
+# NO-SELF-TEST: controlled by tools/test_transition_report.py, which the CI glob gates and which
+# passes on main. ⛔ This is a DECLARATION of where the control lives, not a
+# claim that none exists — tools/README.md records two control conventions in
+# one directory (`--self-test` and `test_*.py`, the fork #164 §4 named), and
+# this tool uses the second. ⚠ Verified anchored: the suite carries no
+# `^# SUITE-DEPENDS:` line, so it is in the gating population rather than
+# self-exempt. A loose `grep -c SUITE-DEPENDS` reads 1 on some of these and
+# matches a SENTENCE ABOUT the marker — use-versus-mention, measured here.
 import argparse, glob, importlib.util, json, os, sys, time
 
 # ⛔ IMPORTED, not re-implemented. `fleet-state.py` owns the positional STATE parser and the
