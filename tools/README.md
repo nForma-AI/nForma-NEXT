@@ -10,7 +10,7 @@ below is taken over it.**
 ```
 INSTRUMENT  ≡  a non-test executable directly under tools/, EXCLUDING quarantined subdirectories
 
-   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 59.  Run it; do not trust the number below.
+   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 60.  Run it; do not trust the number below.
 ```
 
 ⚠ **The first draft of this section declared 54 and published a command that returns 55** — off by the
@@ -22,12 +22,12 @@ that excludes it because of its extension is drawing the population around a fil
 readings, so a reader meeting an older figure can place it:**
 
 ```
-top-level non-test executables (.py + .sh)  59   ⇐ THE DECLARED POPULATION
-  of which .py                              58   ⚠ every count published on 2026-08-21 used a SMALLER subset
-top-level tools/*.py, including test_      116
-ALL .py under tools/ recursively           139
-ALL .py under tools/ excluding test_        78
-rows in the index table below               61
+top-level non-test executables (.py + .sh)  60   ⇐ THE DECLARED POPULATION
+  of which .py                              59   ⚠ every count published on 2026-08-21 used a SMALLER subset
+top-level tools/*.py, including test_      118
+ALL .py under tools/ recursively           141
+ALL .py under tools/ excluding test_        79
+rows in the index table below               62
 files under tools/teamlead/                 23   ⛔ QUARANTINED — belonging is an OPEN QUESTION
 ```
 
@@ -369,6 +369,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `named-referent-check.py` | does a requirement sentence name an identifier that does not exist? | 0 none · 1 candidates · **2 established nothing** |
 | `exists-anywhere.py` | does this name exist at ANY ref, or only on the one checked out? | 0 on the ref · 1 exists unmerged · 2 absent everywhere · **3 established nothing** |
 | `memory-index-check.py` | does the memory index cover the memory files, and can it be loaded whole? | 0 covered · 1 orphans/dangling/oversize · **2 established nothing** |
+| `merge-guard.py` | may THIS session merge THIS pr — and can it establish that at all? | 0 every leg established and passed · 1 a leg FAILED · **2 a leg could not be ESTABLISHED (unparseable forge response, missing authority file, PR not OPEN, no PR named)** · `--self-test` |
 | `marker-reachability.py` | can any CI invocation actually collect this test? | 0 all reachable · 1 unreachable found · **2 established nothing** |
 | `close-condition-scan.py` | which open issues carry no close condition — and which hide one in a comment? | 0 every open issue has one **in its body** · 1 `NONE` or `BURIED` found · **2 established nothing (failed query, empty board, or a truncated reading)** · **3 known-positive failed** · `--self-test` `--states` |
 | `runnable-condition.py` | can this close condition be RUN, or only agreed with? | 0 every condition RUNNABLE · 1 at least one ASSERTED · 2 established nothing · 3 control failed | ⚙ GENERATED-FROM: --states |
@@ -1429,6 +1430,8 @@ correct handling *generates* mentions — a tool that documents the defect neces
 pattern — so a *"does this code handle X"* scan gets **noisier as the estate improves**, with the
 noise concentrated in the files that are already right. ⇒ Resolves the **sink** rather than
 matching the text. (#36)
+
+**`merge-guard.py`** — ⛔ **this is leg 4 of FOUR issues, worded identically in each**: `#193` `#296` `#302` `#304` all say *"an instrument REFUSES a merge attempt from a session that is not the holder, and has been shown to refuse one"*, each annotated `tools/merge-guard.py DOES NOT EXIST`. One remedy, four issues. ⛔⛔ **And it exists because an inline version FAILED OPEN on a real merge.** Merging `#581` on 2026-09-05 the guards ran as shell with `python3 -c json.load` per leg and no exit code was checked; a control character in a review body made every parse raise; every guard variable came back EMPTY; every line printed a blank that read as benign; the merge proceeded. ★ **The PR was fine, so nothing went wrong — which is the worst outcome, because the guard was never tested and looked like it worked** (#294's lesson: a rule preserved by an unrelated failure has been missed, not tested). ⇒ **Every leg returns UNESTABLISHED rather than a value it could not obtain, and UNESTABLISHED is fatal.** ⛔ **Leg 0 parses the LAST `HOLDER` line and says so on every run.** `docs/MERGE-AUTHORITY.md` records successions by APPENDING and carried **two** HOLDER lines on 2026-09-05 — `grep -m1` returns the STALE one, which would **refuse the real holder and authorise a lapsed session**. Position IS the semantics here, so the honest form is to use the last AND print how many were found (#23: never read by position silently). ⛔ **Leg 4 uses THREE dots.** Two-dot bills every commit main gained since the merge-base to the branch as a deletion — measured 2026-09-05, `#499` reads two-dot **−4396** and three-dot **−2**, so the two-dot form condemns a clean 3-file PR (#510's shape inverted into a false positive). ★ **Both directions demonstrated on live data**: the recorded holder is CLEAR; `--session deadbeef-…` exits 1 naming the mismatch. ⛔⛔ **THE BOUND, which is #193's own proxy test and must not be waved past: this raises the cost of an accident and does NOT make the policy unbypassable.** Any pane can edit the authority file, skip this tool, or call `gh pr merge` directly — the credential reports `push=true, admin=true` for every pane. **Closing those four issues on this tool alone would claim an enforcement that does not exist.**
 
 **`memory-index-check.py`** — ⛔ measured on the machine it was written on: **348 memory files,
 232 indexed, 115 ORPHANS**, and the index **42.5 KB against a recalled ~25 KB load budget**. An
