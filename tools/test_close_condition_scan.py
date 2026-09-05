@@ -11,11 +11,22 @@ under test is the one the tool actually returns -- not a re-implementation of it
 """
 import importlib.util
 import io
+import os
 import json
 import sys
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+
+# ⛔ A STALE .pyc SURVIVES A SIZE-PRESERVING EDIT, and this suite was bitten by it.
+# The --states fix MOVED a block: same bytes, same length, so mtime+size — the key
+# CPython caches on — did not change enough to invalidate. The suite kept executing
+# the PRE-fix bytecode and reported FAILED against a file that was already correct.
+# ⇒ Two readings of one run: 'the fix does not work' and 'the cache is stale' are
+# byte-identical in the output. 32 of 54 suites here already carry this guard; this
+# was one of the 22 without it. (The same preamble #572 deletes from 14 files.)
+sys.dont_write_bytecode = True
+os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 
 HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location("ccs", HERE / "close-condition-scan.py")
@@ -92,6 +103,39 @@ class ExitContract(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("LAST comment", out)
         self.assertIn("WITHDRAWN", out)
+
+    def test_states_DECLARES_the_space_and_conforms_to_the_index_contract(self):
+        """⛔ `--states` is the DECLARE relation, matching doctrine-version.py and
+        runnable-condition.py. It must emit TAB-separated VERDICT and EXIT lines so
+        tools/states-index-check.py can GENERATE a row instead of returning VOID."""
+        code, out, _ = run([], 2, [issue(1, "x")] )
+        # --states short-circuits before any query; drive it directly
+        import sys as _s
+        real = _s.argv
+        _s.argv = ["close-condition-scan.py", "--states"]
+        import io as _io
+        from contextlib import redirect_stdout as _rs
+        buf = _io.StringIO()
+        try:
+            with _rs(buf):
+                rc = ccs.main()
+        finally:
+            _s.argv = real
+        o = buf.getvalue()
+        self.assertEqual(rc, 0)
+        self.assertEqual(len([l for l in o.splitlines() if l.startswith("EXIT\t")]), 4)
+        self.assertEqual(len([l for l in o.splitlines() if l.startswith("VERDICT\t")]), 3)
+        for l in o.splitlines():
+            self.assertEqual(len(l.split("\t")), 3, l)
+
+    def test_by_state_REPORTS_subjects_and_is_a_different_relation(self):
+        """⚠ The two must not be the same flag. `--by-state` names subjects; `--states`
+        names the space. One flag answering both is the collision #498 recorded."""
+        code, out, _ = run(["--by-state"], 2, [issue(1, "## Done when\nx"),
+                                               issue(2, "nothing")])
+        self.assertEqual(code, 1)
+        self.assertIn("NONE 2", out)
+        self.assertNotIn("VERDICT", out)
 
     def test_empty_board_is_void_not_clean(self):
         """⚠ Zero open issues is what a MISTYPED LABEL returns. `gh issue list

@@ -199,14 +199,47 @@ def main():
     ap.add_argument("--label", default=None, help="restrict to one label")
     ap.add_argument("--limit", type=int, default=400)
     ap.add_argument("--self-test", action="store_true")
+    # ⛔ RENAMED from --states. `--states` collided across three tools with TWO
+    # RELATIONS under one name: doctrine-version.py and runnable-condition.py DECLARE
+    # a state space; this printed SUBJECTS GROUPED BY STATE. ⇒ A format convention
+    # cannot fix a name that means two things (ARCHITECT, #498). Priority is theirs by
+    # 62 minutes (e8e1cff 19:07 vs 2fcd8e1 20:09), the count is theirs 2-to-1, and the
+    # NAME FITS THEIR RELATION — `--states` reads as "tell me the states". So this one
+    # moved. ⚠ No caller invoked it; only the index row named it.
+    ap.add_argument("--by-state", action="store_true", dest="by_state",
+                    help="print only `<STATE> <issue-number>` lines, for piping")
     ap.add_argument("--states", action="store_true",
-                    help="print only `<state> <number>` lines, for piping")
+                    help="DECLARE this tool's state space and exit codes (TAB-separated), "
+                         "so an index row can be GENERATED rather than hand-written")
     a = ap.parse_args()
 
     if a.self_test:
         rc = self_test()
         result("SELF-TEST-PASS" if rc == 0 else "SELF-TEST-FAILED")
         return rc
+
+    if a.states:
+        # ⇒ The DECLARE relation, conforming to tools/states-index-check.py's contract:
+        #   VERDICT\t<name>\t<meaning>   the state space
+        #   EXIT\t<code>\t<meaning>      what a caller reads
+        # ⛔ Emitted BEFORE any network call, so declaring the space never depends on
+        # reaching the forge — a tool that cannot say what it CAN report is worse than
+        # one that cannot report.
+        for name, why in (
+            ("BODY", "a close condition is in the issue BODY, where a closer reads it"),
+            ("BURIED", "a condition exists ONLY in a comment — a body-reader sees none"),
+            ("NONE", "no close condition anywhere — cannot be closed, only declared"),
+        ):
+            print(f"VERDICT\t{name}\t{why}")
+        for code, why in (
+            (0, "every open issue carries a clause in its body"),
+            (1, "NONE or BURIED found — a finding, established"),
+            (2, "established nothing (failed query, empty board, or a truncated reading)"),
+            (3, "the known-positive control failed"),
+        ):
+            print(f"EXIT\t{code}\t{why}")
+        result("STATES-DECLARED")
+        return 0
 
     # ⛔ The control runs before every real scan. A tool that only self-tests when
     # asked is one whose caller never asks.
@@ -251,7 +284,7 @@ def main():
     for it in issues:
         buckets[classify(it)].append(it)
 
-    if a.states:
+    if a.by_state:
         for state in ("NONE", "BURIED", "BODY"):
             for it in buckets[state]:
                 print(f"{state} {it['number']}")
