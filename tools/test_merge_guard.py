@@ -222,6 +222,46 @@ class ExitContract(unittest.TestCase):
         self.assertIn("SKIPPED", out)
         self.assertIn("establishes\nNOTHING about who may merge".replace("\n", " "), out)
 
+    def test_shape_only_does_NOT_need_the_authority_file(self):
+        """⛔ Found by CodeRabbit reviewing this PR, confirmed by measurement first.
+
+        --shape-only skips leg 0, so the authority text is never used — but main() read
+        the file anyway and returned 2 when it was missing. CI checks out the PR's OWN
+        tree, so a PR that MOVED docs/MERGE-AUTHORITY.md turned pr-shape red for a fact
+        about the authority record rather than about the PR's shape.
+
+        ⇒ The shape legs must still be evaluated with no authority file at all."""
+        self.mod.pr_json = lambda n, f: prd()
+        self.mod.sh = lambda a, allow_fail=False: ("1\t900\ttools/README.md"
+                                                  if a[:2] == ["git", "diff"] else "")
+        old = sys.argv
+        sys.argv = ["merge-guard.py", "--shape-only", "1",
+                    "--session", OTHER, "--authority", "/nonexistent/AUTH.md"]
+        out = io.StringIO()
+        try:
+            with redirect_stdout(out), redirect_stderr(io.StringIO()):
+                rc = self.mod.main()
+        finally:
+            sys.argv = old
+        self.assertNotEqual(rc, 2, "a missing authority file must not VOID a shape check")
+        # ★ and it must have REACHED the shape legs, not merely exited non-2
+        self.assertIn("net-negative in 1 file(s)", out.getvalue())
+        self.assertEqual(rc, 1, "it blocks on the REVERT, which is what it is for")
+
+    def test_a_missing_authority_STILL_voids_a_real_merge(self):
+        """★ THE KNOWN-NEGATIVE. The exemption above is scoped to --shape-only ONLY.
+        Without it, an unreadable authority record still establishes nothing about who
+        may merge, and must still be VOID — otherwise the fix is a bypass."""
+        old = sys.argv
+        sys.argv = ["merge-guard.py", "1", "--session", HOLDER,
+                    "--authority", "/nonexistent/AUTH.md"]
+        try:
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                rc = self.mod.main()
+        finally:
+            sys.argv = old
+        self.assertEqual(rc, 2, "no authority record ⇒ VOID, for a real merge")
+
     def test_shape_only_SKIPS_leg2_because_the_gate_is_IN_ITS_OWN_RUN(self):
         """⛔ THE KNOWN-POSITIVE, and it is this tool's own PR #597.
 

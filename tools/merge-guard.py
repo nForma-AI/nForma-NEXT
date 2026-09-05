@@ -294,13 +294,26 @@ def main():
                         if ok else "REFUSED — this session is not the holder"))
         return 0 if ok else 1
 
-    try:
-        text = Path(args.authority).read_text(encoding="utf-8")
-    except OSError as exc:
-        print(f"⛔ VOID — cannot read {args.authority}: {exc}\n"
-              f"   ADDABLE — run from a checkout that has it, or pass --authority.",
-              file=sys.stderr)
-        return 2
+    # ⛔ --shape-only MUST NOT READ THE AUTHORITY FILE. It skips leg 0, so `text` is
+    # never used — but reading it made a MISSING file fatal, and CI checks out the PR's
+    # own tree. ⇒ A PR that MOVED OR DELETED docs/MERGE-AUTHORITY.md turned pr-shape red
+    # with exit 2 for a fact about the authority record, not about the PR's shape. Same
+    # defect as leg 2 read from inside its own run: the advisory job going red for the
+    # wrong reason, which is how an advisory job stops being read at all.
+    # ⇒ Found by CodeRabbit in review of this PR, and confirmed here by measurement
+    #   before it was believed:
+    #     --shape-only 597 --authority /nonexistent/AUTH.md   exit 2
+    #     --shape-only 597                                    exit 0
+    if args.shape_only:
+        text = ""
+    else:
+        try:
+            text = Path(args.authority).read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"⛔ VOID — cannot read {args.authority}: {exc}\n"
+                  f"   ADDABLE — run from a checkout that has it, or pass --authority.",
+                  file=sys.stderr)
+            return 2
 
     worst = 0
     for arg in args.prs:
