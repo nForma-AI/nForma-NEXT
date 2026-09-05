@@ -10,7 +10,7 @@ below is taken over it.**
 ```
 INSTRUMENT  ≡  a non-test executable directly under tools/, EXCLUDING quarantined subdirectories
 
-   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 57.  Run it; do not trust the number below.
+   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 58.  Run it; do not trust the number below.
 ```
 
 ⚠ **The first draft of this section declared 54 and published a command that returns 55** — off by the
@@ -18,16 +18,16 @@ single `.sh`. ⛔ **In the section whose entire purpose is removing that ambigui
 RUNNING the command rather than trusting it.** ★ **`merge-watch.sh` is an instrument; a definition
 that excludes it because of its extension is drawing the population around a file suffix.**
 
-**Measured 2026-08-22 at `e66aeb4`, one second, all six readings, so a reader meeting an older figure
-can place it:**
+**Re-measured 2026-09-05 on `cf263fe` + the `doctrine-deliver.py` pair, one second, all seven
+readings, so a reader meeting an older figure can place it:**
 
 ```
-top-level non-test executables (.py + .sh)  57   ⇐ THE DECLARED POPULATION
-  of which .py                              56   ⚠ every count published on 2026-08-21 used THIS subset
-top-level tools/*.py, including test_      112
-ALL .py under tools/ recursively           135
-ALL .py under tools/ excluding test_        76
-rows in the index table below               58
+top-level non-test executables (.py + .sh)  58   ⇐ THE DECLARED POPULATION
+  of which .py                              57   ⚠ every count published on 2026-08-21 used a SMALLER subset
+top-level tools/*.py, including test_      114
+ALL .py under tools/ recursively           137
+ALL .py under tools/ excluding test_        77
+rows in the index table below               59
 files under tools/teamlead/                 23   ⛔ QUARANTINED — belonging is an OPEN QUESTION
 ```
 
@@ -317,6 +317,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `prevalence.py` | is this token evidence about ONE record, or the line FORMAT? | 0 discriminates · 1 non-discriminating (all, or none) · **2 established nothing (n<2, empty, unreadable)** |
 | `daintree-control.py` | is the fleet-status instrument answering, or blind? | 0 control passes · **2 VOID** |
 | `doctrine-watch.py` | which roles' doctrine moved under them, and who has not read it? | 0 nothing to tell · 1 a role is behind · **2 established nothing** |
+| `doctrine-deliver.py` | put a doctrine POINTER in front of a role that is behind — and refuse when the pane is in another estate | 0 nothing to deliver · 1 pointers pending or queued · **2 established nothing (no pane in this estate, zero panes enumerated, no roles named, or a payload that is not a pointer)** · `--self-test` |
 | `doctrine-uncommitted.py` | which doctrine is the fleet READING that main does not carry? | 0 reads == landed · 1 drift in any of three directions · **2 established nothing (no repo, bad ref, no file)** |
 | `label-precedence.py` | when `role:` and `dev:N` disagree, which does a pane obey? | 0 no HAZARD collisions · 1 at least one HAZARD -- a finding, established · 2 established nothing: forge unreadable, or the buckets did not sum | ⚙ GENERATED-FROM: --states |
 | `label-exists.py` | does the label you are about to query actually exist? | 0 all exist · 1 one is absent · **2 established nothing** |
@@ -728,6 +729,8 @@ retracted, and **a retraction quotes the number it retracts.**
 blind poller cannot log a quiet cycle that reads as a healthy fleet. ★ It terminates the
 regress on something known **by construction**: at least one pane must report `working`,
 because the agent running the check is one.
+
+**`doctrine-deliver.py`** — ⛔ the missing consumer for `doctrine-watch.py` (#586): that tool names who is behind and **nothing delivered to them**, so a human read the report and retyped into panes. ⛔⛔ **The issue's load-bearing premise is REFUTED by measurement and the refutation shaped the design.** #586 states with a ★ that *"our roles are already 1:1 with pane titles"*. Measured 2026-09-05 from an nForma-NEXT session: `terminal.list` returned **7 panes, every one with `worktreeId=/Users/…/code/lang-nextjs2`**, titled `DEV1-lang` · `TEAMLEAD-lang` · `ARCHITECT-lang`; background and trash both empty, so that was the **complete** addressable set. ⇒ **Zero nForma-NEXT panes.** An exact match on `ARCHITECT` finds nothing and a prefix match finds another fleet — ★ **the channel as specified would have delivered nForma doctrine pointers into six `lang-nextjs2` panes**, which is the fourth cross-estate misroute (#172, #301, #426) encoded in a tool rather than committed by an agent, **and a tool repeats it on a schedule and never notices.** ⇒ **So the estate gate is leg one, not a guard bolted on**, and `worktreeId` is the right key for exactly the reason #364 rejected it for pane identity: identical across a fleet, different across fleets. ⛔ **Containment is checked on RESOLVED paths, never on string prefix** — `/repo/nForma-NEXT-other` starts with `/repo/nForma-NEXT` — and a nested worktree pane is kept. ⛔ **The payload is an ALLOW-LIST of one shape**, `doctrine ref=<sha> paths=<a>,<b>`: prose, an appended instruction, a grant, a multi-line body and anything starting with `/` are all refused, because *the pane input box is unauthenticated and a message carrying content there is indistinguishable from a forgery carrying content there*. A deny-list would be a matcher over natural language. ⛔⛔ **It emits QUEUED and never DELIVERED, which CORRECTS the issue.** #586 says the honest emission is `DELIVERED`; it cannot be — `terminal.sendCommand` returns once the text is **submitted**, not once it is delivered or run (#8's chain, #308's rule after four panes were driven toward the ceiling by trusting `sent:true`). ★ `DELIVERED` is `prompt-delivery.py`'s verdict, read from the **recipient's** transcript. ⚠ **And neither establishes a RE-READ** — a notified agent may note the notification and continue on the copy it loaded; that gap is **UNMEASURED** and is stated on every run. ⛔ **`--send` is not the default**: this writes into another pane's box, a collided title is `UNESTABLISHED` rather than a pick (#247, #355), and a `working` pane is HELD rather than overwritten (#136). ★ **Both directions are demonstrated on live data**: it refuses for nForma-NEXT (exit 2, naming the estates present) and proceeds for `lang-nextjs2` (exit 1) — criterion 4 satisfied without arranging it. ⚠ **A defect in this tool was found by RUNNING it, not reading it**: `git rev-parse --show-toplevel` returns the **worktree**, so the first live run compared against `/private/tmp/…/w586` and would have rejected this fleet's own panes while looking like a correct refusal (#23 §9). It resolves the main worktree from `git worktree list`.
 
 **`doctrine-watch.py`** — reports which roles' prompt or goal file changed since a
 watermark, and which of those roles has not read the new revision. ⛔ Built because the fleet's
