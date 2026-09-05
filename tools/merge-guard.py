@@ -156,11 +156,29 @@ def evaluate(n, session, authority_text):
         leg("4 three-dot diff", False, "UNESTABLISHED — empty numstat (unfetched ref?)")
     else:
         add = dele = 0
+        losers = []          # files this PR removes more from than it adds
         for line in stat.strip().splitlines():
             parts = line.split("\t")
             if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
-                add += int(parts[0]); dele += int(parts[1])
-        leg("4 three-dot diff", add >= dele, f"+{add} -{dele} (net {add - dele:+d})")
+                # ⚠ NOT `a, d` — `d` is the PR dict in this scope. Shadowing it made
+                # `d.get("createdAt")` raise AttributeError on an int, and the paired
+                # suite caught it where --self-test could not: leg 5 is only reached
+                # when a PR record exists, which self_test() never builds.
+                ins, dels = int(parts[0]), int(parts[1])
+                add += ins; dele += dels
+                if dels > ins:
+                    losers.append((parts[2] if len(parts) > 2 else "?", ins - dels))
+        # ⛔ NAME THE FILES, not just the total. #510 leg 1: "it must state which files
+        # and how many lines, per #500 — a count with no direction is a bound, not a
+        # measurement." A net figure tells a reader THAT something was removed and
+        # gives them nowhere to look.
+        losers.sort(key=lambda x: x[1])
+        detail = f"+{add} -{dele} (net {add - dele:+d})"
+        if add < dele:
+            top = "; ".join(f"{f} {n:+d}" for f, n in losers[:5])
+            more = f" (+{len(losers) - 5} more)" if len(losers) > 5 else ""
+            detail += f"  ⛔ net-negative in {len(losers)} file(s): {top}{more}"
+        leg("4 three-dot diff", add >= dele, detail)
 
     created = d.get("createdAt") or ""
     try:

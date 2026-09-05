@@ -142,6 +142,32 @@ class ExitContract(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("net -899", out)
 
+    def test_net_negative_NAMES_THE_FILES(self):
+        """#510 leg 1: "it must state which files and how many lines, per #500 — a
+        count with no direction is a bound, not a measurement." A net figure tells a
+        reader THAT something was removed and gives them nowhere to look.
+
+        ⚠ This case also pins the variable-shadowing regression: the first version used
+        `d` as the loop variable inside evaluate(), where `d` is the PR dict, and
+        `d.get("createdAt")` then raised AttributeError on an int. --self-test could
+        NOT catch it — leg 5 is only reached when a PR record exists, which self_test()
+        never builds. The paired suite is the only place it was visible."""
+        rc, out, _ = drive(self.mod, prd(), ["1"],
+                           numstat="1\t900\ttools/README.md\n2\t500\tgoals/README.md")
+        self.assertEqual(rc, 1)
+        self.assertIn("net -1397", out)
+        self.assertIn("net-negative in 2 file(s)", out)
+        self.assertIn("tools/README.md -899", out)
+        self.assertIn("goals/README.md -498", out)
+
+    def test_net_positive_names_NO_files(self):
+        """⛔ The known-NEGATIVE. A check that lists files on every PR containing a
+        deletion is the always-on alarm #489 measured."""
+        rc, out, _ = drive(self.mod, prd(), ["1"],
+                           numstat="900\t1\ttools/README.md\n5\t9\tgoals/README.md")
+        self.assertEqual(rc, 0)
+        self.assertNotIn("net-negative in", out)
+
     def test_empty_numstat_is_unestablished(self):
         rc, out, _ = drive(self.mod, prd(), ["1"], numstat="")
         self.assertEqual(rc, 1)
