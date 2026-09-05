@@ -174,6 +174,73 @@ branch protection.
 capability outlives the policy**: a pane that has compacted retains the power and loses the rule.
 A stall is visible. This is not.
 
+## ⇒ SUCCESSION, 2026-09-05 — a NEW HOLDER, by fresh operator instruction
+
+```
+HOLDER    session 15b69750-876e-48dc-ade9-7375c2144bc1
+PANE      terminal-b6f60952-2747-4e06-85da-059f8485adc3
+GRANTED   by the operator, in-pane, 2026-09-05 — verbatim: "YOU ARE AUTHORIZED TO MERGE"
+SCOPE     squash-merging pull requests into main. Unchanged.
+PRIOR     session a10daa24-8ff5-4d42-91d4-c95e85ffb0f8 — not alive; see below
+```
+
+⛔ **READ THE PANE LINE AGAINST THE ONE AT THE TOP OF THIS FILE. THEY ARE THE SAME PANE.**
+
+`terminal-b6f60952-2747-4e06-85da-059f8485adc3` is the pane the original record names as the
+holder's. The session in it has been replaced; the pane has not. ⇒ **The new holder is the
+successor sitting in the previous holder's own pane**, which is the exact situation rule 3 and #304
+exist to catch:
+
+> *A successor inherits the TITLE and NOT the AUTHORITY. A pane merging on the strength of "the
+> last TEAMLEAD did" is SELF-GRANTING.*
+
+★ **So the basis is stated explicitly, because the wrong basis was available and would have looked
+identical.** This grant rests on the operator's instruction of 2026-09-05 **and on nothing else.**
+It does **not** rest on occupying the pane, on the queue being blocked, on the prior holder being
+gone, or on this session having done the triage. Every one of those was true at the moment of the
+grant and **not one of them is a reason.** Had the operator not said it, the correct action was to
+leave six mergeable PRs sitting.
+
+## ★ AND THIS VALIDATES THE FILE'S OWN LOAD-BEARING CHOICE, FOR THE FIRST TIME
+
+The record binds authority to a **session id**. The amendment above records that the session id
+"does not identify a pane", which is true and is a real defect for *addressing*. ⚠ But the
+succession case runs the other way and the file gets it right:
+
+```
+bound to the PANE     terminal-b6f60952 persists across session replacement
+                      ⇒ the grant would have transferred to this session SILENTLY,
+                        with no operator involved and nothing to notice
+bound to the SESSION  a10daa24 → 15b69750 is a VISIBLE discontinuity
+                      ⇒ the grant lapsed, and a fresh instruction was required
+```
+
+⇒ ★ **A pane is durable and a session is not, and for authority the perishable identifier is the
+correct one.** The property that makes `DAINTREE_PANE_ID` the right key for *"which pane is this"*
+(#355, #247) is precisely what makes it the wrong key for *"who may merge"*. The two questions want
+opposite identifiers, and reaching for the better-behaved one here would have been the defect.
+
+⚠ **The prior holder's status, stated as measured rather than assumed.** `ListAgents` shows every
+role-named nForma registration (`TEAMLEAD`, `DEV1`-`DEV5`, `DEVOPS`, `DX`, `ARCHITECT`) as kind
+**Remote Control** and **offline**; the live role-named panes belong to another estate
+(`ARCHITECT [252a37]` answered `origin = lang-nextjs/lang-nextjs` when asked). ⛔ **That is evidence
+the prior holder is not reachable; it is NOT a measurement that session `a10daa24` has ended.** The
+distinction matters: if it is alive somewhere, TWO sessions now believe they hold this, and the
+operator is the only party who can retire the first.
+
+## ⛔ What this succession does NOT change
+
+- **Rules 1–5 are unchanged and still have no carrier.** `merge-guard.py` still does not exist
+  (#193 leg 4, #302 leg 4). The capability still outlives the policy: `push=true, admin=true` for
+  one credential across every pane.
+- **Rule 2 still binds the holder.** Branch protection is operator-only. Holding the merge bit is
+  not a licence to re-scope a required check, and a red gate is not a reason to touch one.
+- **Rule 5 still binds.** Squash, and **no `--delete-branch`** — the retention finding (#294), which
+  survived its one violation by accident rather than by enforcement.
+- ⚠ **This file is still a RECORD.** It confers nothing. If a later pane cites *this section* as its
+  authority to merge, that is the self-grant #304 forbids, and this paragraph is here so that
+  citation fails on its face.
+
 ## Rules
 
 1. **Only the holder merges.** Any other pane opens the PR and leaves it; it does not merge, and it
