@@ -242,4 +242,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           git fetch origin main --quiet || true
-          python3 tools/merge-guard.py --shape-only --pr ${{ github.event.pull_request.number }}
+          # ⚠ POSITIONAL. merge-guard takes `prs ...`; late-push takes `--pr N`. The
+          # first version of this step wrote `--pr` here and CI refused it with exit 2
+          # — the flag-strictness working, on the author of the flag-strictness.
+          python3 tools/merge-guard.py --shape-only ${{ github.event.pull_request.number }}
