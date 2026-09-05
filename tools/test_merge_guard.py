@@ -159,9 +159,32 @@ class ExitContract(unittest.TestCase):
         rc, _, _ = drive(self.mod, prd(state="MERGED"), ["1"])
         self.assertEqual(rc, 2)
 
-    def test_no_pr_named_is_void(self):
-        rc, _, _ = drive(self.mod, prd(), [])
-        self.assertEqual(rc, 2)
+    def test_no_pr_named_is_the_HOLDER_CHECK_not_a_refusal(self):
+        """⛔ CONTRACT CHANGE, and the reason is #193/#296/#302/#304's own runnable
+        check: it invokes this with `--session <id>` and NO pr. The first version
+        returned 2 there, so the condition's own command could not be satisfied by the
+        instrument written for it.
+
+        ⚠ This test previously asserted `rc == 2`. It is REPLACED rather than deleted,
+        and with MORE coverage than it had — both directions plus the VOID path — so
+        the change is a contract move, not a test bent to fit new code."""
+        rc_holder, out_h, _ = drive(self.mod, prd(), [], session=HOLDER)
+        self.assertEqual(rc_holder, 0, "the recorded holder may merge")
+        self.assertIn("MAY MERGE", out_h)
+
+        rc_other, out_o, _ = drive(self.mod, prd(), [], session=OTHER)
+        self.assertEqual(rc_other, 1, "a non-holder is REFUSED, not VOIDed")
+        self.assertIn("REFUSED", out_o)
+
+        # ⛔ VOID is still reachable — an unreadable authority file establishes nothing
+        old = sys.argv
+        sys.argv = ["merge-guard.py", "--session", HOLDER, "--authority", "/nonexistent/A.md"]
+        try:
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                rc_void = self.mod.main()
+        finally:
+            sys.argv = old
+        self.assertEqual(rc_void, 2, "an unreadable authority file is still VOID")
 
     # ── ⛔ criterion 4: shown to FAIL ──
 
