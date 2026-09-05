@@ -49,16 +49,52 @@ Usage:
     ...
     result("ESTABLISHED-NOTHING")   # on every controlled path
 """
+import subprocess
 import sys
 
 PREFIX_RUN = "NFORMA-RUN"
 PREFIX_RESULT = "NFORMA-RESULT"
 
 
+def tree_distance():
+    """How far is THIS WORKING TREE behind `origin/main`? "" when unmeasurable.
+
+    ⛔ WHY THE MARKER CARRIES IT. #205: nine panes share one working tree, and that tree has
+    been pinned at `a163854` for two days — **365 commits behind**, with `CLAUDE.md` differing by
+    25 lines and `goals/` by 2046. Every reading taken there is a reading of a two-day-old
+    repository, and nothing said so.
+
+    ⇒ AND CI CANNOT DETECT IT, STRUCTURALLY. A workflow checks out fresh, so a gate NEVER sees a
+    pane's working tree. That is why #205 outlived every other missing-caller gap tonight: each
+    of those was closed by adding a caller in CI, and this one cannot be. The caller has to run
+    WHERE THE STALENESS LIVES — and 13 instruments already import this module, so they are it.
+
+    ★ `tools/doctrine-uncommitted.py` fires on exactly this condition and has reported it to
+    nobody for two days: `git grep -l` finds four references — the tool, its test, its docs, its
+    ledger. A detector with no caller and a rule with no enforcement fail identically.
+
+    ⚠ COSTS 14ms, measured. And it is REPORTED, NEVER ENFORCED: a stale tree is not an error and
+    this must not turn one into a failure. It is the label a reading always needed — the same
+    move as `ON <local|CI>` in the gate summary, applied to the tree instead of the machine.
+    """
+    try:
+        r = subprocess.run(["git", "rev-list", "--count", "HEAD..origin/main"],
+                           capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    n = r.stdout.strip()
+    if r.returncode != 0 or not n.isdigit():
+        # ⛔ UNMEASURABLE IS NOT ZERO. No repository, no `origin/main`, a failed call — each
+        # would read as "current" if this returned 0, which is the confident-wrong-answer this
+        # whole convention exists against.
+        return " tree=UNKNOWN"
+    return "" if n == "0" else f" tree={n}-behind-origin/main"
+
+
 def begin(tool):
     """Emit the start marker. ⛔ Call before argument parsing, or the marker cannot
     separate a rejected flag from a refused file."""
-    print(f"{PREFIX_RUN} {tool}", file=sys.stderr, flush=True)
+    print(f"{PREFIX_RUN} {tool}{tree_distance()}", file=sys.stderr, flush=True)
 
 
 def result(state):
