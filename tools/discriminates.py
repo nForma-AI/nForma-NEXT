@@ -184,6 +184,16 @@ def main():
     # documented NON-DISCRIMINATING verdict. A control that cannot be invoked without
     # emitting a real verdict code is worse than no control (#58, the exit-2 collision).
     if "--self-test" in sys.argv:
+        # ⛔ A COMPANION FLAG MUST STILL BE REFUSED. Measured 2026-09-05:
+        # `--self-test --zzz-not-a-flag` exited 0 here, so a self-test PASS could not
+        # be told from a flag being silently ignored — the control's result
+        # established nothing about the control. merge-guard.py exits 2 for both
+        # forms and is the known-negative that makes this measurable.
+        _extra = [a for a in sys.argv[1:] if a != "--self-test"]
+        if _extra:
+            print(f"\u26d4 unrecognised argument(s) alongside --self-test: {_extra}",
+                  file=sys.stderr)
+            return 2
         return self_test()
 
     args = ap.parse_args()
