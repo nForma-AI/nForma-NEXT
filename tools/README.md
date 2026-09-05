@@ -357,7 +357,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `runmarker.py` | ⚠ **a module, not an instrument** — the two stderr markers every tool emits | n/a, it is imported |
 | `estatenames.py` | ⚠ **a module, not an instrument** — does this string name an estate that is NOT this one? | n/a, it is imported |
 | `codestrings.py` | ⚠ **a module, not an instrument** — string literals in EXECUTABLE position, not docstrings or comments | n/a, it is imported |
-| `ci-log-clean.py` | is this CI log's text OUTPUT, or the echoed script? | 0 cleaned · **2 established nothing** |
+| `ci-log-clean.py` | strip the echoed `run:` block from a CI job log — BEFORE anything strips ANSI | 0 cleaned, or `--self-test` passed · 1 a control FAILED · **2 established nothing (no discriminator, empty input, or a flag alongside `--self-test`)** · `--self-test` |
 | `gh-complete.py` | is this `gh api` list reading COMPLETE, or a silent prefix of its own population? | 0 complete · 1 **TRUNCATED — the reading is a prefix** |
 | `reference-check.py` | which recorded reference implementations have MOVED since we recorded them? | 0 every entry current · 1 MOVED or MISSING · **2 established nothing** |
 | `use-not-mention.py` | does this file CALL `<pattern>`, or merely TALK ABOUT calling it? | 0 no call · 1 at least one CALL · **2 established nothing** |
