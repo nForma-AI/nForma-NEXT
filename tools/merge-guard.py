@@ -223,9 +223,24 @@ def main():
 
     if args.self_test:
         return self_test()
+    # ⛔ NO PR NAMED = the HOLDER QUESTION ALONE, not a refusal to answer.
+    # #193/#296/#302/#304's leg 4 asks for an instrument that "REFUSES a merge attempt
+    # from a session that is not the holder", and their own runnable check invokes this
+    # with `--session <id>` and NO pr. The first version returned VOID there, so the
+    # condition's own command could not be satisfied by the instrument written for it.
+    # ⇒ A holder check needs no PR: "may this session merge at all?" is answerable, and
+    # is exactly the question those four issues pose.
     if not args.prs:
-        print("⛔ VOID — no PR named. This tool does not decide WHAT to merge.", file=sys.stderr)
-        return 2
+        try:
+            text = Path(args.authority).read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"⛔ VOID — cannot read {args.authority}: {exc}", file=sys.stderr)
+            return 2
+        ok, detail = holder_check(text, args.session)
+        print(f"  {'✅' if ok else '⛔'} 0 holder == session    {detail}")
+        print("  ⇒ " + ("THIS SESSION MAY MERGE (subject to the per-PR legs)"
+                        if ok else "REFUSED — this session is not the holder"))
+        return 0 if ok else 1
 
     try:
         text = Path(args.authority).read_text(encoding="utf-8")
