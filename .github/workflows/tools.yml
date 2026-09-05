@@ -204,3 +204,45 @@ jobs:
             echo "   or the marker moved. Both print this line; neither is a pass."
           fi
           echo "⛔ This job is continue-on-error. Its green is NOT evidence."
+
+  # ⛔ ADVISORY, AND DELIBERATELY NOT `continue-on-error`. The sibling job above uses it,
+  # and for that job it is right — its failures mean "CI has no fleet". Here a finding
+  # means a PR would REMOVE content it did not add, and `continue-on-error` renders that
+  # as a warning annotation: a detector firing into a stream nobody classifies (#397).
+  #
+  # ⇒ So this job goes RED on a finding and is NOT in the required-contexts list, which
+  # is the whole of "advisory": visible, and blocking nothing. ⛔ Adding it to that list
+  # is branch protection and operator-only (docs/MERGE-AUTHORITY.md rule 2). Nothing here
+  # touches it.
+  #
+  # ⚠ What this CANNOT check: who may merge. A runner has no holder session and cannot
+  # have one — the holder is a running pane. `--shape-only` omits leg 0 and SAYS SO on
+  # every run; it establishes nothing about authority. That half stays merge-time.
+  pr-shape:
+    name: PR shape (advisory, NOT gating)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # ⛔ three-dot needs history; a shallow clone reads as empty
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # ⇒ #510 leg 1: "a check exists — CI STEP or merge-time — that refuses a PR whose
+      # diff against main removes content the PR did not add." merge-time landed first;
+      # this is the other half, so the #572 class is caught when the PR opens rather than
+      # when someone happens to run the guard by hand.
+      - name: revert-shape and PR hygiene
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch origin main --quiet || true
+          # ⚠ POSITIONAL. merge-guard takes `prs ...`; late-push takes `--pr N`. The
+          # first version of this step wrote `--pr` here and CI refused it with exit 2
+          # — the flag-strictness working, on the author of the flag-strictness.
+          python3 tools/merge-guard.py --shape-only ${{ github.event.pull_request.number }}

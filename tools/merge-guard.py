@@ -120,14 +120,24 @@ def pr_json(n, fields):
         raise Unestablished(f"gh --json {fields} was not parseable: {exc}")
 
 
-def evaluate(n, session, authority_text):
+def evaluate(n, session, authority_text, shape_only=False):
     legs = []
 
     def leg(name, ok, detail):
         legs.append((name, ok, detail))
 
-    ok, detail = holder_check(authority_text, session)
-    leg("0 holder == session", ok, detail)
+    # ⛔ --shape-only OMITS leg 0 AND SAYS SO. It exists for CI, which has no holder
+    # session and cannot have one: the holder is a running pane, not a runner. A flag
+    # that made leg 0 PASS without a session would be a hole shaped exactly like the
+    # thing this tool guards, so it is omitted and named rather than defaulted true.
+    # ⇒ Shape-only ESTABLISHES NOTHING ABOUT AUTHORITY. It answers #510 leg 1's other
+    # half — "a check exists, CI step OR merge-time" — and only that half.
+    if shape_only:
+        leg("0 holder == session", True, "⚠ SKIPPED — --shape-only. This run establishes "
+                                         "NOTHING about who may merge.")
+    else:
+        ok, detail = holder_check(authority_text, session)
+        leg("0 holder == session", ok, detail)
 
     d = pr_json(n, "baseRefName,mergeStateStatus,reviews,headRefOid,createdAt,state,statusCheckRollup")
     if d.get("state") != "OPEN":
@@ -135,13 +145,30 @@ def evaluate(n, session, authority_text):
 
     leg("1 base == main", d["baseRefName"] == "main", d["baseRefName"])
 
-    rollup = d.get("statusCheckRollup") or []
-    req = [c for c in rollup if (c.get("name") or c.get("context") or "") == "hermetic suites (gating)"]
-    if not req:
-        leg("2 required gate", False, "UNESTABLISHED — 'hermetic suites (gating)' absent from rollup")
+    # ⛔ --shape-only OMITS LEG 2 TOO, and for a reason measured on this tool's own PR.
+    # A CI job asking "is the required gate green?" from INSIDE the run that CONTAINS
+    # that gate is asking a self-referential question. Measured on PR #597, both jobs
+    # in the same run:
+    #     hermetic suites (gating)     started 23:22:19  completed 23:23:29  success
+    #     PR shape (advisory)          started 23:22:19  completed 23:22:25  FAILURE
+    # ⇒ pr-shape read the gate SIX SECONDS in, 64s before the gate finished. The gate
+    # was necessarily unfinished, so leg 2 was necessarily unestablished, and the job
+    # went red for a fact about ITS OWN CONCURRENCY rather than about the PR.
+    # ⚠ `needs:` would serialise it, but that is the wrong fix: it makes an ADVISORY job
+    # a prerequisite of nothing while doubling the run's latency, and it still leaves the
+    # runner asserting a green gate that the merger must re-read at merge time anyway.
+    # ⇒ The honest move is the same one leg 0 already makes: SKIP AND SAY SO.
+    if shape_only:
+        leg("2 required gate", True, "⚠ SKIPPED — --shape-only. A run cannot establish "
+                                     "the outcome of a gate it CONTAINS. Re-read at merge.")
     else:
-        concl = req[0].get("conclusion") or req[0].get("state") or ""
-        leg("2 required gate", concl == "SUCCESS", concl or "UNESTABLISHED")
+        rollup = d.get("statusCheckRollup") or []
+        req = [c for c in rollup if (c.get("name") or c.get("context") or "") == "hermetic suites (gating)"]
+        if not req:
+            leg("2 required gate", False, "UNESTABLISHED — 'hermetic suites (gating)' absent from rollup")
+        else:
+            concl = req[0].get("conclusion") or req[0].get("state") or ""
+            leg("2 required gate", concl == "SUCCESS", concl or "UNESTABLISHED")
 
     revs = d.get("reviews") or []
     changes = [r for r in revs if r.get("state") == "CHANGES_REQUESTED"]
@@ -236,6 +263,9 @@ def main():
     ap.add_argument("--session", default=os.environ.get("CLAUDE_CODE_SESSION_ID", ""),
                     help="session id to test as (default: $CLAUDE_CODE_SESSION_ID)")
     ap.add_argument("--authority", default=AUTHORITY, help=f"path to {AUTHORITY}")
+    ap.add_argument("--shape-only", action="store_true",
+                    help="omit the holder leg — for CI, which has no holder session. "
+                         "⛔ Establishes nothing about authority.")
     ap.add_argument("--self-test", action="store_true", help="run the controls; no network")
     args = ap.parse_args()
 
@@ -248,6 +278,10 @@ def main():
     # condition's own command could not be satisfied by the instrument written for it.
     # ⇒ A holder check needs no PR: "may this session merge at all?" is answerable, and
     # is exactly the question those four issues pose.
+    if not args.prs and args.shape_only:
+        print("⛔ VOID — --shape-only needs a PR: without one there is no shape to check, "
+              "and it is not a holder check.", file=sys.stderr)
+        return 2
     if not args.prs:
         try:
             text = Path(args.authority).read_text(encoding="utf-8")
@@ -260,19 +294,32 @@ def main():
                         if ok else "REFUSED — this session is not the holder"))
         return 0 if ok else 1
 
-    try:
-        text = Path(args.authority).read_text(encoding="utf-8")
-    except OSError as exc:
-        print(f"⛔ VOID — cannot read {args.authority}: {exc}\n"
-              f"   ADDABLE — run from a checkout that has it, or pass --authority.",
-              file=sys.stderr)
-        return 2
+    # ⛔ --shape-only MUST NOT READ THE AUTHORITY FILE. It skips leg 0, so `text` is
+    # never used — but reading it made a MISSING file fatal, and CI checks out the PR's
+    # own tree. ⇒ A PR that MOVED OR DELETED docs/MERGE-AUTHORITY.md turned pr-shape red
+    # with exit 2 for a fact about the authority record, not about the PR's shape. Same
+    # defect as leg 2 read from inside its own run: the advisory job going red for the
+    # wrong reason, which is how an advisory job stops being read at all.
+    # ⇒ Found by CodeRabbit in review of this PR, and confirmed here by measurement
+    #   before it was believed:
+    #     --shape-only 597 --authority /nonexistent/AUTH.md   exit 2
+    #     --shape-only 597                                    exit 0
+    if args.shape_only:
+        text = ""
+    else:
+        try:
+            text = Path(args.authority).read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"⛔ VOID — cannot read {args.authority}: {exc}\n"
+                  f"   ADDABLE — run from a checkout that has it, or pass --authority.",
+                  file=sys.stderr)
+            return 2
 
     worst = 0
     for arg in args.prs:
         print(f"══ PR #{arg} ══")
         try:
-            legs = evaluate(int(arg), args.session, text)
+            legs = evaluate(int(arg), args.session, text, args.shape_only)
         except (Unestablished, ValueError) as exc:
             print(f"  ⛔ UNESTABLISHED — {exc}")
             print("  ⇒ BLOCK. A leg that cannot be measured is not a leg that passed.\n")
