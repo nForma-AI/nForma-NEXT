@@ -10,7 +10,7 @@ below is taken over it.**
 ```
 INSTRUMENT  ≡  a non-test executable directly under tools/, EXCLUDING quarantined subdirectories
 
-   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 60.  Run it; do not trust the number below.
+   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 61.  Run it; do not trust the number below.
 ```
 
 ⚠ **The first draft of this section declared 54 and published a command that returns 55** — off by the
@@ -22,12 +22,12 @@ that excludes it because of its extension is drawing the population around a fil
 readings, so a reader meeting an older figure can place it:**
 
 ```
-top-level non-test executables (.py + .sh)  60   ⇐ THE DECLARED POPULATION
-  of which .py                              59   ⚠ every count published on 2026-08-21 used a SMALLER subset
-top-level tools/*.py, including test_      118
-ALL .py under tools/ recursively           141
-ALL .py under tools/ excluding test_        79
-rows in the index table below               62
+top-level non-test executables (.py + .sh)  61   ⇐ THE DECLARED POPULATION
+  of which .py                              60   ⚠ every count published on 2026-08-21 used a SMALLER subset
+top-level tools/*.py, including test_      120
+ALL .py under tools/ recursively           143
+ALL .py under tools/ excluding test_        80
+rows in the index table below               63
 files under tools/teamlead/                 23   ⛔ QUARANTINED — belonging is an OPEN QUESTION
 ```
 
@@ -327,6 +327,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `doctrine-deliver.py` | put a doctrine POINTER in front of a role that is behind — and refuse when the pane is in another estate | 0 nothing to deliver · 1 pointers pending or queued · **2 established nothing (no pane in this estate, zero panes enumerated, no roles named, or a payload that is not a pointer)** · `--self-test` |
 | `doctrine-uncommitted.py` | which doctrine is the fleet READING that main does not carry? | 0 reads == landed · 1 drift in any of three directions · **2 established nothing (no repo, bad ref, no file)** |
 | `label-precedence.py` | when `role:` and `dev:N` disagree, which does a pane obey? | 0 no HAZARD collisions · 1 at least one HAZARD -- a finding, established · 2 established nothing: forge unreadable, or the buckets did not sum | ⚙ GENERATED-FROM: --states |
+| `late-push.py` | which commits were pushed AFTER their PR merged and never reached main? | 0 none lost · 1 FINDINGS · **2 established nothing (no PRs enumerated, or an EMPTY main patch-id set — every candidate would then read as lost)** · `--self-test` |
 | `label-exists.py` | does the label you are about to query actually exist? | 0 all exist · 1 one is absent · **2 established nothing** |
 | `verdict-census.py` | has each indexed instrument ever produced a verdict? (`--ledger` keeps the record · `--stale-check` asks in 0.1s whether it is current) | 0 no finding · 1 a finding · **2 established nothing** · ⚠ `--stale-check`'s 0 means *the record is current*, NOT *they all produce verdicts* |
 | `wake-yield.py` | did that interruption produce work, or churn? | 0 |
@@ -875,6 +876,8 @@ means a population leg **exists**, not that it is a good one; `DRAWN` is a state
 **control**, not a defect in the tool, and where an undrawn population is genuinely unaffordable the answer
 is a **stated exception with a reason**. ★ Its own control is DRAWN, and it reports itself as such — a tool
 that measured this property and exempted itself would be the joke version of itself.
+
+**`late-push.py`** — ⛔ **#224's instrument, specified there and absent until now.** *A squash merge captures every commit IN THE PR AT MERGE TIME; it cannot capture one the author has not pushed yet.* Measured across 100 merged PRs: **37 merged inside 120s of creation, 25 inside 60s** — and #201 at **42 seconds**. ★ *At 42 seconds the author is not late; the merger is early*, and `MERGED` erases the difference. ⛔⛔ **DETECTION IS BY CONTENT, NOT SHA, and #224 is explicit.** A squash does not preserve shas, so `git merge-base --is-ancestor` answers a different question — it says whether THIS COMMIT is on main, never whether ITS CONTENT is, and **every squashed commit is a non-ancestor**, so ancestry alone reports the whole board lost. This compares `git patch-id --stable`: same diff, same id, regardless of sha or parent — exactly the equivalence a squash preserves. ★ **The known-positive is #224's own and re-verified live:** PR **#339** merged `19:56:18Z`, commit **`7447b1d`** authored `19:57:18Z` — **60s later** — `docs/DEFECT-CLASSES.md +10`, not an ancestor, patch-id absent from 400 commits of main. Ten lines genuinely lost. ⚠ #224 says 61s; that is author-vs-commit time. ⛔ **The VOID path is the load-bearing refusal:** an EMPTY main patch-id set makes every candidate read as lost, so it exits **2**, never a finding. #224's stated control `--since 1s` returns exactly that — **2, not 0** — which is a better answer than the condition expected. ⚠ And `--limit` is a **recency window, not a filter**: a PR older than the most recent N is NOT examined and is not clean, which the output says on every run. `--pr N` exists because #224's own specimen is ~250 merges down and reaching it by raising `--limit` costs a git-log per PR over the whole board. ⚠ **A finding is a CANDIDATE, not a proven loss** — content that reached main through a conflict resolution or an altered rebase has a different patch-id and reads as lost here. ⇒ **#445 holds: ORPHANED ≠ CONTENT-LOST**, and only the first is mechanically decidable. An unreadable head ref is counted and named as **UNCHECKED**, never folded into clean.
 
 **`label-precedence.py`** — **when `role:` and `dev:N` disagree about who owns an issue, which one is a
 pane meant to obey?** ⛔ Measured on #461: both fields are queryable, both populated, and until
