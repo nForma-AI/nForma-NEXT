@@ -37,7 +37,27 @@ COVERAGE = re.compile(r"reference recipe ships (\d+) of (\d+)")
 # Backticked repo-relative token inside a table row. Same convention as
 # check-orientation.py: a path here always contains "/". Templates and globs
 # carry characters no real path does and are skipped.
-CELL = re.compile(r"`([^`\s]+/[^`\s]*)`")
+# ⛔ A ROOT-LEVEL FILE IS A PATH TOO, AND REQUIRING "/" HID THE ONE THIS CHECK
+# EXISTS FOR. The first form was `([^`\s]+/[^`\s]*)` -- borrowed from
+# check-orientation.py, whose contract really is "always contains a /" because
+# CLAUDE.md only points at nested paths. onboard.md's copy table does not: it
+# lists `reference-implementations.md` at the repo root, and that file is one of
+# the five referents #363 was filed about.
+#
+# ⇒ Measured 2026-09-07: moving reference-implementations.md away left this
+# checker at exit 0. It never extracted the token, so it could not miss it.
+# A zero from a predicate that cannot reach the subject is #363's own general
+# form -- "a vendoring predicate ... derived over the wrong set" -- committed in
+# the checker written to catch it.
+#
+# ⚠ The "/" was doing real work: it kept prose backticks (`gh`, `--self-test`)
+# out. So the second branch requires a REAL EXTENSION rather than dropping the
+# constraint -- a bare word still cannot be a path.
+CELL = re.compile(
+    r"`("
+    r"[^`\s]+/[^`\s]*"                                  # nested: anything with a /
+    r"|[A-Za-z0-9_.-]+\.(?:md|py|sh|json|ya?ml|txt)"      # root-level: needs an extension
+    r")`")
 SKIP = set("<>*$()[]{}|")
 
 
@@ -125,6 +145,15 @@ def main():
 
         assert copy_table_paths("| `a/b.md` | x |") == ["a/b.md"], \
             "KNOWN-POSITIVE FAILED: a backticked table path must be extracted"
+        # ⛔ #363's referent. Root-level, no slash — invisible to the first form.
+        assert copy_table_paths("| `reference-implementations.md` | x |") == \
+            ["reference-implementations.md"], \
+            "KNOWN-POSITIVE FAILED: a ROOT-LEVEL file is a path too (#363)"
+        # ⚠ and the constraint the "/" was doing: a bare word is still not a path.
+        assert copy_table_paths("| run `gh` and `--self-test` | x |") == [], \
+            "KNOWN-NEGATIVE FAILED: a bare word with no extension is not a path"
+        assert copy_table_paths("| `Makefile` | x |") == [], \
+            "KNOWN-NEGATIVE FAILED: extensionless root file is not matched by this form"
         assert copy_table_paths("| `prompts/<ROLE>.md` | x |") == [], \
             "KNOWN-NEGATIVE FAILED: templates must be skipped"
         assert copy_table_paths("not a table row `a/b.md`") == [], \
