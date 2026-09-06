@@ -47,6 +47,24 @@ and a runner-killed job. Stated here as an open gap rather than a passing check.
 so is a genuinely short job log, and picking a threshold invents a boundary the
 data does not have. The timestamp is a property of the format, not of the length.
 """
+
+# NO-SELF-TEST: controlled by tools/test_job_log.py, which the CI glob gates and which
+# passes on main — 46 controls, counted by AST (ast.Call to `check`), measured
+# 2026-09-06 at origin/main by `python3 tools/test_job_log.py` exit 0 in the gating job. ⛔ This is a DECLARATION of where the control lives,
+# not a claim that none exists — tools/README.md records two control conventions in
+# one directory (`--self-test` and `test_*.py`).
+#
+# ⚠ WHY THIS TOOL HAS NO `--self-test`: its subject is a log BODY, so the controls feed it real captured bytes rather than
+# reaching a runner.
+# ⛔ THIS DECLARATION DOES NOT CHANGE THE GATE'S VERDICT, AND SAYING SO IS THE POINT.
+# This tool takes REQUIRED ARGUMENTS, so it reaches the cannot-invoke-bare branch at
+# gate-selftests.sh:272, which returns before `DECLARES_NONE` is consulted at :340.
+# Measured 2026-09-06, two-poled: with this line present and with it renamed, the gate
+# emits IDENTICAL BYTES and this tool REMAINS UNESTABLISHED.
+# ⇒ So: an external control EXISTS and is gated; the gate cannot SEE it. Those are
+# two different facts and a reader must not infer the second from the first.
+# The mismatch — the gate names this line as the remedy on a path that ignores it —
+# is nForma-AI/nForma-NEXT#603, not this file's to fix.
 import argparse, json, os, re, subprocess, sys, types
 
 _here = os.path.dirname(os.path.abspath(__file__))

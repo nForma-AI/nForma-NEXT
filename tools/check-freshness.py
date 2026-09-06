@@ -45,6 +45,24 @@ default would manufacture a verdict from an arbitrary clock.
 change and cannot speak to now. Re-running is what produces current evidence;
 this only refuses to let old evidence pose as it.
 """
+
+# NO-SELF-TEST: controlled by tools/test_check_freshness.py, which the CI glob gates and which
+# passes on main — 28 controls, counted by AST (ast.Call to `check`), measured
+# 2026-09-06 at origin/main by `python3 tools/test_check_freshness.py` exit 0 in the gating job. ⛔ This is a DECLARATION of where the control lives,
+# not a claim that none exists — tools/README.md records two control conventions in
+# one directory (`--self-test` and `test_*.py`).
+#
+# ⚠ WHY THIS TOOL HAS NO `--self-test`: a completedAt boundary is pure arithmetic, so the controls drive classify() with
+# synthetic instants and need no forge.
+# ⛔ THIS DECLARATION DOES NOT CHANGE THE GATE'S VERDICT, AND SAYING SO IS THE POINT.
+# This tool takes REQUIRED ARGUMENTS, so it reaches the cannot-invoke-bare branch at
+# gate-selftests.sh:272, which returns before `DECLARES_NONE` is consulted at :340.
+# Measured 2026-09-06, two-poled: with this line present and with it renamed, the gate
+# emits IDENTICAL BYTES and this tool REMAINS UNESTABLISHED.
+# ⇒ So: an external control EXISTS and is gated; the gate cannot SEE it. Those are
+# two different facts and a reader must not infer the second from the first.
+# The mismatch — the gate names this line as the remedy on a path that ignores it —
+# is nForma-AI/nForma-NEXT#603, not this file's to fix.
 import argparse, json, subprocess, sys
 from datetime import datetime, timezone
 
