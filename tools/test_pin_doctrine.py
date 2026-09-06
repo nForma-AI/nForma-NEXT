@@ -105,11 +105,21 @@ def main():
         d = "\n".join(l for l in BOTH_FORMS.splitlines() if "✅" not in l)
         check("must fire", verdict(fixture(tmp + "/d", d)), True)
 
-        print("\nthe unreadable case is UNCHECKED, never absent:")
+        print("\nthe unreadable case is UNCHECKED — neither absent NOR clean:")
+        # ⛔ THIS ASSERTION USED TO WANT `False`, AND `False` WAS THE DEFECT.
+        # The intent was right — an unreadable README must not claim the doctrine
+        # is LOST — but False is also the caller's word for CLEAN:
+        #     main(): return 1 if (decayed or unpinned) else 0
+        # so "cannot read the subject" scored as a pass. #502 C5 named it: "this
+        # repository's own silence-as-success failure, inside the instrument built
+        # to catch it." ⇒ The third state is the fix, and this test now pins all
+        # three poles so neither collapse can come back silently.
         empty = Path(tmp) / "e" / "tools"
         empty.mkdir(parents=True)
-        check("no README -> does not claim the doctrine is lost",
-              verdict(Path(tmp) / "e"), False)
+        unreadable = verdict(Path(tmp) / "e")
+        check("no README -> VOID, the third state", unreadable, "void")
+        check("VOID is not the caller's CLEAN (False)", unreadable is False, False)
+        check("VOID is not a FINDING (True) either", unreadable is True, False)
 
     print(f"\n{FAILED} FAILED" if FAILED else "\nall PASS")
     return 1 if FAILED else 0

@@ -43,9 +43,14 @@ Each is explained in full at the pointer; none of it is restated here.
   other pane's files, including the role prompts they are operating on. Prefer
   `git show <ref>:<path>` for reading, and `git worktree add` for writing.
   → `prompts/README.md` § *Each agent gets its own working tree*, issue #19
-- **Your role prompt is not a fixed input.** It is a file in a tree other panes are committing
-  to. Re-read it at `HEAD` before acting on what you remember of it.
-  → `prompts/README.md` § *Treat these as a baseline*
+- **Your role prompt is not a fixed input, and `HEAD` is not doctrine.** It is a file in a tree
+  other panes are committing to, and your tree is almost certainly behind. Re-read it at
+  `git show origin/main:prompts/<ROLE>.md`, after a `git fetch` — **not** at `HEAD`.
+  *(measured 2026-09-06: the shared tree is 414 commits behind and stale on all five prompts;
+  `ARCHITECT.md` differs from doctrine in 18 of 19 worktrees. ⚠ Distance is not the test — a
+  tree 611 commits behind can hold the byte-identical blob. Compare the blob, not the count.)*
+  → `prompts/README.md` § *Treat these as a baseline* and its rule **"Doctrine is
+  `origin/main`"**, issue #205
 - **You cannot invoke a slash command.** A model emitting `/rename X` produces text, not an
   effect; slash commands are expanded by the CLI's input layer, not by you.
   → `prompts/README.md` § *What this recipe cannot do*
