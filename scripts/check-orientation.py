@@ -34,6 +34,28 @@ TOKEN = re.compile(r"`([^`\s]+/[^`\s]*)`")
 SKIP = set("<>*$()[]{}|")
 
 
+def is_git_ref(tok):
+    """Does this token resolve as a git ref in THIS repo?
+
+    ⛔ Not a heuristic. CLAUDE.md's own first bullet tells every pane to read with
+    `git show <ref>:<path>`, so refs will keep appearing in it — and `origin/main`
+    satisfies TOKEN exactly as a path does (backticked, contains `/`, no metacharacter).
+    Guessing by shape would misfile a real extension-less path; asking git cannot.
+
+    ⚠ Consulted ONLY for a token that does not exist on disk. A path that exists is a
+    path, whatever else shares its name.
+    """
+    try:
+        return subprocess.run(
+            ["git", "-C", str(ROOT), "rev-parse", "--verify", "--quiet", tok + "^{commit}"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10,
+        ).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        # ⇒ Cannot establish "is a ref". Fail toward REPORTING it, never toward
+        # silencing it: an unreportable token must stay visible as dangling.
+        return False
+
+
 def extract(text):
     out = []
     for m in TOKEN.finditer(text):
@@ -72,6 +94,12 @@ def main():
         assert extract("no paths here at all") == [], "extractor should find nothing"
         assert extract("`prompts/<ROLE>.md`") == [], "templates must be skipped"
         assert extract("`a/b.md` `a/b.md`") == ["a/b.md"], "must dedupe"
+        # ⚠ Two-sided, and BOTH poles are named. A one-pole ref test would pass for a
+        # function that answered True to everything.
+        assert is_git_ref("origin/main"), \
+            "KNOWN-POSITIVE FAILED: `origin/main` must resolve as a ref"
+        assert not is_git_ref("tools/README.md"), \
+            "KNOWN-NEGATIVE FAILED: a real path must NOT be classified as a ref"
         missing_probe = not (ROOT / "definitely/not/here.md").exists()
         assert missing_probe, "existence probe cannot detect a missing file"
         print("self-test ok — extractor skips templates, dedupes, and the probe can fail")
@@ -118,11 +146,15 @@ def main():
         print("      this is an instrument failure, NOT a clean result", file=sys.stderr)
         return 2
 
-    missing = [p for p in paths if not (ROOT / p).exists()]
+    absent = [p for p in paths if not (ROOT / p).exists()]
+    refs = [p for p in absent if is_git_ref(p)]
+    missing = [p for p in absent if p not in refs]
 
     for p in paths:
-        print(f"  {'ok  ' if p not in missing else 'GONE'}  {p}")
-    print(f"\n{len(paths)} pointers checked, {len(missing)} dangling")
+        mark = "ok  " if p not in absent else ("ref " if p in refs else "GONE")
+        print(f"  {mark}  {p}")
+    print(f"\n{len(paths)} pointers checked, {len(missing)} dangling, "
+          f"{len(refs)} git ref(s) — a ref is not a path and cannot dangle")
     print("⚠ Checks existence only. It does not establish that a pointer still leads to what "
           "CLAUDE.md says is there.")
 
