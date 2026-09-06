@@ -188,12 +188,20 @@ def main():
     args = ap.parse_args()
 
     rows = []
+    # ⛔ Sessions that DECLARE but carry no fleet role name. They cannot appear in the table —
+    # the table is per-role — but they are decisive evidence about the PARSER. #365.
+    roleless_declared = []
     for proj in glob.glob(os.path.expanduser("~/.claude/projects/*")):
         for path in glob.glob(os.path.join(proj, "*.jsonl")):
             if time.time() - os.path.getmtime(path) > args.active_hours * 3600:
                 continue
             names, texts = assistant_texts(path)
             if not any(n in FLEET_ROLES for n in names):
+                # ⛔ SKIPPED FOR THE TABLE, BUT NOT FOR THE CONTROL. A roleless session can
+                # still declare, and if one does, the parser is DEMONSTRABLY working —
+                # which is the only thing the control below is entitled to conclude.
+                if latest_declaration(texts)[0]:
+                    roleless_declared.append(os.path.basename(path)[:8])
                 continue
             state, detail, back = latest_declaration(texts)
             rows.append({"session": os.path.basename(path)[:8],
@@ -204,7 +212,22 @@ def main():
     # least one session must carry a parseable STATE line. If none does, the parser is
     # broken or the prompts never landed — either way the run established nothing.
     if not any(r["state"] for r in rows):
-        print("⛔ CONTROL FAILED — no session carries a parseable STATE line.\n"
+        if roleless_declared:
+            # ⇒ A THIRD CAUSE, and the message used to offer only two. Measured 2026-09-06:
+            # a session DID declare and was filtered out for carrying no fleet role name,
+            # while every role-named session declared nothing. "The parser is broken" was
+            # refuted by the very session the filter discarded.
+            print(f"⛔ NO ROLE-NAMED SESSION DECLARED — but {len(roleless_declared)} ROLELESS "
+                  f"session(s) DID: {', '.join(roleless_declared)}.\n"
+                  "   ⇒ So the parser WORKS and the requirement HAS reached at least one pane.\n"
+                  "   ⛔ What is NOT established: anything about the role-named panes. They may\n"
+                  "      be silent, unlaunched, or never given the prompt — this cannot tell\n"
+                  "      those apart, and neither could a run that blamed the parser. (#365)\n"
+                  "   ADDABLE — bind a role to the declaring session, or ask the role-named\n"
+                  "      panes to emit the line.",
+                  file=sys.stderr)
+            return 2
+        print("⛔ CONTROL FAILED — no session carries a parseable STATE line, role-named or not.\n"
               "   ADDABLE — FIXABLE BY THE PANES: the STATE line is a self-report; if none\n"
               "   parses, ask the roles to emit it rather than treating the fleet as silent.\n"
               "   Either the "

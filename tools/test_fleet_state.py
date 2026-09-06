@@ -223,6 +223,46 @@ def main():
         _, texts = fleet_state.assistant_texts(p)
         failures += not check("text turns counted", len(texts), 1)
 
+        # ⛔ THE CONTROL'S OWN POPULATION, #365. main() skips sessions with no fleet role
+        # name — correctly, the table is per-role — but the KNOWN-POSITIVE control ("at
+        # least one session must declare") was checking only the sessions that survived
+        # that filter. Measured 2026-09-06 on the live fleet: a roleless session DID
+        # declare, was discarded by the filter, and the tool concluded "the parser is
+        # broken" — refuted by the very session it had thrown away.
+        # ⇒ Both poles, because the point is that the two causes must READ DIFFERENTLY.
+        import io, contextlib
+        home = os.path.join(d, "fakehome")
+        proj = os.path.join(home, ".claude", "projects", "p")
+        os.makedirs(proj)
+        _saved_home = os.environ.get("HOME")
+
+        print("★ a ROLELESS session that DECLARES refutes 'the parser is broken':")
+        write([WORK, "STATE: FREE — nothing queued"], os.path.join(proj, "roleless.jsonl"),
+              title="nforma-next-dc")
+        os.environ["HOME"] = home
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            rc = fleet_state.main()
+        failures += not check("exit", rc, 2)
+        failures += not check("names the roleless declarer",
+                              "ROLELESS session(s) DID" in err.getvalue(), True)
+        failures += not check("does NOT blame the parser",
+                              "this parser is broken" in err.getvalue(), False)
+
+        print("★ the KNOWN-NEGATIVE — nobody declares at all, role-named or not:")
+        os.remove(os.path.join(proj, "roleless.jsonl"))
+        write([WORK, WORK], os.path.join(proj, "silent.jsonl"), title="nforma-next-dc")
+        err2 = io.StringIO()
+        with contextlib.redirect_stderr(err2), contextlib.redirect_stdout(io.StringIO()):
+            rc2 = fleet_state.main()
+        failures += not check("exit", rc2, 2)
+        failures += not check("says role-named OR NOT",
+                              "role-named or not" in err2.getvalue(), True)
+        failures += not check("no roleless declarer claimed",
+                              "ROLELESS session(s) DID" in err2.getvalue(), False)
+        if _saved_home is not None:
+            os.environ["HOME"] = _saved_home
+
     print()
     if failures:
         print(f"{failures} FAILED")
