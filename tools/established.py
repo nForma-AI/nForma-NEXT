@@ -28,6 +28,19 @@ true for the number to mean what it appears to mean, and it is named in prose so
 the refusal can say what was missing.
 """
 
+# NOT-EXECUTABLE: a module. tools/README.md: not an instrument — it is imported, never
+# run. No __main__, no argv surface, so `--self-test` cannot reach a control here and
+# `--zzz-not-a-flag` cannot be refused: this file never reads argv at all.
+#
+# ⇒ Before this line the gate scored it UNVERIFIABLE — "it accepts `--zzz-not-a-flag`
+# and exits 0" — which is TRUE and describes a module, not a defective argument surface.
+# Measured 2026-09-06.
+#
+# ⚠ ITS USER IS INVISIBLE TO AN IMPORT SCAN. tools/job-log.py loads this file with
+# types.ModuleType + exec (job-log.py:71-75), not `import established`, so an AST sweep
+# over ast.Import/ast.ImportFrom reports ZERO importers for a module that is in use.
+# ⇒ Do not conclude from an import census that this file is dead. It is not.
+
 
 class NotEstablished:
     """A refused reading. Falsy, so `if result:` cannot mistake it for a value.
