@@ -96,10 +96,23 @@ def main():
         assert extract("`a/b.md` `a/b.md`") == ["a/b.md"], "must dedupe"
         # ⚠ Two-sided, and BOTH poles are named. A one-pole ref test would pass for a
         # function that answered True to everything.
-        assert is_git_ref("origin/main"), \
-            "KNOWN-POSITIVE FAILED: `origin/main` must resolve as a ref"
+        # ⚠ THE KNOWN-POSITIVE MUST NOT DEPEND ON A FETCHED REMOTE. This asserted
+        # is_git_ref("origin/main"), which fails wherever that remote-tracking ref is
+        # absent — a shallow clone, a remote not named "origin", or the vendored
+        # installs of #502 — and it would fail for an ENVIRONMENTAL reason while
+        # reading as a code defect. Same class as `$RANDOM` under dash and `timeout`
+        # absent on macOS, both of which cost this session real landings.
+        # ⇒ HEAD resolves in every git repo. origin/main is still exercised, but only
+        #   where it exists, so its absence is a SKIP and never a false red.
+        assert is_git_ref("HEAD"), \
+            "KNOWN-POSITIVE FAILED: HEAD must resolve as a ref in any git repo"
         assert not is_git_ref("tools/README.md"), \
             "KNOWN-NEGATIVE FAILED: a real path must NOT be classified as a ref"
+        if is_git_ref("origin/main"):
+            print("self-test ok — origin/main present, the real CLAUDE.md token was exercised")
+        else:
+            print("self-test ok — ⚠ origin/main ABSENT here; classification tested via HEAD, "
+                  "the CLAUDE.md token itself was NOT exercised")
         # ⚠ The pin leg's VOID must be reachable AND distinguishable from its pass.
         # ⛔ Do NOT test this by chmod-ing tools/README.md and running main(): the
         # No-CI leg enumerates that same file and returns 2 FIRST, so the run exits 2
