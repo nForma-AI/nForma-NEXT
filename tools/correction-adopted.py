@@ -42,6 +42,26 @@ number as if the call had been made is the error the tool exists to catch.
 ⚠ It also cannot tell an ADOPTED correction from a body that merely contains the
 word "FALSE". Presence of a marker is not correctness of one.
 
+⛔⛔ SILENT ADOPTION -- THE FALSE-POSITIVE CLASS, NAMED AFTER IT BIT THIS TOOL.
+Measured on #338, 2026-09-06, hours after this file first reported 25 candidates:
+
+    comment  "the disposition on defect 1 was wrong ... it read
+              `ADDABLE — ARCHITECT: wire defect 1's fix ...`"
+    body:90  "**ADDABLE — OPERATOR:** a `PreToolUse` lint on `for x in $unquoted`"
+    ⇒ occurrences of the refuted "ARCHITECT" disposition in the body: 0
+      (its one ARCHITECT is the author's byline)
+
+The correction WAS adopted -- by REWRITING the line rather than striking it. That
+is arguably the better repair for a reader, and it leaves NO MARKER, so this tool
+calls it a candidate.
+
+⇒ CANDIDATE therefore means "announced, and the body shows no sign of it", NOT
+"unrepaired". A rewritten body and a never-touched one are byte-indistinguishable
+here, because the evidence of the repair is in the DIFF and this reads the file.
+⚠ Detecting it would need the body's edit history, which `gh issue view` does not
+carry. Until something reads that, EVERY candidate needs a human read, and the
+count is an upper bound on the defect rather than a measure of it.
+
 Exit: 0 no candidates · 1 at least one candidate · 2 established nothing.
 ⛔ 2 is not a pass. A failed query, an empty board, or a reading shorter than the
 population the API states all mean nothing was measured -- and a fetch failure
