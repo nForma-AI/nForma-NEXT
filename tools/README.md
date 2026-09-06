@@ -10,7 +10,7 @@ below is taken over it.**
 ```
 INSTRUMENT  ≡  a non-test executable directly under tools/, EXCLUDING quarantined subdirectories
 
-   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 61.  Run it; do not trust the number below.
+   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 62.  Run it; do not trust the number below.
 ```
 
 ⚠ **The first draft of this section declared 54 and published a command that returns 55** — off by the
@@ -22,7 +22,7 @@ that excludes it because of its extension is drawing the population around a fil
 readings, so a reader meeting an older figure can place it:**
 
 ```
-top-level non-test executables (.py + .sh)  61   ⇐ THE DECLARED POPULATION
+top-level non-test executables (.py + .sh)  62   ⇐ THE DECLARED POPULATION
   of which .py                              60   ⚠ every count published on 2026-08-21 used a SMALLER subset
 top-level tools/*.py, including test_      120
 ALL .py under tools/ recursively           143
@@ -319,6 +319,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `fleet-identity.py` | which role is this session, and which pane runs it? | 0 resolved · **2 population too small** · **2 own-session control failed** |
 
 | `disposition-scan.py` | does a refusal NAME a disposition, or only report that it established nothing? | 0 scan completed -- counts only, never a pass/fail verdict · 2 established nothing: no instruments readable, or the buckets did not sum | ⚙ GENERATED-FROM: --states |
+| `disposition-ratchet.py` | is the UNNAMED-refusal count GROWING? — #73's missing caller | 0 at or below the floor, including when it dropped · 1 **the count GREW: a new refusal names no disposition** · 2 established nothing (scan unusable, or NO baseline recorded — ⛔ 'no floor' is not 'floor of zero') · `--self-test` |
 | `discriminates.py` | can this check tell the two states apart at all? | 0 discriminated · **2 non-discriminating, verdict refused** |
 | `dated-claims.py` | does a docstring that says MEASURED say WHEN? | 0 all dated · 1 undated claims found · **2 established nothing (no dir, no .py files)** |
 | `prevalence.py` | is this token evidence about ONE record, or the line FORMAT? | 0 discriminates · 1 non-discriminating (all, or none) · **2 established nothing (n<2, empty, unreadable)** |
@@ -913,6 +914,8 @@ would run each tool's main path, which for a forge-touching instrument **perform
 ⚠ **It counts itself and says so** — shipping the measurement raised the figure it reports, by one,
 on the day it landed. ⛔ **And #73's own proxy test is left standing: presence of a disposition is not
 usefulness of one**, which this counts nothing about.
+
+**`disposition-ratchet.py`** — ⛔ **#73's missing leg was AUTHORITY, not code.** `disposition-scan.py` built the predicate, planted it four ways, caught a use-versus-mention bug in itself — then stopped, saying why: *"committing other roles' files to a floor is not this tool's call. It reports; someone else decides."* ★ **That is correct and it is not a technical gap.** Deciding that 45 files owned by other roles may not get worse binds every one of those roles, which is a TEAMLEAD act; #73 sat with a working predicate and no caller for 16 days because nobody who could supply that had been asked. ⇒ **A ratchet, not a gate:** a gating check reds 45 pre-existing files on its first run, and a red naming 45 files nobody touched is reverted or ignored — worse than absent, because it teaches the gate is noise. This fails **only if the count grows**; history is never red, adoption lowers the floor, `--record` refuses to raise it. ⛔⛔ **IT DOES NOT WRITE WHAT IT READS**, taken from #598 measured the same day: `index-watch.py` records the sha it just reported on, so the run that finds drift is the run that suppresses it — re-running to confirm a finding DESTROYS it, and the second exit 0 means *did not check* while reading as *clean*. ⇒ On a DROP this says the floor **can** be lowered and refuses to; the suite asserts byte-identical output and an untouched baseline across two consecutive runs. ⚠ **The predicate is DELEGATED, never restated** — an interface change VOIDs rather than guesses (#405). ⚠ **It counts ITSELF and prints both figures**, because adding an instrument moves the figure it reports. ⛔ **THE BOUND, inherited from #73 against itself:** *a check could pass while every refusal names a remedy nobody can act on.* **PRESENCE of a disposition is not USEFULNESS of one.** ⚠ **A line-oriented predicate has a formatting consequence, found by this tool failing its own rule:** `classify()` credits a disposition only when it shares a *physical source line* with both the refusal text and the `print(`/`stderr` emit.
 
 **`label-exists.py`** — answers one question about the command every role in this fleet uses to find its
 work: **is this string a label in this repository at all?** ⛔ Measured 2026-08-20: `gh issue list --label`
