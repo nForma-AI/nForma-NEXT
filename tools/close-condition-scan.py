@@ -93,10 +93,50 @@ ACCEPTED_FORM = """
        ⛔ not:        "we should decide the completion condition for this someday"
 """
 
+# ⛔ A CORRECTION THAT KILLS A CONDITION'S PREMISE USUALLY DOES NOT RESTATE THE
+# CONDITION, so it carries no clause and is INVISIBLE to "take the last comment
+# carrying one." Measured on #579, 2026-09-06: the only clause-bearing comment was
+# the OLDEST of three, and the two after it were both corrections — one refuting the
+# very number the clause was anchored to ("today's answer is 5" -> "43 of 61").
+# Promoting verbatim, as the remedy said, would have installed a known-false anchor.
+# ⇒ Same class as #601: a refutation nobody propagated.
+#
+# ⚠ This WARNS, it does not verdict. A false positive costs a re-read; a false
+# negative costs a promoted-wrong condition. So it fails toward warning, and the
+# words below are deliberately broad.
+SUPERSEDED = re.compile(
+    r"correcting|correction|withdraw|retract|supersed|no longer|"
+    r"i was wrong|that was wrong|refut",
+    re.IGNORECASE,
+)
+
+
+def supersession_risk(issue):
+    """(clause_idx, n_later, n_later_correcting) for a BURIED issue.
+
+    clause_idx is the LAST comment carrying a clause -- the one the remedy says to
+    promote. n_later_correcting counts comments AFTER it that read like corrections.
+    ⇒ Any nonzero means "read those before you copy", never "do not copy".
+    """
+    cs = issue.get("comments") or []
+    idx = None
+    for i, c in enumerate(cs):
+        if has_clause(c.get("body")):
+            idx = i
+    if idx is None:
+        return (None, 0, 0)
+    later = cs[idx + 1:]
+    return (idx, len(later), sum(1 for c in later if SUPERSEDED.search(c.get("body") or "")))
+
+
 BURIED_REMEDY = """
     ⇒ THE FIX IS A MOVE, NOT A REWRITE: copy the clause from the comment into the BODY,
       verbatim. ⚠ Take it from the LAST comment carrying one — a corrected disposition
       supersedes an earlier one, and promoting the first can promote a WITHDRAWN condition.
+    ⛔ AND THAT IS NOT SUFFICIENT. A correction usually does NOT restate the condition,
+      so it carries no clause and this rule cannot see it. Any ⚠ line above names the
+      later comments that read as corrections; read them before you copy, and if one
+      refutes what the clause is anchored to, promote it CORRECTED and say so.
 """
 
 class Void(Exception):
@@ -188,8 +228,34 @@ def self_test():
         for why, exp, got in failures:
             print(f"     {why}: expected {exp}, got {got}")
         return 3
+    # ── supersession_risk: two-sided, both poles NAMED ─────────────────────────
+    # ⛔ The dangerous shape is a LATER correction that carries no clause. A detector
+    # keyed on clauses alone cannot see it, which is the whole reason this exists.
+    clause = {"body": "## Done when\nthe number is 5."}
+    corr = {"body": "⛔ Correcting my own comment above. Both numbers were wrong."}
+    plain = {"body": "Agreed, nice write-up."}
+
+    got = supersession_risk({"comments": [clause, corr, plain]})
+    assert got == (0, 2, 1), \
+        f"KNOWN-POSITIVE FAILED: a later correction must be counted, got {got}"
+
+    got = supersession_risk({"comments": [clause, plain, plain]})
+    assert got == (0, 2, 0), \
+        f"KNOWN-NEGATIVE FAILED: ordinary later comments are not corrections, got {got}"
+
+    # ⚠ The LAST clause wins, not the first — and a correction BEFORE it is not a risk.
+    got = supersession_risk({"comments": [clause, corr, clause]})
+    assert got == (2, 0, 0), \
+        f"KNOWN-NEGATIVE FAILED: a correction before the last clause is spent, got {got}"
+
+    got = supersession_risk({"comments": [plain]})
+    assert got == (None, 0, 0), \
+        f"KNOWN-NEGATIVE FAILED: no clause at all must yield None, got {got}"
+
     print(f"\n  {len(cases)}/{len(cases)} controls passed — including the "
           f"use-vs-mention negative.")
+    print("  4/4 supersession controls passed — a later correction is counted, an "
+          "ordinary comment is not, and a correction BEFORE the last clause is spent.")
     return 0
 
 
@@ -301,6 +367,18 @@ def main():
             print(f"{state}  ({len(rows)})  {gloss}")
             for it in sorted(rows, key=lambda i: i["number"]):
                 print(f"    #{it['number']:<5} {it['title'][:88]}")
+                # ⇒ Printed per-row, not once at the bottom: the reader deciding
+                # WHICH comment to copy is deciding it here.
+                if state == "BURIED":
+                    idx, n_later, n_corr = supersession_risk(it)
+                    if n_corr:
+                        print(f"           ⚠ the last clause is comment #{idx + 1}; "
+                              f"{n_corr} of the {n_later} comment(s) after it read as "
+                              f"CORRECTIONS. Read them before copying — the clause may "
+                              f"be anchored to a refuted number.")
+                    elif n_later:
+                        print(f"           · last clause is comment #{idx + 1}; "
+                              f"{n_later} later comment(s), none reading as corrections.")
             # ⛔ The remedy prints WITH the finding, not in a README. DEV2 met both
             # requirements only by READING THE REGEX; nothing in the issue template,
             # goals/README.md, or this tool's own output said a comment scores BURIED
