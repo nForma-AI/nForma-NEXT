@@ -35,6 +35,15 @@ the session whose file says DEV2 resolves to the TEAMLEAD pane, 14 hits to 5.
 
 The Daintree token is read from the user's own MCP config. It is never embedded.
 """
+
+# NO-SELF-TEST: controlled by tools/test_fleet_identity.py and
+# tools/test_fleet_identity_exact.py, both of which the CI glob gates and both of which
+# pass on main — measured 2026-09-06. ⛔ A DECLARATION of where the control lives, not a
+# claim that none exists.
+#
+# ⚠ WHY THERE IS NO IN-PROCESS `--self-test`: main() reads a live registry and joins it
+# against running panes on its first statements. A hermetic control has to supply that
+# registry from outside the process, which is what the two paired suites do.
 import collections, glob, json, os, re, subprocess, sys, time
 
 CFG = os.path.expanduser("~/.claude.json")
@@ -509,6 +518,33 @@ def registry_report(reg, as_json):
 
 
 def main():
+    # ⛔ AN ARGUMENT SURFACE. Without one this instrument was UNVERIFIABLE: it accepted
+    # `--zzz-not-a-flag` and exited 0, so `--self-test` exiting 0 established NOTHING — the
+    # flag may never have been recognised. Measured 2026-09-06 by scripts/gate-selftests.sh.
+    # ⇒ A control whose invocation cannot be shown to have happened is not a control.
+    #
+    # ⚠ The two refusals must DIFFER, or `--self-test` and garbage are byte-identical and the
+    # gate reads that as "the flag was never DISPATCHED" — trading UNVERIFIABLE for
+    # UNESTABLISHED and establishing nothing either way.
+    # ⚠ Exit 2 is this file's own "established nothing" (see the CONTROL FAILED path below);
+    # it emits only 0 and 2, so a refusal collides with no verdict.
+    _KNOWN = {"--json", "--registry-only"}
+    _argv = sys.argv[1:]
+    if _argv == ["--self-test"]:
+        print("⛔ VOID — this instrument has no in-process control: main() reads a live registry\n"
+              "   and joins it against running panes, so there is nothing hermetic to run here.\n"
+              "   ADDABLE — run its controls directly:\n"
+              "     python3 tools/test_fleet_identity.py\n"
+              "     python3 tools/test_fleet_identity_exact.py\n"
+              "   (both gated by the CI glob).", file=sys.stderr)
+        return 2
+    _unknown = [a for a in _argv if a not in _KNOWN]
+    if _unknown:
+        print(f"⛔ VOID — unrecognised argument(s): {_unknown}.\n"
+              f"   This instrument takes only {sorted(_KNOWN)}.\n"
+              f"   NO REMEDY — there is no other flag; drop it and run again.", file=sys.stderr)
+        return 2
+
     as_json = "--json" in sys.argv
     reg = registry()
 
