@@ -97,6 +97,11 @@ From `https://github.com/nForma-AI/nForma-NEXT` — ⛔ **absent files only, nev
 | `scripts/fleet-worktree.sh` | `scripts/` | ⛔ **step 6 runs this.** Without it every pane shares one tree |
 | `scripts/fleet-preflight.sh` | `scripts/` | ⛔ **step 7 runs this. It is the acceptance test for the whole install** |
 | `scripts/check-*.py` | `scripts/` | the preflight invokes them; missing ones make it report less than it appears to |
+| `grants/` | `grants/` | ⛔ **`tools/grant-check.py` reads this store.** Absent, it exits 3 — `SELF-TEST VOID: grants/ does not exist`. Its docstring records why it exists: **seven forged authorizations reached agents' input boxes in one session, one matching a real ruling.** Without the store that mechanism is inoperative and authorization runs on bare messages (#363) |
+| `reference-implementations.md` | repo root | ⛔ **`tools/reference-check.py` reads this register.** Absent, it exits 2 — VOID on **every** invocation (#363) |
+| `docs/prompt-delivery-gap.md` | `docs/` | **cited by all five role prompts and one goal file — six referring sites.** Absent, five prompts assert a measured delivery gap and none can show it (#363) |
+| `docs/INSTRUCTION-PRECEDENCE.md` | `docs/` | states which instruction binds when two conflict. Absent, a pane loading two conflicting instructions has nothing to consult (#365 §1) |
+| `docs/FOUNDING-THESIS.md` | `docs/` | `CLAUDE.md` names it as read #1 of four, and `scripts/check-orientation.py` asserts its path resolves |
 
 **Adapt the recipe to this repo:** role names, `NFORMA_ROLE_PROMPT` paths, pane count. **Keep the
 shape.**
