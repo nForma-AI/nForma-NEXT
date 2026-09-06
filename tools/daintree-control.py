@@ -19,6 +19,14 @@ is unfounded.
 Exit: 0 the instrument is answering · 2 VOID — it established nothing.
       A VOID run must never be read as "the fleet is quiet".
 """
+
+# NO-SELF-TEST: controlled by tools/test_daintree_control.py, which the CI glob gates
+# and which passes on main — 9 controls, measured 2026-09-06. ⛔ A DECLARATION of where
+# the control lives, not a claim that none exists.
+#
+# ⚠ WHY THERE IS NO IN-PROCESS `--self-test`: main() opens a live MCP session on its
+# first statement. A hermetic control has to stand a server up around the whole process,
+# which is exactly what the paired suite does (make_handler / run_against).
 import json, os, subprocess, sys
 
 CFG = os.environ.get("DAINTREE_CFG") or os.path.expanduser("~/.claude.json")
@@ -114,6 +122,30 @@ def payload(res):
 
 
 def main():
+    # ⛔ AN ARGUMENT SURFACE, because without one this instrument was UNVERIFIABLE: it read
+    # NO argv at all, so `--zzz-not-a-flag` and `--self-test` and a bare run were the same
+    # run, all exiting 0. The gate said so exactly — "it accepts `--zzz-not-a-flag` and exits
+    # 0, so `--self-test` exiting 0 establishes NOTHING: the flag may never have been
+    # recognised." ⇒ A control whose invocation cannot be shown to have happened is not a
+    # control. Measured 2026-09-06.
+    #
+    # ⚠ The two refusals must DIFFER. Refusing every argument with one message would make
+    # `--self-test` and garbage byte-identical, which the gate reads as "the flag was never
+    # DISPATCHED" — trading UNVERIFIABLE for UNESTABLISHED and establishing nothing either way.
+    argv = sys.argv[1:]
+    if argv == ["--self-test"]:
+        print("⛔ VOID — this instrument has no in-process control: main() opens a live MCP\n"
+              "   session on its first statement, so there is nothing hermetic to run here.\n"
+              "   ADDABLE — run its control directly: python3 tools/test_daintree_control.py\n"
+              "   (9 controls, stands a server up around the whole process; the CI glob gates it).",
+              file=sys.stderr)
+        return 2
+    if argv:
+        print(f"⛔ VOID — unrecognised argument(s): {argv}. This instrument takes none; it\n"
+              f"   reports the live pane census and nothing else.\n"
+              f"   NO REMEDY — there is no flag to pass. Run it bare.", file=sys.stderr)
+        return 2
+
     url, auth = endpoint()
     try:
         hs = subprocess.run(
