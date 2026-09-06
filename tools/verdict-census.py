@@ -250,6 +250,32 @@ def selftest_state(path, timeout=TIMEOUT):
         return STFAIL, f"self-test crashed: {last}"
     if real.returncode == 0:
         return STPASS, "its own known-positive passes"
+
+    # ⛔ A FOURTH SHAPE, and this classifier had no cell for it: `--self-test` RECOGNISED, and
+    # ANSWERED WITH A REFUSAL that names where the control actually lives. Three instruments
+    # acquired it on 2026-09-06 — daintree-control, fleet-identity, reference-check — each of
+    # which opens a live session or a sibling checkout on its first statement, so a hermetic
+    # control cannot run in-process and lives in the paired suite instead.
+    #
+    # ⚠ Without this branch the refusal's non-zero exit fell through to SELFTEST-FAIL, and the
+    # ledger recorded "its known-positive is broken" about three tools whose controls PASS.
+    # Measured: scripts/gate-selftests.sh classified all three as "has NO self-test, declared"
+    # in the same minute. ⇒ TWO INSTRUMENTS DISAGREEING ABOUT THE SAME THREE TOOLS, and this
+    # one was wrong.
+    #
+    # ⚠ It reads the ANCHORED declaration, exactly as the gate does — `^# NO-SELF-TEST:` — so a
+    # docstring that merely discusses the marker cannot claim it. A tool with a REAL self-test
+    # that fails does not carry this line, so the declaration cannot rescue a broken control.
+    try:
+        src = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        src = ""
+    for line in src.splitlines():
+        if line.startswith("# NO-SELF-TEST:"):
+            why = line[len("# NO-SELF-TEST:"):].strip()
+            return STNONE, (f"declared in-file, and --self-test REFUSES rather than running "
+                            f"(exit {real.returncode}): {why[:120]}")
+
     return STFAIL, (f"self-test exited {real.returncode} — ⛔ its known-positive is broken, so "
                     f"its verdicts are not trustworthy")
 
@@ -512,6 +538,39 @@ def self_test():
         ok &= got == STNONE
         print(f"  {'ok  ' if got == STNONE else 'FAIL'}  and a genuinely uncontrolled instrument"
               f" is still NO-SELF-TEST (got {got}) — the new state does not swallow it")
+
+        # ⛔ A FOURTH SHAPE: `--self-test` RECOGNISED and answered with a REFUSAL naming where
+        # the control really lives. Three instruments acquired it on 2026-09-06 and this
+        # classifier called all three SELFTEST-FAIL — "its known-positive is broken" — about
+        # tools whose controls PASS. scripts/gate-selftests.sh read the same three correctly
+        # as "has NO self-test, declared" in the same minute.
+        refuses = _fixture(d, "st_refuses.py",
+                           "import sys\n"
+                           "if '--self-test' in sys.argv:\n"
+                           "    print('VOID - no in-process control; run its paired suite',"
+                           " file=sys.stderr)\n"
+                           "    raise SystemExit(2)\n"
+                           "if len(sys.argv) > 1: raise SystemExit(2)\n"
+                           "raise SystemExit(0)")
+        refuses.write_text("#!/usr/bin/env python3\n"
+                           "# NO-SELF-TEST: controlled by its paired suite\n"
+                           + refuses.read_text().split("\n", 1)[1])
+        got, why = selftest_state(refuses, timeout=30)
+        ok &= got == STNONE
+        print(f"  {'ok  ' if got == STNONE else 'FAIL'}  a DECLARED refusal is {STNONE}, not"
+              f" {STFAIL} (got {got})")
+
+        # ★ THE KNOWN-NEGATIVE, or the branch above is an off switch: a self-test that really
+        # FAILS, with NO declaration, must still be SELFTEST-FAIL.
+        broken = _fixture(d, "st_broken.py",
+                          "import sys\n"
+                          "if '--self-test' in sys.argv: raise SystemExit(3)\n"
+                          "if len(sys.argv) > 1: raise SystemExit(2)\n"
+                          "raise SystemExit(0)")
+        got, _ = selftest_state(broken, timeout=30)
+        ok &= got == STFAIL
+        print(f"  {'ok  ' if got == STFAIL else 'FAIL'}  an UNDECLARED failing control is still"
+              f" {STFAIL} (got {got}) — the declaration does not rescue a broken one")
 
         # ⛔ THE FINGERPRINT MUST MOVE FOR A CLASSIFICATION CHANGE AND HOLD FOR A COSMETIC ONE.
         # Controlled in BOTH directions: one that never moves preserves wrong rows forever, and
