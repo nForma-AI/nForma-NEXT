@@ -272,8 +272,16 @@ classify_one() {
                 echo "@@VERDICT unest $b"
                 echo "  ⚠ $b CANNOT BE INVOKED BARE — \`$FLAG\` alone is rejected for MISSING"
                 echo "     REQUIRED ARGUMENTS, so no control is reachable this way. ⛔ That is not"
-                echo "        'has no self-test'; it is a limit of the invocation, and it needs a"
-                echo "        \`# NO-SELF-TEST:\` line or an invocation this gate can derive."
+                echo "        'has no self-test'; it is a limit of the invocation."
+                echo "     ⛔ A \`# NO-SELF-TEST:\` LINE DOES NOT CHANGE THIS VERDICT. This branch"
+                echo "        returns before that line is read — DECLARES_NONE is consulted further"
+                echo "        down, on the flag-REJECTED path only. Measured 2026-09-06, two-poled:"
+                echo "        identical bytes with the declaration present and with it renamed."
+                echo "     ⇒ What WOULD change it: an invocation this gate can derive — the subject"
+                echo "        accepting \`$FLAG\` with no other required argument. Until then the"
+                echo "        control may exist and be gated elsewhere; this gate cannot SEE it."
+                echo "     ⇒ nForma-AI/nForma-NEXT#603 carries the choice: honour the declaration"
+                echo "        here, or keep this branch strict. Naming an inert remedy was the bug."
                 return ;;
         esac
 
@@ -622,6 +630,31 @@ selftest() {
     out=$(gate "$d" 'c_declared_broken.py' 2>&1); rc=$?
     check "a declaration does NOT rescue a control that FAILS" 1 "CONTROL FAILED"
     rm -f "$d/c_declared_broken.py" "$d/d_declared.py"
+
+    # ⛔ THE CANNOT-INVOKE-BARE BRANCH HAD ZERO CONTROLS — 17 checks in this self-test and not
+    # one reached it, which is how it went on naming an inert remedy. #603. Both poles.
+    cat > "$d/req_args.py" <<'REQ'
+#!/usr/bin/env python3
+"""A subject taking a REQUIRED argument, so `--self-test` alone cannot reach a control."""
+import argparse, sys
+ap = argparse.ArgumentParser()
+ap.add_argument("--repo", required=True)
+ap.add_argument("--self-test", action="store_true")
+ap.parse_args()
+sys.exit(0)
+REQ
+    out=$(gate "$d" 'req_args.py' 2>&1); rc=$?
+    check "a subject with REQUIRED ARGS is UNESTABLISHED, not 'has no self-test'" 2 \
+          "CANNOT BE INVOKED BARE" "limit of the invocation"
+
+    # ★ THE KNOWN-NEGATIVE THAT MAKES IT EVIDENCE: the declaration must not silently change the
+    # verdict, and the run must SAY SO rather than leaving a reader to discover it by measuring.
+    { echo '#!/usr/bin/env python3'; echo '# NO-SELF-TEST: planted; controlled elsewhere'
+      tail -n +2 "$d/req_args.py"; } > "$d/req_declared.py"
+    out=$(gate "$d" 'req_declared.py' 2>&1); rc=$?
+    check "a DECLARATION does not rescue a cannot-invoke-bare subject — and the run says so" 2 \
+          "CANNOT BE INVOKED BARE" "DOES NOT CHANGE THIS VERDICT"
+    rm -f "$d/req_args.py" "$d/req_declared.py"
     printf '#!/usr/bin/env python3\n' > "$d/d_none.py"
     plant_py "$d/d_none.py" 'if a: void()' 'sys.exit(0)'
 
