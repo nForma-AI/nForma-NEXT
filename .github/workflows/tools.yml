@@ -148,11 +148,11 @@ jobs:
       #      is reported TIMED OUT AND NAMED, never folded into "the suite failed".
       #   3. tests excluded, declarations checked, both counted and named.
       # ⚠ THE REPRODUCTION COMMAND IS NOT THE SCRIPT NAME. `./scripts/gate-selftests.sh` bare
-      # runs `scripts/` and reports 4 subjects; THIS step sets SUBJ_DIR and runs 48. Someone
+      # runs `scripts/` and reports 4 subjects; THIS step sets SUBJ_DIR and runs 59. Someone
       # spent three passes comparing the bare form's output to this step's CI result before
       # noticing. To reproduce this step exactly:
       #
-      #     SUBJ_DIR=tools SUBJ_BASELINE=23 ./scripts/gate-selftests.sh     (~3 minutes)
+      #     SUBJ_DIR=tools SUBJ_BASELINE=1 ./scripts/gate-selftests.sh      (~3 minutes)
       #
       # ⛔ SUBJ_BASELINE IS A RECORDED DEBT, NOT AN EXEMPTION, and the difference is that it
       # CANNOT GROW. 24 of these controls establish nothing today; blocking every PR for nine
@@ -164,7 +164,7 @@ jobs:
       - name: subject controls (tools/)
         env:
           SUBJ_DIR: tools
-          SUBJ_BASELINE: "23"
+          SUBJ_BASELINE: "1"
         run: ./scripts/gate-selftests.sh
 
   fleet-dependent:
