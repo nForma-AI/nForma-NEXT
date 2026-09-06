@@ -1,7 +1,7 @@
 {
-  "_classifier": "f2717b5c8be35fe17e22cf4e961cd47d3c102a5a",
+  "_classifier": "b27f186e8b4c173910dfab5604cce489bc413af7",
   "api-budget.py": {
-    "blob": "cea1a9f0163654af3a9dbfc91331424529b14b46",
+    "blob": "abf14c7e6d76b55008b946c94359ff0fe6a3e484",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "NO-VERDICT-VOCAB"
@@ -13,25 +13,31 @@
     "state": "VERDICT-SEEN"
   },
   "branch-census.py": {
-    "blob": "8fc60c6581f79cf38479785a97b7117dc0effdb8",
+    "blob": "c16e5894b012212e6039f031b03801cc57fd71ad",
     "ever_verdict": false,
     "selftest": "NO-SELFTEST-IN-TIME",
     "state": "NO-VERDICT-IN-TIME"
   },
   "check-freshness.py": {
-    "blob": "8291ea7f29c8e3a10cb10c5bbcde4beb22602383",
+    "blob": "98b5428587419b61a09167a1f172dab78901db8f",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "NO-VERDICT-VOCAB"
   },
   "ci-log-clean.py": {
-    "blob": "d600398881d76be8b64f76762c09ba7a53a40375",
+    "blob": "e4445639fe933f283fdd6e5637d7264f0f7025c9",
     "ever_verdict": false,
-    "selftest": "NO-SELF-TEST",
-    "state": "ESTABLISHED-NOTHING"
+    "selftest": "NO-SELFTEST-IN-TIME",
+    "state": "NO-VERDICT-IN-TIME"
   },
   "close-condition-scan.py": {
-    "blob": "c4e4873c5c2d778d69a43b72a6a52d9dd5dbb8d6",
+    "blob": "22733f55237bf7b5fe29d1e516e315296f648a5e",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
+  "close-mechanism.py": {
+    "blob": "c5be1469149bf2c93713959c78a38d0b8b6dfbd1",
     "ever_verdict": true,
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
@@ -43,7 +49,7 @@
     "state": "NO-VERDICT-VOCAB"
   },
   "daintree-control.py": {
-    "blob": "f4279e20616d8227625ab7ea0a993c36a57fe3b4",
+    "blob": "9e59ff74df542ac27f5c0d030b1d5d9dbc73ff09",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "ESTABLISHED-NOTHING"
@@ -55,15 +61,33 @@
     "state": "NO-VERDICT-VOCAB"
   },
   "discriminates.py": {
-    "blob": "9426861cd10f6a1b49b7bae16d376b039b1e21e7",
+    "blob": "1b2ac80ff8f97dbba8cfc29d065b49edfd64f302",
+    "ever_verdict": false,
+    "selftest": "SELFTEST-PASS",
+    "state": "ESTABLISHED-NOTHING"
+  },
+  "disposition-ratchet.py": {
+    "blob": "007ea36a7a2db39af8475c291d189b8c2a44b248",
+    "ever_verdict": false,
+    "selftest": "SELFTEST-PASS",
+    "state": "NO-VERDICT-VOCAB"
+  },
+  "disposition-scan.py": {
+    "blob": "546eb6ad938ed64e356d9644a390741154fb2714",
+    "ever_verdict": false,
+    "selftest": "SELFTEST-PASS",
+    "state": "NO-VERDICT-VOCAB"
+  },
+  "doctrine-deliver.py": {
+    "blob": "68448e88823d0202622478bc83a8dc4d107911fa",
     "ever_verdict": false,
     "selftest": "SELFTEST-PASS",
     "state": "ESTABLISHED-NOTHING"
   },
   "doctrine-uncommitted.py": {
-    "blob": "b697c3bc4e7c4d7d6df4c0160387b122b8ac9bad",
+    "blob": "710bb7ee8d2e170172c263dd6dcd188b1daaef57",
     "ever_verdict": false,
-    "selftest": "NO-SELF-TEST",
+    "selftest": "SELFTEST-PASS",
     "state": "NO-VERDICT-VOCAB"
   },
   "doctrine-version.py": {
@@ -73,19 +97,19 @@
     "state": "VERDICT-SEEN"
   },
   "doctrine-watch.py": {
-    "blob": "18e0a55a5efb5494b52459298b91d6ed171143ea",
+    "blob": "3f70a18f16d6b265ac26db730070fd2291e9ed97",
     "ever_verdict": true,
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
   },
   "established.py": {
-    "blob": "11d9c2a3483cab2cbb80212f4bf0b9d6d53624e8",
+    "blob": "bb15c7427cecb4493ca58af5c8d48b9c4ecc8ad8",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "NO-VERDICT-VOCAB"
   },
   "estate-provenance.py": {
-    "blob": "45de365830d06b265bd8eb44d658b4b23623a625",
+    "blob": "68aa8940a819a2a511e90eea389b7ba53f0e2f44",
     "ever_verdict": true,
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
@@ -103,31 +127,31 @@
     "state": "ESTABLISHED-NOTHING"
   },
   "fleet-context.py": {
-    "blob": "c5fad7bdb1b2eb5546bf32866bf8b980e9c04574",
+    "blob": "62e749c86041d60d4e1af60a5db3824da00e39dc",
     "ever_verdict": false,
     "selftest": "SELFTEST-PASS",
     "state": "NO-VERDICT-VOCAB"
   },
   "fleet-identity.py": {
-    "blob": "63b8bbe9044e4b9694408747b3c192338b3584d1",
+    "blob": "c0bd78b4a4d5edfcb0fe0e450a77dd1acc9ef73f",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "NO-VERDICT-VOCAB"
   },
   "fleet-state.py": {
-    "blob": "5b5d86d5fd7ecfe6918b9d1628bb49c63328de52",
-    "ever_verdict": true,
+    "blob": "edb9b7586d6ca5306822e1468b1760f56595f138",
+    "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
-    "state": "VERDICT-SEEN"
+    "state": "ESTABLISHED-NOTHING"
   },
   "gated-caller.py": {
-    "blob": "86571dfcce579f1fe90d9828d60abf3624a21fda",
+    "blob": "a0ac79bf7b29197b54f42b9b15b3e344eb887956",
     "ever_verdict": true,
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
   },
   "gh-complete.py": {
-    "blob": "e8b8b5125024adb823985f86dd6f10029b27ad41",
+    "blob": "4bfc1f6f0e1f54a370d177385bf451e529c3a1c2",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "ESTABLISHED-NOTHING"
@@ -138,20 +162,26 @@
     "selftest": "SELFTEST-PASS",
     "state": "ESTABLISHED-NOTHING"
   },
+  "hermetic-check.py": {
+    "blob": "f443fd1714383cdad0d7637adfcf377ae6261473",
+    "ever_verdict": false,
+    "selftest": "NO-SELFTEST-IN-TIME",
+    "state": "NO-VERDICT-IN-TIME"
+  },
   "index-watch.py": {
-    "blob": "1f69494ff8daced05d45976ca63fddfefd9f13f7",
+    "blob": "821d66edb3318e4c57a55b19badc1f3f39826d89",
     "ever_verdict": true,
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
   },
   "issue-coverage.py": {
-    "blob": "414b34fb9fe57a9d73192fa2007664f9cffd3ef1",
+    "blob": "d509cf1fb878790bf7f926fef2703b80cbc766b5",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "NO-VERDICT-VOCAB"
   },
   "job-log.py": {
-    "blob": "4796ff4fa8aeab4ff6fd3250a099176584b43a35",
+    "blob": "c025f56a995a71986db35a1b6b357d39e98dc0fd",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "NO-VERDICT-VOCAB"
@@ -162,8 +192,20 @@
     "selftest": "SELFTEST-PASS",
     "state": "ESTABLISHED-NOTHING"
   },
+  "label-precedence.py": {
+    "blob": "6f660b730fb7d2f63d85d1e2bc1630d1e4ca7cc4",
+    "ever_verdict": false,
+    "selftest": "SELFTEST-PASS",
+    "state": "NO-VERDICT-VOCAB"
+  },
   "landing-rate.py": {
-    "blob": "78353bc7cc22cf50724906b869f7de182fb8913c",
+    "blob": "1f8b1bfb22281ec855d39b154dd0095f2b52d737",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
+  "late-push.py": {
+    "blob": "b53ee4ba4cd0ece84f00cc3fff477442a8b70c4b",
     "ever_verdict": true,
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
@@ -180,6 +222,12 @@
     "selftest": "SELFTEST-PASS",
     "state": "ESTABLISHED-NOTHING"
   },
+  "merge-guard.py": {
+    "blob": "b71b164da364bbf0467684be2d6d7e5e1b2238d7",
+    "ever_verdict": true,
+    "selftest": "SELFTEST-PASS",
+    "state": "VERDICT-SEEN"
+  },
   "named-referent-check.py": {
     "blob": "20382aad12dd303931c1a3b80fe5b12ae42fe34b",
     "ever_verdict": true,
@@ -193,13 +241,13 @@
     "state": "VERDICT-SEEN"
   },
   "pane-census.py": {
-    "blob": "cc1270eaa92c8ebc2ca5f447e311af73a392ab40",
+    "blob": "db88b6db9cced926bc0c38686522b4eaa7f3f426",
     "ever_verdict": true,
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
   },
   "pipe-exit-scan.py": {
-    "blob": "91e449f81640bd125a820c1310486ab50f200ff4",
+    "blob": "56dec00fb27f0cc010d7ff7665bc98097b4c7580",
     "ever_verdict": true,
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
@@ -217,16 +265,16 @@
     "state": "NO-VERDICT-IN-TIME"
   },
   "pr-stack.py": {
-    "blob": "82928eac4cf86f950811e5d17785860f4b44ee27",
+    "blob": "bbe79f33b08c77db88ce7aa9d1bd138641b5b9ff",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "NO-VERDICT-VOCAB"
   },
   "pretooluse-guard.py": {
     "blob": "defe3b4457542d8ea48ef0b065a7e8a72810c78a",
-    "ever_verdict": true,
-    "selftest": "SELFTEST-PASS",
-    "state": "VERDICT-SEEN"
+    "ever_verdict": false,
+    "selftest": "NO-SELFTEST-IN-TIME",
+    "state": "NO-VERDICT-IN-TIME"
   },
   "prevalence.py": {
     "blob": "b3b04f982449150ef8c0e99d04489d69c75c966f",
@@ -241,7 +289,7 @@
     "state": "ESTABLISHED-NOTHING"
   },
   "prompt-delivery.py": {
-    "blob": "3eaf07038dd9c92cf8cb3078a7ee1d2f5d104a9e",
+    "blob": "004f55d27514bd009b1adaf877fae8e5489b7ee0",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "NO-VERDICT-VOCAB"
@@ -253,46 +301,46 @@
     "state": "VERDICT-SEEN"
   },
   "reference-check.py": {
-    "blob": "aa01610d5cbea0e147601b455441f485aebb89c9",
+    "blob": "5a075a104163d75c8545319becf3a83f2c0ef3db",
     "ever_verdict": true,
     "selftest": "NO-SELF-TEST",
     "state": "VERDICT-SEEN"
   },
   "runmarker.py": {
-    "blob": "c8a3b849e509b891faeb6a1f5ca204762b5284c8",
+    "blob": "e031f0918be8cffb4c02a1cb799b0e9fa255854d",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "NO-VERDICT-VOCAB"
   },
   "runnable-condition.py": {
     "blob": "2105e484a51a5aae49b3ab9896dbb825595419ab",
-    "ever_verdict": true,
+    "ever_verdict": false,
     "selftest": "SELFTEST-PASS",
-    "state": "VERDICT-SEEN"
+    "state": "ESTABLISHED-NOTHING"
   },
   "states-index-check.py": {
-    "blob": "a7ce0eac64725b4927034b1a0fefb1fb086334d0",
+    "blob": "d23deb31c4543b6c923a7d99e514f8eb933057e5",
     "ever_verdict": true,
     "selftest": "SELFTEST-PASS",
     "state": "VERDICT-SEEN"
   },
   "stranded-branches.py": {
-    "blob": "9cdbdbb2e76e44d65273c9e79bbabddd73e31144",
+    "blob": "db6997fcda17ecb70dcec6b2d6df0a1767dd848d",
     "ever_verdict": false,
-    "selftest": "NO-SELFTEST-IN-TIME",
-    "state": "NO-VERDICT-IN-TIME"
+    "selftest": "SELFTEST-PASS",
+    "state": "ESTABLISHED-NOTHING"
   },
   "text-provenance.py": {
-    "blob": "67dca60d81f07a3ddca8dc56bb4e9250e7cc33e6",
+    "blob": "350b6fe8e16c7a42813ff6f3ff20d4ba73331d6f",
     "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
     "state": "NO-VERDICT-VOCAB"
   },
   "transition-report.py": {
-    "blob": "0782b2e572bfa67cef2132c5aec9e5975915748f",
-    "ever_verdict": true,
+    "blob": "cea2796ccd8cd873f3f19965f452dbe79af60b7a",
+    "ever_verdict": false,
     "selftest": "NO-SELF-TEST",
-    "state": "VERDICT-SEEN"
+    "state": "ESTABLISHED-NOTHING"
   },
   "truncation-guard.py": {
     "blob": "05317d8162ffa4f7b24ed93b5989ba0c015e1159",
@@ -301,15 +349,15 @@
     "state": "ESTABLISHED-NOTHING"
   },
   "use-not-mention.py": {
-    "blob": "1a86d4930e14e4cda043d5d80092869a29e9b322",
+    "blob": "b1bb82a50817ab623b642c8d4f03e41216bc6d7f",
     "ever_verdict": false,
     "selftest": "SELFTEST-PASS",
     "state": "ESTABLISHED-NOTHING"
   },
   "wake-yield.py": {
-    "blob": "33ada38109c450174b932df76ca0a95b7fc64e6a",
+    "blob": "f98f7afc2c88b4ba1c03acf63ad7f8ec7b269f23",
     "ever_verdict": false,
-    "selftest": "NO-SELF-TEST",
+    "selftest": "SELFTEST-PASS",
     "state": "NO-VERDICT-VOCAB"
   }
 }
