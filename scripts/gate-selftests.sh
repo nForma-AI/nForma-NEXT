@@ -403,7 +403,23 @@ classify_one() {
                    echo "        control that ran and concluded nothing."
                fi ;;
             *) echo "@@VERDICT broke $b"
-               echo "  ⛔ $b CONTROL FAILED (exit $rc) — the checker's own control does not pass." ;;
+               echo "  ⛔ $b CONTROL FAILED (exit $rc) — the checker's own control does not pass."
+               # ⛔ AND SAY WHICH CHECK. Before this, the gate reported the exit code and DISCARDED
+               # the subject's own output — so a reader had to reproduce the failure locally to
+               # learn anything. ⚠ For a PLATFORM-DEPENDENT failure that is impossible from the
+               # wrong platform: discriminates.py's control passes on macOS and exits 1 on
+               # CI/Linux, and the gate's report contained nothing that could distinguish "which
+               # assertion" from "which machine". Measured 2026-09-06.
+               # ⇒ `fout` already holds it. Printing the FAIL lines costs nothing and is the
+               # difference between a verdict and a diagnosis.
+               _fails=$(printf '%s\n' "$fout" | grep -E "FAIL|Traceback|Error" | head -6)
+               if [ -n "$_fails" ]; then
+                   echo "     ── its own output, the failing lines only ──"
+                   printf '%s\n' "$_fails" | sed 's/^/       /'
+               else
+                   echo "     ⚠ its output carried no FAIL/Traceback/Error line — the control"
+                   echo "        failed by EXIT CODE alone and said nothing about why."
+               fi ;;
         esac
 }
 
@@ -622,6 +638,22 @@ selftest() {
     out=$(gate "$d" 'c_broken.py' 2>&1); rc=$?
     check "a FAILING control exits 1 and is named — distinct from UNESTABLISHED" 1 \
           "CONTROL FAILED" "c_broken"
+
+    # ⛔ A VERDICT IS NOT A DIAGNOSIS. Both poles, because "echo the output" is only useful
+    # if it ALSO says something when there is no output to echo.
+    # ★ POLE A — the control names its failing assertion; the gate must SHOW it.
+    plant_py "$d/c_talks.py" 'if a == ["--self-test"]:' \
+        '    print("  FAIL  known-negative pair -> 3: got 1 want 3")' \
+        '    sys.exit(3)' 'if a: void()' 'sys.exit(0)'
+    out=$(gate "$d" 'c_talks.py' 2>&1); rc=$?
+    check "a failing control's OWN failing line is echoed, not just its exit code" 1 \
+          "CONTROL FAILED" "the failing lines only" "known-negative pair -> 3"
+    # ★ POLE B — c_broken.py fails by exit code alone and prints nothing. The gate must say
+    # SO, rather than printing an empty section that reads as "no detail available".
+    out=$(gate "$d" 'c_broken.py' 2>&1); rc=$?
+    check "a control that fails SILENTLY is reported as saying nothing about why" 1 \
+          "CONTROL FAILED" "failed by EXIT CODE alone"
+    rm -f "$d/c_talks.py"
     case "$out" in
         *"c_broken UNESTABLISHED"*) echo "  FAIL  a failing control was labelled UNESTABLISHED"; ok=1 ;;
         *) echo "  ok    known-negative: a failing control never reads UNESTABLISHED" ;;
