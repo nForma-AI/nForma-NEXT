@@ -234,17 +234,27 @@ section 'Repository self-checks'
 # instruments none of which is ever called is a citation network, not a toolchain.
 # These two are cheap, deterministic, and answer questions no reviewer reliably
 # answers by eye. ⚠ This pane still does not gate: exit code is always 0.
-for chk in scripts/check-tools-index.py scripts/check-goal-conformance.py; do
+for chk in scripts/check-tools-index.py scripts/check-goal-conformance.py \
+           scripts/check-onboard.py; do
   if [ ! -x "$chk" ] && [ ! -r "$chk" ]; then
     note "$chk not present — that check is UNMEASURED, not passing"
     continue
   fi
-  if out=$(python3 "$chk" 2>&1); then
-    ok "$(basename "$chk") clean"
-  else
-    bad "$(basename "$chk") FAILED:"
-    printf '%s\n' "$out" | grep -E '^\s*(FAIL|⛔)' | head -4 | sed 's/^/        /'
-  fi
+  # ⛔ THREE OUTCOMES, NOT TWO. This read `if out=$(python3 "$chk")`, which scores
+  # EVERY non-zero as FAILED — so exit 2 ("established nothing") was reported as
+  # a finding. That is the one conflation this estate exists to prevent, sitting
+  # in the acceptance test for the whole install, and it was not hypothetical:
+  # check-tools-index.py carries 11 exit-2 paths and check-goal-conformance.py 3.
+  # ⇒ A checker that could not open its subject was telling the operator it had
+  # found a defect in it.
+  out=$(python3 "$chk" 2>&1); rc=$?
+  case "$rc" in
+    0) ok "$(basename "$chk") clean" ;;
+    2) note "$(basename "$chk") established NOTHING (exit 2) — UNMEASURED, not clean and not a finding:"
+       printf '%s\n' "$out" | grep -E '(VOID|⛔)' | head -2 | sed 's/^/        /' ;;
+    *) bad "$(basename "$chk") FAILED (exit $rc):"
+       printf '%s\n' "$out" | grep -E '^\s*(FAIL|·|⛔)' | head -4 | sed 's/^/        /' ;;
+  esac
 done
 section 'Work left on merged branches'
 # ★ #89: an instrument with no caller is an argument. This one answers a

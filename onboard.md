@@ -91,6 +91,7 @@ From `https://github.com/nForma-AI/nForma-NEXT` — ⛔ **absent files only, nev
 | copy | to | why |
 |---|---|---|
 | `.daintree/recipes/nforma-fleet.json` | `.daintree/recipes/` | the launcher. **Daintree reads it in-repo — never from `~/.daintree`.** |
+| `.daintree/bootstrap.sh` | `.daintree/` | ⛔ **9 of the 10 panes open their `initialPrompt` with `bash .daintree/bootstrap.sh`.** Copy only what this table names and every one of them fails its FIRST instruction. It is also what resolves the role prompt at `origin/main` and refuses to fall back — so the artifacts must be committed **and pushed** before launch, not merely committed (#502 A1/A2) |
 | `prompts/*.md` | `prompts/` | every pane's `NFORMA_ROLE_PROMPT` must resolve to a real file |
 | `scripts/validate-recipe.py` | `scripts/` | ⛔ **step 4 runs this. Without it, step 4 establishes nothing.** |
 | `goals/*.md` | `goals/` | a pane with no standing goal idles after one message |
@@ -249,7 +250,7 @@ Tell the user, as numbers:
 
     panes / agent panes ............ from step 4
     prompt files resolved .......... from step 4
-    NFORMA_GOAL coverage ........... n of m   (reference recipe ships 1 of 9)
+    NFORMA_GOAL coverage ........... n of m   (reference recipe ships 9 of 10, measured 2026-09-06)
     validator exit code ............ from step 4
     goal files re-scoped ........... n of m   (step 3)
     roles with their own worktree .. n of m   (step 6)
