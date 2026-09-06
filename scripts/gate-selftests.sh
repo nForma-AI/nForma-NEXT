@@ -267,22 +267,48 @@ classify_one() {
         # check-freshness and wake-yield require arguments, so `--self-test` alone cannot REACH a
         # control even if one exists. Folding that into "has no self-test" would be a claim about
         # the world made from a limit of the invocation.
+        #
+        # ⇒ #603, RULED 2026-09-06. That argument protects against THE GATE concluding absence from
+        # an invocation limit — and it is right about that. But a `# NO-SELF-TEST:` line is not the
+        # gate's conclusion: it is the AUTHOR ASSERTING where the control lives, and this gate
+        # already trusts that assertion on the flag-REJECTED path (:348) and the exit-2 path (:368).
+        # Refusing to read it HERE was inconsistency, not caution — and the message told the reader
+        # to add a line this branch then ignored.
+        #
+        # ⇒ THE RULING: honour the declaration, and keep the distinction IN THE OUTPUT rather than
+        # in the bucket. A declared subject that ALSO cannot be invoked bare is `declared` and SAYS
+        # BOTH FACTS. An UNDECLARED one is still UNESTABLISHED — the strictness the comment above
+        # defends is preserved exactly where it earns its keep.
         case "$fout" in
-            *"arguments are required"*|*"the following arguments"*)
-                echo "@@VERDICT unest $b"
-                echo "  ⚠ $b CANNOT BE INVOKED BARE — \`$FLAG\` alone is rejected for MISSING"
-                echo "     REQUIRED ARGUMENTS, so no control is reachable this way. ⛔ That is not"
-                echo "        'has no self-test'; it is a limit of the invocation."
-                echo "     ⛔ A \`# NO-SELF-TEST:\` LINE DOES NOT CHANGE THIS VERDICT. This branch"
-                echo "        returns before that line is read. DECLARES_NONE is consulted TWICE"
-                echo "        further down — the flag-REJECTED path and the exit-2 path — and this"
-                echo "        branch preempts BOTH. Measured 2026-09-06, two-poled:"
-                echo "        identical bytes with the declaration present and with it renamed."
-                echo "     ⇒ What WOULD change it: an invocation this gate can derive — the subject"
-                echo "        accepting \`$FLAG\` with no other required argument. Until then the"
-                echo "        control may exist and be gated elsewhere; this gate cannot SEE it."
-                echo "     ⇒ nForma-AI/nForma-NEXT#603 carries the choice: honour the declaration"
-                echo "        here, or keep this branch strict. Naming an inert remedy was the bug."
+            # ⚠ THREE argparse phrasings, not one. The first two are the standard
+            # "the following arguments are required: --x". The THIRD is the MUTUALLY
+            # EXCLUSIVE GROUP form — "one of the arguments --a --b --c is required" —
+            # which shares neither substring with the others. job-log.py emits it, fell
+            # past this branch, and landed in the identical-output branch reading
+            # UNESTABLISHED for a reason that was never about its flag. Measured 2026-09-06.
+            # ⛔ Matched as a PAIR ("one of the arguments" AND "is required"), not on a bare
+            # "is required", which would swallow any tool that says those words for its own
+            # reasons.
+            *"arguments are required"*|*"the following arguments"*|*"one of the arguments"*"is required"*)
+                if grep -q "$DECLARES_NONE" "$f"; then
+                    why=$(sed -n 's/^# NO-SELF-TEST: //p' "$f" | head -1)
+                    echo "@@VERDICT declared $b"
+                    echo "  ---- $b CANNOT BE INVOKED BARE and DECLARES where its control lives:"
+                    echo "       $why"
+                    echo "       ⚠ BOTH facts, because they are different: \`$FLAG\` alone is rejected"
+                    echo "         for MISSING REQUIRED ARGUMENTS, so this gate never reaches a control"
+                    echo "         here — and the declaration says one exists elsewhere. ⛔ This gate"
+                    echo "         has NOT verified that claim; it has recorded who to ask. (#603)"
+                else
+                    echo "@@VERDICT unest $b"
+                    echo "  ⚠ $b CANNOT BE INVOKED BARE — \`$FLAG\` alone is rejected for MISSING"
+                    echo "     REQUIRED ARGUMENTS, so no control is reachable this way. ⛔ That is not"
+                    echo "        'has no self-test'; it is a limit of the invocation, and NOTHING in"
+                    echo "        the file says where a control lives instead."
+                    echo "     ⇒ Add a \`# NO-SELF-TEST: controlled by <path>\` line naming it, or give"
+                    echo "        the subject an invocation this gate can derive — \`$FLAG\` with no"
+                    echo "        other required argument. (#603: this branch now HONOURS that line.)"
+                fi
                 return ;;
         esac
 
@@ -645,17 +671,35 @@ ap.parse_args()
 sys.exit(0)
 REQ
     out=$(gate "$d" 'req_args.py' 2>&1); rc=$?
-    check "a subject with REQUIRED ARGS is UNESTABLISHED, not 'has no self-test'" 2 \
-          "CANNOT BE INVOKED BARE" "limit of the invocation"
+    # ★ THE KNOWN-NEGATIVE, and it is what keeps #603's ruling from being an off switch:
+    # UNDECLARED + cannot-invoke-bare is STILL UNESTABLISHED. Only the declaration moves it.
+    check "an UNDECLARED cannot-invoke-bare subject is still UNESTABLISHED" 2 \
+          "CANNOT BE INVOKED BARE" "NOTHING in" "says where a control lives"
 
     # ★ THE KNOWN-NEGATIVE THAT MAKES IT EVIDENCE: the declaration must not silently change the
     # verdict, and the run must SAY SO rather than leaving a reader to discover it by measuring.
     { echo '#!/usr/bin/env python3'; echo '# NO-SELF-TEST: planted; controlled elsewhere'
       tail -n +2 "$d/req_args.py"; } > "$d/req_declared.py"
     out=$(gate "$d" 'req_declared.py' 2>&1); rc=$?
-    check "a DECLARATION does not rescue a cannot-invoke-bare subject — and the run says so" 2 \
-          "CANNOT BE INVOKED BARE" "DOES NOT CHANGE THIS VERDICT"
-    rm -f "$d/req_args.py" "$d/req_declared.py"
+    check "a DECLARATION on a cannot-invoke-bare subject is HONOURED and SAYS BOTH facts" 0 \
+          "CANNOT BE INVOKED BARE and DECLARES" "has NOT verified that claim"
+    # ⛔ THE MUTEX PHRASING, which shares NO substring with the other two and so needs its
+    # own control. job-log.py emits it; before 2026-09-06 it fell past the branch entirely.
+    cat > "$d/req_mutex.py" <<'REQM'
+#!/usr/bin/env python3
+"""A subject whose required argument is a MUTUALLY EXCLUSIVE GROUP."""
+import argparse, sys
+ap = argparse.ArgumentParser()
+g = ap.add_mutually_exclusive_group(required=True)
+g.add_argument("--repo"); g.add_argument("--gcs")
+ap.add_argument("--self-test", action="store_true")
+ap.parse_args()
+sys.exit(0)
+REQM
+    out=$(gate "$d" 'req_mutex.py' 2>&1); rc=$?
+    check "a MUTEX-required subject reaches the cannot-invoke-bare branch too" 2 \
+          "CANNOT BE INVOKED BARE" "says where a control lives"
+    rm -f "$d/req_args.py" "$d/req_declared.py" "$d/req_mutex.py"
     printf '#!/usr/bin/env python3\n' > "$d/d_none.py"
     plant_py "$d/d_none.py" 'if a: void()' 'sys.exit(0)'
 
