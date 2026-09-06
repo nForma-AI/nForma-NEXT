@@ -60,6 +60,12 @@ did not establish, and prints the commands so a reader can see for themselves.
 Exit: 0 the check discriminated · 2 non-discriminating (verdict refused)
       3 the control failed — the harness itself is broken
       4 a state is not self-consistent — the comparison is uninterpretable
+     64 USAGE — an unrecognised argument. ⛔ NOT a verdict, and deliberately outside
+        0/2/3/4: every one of those is a statement ABOUT THE COMPARISON, and a
+        mistyped flag is a statement about the INVOCATION. 64 is EX_USAGE (BSD
+        sysexits), chosen because this file's verdict space was already full and
+        reusing 2 would have made "you typed it wrong" indistinguishable from
+        "the check did not discriminate" — the exact exit-2 collision #58 records.
 """
 import argparse, os, subprocess, sys
 
@@ -154,9 +160,20 @@ def self_test():
              "--control-a", "echo X", "--control-b", "echo Y"), 0)
 
     # 4 — UNSTABLE: a state that differs from itself supports no comparison.
-    #     $RANDOM is re-evaluated per invocation, so the two reads disagree.
+    # ⛔ NOT `$RANDOM`. `run()` uses shell=True, which is `/bin/sh` — bash on macOS,
+    # usually DASH on Linux, and dash HAS NO `$RANDOM`. There it expands to EMPTY, so
+    # `echo $RANDOM$RANDOM$RANDOM` prints the same blank line twice, the two reads AGREE,
+    # and this tool CORRECTLY reports a stable state — exit 0 against an expected 4.
+    # ⇒ The tool was right and the fixture was not portable. Measured 2026-09-06:
+    #       /bin/sh (macOS, bash)  echo $RANDOM -> 29547
+    #       dash                   echo $RANDOM -> ''      (empty)
+    # ⚠ It passed on macOS for two weeks and failed on CI/Linux the moment the gate could
+    # reach it at all — the flag surface had been UNVERIFIABLE, which preempts the control
+    # verdict, so nothing had ever run this control on Linux.
+    # ⇒ /dev/urandom is present on both and differs per invocation. Verified two-poled:
+    #   `od -An -N8 -tx1 /dev/urandom` differs across calls; `echo SAME` does not.
     check("known-negative  a self-inconsistent state -> 4 (uninterpretable)",
-          rc("--a", "echo $RANDOM$RANDOM$RANDOM", "--b", "echo B"), 4)
+          rc("--a", "od -An -N8 -tx1 /dev/urandom", "--b", "echo B"), 4)
 
     # ⚠ Exit status is part of a reading, not just stdout. A command that fails with
     #    empty output must not read as one that succeeds with empty output.
@@ -184,6 +201,21 @@ def main():
     # documented NON-DISCRIMINATING verdict. A control that cannot be invoked without
     # emitting a real verdict code is worse than no control (#58, the exit-2 collision).
     if "--self-test" in sys.argv:
+        # ⛔ AN UNRECOGNISED FLAG ALONGSIDE `--self-test` MUST REFUSE. The gate measured this
+        # file UNVERIFIABLE: `--self-test --zzz-not-a-flag` exited 0, so "the flag is matched
+        # and the rest DISCARDED — a control result here describes an invocation that was only
+        # half read." Measured 2026-09-06.
+        # ⚠ 64, not 2. This file's 0/2/3/4 are ALL verdicts about the comparison; a mistyped
+        # flag is not one. Reusing 2 would make it indistinguishable from NON-DISCRIMINATING,
+        # which is the collision the interception below already exists to avoid (#58).
+        _extra = [a for a in sys.argv[1:] if a != "--self-test"]
+        if _extra:
+            print(f"⛔ USAGE — unrecognised argument(s) alongside --self-test: {_extra}.\n"
+                  f"   The controls take no other flags, and running them while ignoring an\n"
+                  f"   argument would report a verdict for an invocation that was only half read.\n"
+                  f"   NO REMEDY — run `--self-test` alone. (exit 64 = usage, NOT a verdict)",
+                  file=sys.stderr)
+            return 64
         return self_test()
 
     args = ap.parse_args()
