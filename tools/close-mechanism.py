@@ -340,9 +340,32 @@ def main():
         return 2
 
 
+
+# ⛔ `guard()` ALONE SHIPS HALF THE MARKER CONVENTION. It emits NFORMA-RESULT only on
+# the argparse SystemExit path, so a SUCCESSFUL run emitted NFORMA-RUN and no RESULT --
+# which reads as started-and-never-finished, the exact collapse #58 exists to prevent.
+# Measured 2026-09-06: 2 of the 13 instruments importing runmarker shipped it this way.
+# #234 §4 named the defect and prescribed this remedy: wrap the entry so every return
+# from main() carries a terminal marker.
+#
+# ⚠ #234 §4's second warning, honoured: "check for a SECOND emission -- my first
+# injection produced TWO RESULT lines for one process." Neither of these files calls
+# result() anywhere else, and the fix is verified by COUNTING the lines, not by reading
+# the patch.
+_STATE = {0: "CLEAN", 1: "FINDINGS", 2: "ESTABLISHED-NOTHING", 3: "CONTROL-FAILED"}
+
+
+def _entry():
+    rc = main()
+    if "--self-test" in sys.argv or "--selftest" in sys.argv:
+        runmarker.result("SELF-TEST-PASS" if rc == 0 else _STATE.get(rc, f"EXIT-{rc}"))
+    else:
+        runmarker.result(_STATE.get(rc, f"EXIT-{rc}"))
+    return rc
+
 if __name__ == "__main__":
     try:
         import runmarker
-        sys.exit(runmarker.guard("close-mechanism", main))
+        sys.exit(runmarker.guard("close-mechanism", _entry))
     except ImportError:
         sys.exit(main())
