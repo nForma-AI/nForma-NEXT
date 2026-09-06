@@ -317,7 +317,21 @@ def self_test():
 
 
 def main():
+    # ⛔ AN UNRECOGNISED FLAG ALONGSIDE `--self-test` MUST REFUSE, not be discarded. The
+    # gate measured this file as UNVERIFIABLE: `--self-test --zzz-not-a-flag` exited 0, so
+    # "the flag is matched and the rest DISCARDED — a control result here describes an
+    # invocation that was only half read." ⇒ A control whose invocation cannot be shown to
+    # have happened is not a control. Measured 2026-09-06.
+    # ⚠ Exit 2 is correct and unambiguous here: this file's contract already reads
+    # `2 established nothing`, and a half-read invocation establishes nothing.
     if "--self-test" in sys.argv or "--selftest" in sys.argv:
+        _extra = [a for a in sys.argv[1:] if a not in ("--self-test", "--selftest")]
+        if _extra:
+            print(f"\u26d4 VOID \u2014 unrecognised argument(s) alongside --self-test: {_extra}.\n"
+                  f"   The controls take no other flags, and running them while ignoring an\n"
+                  f"   argument would report a pass for an invocation that was only half read.\n"
+                  f"   NO REMEDY \u2014 run `--self-test` alone.", file=sys.stderr)
+            return 2
         return self_test()
     rows, err = panes_from_daintree()
     status_ids = getattr(panes_from_daintree, "_status_ids", None)
