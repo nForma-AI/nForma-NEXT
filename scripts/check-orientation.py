@@ -100,6 +100,18 @@ def main():
             "KNOWN-POSITIVE FAILED: `origin/main` must resolve as a ref"
         assert not is_git_ref("tools/README.md"), \
             "KNOWN-NEGATIVE FAILED: a real path must NOT be classified as a ref"
+        # ⚠ The pin leg's VOID must be reachable AND distinguishable from its pass.
+        # ⛔ Do NOT test this by chmod-ing tools/README.md and running main(): the
+        # No-CI leg enumerates that same file and returns 2 FIRST, so the run exits 2
+        # for the other leg's reason and the pin branch is never entered. Measured —
+        # it is why this control calls the function directly.
+        import unittest.mock as _m
+        with _m.patch.object(Path, "read_text", side_effect=OSError("forced")):
+            void = check_pin_doctrine()
+        assert void == "void", f"KNOWN-POSITIVE FAILED: unreadable README must be VOID, got {void!r}"
+        assert void is not False, "VOID must not be the value the caller reads as a pass"
+        live = check_pin_doctrine()
+        assert live != "void", "KNOWN-NEGATIVE FAILED: a readable README must NOT be VOID"
         missing_probe = not (ROOT / "definitely/not/here.md").exists()
         assert missing_probe, "existence probe cannot detect a missing file"
         print("self-test ok — extractor skips templates, dedupes, and the probe can fail")
@@ -167,6 +179,10 @@ def main():
     # agree" on a run that never opened a file.
     if ci_claim == "void":
         print("\n⛔ established nothing about the No-CI claim — exit 2, NOT a clean run.",
+              file=sys.stderr)
+        return 2
+    if unpinned == "void":
+        print("\n⛔ established nothing about the pin doctrine — exit 2, NOT a clean run.",
               file=sys.stderr)
         return 2
     decayed = ci_claim == "decayed"
@@ -392,7 +408,12 @@ def check_pin_doctrine():
     except OSError:
         print("\n⛔ tools/README.md unreadable — the pin doctrine is UNCHECKED, "
               "not absent.", file=sys.stderr)
-        return False
+        # ⛔ NOT `False`. This returned False, and the caller reads False as "not
+        # unpinned" — so an unreadable README scored as a PASS. #502 C5 named it:
+        # "this repository's own silence-as-success failure, inside the instrument
+        # built to catch it." The No-CI leg six lines up already returns "void" for
+        # exactly this state; this leg simply had not been given the same word.
+        return "void"
 
     # ⛔ TWO forms are endorsed by this README, each with its own ✅. Keying on one
     # of them fires on the REPAIRED state — measured: deleting only the archive line
