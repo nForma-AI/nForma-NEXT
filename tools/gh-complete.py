@@ -32,6 +32,16 @@ Usage:
 Exit: 0 complete, JSON on stdout · 1 TRUNCATED — the reading is a prefix
       2 established nothing (call failed, or the shape is not a counted list)
 """
+
+# NO-SELF-TEST: controlled by tools/test_gh_complete.py, which the CI glob gates and which
+# passes on main (18 controls). ⛔ This is a DECLARATION of where the control lives,
+# not a claim that none exists — tools/README.md records two control conventions in
+# one directory (`--self-test` and `test_*.py`).
+#
+# ⚠ WHY THIS TOOL HAS NO `--self-test`: it FORWARDS its flags to `gh`, so a `--self-test` argv would be handed to gh and
+# come back as gh's usage block — an argv surface it cannot own.
+# ⇒ Before this line existed the gate reported it UNESTABLISHED — correctly, because
+# nothing told the gate where to look. The control was there the whole time.
 import json
 import re
 import subprocess

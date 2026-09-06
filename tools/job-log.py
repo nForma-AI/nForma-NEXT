@@ -47,6 +47,16 @@ and a runner-killed job. Stated here as an open gap rather than a passing check.
 so is a genuinely short job log, and picking a threshold invents a boundary the
 data does not have. The timestamp is a property of the format, not of the length.
 """
+
+# NO-SELF-TEST: controlled by tools/test_job_log.py, which the CI glob gates and which
+# passes on main (46 controls). ⛔ This is a DECLARATION of where the control lives,
+# not a claim that none exists — tools/README.md records two control conventions in
+# one directory (`--self-test` and `test_*.py`).
+#
+# ⚠ WHY THIS TOOL HAS NO `--self-test`: its subject is a log BODY, so the controls feed it real captured bytes rather than
+# reaching a runner.
+# ⇒ Before this line existed the gate reported it UNESTABLISHED — correctly, because
+# nothing told the gate where to look. The control was there the whole time.
 import argparse, json, os, re, subprocess, sys, types
 
 _here = os.path.dirname(os.path.abspath(__file__))

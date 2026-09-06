@@ -45,6 +45,16 @@ default would manufacture a verdict from an arbitrary clock.
 change and cannot speak to now. Re-running is what produces current evidence;
 this only refuses to let old evidence pose as it.
 """
+
+# NO-SELF-TEST: controlled by tools/test_check_freshness.py, which the CI glob gates and which
+# passes on main (28 controls). ⛔ This is a DECLARATION of where the control lives,
+# not a claim that none exists — tools/README.md records two control conventions in
+# one directory (`--self-test` and `test_*.py`).
+#
+# ⚠ WHY THIS TOOL HAS NO `--self-test`: a completedAt boundary is pure arithmetic, so the controls drive classify() with
+# synthetic instants and need no forge.
+# ⇒ Before this line existed the gate reported it UNESTABLISHED — correctly, because
+# nothing told the gate where to look. The control was there the whole time.
 import argparse, json, subprocess, sys
 from datetime import datetime, timezone
 
