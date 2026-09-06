@@ -47,11 +47,14 @@ Exit: 0 no candidates · 1 at least one candidate · 2 established nothing.
 population the API states all mean nothing was measured -- and a fetch failure
 must NEVER become "this issue has no corrections", which is how #338 vanished.
 """
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from runmarker import guard, result  # noqa: E402
+
 import argparse
 import json
 import re
 import subprocess
-import sys
 
 # ⛔ Anchored at line start, like close-condition-scan.py's CONDITION and for the
 # same reason: a sentence ABOUT corrections is not a correction. "we should
@@ -188,9 +191,11 @@ def self_test():
         print("\n⛔ the classifier is broken; no verdict it produces can be trusted:")
         for why, exp, got in failures:
             print(f"     {why}: expected {exp}, got {got}")
+        result("CONTROL-FAILED")
         return 3
     print(f"\n  {len(cases) + 1}/{len(cases) + 1} controls passed — including the "
           "use-vs-mention negative and the fail-closed fetch.")
+    result("SELF-TEST-PASS")
     return 0
 
 
@@ -212,18 +217,20 @@ def main():
     except Void as exc:
         print(f"⛔ VOID — {exc}", file=sys.stderr)
         print("   Established NOTHING about the board. Exit 2, not a clean run.", file=sys.stderr)
+        result("ESTABLISHED-NOTHING")
         return 2
 
     if not nums:
         print("⛔ VOID — zero open issues read. An empty board and a failed query are "
               "byte-identical here.", file=sys.stderr)
+        result("ESTABLISHED-NOTHING")
         return 2
     if len(nums) < total:
         print(f"⛔ VOID — read {len(nums)} of {total} stated. A truncated reading cannot "
               f"support 'no candidates'.", file=sys.stderr)
+        result("ESTABLISHED-NOTHING")
         return 2
 
-    print(f"NFORMA-RUN correction-adopted")
     print(f"POPULATION  {len(nums)} open issues of {total} stated · repo={args.repo}")
     print("PREDICATE   a COMMENT announces a correction AND the BODY carries no marker")
     print("CHANNEL     issue body + every comment, via gh\n")
@@ -239,6 +246,7 @@ def main():
             print(f"⛔ VOID — issue #{n} unreadable: {exc}", file=sys.stderr)
             print("   Skipping it would make an unread issue look clean. Exit 2.",
                   file=sys.stderr)
+            result("ESTABLISHED-NOTHING")
             return 2
         state, where, unmarked = classify(
             d.get("body") or "",
@@ -268,8 +276,9 @@ def main():
       the honest output is a location and not a verdict.
     ⇒ THE REPAIR is a MOVE, not a rewrite: strike the refuted text in the BODY and
       point at the comment. Nothing new is claimed by doing so.""")
+    result("FINDINGS" if buckets["CANDIDATE"] else "CLEAN")
     return 1 if buckets["CANDIDATE"] else 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(guard("correction-adopted", main))
