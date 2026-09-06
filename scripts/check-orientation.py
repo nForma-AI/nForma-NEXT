@@ -89,6 +89,24 @@ def main():
     paths = extract(DOC.read_text(encoding="utf-8"))
 
     if self_test:
+        # ⛔ `assert` IS STRIPPED BY `python -O`, AND A STRIPPED CONTROL REPORTS PASS.
+        # Measured 2026-09-06 by breaking one control on purpose:
+        #     python3    --self-test  -> exit 1   the control works
+        #     python3 -O --self-test  -> exit 0   ⛔ SKIPPED, and reported PASS
+        # ⇒ Under -O the controls below DO NOT EXIST, so this run establishes NOTHING
+        #   about them. 2 is this repository's word for that, and folding it into 0
+        #   would be the exact failure these controls are here to catch.
+        # ⚠ The stronger fix is to convert every assert into an explicit check that
+        #   collects failures (tools/close-condition-scan.py does). This guard is the
+        #   FLOOR: it cannot make the controls run, only refuse to call their absence
+        #   a pass.
+        if not __debug__:
+            print("⛔ VOID — run WITHOUT -O. `assert` is stripped under -O, so the "
+                  "controls below did not execute.", file=sys.stderr)
+            print("   This established NOTHING about them. Exit 2, not a clean run.",
+                  file=sys.stderr)
+            return 2
+        
         # ⚠ Prove the failure path. A control that has only ever passed is not a control.
         # These two must behave as stated or the checker cannot be trusted when it passes.
         assert extract("no paths here at all") == [], "extractor should find nothing"
