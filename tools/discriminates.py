@@ -160,9 +160,20 @@ def self_test():
              "--control-a", "echo X", "--control-b", "echo Y"), 0)
 
     # 4 — UNSTABLE: a state that differs from itself supports no comparison.
-    #     $RANDOM is re-evaluated per invocation, so the two reads disagree.
+    # ⛔ NOT `$RANDOM`. `run()` uses shell=True, which is `/bin/sh` — bash on macOS,
+    # usually DASH on Linux, and dash HAS NO `$RANDOM`. There it expands to EMPTY, so
+    # `echo $RANDOM$RANDOM$RANDOM` prints the same blank line twice, the two reads AGREE,
+    # and this tool CORRECTLY reports a stable state — exit 0 against an expected 4.
+    # ⇒ The tool was right and the fixture was not portable. Measured 2026-09-06:
+    #       /bin/sh (macOS, bash)  echo $RANDOM -> 29547
+    #       dash                   echo $RANDOM -> ''      (empty)
+    # ⚠ It passed on macOS for two weeks and failed on CI/Linux the moment the gate could
+    # reach it at all — the flag surface had been UNVERIFIABLE, which preempts the control
+    # verdict, so nothing had ever run this control on Linux.
+    # ⇒ /dev/urandom is present on both and differs per invocation. Verified two-poled:
+    #   `od -An -N8 -tx1 /dev/urandom` differs across calls; `echo SAME` does not.
     check("known-negative  a self-inconsistent state -> 4 (uninterpretable)",
-          rc("--a", "echo $RANDOM$RANDOM$RANDOM", "--b", "echo B"), 4)
+          rc("--a", "od -An -N8 -tx1 /dev/urandom", "--b", "echo B"), 4)
 
     # ⚠ Exit status is part of a reading, not just stdout. A command that fails with
     #    empty output must not read as one that succeeds with empty output.
