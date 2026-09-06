@@ -93,10 +93,66 @@ ACCEPTED_FORM = """
        ⛔ not:        "we should decide the completion condition for this someday"
 """
 
+# ⛔ A CORRECTION THAT KILLS A CONDITION'S PREMISE USUALLY DOES NOT RESTATE THE
+# CONDITION, so it carries no clause and is INVISIBLE to "take the last comment
+# carrying one." Measured on #579, 2026-09-06: the only clause-bearing comment was
+# the OLDEST of three, and the two after it were both corrections — one refuting the
+# very number the clause was anchored to ("today's answer is 5" -> "43 of 61").
+# Promoting verbatim, as the remedy said, would have installed a known-false anchor.
+# ⇒ Same class as #601: a refutation nobody propagated.
+#
+# ⚠ This WARNS, it does not verdict. A false positive costs a re-read; a false
+# negative costs a promoted-wrong condition. So it fails toward warning, and the
+# words below are deliberately broad.
+SUPERSEDED = re.compile(
+    # ⛔ `correct(?:ed|ing|ion)`, NOT `correcting|correction`. Review found the gap:
+    # "Corrected: the number is 43." matched no alternative, and that is the most
+    # natural way to open a correction. ⚠ The live-data check on #579 passed only
+    # because those two comments happened to say "Correcting" — the detector would
+    # have missed the very case it was built for had the wording differed by one
+    # letter. A control that passes on the wording you happened to use is not a
+    # control on the wording. ⇒ Does not match "correctly": the suffix is required.
+    r"correct(?:ed|ing|ion)|withdraw|retract|supersed|no longer|"
+    r"i was wrong|that was wrong|refut",
+    re.IGNORECASE,
+)
+
+
+def supersession_risk(issue):
+    """(clause_idx, n_later, correcting_positions) for a BURIED issue.
+
+    clause_idx is the LAST comment carrying a clause -- the one the remedy says to
+    promote. correcting_positions are the 1-BASED positions of comments AFTER it
+    that read like corrections.
+    ⇒ Any nonempty means "read those before you copy", never "do not copy".
+
+    ⛔ POSITIONS, NOT A COUNT. Review found this returning only how many. "2 of the
+    2 later comments read as corrections" tells a reader that work exists and not
+    where it is, on an issue that may carry forty comments -- so the reader re-reads
+    all of them or, more likely, none. The remedy prints beside the finding for
+    exactly this reason; a count reopens the search the warning was meant to close.
+    """
+    cs = issue.get("comments") or []
+    idx = None
+    for i, c in enumerate(cs):
+        if has_clause(c.get("body")):
+            idx = i
+    if idx is None:
+        return (None, 0, [])
+    later = cs[idx + 1:]
+    positions = [idx + 1 + j + 1 for j, c in enumerate(later)
+                 if SUPERSEDED.search(c.get("body") or "")]
+    return (idx, len(later), positions)
+
+
 BURIED_REMEDY = """
     ⇒ THE FIX IS A MOVE, NOT A REWRITE: copy the clause from the comment into the BODY,
       verbatim. ⚠ Take it from the LAST comment carrying one — a corrected disposition
       supersedes an earlier one, and promoting the first can promote a WITHDRAWN condition.
+    ⛔ AND THAT IS NOT SUFFICIENT. A correction usually does NOT restate the condition,
+      so it carries no clause and this rule cannot see it. Any ⚠ line above names the
+      later comments that read as corrections; read them before you copy, and if one
+      refutes what the clause is anchored to, promote it CORRECTED and say so.
 """
 
 class Void(Exception):
@@ -188,8 +244,60 @@ def self_test():
         for why, exp, got in failures:
             print(f"     {why}: expected {exp}, got {got}")
         return 3
+    # ── supersession_risk: two-sided, both poles NAMED ─────────────────────────
+    # ⛔ The dangerous shape is a LATER correction that carries no clause. A detector
+    # keyed on clauses alone cannot see it, which is the whole reason this exists.
+    clause = {"body": "## Done when\nthe number is 5."}
+    plain = {"body": "Agreed, nice write-up."}
+
+    # ⛔ NOT `assert`. Review found it and it is this repository's own defect: python -O
+    # STRIPS assert, so self_test() skipped all four supersession controls and still
+    # returned 0 -- SELF-TEST-PASS from a run that established nothing. Demonstrated by
+    # breaking one control on purpose:
+    #     python3    --self-test  -> exit 1   (the control works)
+    #     python3 -O --self-test  -> exit 0   (the control was SKIPPED, reported PASS)
+    # ⇒ The classifier controls above already use this failures[] pattern. Using
+    #   `assert` for the new ones broke the file's own convention AND the exit contract.
+    sup_cases = [
+        # (comments, expected, why this case exists)
+        ([clause, {"body": "⛔ Correcting my own comment above."}, plain],
+         (0, 2, [2]),
+         "KNOWN-POSITIVE: a later correction is counted AND located"),
+        ([clause, {"body": "Corrected: the number is 43."}, plain],
+         (0, 2, [2]),
+         "KNOWN-POSITIVE: the `corrected` inflection, which the first pattern missed"),
+        ([clause, plain, plain],
+         (0, 2, []),
+         "KNOWN-NEGATIVE: ordinary later comments are not corrections"),
+        ([clause, {"body": "⛔ Correcting an earlier point."}, clause],
+         (2, 0, []),
+         "KNOWN-NEGATIVE: a correction BEFORE the last clause is spent"),
+        ([plain],
+         (None, 0, []),
+         "KNOWN-NEGATIVE: no clause at all yields None, never a position"),
+        ([clause, {"body": "He corrected the tests correctly."}, plain],
+         (0, 2, [2]),
+         "⚠ `corrected` fires; `correctly` alone must not -- see the next case"),
+        ([clause, {"body": "The suite ran correctly."}, plain],
+         (0, 2, []),
+         "KNOWN-NEGATIVE: `correctly` is not an inflection of correction"),
+    ]
+    for comments, expected, why in sup_cases:
+        got = supersession_risk({"comments": comments})
+        mark = "ok  " if got == expected else "FAIL"
+        if got != expected:
+            failures.append((why, expected, got))
+        print(f"  {mark} {why}")
+    if failures:
+        print("\n⛔ supersession_risk is broken; its warnings cannot be trusted:")
+        for why, exp, got in failures:
+            print(f"     {why}: expected {exp}, got {got}")
+        return 3
+
     print(f"\n  {len(cases)}/{len(cases)} controls passed — including the "
           f"use-vs-mention negative.")
+    print(f"  {len(sup_cases)}/{len(sup_cases)} supersession controls passed — including "
+          "the `corrected` inflection and the `correctly` negative that must NOT fire.")
     return 0
 
 
@@ -301,6 +409,19 @@ def main():
             print(f"{state}  ({len(rows)})  {gloss}")
             for it in sorted(rows, key=lambda i: i["number"]):
                 print(f"    #{it['number']:<5} {it['title'][:88]}")
+                # ⇒ Printed per-row, not once at the bottom: the reader deciding
+                # WHICH comment to copy is deciding it here.
+                if state == "BURIED":
+                    idx, n_later, corr = supersession_risk(it)
+                    if corr:
+                        where = ", ".join(f"#{n}" for n in corr)
+                        print(f"           ⚠ the last clause is comment #{idx + 1}; "
+                              f"comment(s) {where} of {n_later} after it read as "
+                              f"CORRECTIONS. Read THOSE before copying — the clause "
+                              f"may be anchored to a refuted number.")
+                    elif n_later:
+                        print(f"           · last clause is comment #{idx + 1}; "
+                              f"{n_later} later comment(s), none reading as corrections.")
             # ⛔ The remedy prints WITH the finding, not in a README. DEV2 met both
             # requirements only by READING THE REGEX; nothing in the issue template,
             # goals/README.md, or this tool's own output said a comment scores BURIED
