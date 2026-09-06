@@ -110,36 +110,63 @@ def announcing_comments(comments):
     return [i + 1 for i, c in enumerate(comments) if ANNOUNCES.search(c or "")]
 
 
-def classify(body, comments):
-    """CANDIDATE / ADOPTED / NO-CORRECTION -- and the positions, always."""
+def classify(body, comments, title=""):
+    """(state, comment positions, unmarked surfaces).
+
+    ⛔ THE TITLE IS A THIRD GRADE, and it is the one a triager reads. Found on #300,
+    2026-09-06: its comment says "the verified floor of 4 is 1", and the refuted 4 is
+    in the TITLE -- "measured on 4 of my own captures" -- not in the body at all. The
+    body's own "4"s are unrelated quantities. A body-only check reports that issue
+    CLEAN while the sentence every list-reader sees still asserts the refuted number.
+
+    ⚠ And the repair differs by surface. A body takes a strikethrough; GitHub does not
+    render ~~ in a title, so a title must be EDITED. Reporting them together would
+    prescribe the wrong fix for one of them.
+    """
     where = announcing_comments(comments)
     if not where:
-        return "NO-CORRECTION", []
+        return "NO-CORRECTION", [], []
+    # ⛔ THE VERDICT IS BODY-ONLY, AND THE TITLE LEG WAS MEASURED AND WITHDRAWN.
+    # Requiring a marker in the TITLE too was implemented on 2026-09-06 and refuted
+    # by its own live run: ADOPTED went 14 -> 0, because GitHub titles do not carry
+    # `~~` or "FALSE" by convention -- nobody writes them there and they barely
+    # render. It would have reported 14 issues whose bodies ARE repaired as defects.
+    # ⇒ The title is reported as INFORMATION, never as a verdict.
+    title_clear = bool(ADOPTED.search(title or ""))
     if ADOPTED.search(body or ""):
-        return "ADOPTED", where
-    return "CANDIDATE", where
+        return "ADOPTED", where, []
+    return "CANDIDATE", where, (["body"] if title_clear else ["body", "title"])
 
 
 def self_test():
     failures = []
     cases = [
-        ("body with no marker", ["⛔ Correcting my earlier number: it is 43."],
-         ("CANDIDATE", [1]), "the defect: announced in a comment, body unmarked"),
+        ("body with no marker", ["⛔ Correcting my earlier number: it is 43."], "plain title",
+         ("CANDIDATE", [1], ["body", "title"]), "the defect: announced, body unmarked"),
         ("body says ~~31 minutes~~ [FALSE]", ["## Correction — the figure is wrong"],
-         ("ADOPTED", [1]), "a struck body is the repaired state, not a candidate"),
-        ("plain body", ["nice write-up", "agreed"],
-         ("NO-CORRECTION", []), "no announcement anywhere"),
+         "title ~~4~~ [FALSE — 1]",
+         ("ADOPTED", [1], []), "both surfaces marked is the repaired state"),
+        # ⛔ THE TITLE LEG. A body-only check calls this ADOPTED and it is not: the
+        # sentence every list-reader sees still asserts the refuted claim (#300).
+        # ⛔ THE WITHDRAWN LEG, PINNED. A repaired body is ADOPTED even when the title
+        # carries no marker -- titles do not carry them. Asserting CANDIDATE here took
+        # the live ADOPTED count from 14 to 0.
+        ("body says ~~31 minutes~~ [FALSE]", ["## Correction — the figure is wrong"],
+         "measured on 4 of my own captures",
+         ("ADOPTED", [1], []), "a repaired body is ADOPTED; an unmarked title is NOT a defect"),
+        ("plain body", ["nice write-up", "agreed"], "t",
+         ("NO-CORRECTION", [], []), "no announcement anywhere"),
         # ⛔ THE LOAD-BEARING NEGATIVE, same shape as close-condition-scan's.
-        ("plain body", ["we should correct this someday, a correction is overdue"],
-         ("NO-CORRECTION", []), "use-vs-mention: prose ABOUT correcting is not one"),
-        ("plain body", ["ok", "⛔ Corrected: the number is 43.", "thanks"],
-         ("CANDIDATE", [2]), "the `corrected` inflection, and the POSITION is named"),
-        ("plain body", ["⛔ Correcting A", "noise", "⛔ Retracting B"],
-         ("CANDIDATE", [1, 3]), "every announcing comment is located, not just the last"),
-        ("", [], ("NO-CORRECTION", []), "an empty issue establishes nothing about comments"),
+        ("plain body", ["we should correct this someday, a correction is overdue"], "t",
+         ("NO-CORRECTION", [], []), "use-vs-mention: prose ABOUT correcting is not one"),
+        ("plain body", ["ok", "⛔ Corrected: the number is 43.", "thanks"], "t",
+         ("CANDIDATE", [2], ["body", "title"]), "the `corrected` inflection, POSITION named"),
+        ("plain body", ["⛔ Correcting A", "noise", "⛔ Retracting B"], "t",
+         ("CANDIDATE", [1, 3], ["body", "title"]), "every announcement located, not just the last"),
+        ("", [], "", ("NO-CORRECTION", [], []), "an empty issue establishes nothing"),
     ]
-    for body, comments, expected, why in cases:
-        got = classify(body, comments)
+    for body, comments, title, expected, why in cases:
+        got = classify(body, comments, title)
         mark = "ok  " if got == expected else "FAIL"
         if got != expected:
             failures.append((why, expected, got))
@@ -213,17 +240,23 @@ def main():
             print("   Skipping it would make an unread issue look clean. Exit 2.",
                   file=sys.stderr)
             return 2
-        state, where = classify(d.get("body") or "",
-                                [c.get("body") or "" for c in (d.get("comments") or [])])
-        buckets[state].append((n, where, (d.get("title") or "")[:58]))
+        state, where, unmarked = classify(
+            d.get("body") or "",
+            [c.get("body") or "" for c in (d.get("comments") or [])],
+            d.get("title") or "")
+        buckets[state].append((n, where, unmarked, (d.get("title") or "")[:52]))
 
     print(f"  NO-CORRECTION  {len(buckets['NO-CORRECTION']):3d}  no comment announces one")
     print(f"  ADOPTED        {len(buckets['ADOPTED']):3d}  announced, and the body shows it")
     print(f"  ⛔ CANDIDATE    {len(buckets['CANDIDATE']):3d}  announced in a comment, body unmarked\n")
 
-    for n, where, title in sorted(buckets["CANDIDATE"]):
+    both = sum(1 for _, _, u, _ in buckets["CANDIDATE"] if len(u) == 2)
+    print(f"     of those, {both} also have a title carrying no marker — INFORMATION,\n"
+          f"     not a finding: a title is repaired by EDITING it, and #300's refuted\n"
+          f"     figure lives in its title rather than its body.\n")
+    for n, where, unmarked, title in sorted(buckets["CANDIDATE"]):
         seen = ", ".join(f"#{w}" for w in where)
-        print(f"    #{n:<5} comment(s) {seen:<16} {title}")
+        print(f"    #{n:<5} comment(s) {seen:<14} unmarked: {'+'.join(unmarked):<11} {title}")
 
     if buckets["CANDIDATE"]:
         print("""
