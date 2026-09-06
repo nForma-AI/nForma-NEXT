@@ -324,6 +324,27 @@ def main():
     # have happened is not a control. Measured 2026-09-06.
     # ⚠ Exit 2 is correct and unambiguous here: this file's contract already reads
     # `2 established nothing`, and a half-read invocation establishes nothing.
+    # ⛔ ANY unrecognised argument, not just one alongside `--self-test`. #607 refused only
+    # the second, and that was HALF THE PROBE: the gate runs `--zzz-not-a-flag` BARE too, and
+    # a bare unknown flag fell straight through to the main path — so the tool returned its
+    # CENSUS VERDICT and the gate read that as "it accepts garbage".
+    #
+    # ⚠ HOW THE HOLE HID, and it is the reason this is worth the words: the verdict returned
+    # depends on LIVE STATE, so the gate's reading of THIS FILE moved without the file
+    # changing. Measured 2026-09-06, same tree, one hour apart:
+    #     `--zzz-not-a-flag` -> 1  (a divergence was live)  ⇒ gate satisfied
+    #     `--zzz-not-a-flag` -> 0  (sources agreed)         ⇒ gate: UNVERIFIABLE
+    # ⇒ #607's fix passed CI only because the fleet happened to diverge that hour. A control
+    # that holds for an environmental reason is not a control.
+    # ⚠ Exit 2 is this file's documented "established nothing"; a refusal collides with
+    # neither 0 nor 1.
+    _KNOWN = {"--self-test", "--selftest"}
+    _unknown = [a for a in sys.argv[1:] if a not in _KNOWN]
+    if _unknown and not ({"--self-test", "--selftest"} & set(sys.argv[1:])):
+        print(f"\u26d4 VOID \u2014 unrecognised argument(s): {_unknown}. This instrument takes\n"
+              f"   none but --self-test; it reads the pane census and nothing else.\n"
+              f"   NO REMEDY \u2014 there is no flag to pass. Run it bare.", file=sys.stderr)
+        return 2
     if "--self-test" in sys.argv or "--selftest" in sys.argv:
         _extra = [a for a in sys.argv[1:] if a not in ("--self-test", "--selftest")]
         if _extra:

@@ -245,8 +245,29 @@ def check_once(state_path, force=False, subject=None, repo=None, legs=None, sha=
     prev, base = load_state(state_path)
     if prev == sha and not force:
         # The only silent-ish path, and it is silent about the SUBJECTS, not about itself.
+        #
+        # ⛔ #598: THIS LINE NAMES ITS OWN REMEDY NOW, and the omission was the whole cost.
+        # `--force` exists and is documented in --help ("run the subject even if main has not
+        # moved"), and this output — the ONLY output a reader sees when the legs did not run —
+        # never mentioned it. Measured 2026-09-06: 0 occurrences of "--force" in a
+        # short-circuit run.
+        #
+        # ⚠ WHAT THAT COST, from the field: a pane probing whether index-watch invokes
+        # verdict-census planted a recording stub and watched it fire on run 1 and NOT on runs
+        # 2-4. It nearly reported a FALSE NEGATIVE — "this caller does not exist" — because
+        # nothing here said the legs could be MADE to run. ⇒ The prose was true and complete
+        # about what happened, and silent about what to do, which is the shape #73 records:
+        # an absence report that does not name its remedy converts a gap into a wall.
+        #
+        # ⚠ EXIT 0 IS DELIBERATELY UNCHANGED. This file's contract already reads "0 main
+        # unchanged, OR checked and the subject reported clean" — two-valued by declaration,
+        # not by accident — and twelve files reference this tool. #598 argues that declaring
+        # it does not make it safe, and that argument stands; it is recorded there, not
+        # settled here. What is settled: a reader who sees this line now knows the next move.
         return 0, [f"  ok    main unchanged at {sha[:8]} — {len(legs)} leg(s) not run"
-                   f" (nothing to re-check)"]
+                   f" (nothing to re-check; --force runs them anyway)",
+                   f"  ⚠ this is a SKIP, not a verdict: exit 0 here means the legs did NOT"
+                   f" run. See #598."]
 
     codes, all_lines, all_found = [], [], []
     for leg in legs:
