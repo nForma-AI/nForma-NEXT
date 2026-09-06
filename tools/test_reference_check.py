@@ -14,11 +14,12 @@ judgement), **MISSING** (established nothing — a repo not on this machine is n
 
 Run: python3 tools/test_reference_check.py
 """
-# SUITE-DEPENDS: resolves a git blob sha — network
 
 import importlib.util
 import os
+import shutil
 import subprocess
+import tempfile
 import sys
 
 # ⛔ A STALE __pycache__ SILENTLY SERVES THE PRE-MUTATION MODULE, and the dangerous
@@ -76,14 +77,48 @@ def main():
     got, why = rc.blob("definitely-not-a-repo-here", "x.md")
     f += not check("no sha", got, None)
     f += not check("says why", "not on this machine" in (why or ""), True)
-    got, why = rc.blob("just-akash", "no/such/path.md")
+    # ⛔ HERMETIC FROM HERE, and the reason is #280. These three legs used to resolve against
+    # a `just-akash` checkout at ROOT/just-akash — ANOTHER ESTATE'S REPO, present on the
+    # machine that wrote them and on no other. They had been red for 17 days behind a
+    # `# SUITE-DEPENDS: ... network` marker that named the wrong cause: no amount of network
+    # produces a sibling checkout, and the hardcoded blob sha was not an object in THIS repo
+    # at all (`git cat-file -t f4f3e9db` -> "Not a valid object name").
+    # ⇒ A register test must not require another estate to be checked out beside it. Build the
+    # repo, compute the sha at test time, and the legs measure the SAME PROPERTY with nothing
+    # borrowed.
+    _tmp = tempfile.mkdtemp()
+    _repo = os.path.join(_tmp, "sibling-repo")
+    os.makedirs(os.path.join(_repo, "docs"))
+    _doc = os.path.join(_repo, "docs", "x.md")
+    with open(_doc, "w", encoding="utf-8") as fh:
+        fh.write("authoritative for things\n")
+    for _cmd in (["git", "init", "-q"], ["git", "add", "-A"],
+                 ["git", "-c", "user.email=t@t", "-c", "user.name=t",
+                  "commit", "-q", "-m", "seed"]):
+        subprocess.run(_cmd, cwd=_repo, capture_output=True)
+    _real = subprocess.run(["git", "-C", _repo, "rev-parse", "HEAD:docs/x.md"],
+                           capture_output=True, text=True).stdout.strip()
+    _saved_root, rc.ROOT = rc.ROOT, _tmp
+
+    got, why = rc.blob("sibling-repo", "no/such/path.md")
     f += not check("path absent -> no sha", got, None)
+    # ⚠ THE LEG THIS REPAIRS. It asserts "not at HEAD" — a path missing from a repo that
+    # EXISTS. Against an absent checkout the reason was "repo not on this machine", so the
+    # test was failing on a DIFFERENT branch of blob() than the one it names.
     f += not check("says why", "not at HEAD" in (why or ""), True)
 
     print("★ a real entry resolves, and a wrong sha would read as MOVED:")
-    got, why = rc.blob("just-akash", "docs/exec-reliability-investigation.md")
+    got, why = rc.blob("sibling-repo", "docs/x.md")
     f += not check("resolves to a blob", bool(got) and len(got) == 40, True)
-    f += not check("and it is the recorded one", got, SHA)
+    # ⚠ Compared against a sha COMPUTED FROM THE REPO JUST BUILT, not a literal. A hardcoded
+    # sha is a claim about someone else's disk; this is a claim about the object under test.
+    f += not check("and it is the recorded one", got, _real)
+
+    print("⛔ and a WRONG sha still reads as MOVED — the known-negative:")
+    f += not check("a different sha is not this blob", got == "0" * 40, False)
+
+    rc.ROOT = _saved_root
+    shutil.rmtree(_tmp, ignore_errors=True)
 
     print("the register on disk parses to at least one entry:")
     f += not check("entries", len(rc.parse(open(rc.REGISTER).read())) >= 1, True)

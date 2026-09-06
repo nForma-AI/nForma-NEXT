@@ -22,6 +22,15 @@ instruments.
 Exit: 0 every entry current · 1 at least one MOVED or MISSING · 2 established nothing
       (register unreadable, or no entries parsed — a table rename must not read clean)
 """
+
+# NO-SELF-TEST: controlled by tools/test_reference_check.py, which the CI glob gates and
+# which passes on main — measured 2026-09-06, after #280. ⛔ A DECLARATION of where the
+# control lives, not a claim that none exists.
+#
+# ⚠ WHY THERE IS NO IN-PROCESS `--self-test`: main() walks the register and resolves each
+# row against a SIBLING CHECKOUT on disk. A hermetic control has to build those repos, so
+# it lives in the paired suite — which now creates a throwaway git repo and computes the
+# blob sha at test time instead of hardcoding another estate's (#280).
 import os
 import re
 import subprocess
@@ -56,6 +65,26 @@ def blob(repo, path):
 
 
 def main():
+    # ⛔ AN ARGUMENT SURFACE. Without one this instrument was UNESTABLISHED: `--self-test` and
+    # `--zzz-not-a-flag` produced IDENTICAL output and the same exit 1, so — the gate's words —
+    # "the flag was never DISPATCHED: whatever ran, ran regardless of it." Measured 2026-09-06.
+    # ⚠ Exit 2 is this file's own documented "established nothing"; a refusal collides with
+    # neither 0 (every entry current) nor 1 (something MOVED or MISSING).
+    # ⚠ The two refusals DIFFER, or the gate reads identical output as "never dispatched" and
+    # trades one non-verdict for another.
+    _argv = sys.argv[1:]
+    if _argv == ["--self-test"]:
+        print("⛔ VOID — this instrument has no in-process control: main() resolves each register\n"
+              "   row against a SIBLING CHECKOUT on disk, so there is nothing hermetic to run here.\n"
+              "   ADDABLE — run its control directly: python3 tools/test_reference_check.py\n"
+              "   (gated by the CI glob; hermetic since #280).", file=sys.stderr)
+        return 2
+    if _argv:
+        print(f"⛔ VOID — unrecognised argument(s): {_argv}. This instrument takes none; it reads\n"
+              f"   the register and resolves every row.\n"
+              f"   NO REMEDY — there is no flag to pass. Run it bare.", file=sys.stderr)
+        return 2
+
     try:
         text = open(REGISTER).read()
     except OSError as exc:
