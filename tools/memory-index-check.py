@@ -25,7 +25,7 @@ this tool established. It is a flag precisely so a reader can set what they actu
 
 Exit: 0 covered and within budget · 1 orphans or oversize · 2 established nothing.
 """
-import argparse, os, re, sys
+import argparse, os, re, subprocess, sys
 
 LINK = re.compile(r"\]\(([A-Za-z0-9_.-]+\.md)\)")
 
@@ -50,14 +50,46 @@ def analyse(index_text, filenames, limit_bytes):
     }
 
 
+def _default_memory_dir():
+    """This repository's own memory dir, derived — never another estate's.
+
+    ⛔ THE DEFAULT WAS HARDCODED TO A DIFFERENT ESTATE:
+        ~/.claude/projects/-Users-jonathanborduas-code-DigitalFrontier-infra/memory
+    Measured 2026-09-07 from nForma-NEXT: that path does not exist here, so a bare
+    run exited 2 (VOID) and NEVER measured this estate. On a machine where it does
+    exist, a bare run would have measured somebody else's memory and reported it as
+    an answer. ⇒ docs/ESTATE-BOUNDARY.md: "presence in this repository is not
+    evidence of belonging to it" — here the referent did not belong at all.
+
+    ⚠ Derived from the MAIN worktree, not `--show-toplevel`. From a linked worktree
+    the latter returns the worktree path, and the project dir is keyed by the cwd
+    the agent was launched in — measured on #626, where the same mistake made a
+    scan match no directory.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "worktree", "list", "--porcelain"],
+            capture_output=True, text=True, timeout=10).stdout
+        first = out.splitlines()[0] if out.strip() else ""
+        root = first[len("worktree "):].strip() if first.startswith("worktree ") else ""
+    except (OSError, subprocess.SubprocessError, IndexError):
+        root = ""
+    if not root:
+        # ⇒ Not a git repo, or git unavailable. Return a path that CANNOT exist so
+        #   the caller's own "no MEMORY.md" branch reports VOID, rather than falling
+        #   back to some other estate's directory.
+        return os.path.expanduser("~/.claude/projects/__no-repo-detected__/memory")
+    return os.path.expanduser(
+        os.path.join("~/.claude/projects", root.replace("/", "-"), "memory"))
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__.splitlines()[0],
         epilog="An ORPHAN is fixed by adding a line. TRUNCATION is not — adding lines makes "
                "it worse. The counts are separate so the reader is sent to the right remedy.",
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--dir", default=os.path.expanduser(
-        "~/.claude/projects/-Users-jonathanborduas-code-DigitalFrontier-infra/memory"))
+    ap.add_argument("--dir", default=_default_memory_dir())
     ap.add_argument("--limit-kb", type=float, default=25.0)
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
