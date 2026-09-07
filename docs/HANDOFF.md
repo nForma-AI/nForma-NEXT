@@ -11,30 +11,33 @@ elsewhere. Panes finish a turn and nothing re-invokes them. **Read this instead 
 
 ## What is true right now
 
-*Measured **2026-09-07 15:4xZ** on `origin/main`, by the instruments named beside each line. ⚠ Every
-count uses `--limit 1000`: the default page size equals the returned count, so truncation is silent —
-that is how `30` was once read for a population of `85`.*
+*Measured **2026-09-07 13:16Z** on `origin/main`. **Every line names the command that produces it** — run those, do not cite this block.*
+
+⚠ *Every count uses `--limit 1000`: the default page size equals the returned count, so truncation is
+silent — that is how `30` was once read for a population of `85`.*
 
 ```
-merged PRs        454          open issues   103          open PRs      0
-main CI rollup    success      quarantine    25 rows recorded
-close conditions  NONE 13 · BURIED 0 · BODY 90        close-condition-scan.py
-runnable          ASSERTED 34 · RUNNABLE 25 · NO-CONDITION 44   runnable-condition.py
-no close path     21 of 103                           close-mechanism.py
-gating job        76s                                 last run on main
+merged PRs        454    gh pr list --state merged --limit 1000 --json number --jq length
+open issues       103    gh issue list --state open  --limit 1000 --json number --jq length
+open PRs          1      gh pr list --state open   --limit 1000 --json number --jq length
+                         ⚠ the 1 is the PR that re-measured this block; it was 0 before and after
+main CI rollup    success gh run list --branch main --limit 1 --json conclusion
+quarantine        25     grep -c '^tools/' tools/QUARANTINE.txt
+close conditions  NONE 13 · BURIED 0 · BODY 90    python3 tools/close-condition-scan.py
+runnable          ASSERTED 34 · RUNNABLE 25 · NO-CONDITION 44   python3 tools/runnable-condition.py
+no close path     21 of 103                       python3 tools/close-mechanism.py
+gating job        76s      gh run view <id> --json jobs   (job "hermetic suites (gating)")
 ```
 
 ⛔ **THE PREVIOUS SNAPSHOT, STRUCK RATHER THAN DELETED — it stood for 17 days and the drift is the
 point.** *(measured 2026-08-21 08:59Z)*
 
-```
-~~merged PRs 329 · open issues 111 · open PRs 0~~
-~~quarantine 23 of 23 files recorded~~
-~~close conditions  NONE 8 · BURIED 0 · BODY 98~~
-~~runnable  ASSERTED 38 · RUNNABLE 34 · NO-CONDITION 34~~
-~~no close condition 16 of 111~~
-~~gating job ~185s +-2s~~
-```
+> ~~merged PRs 329 · open issues 111 · open PRs 0~~
+> ~~quarantine 23 of 23 files recorded~~
+> ~~close conditions  NONE 8 · BURIED 0 · BODY 98~~
+> ~~runnable  ASSERTED 38 · RUNNABLE 34 · NO-CONDITION 34~~
+> ~~no close condition 16 of 111~~
+> ~~gating job ~185s +-2s~~
 
 ⇒ **What moved, and two of the three directions are not the flattering one:**
 
