@@ -11,28 +11,54 @@ elsewhere. Panes finish a turn and nothing re-invokes them. **Read this instead 
 
 ## What is true right now
 
-*Measured **2026-09-07 13:16Z** on `origin/main`. **Every line names the command that produces it** — run those, do not cite this block.*
+*Measured **2026-09-07 17:21Z** on `origin/main`. **Every line names the command that produces it** — run those, do not cite this block, and `scripts/check-handoff-rows.py` now RUNS each one and reports DRIFTED / MISMATCH / UNRUNNABLE per row (#637).*
 
 ⚠ *Every count uses `--limit 1000`: the default page size equals the returned count, so truncation is
 silent — that is how `30` was once read for a population of `85`.*
 
 ```
-merged PRs        454    gh pr list --state merged --limit 1000 --json number --jq length
+merged PRs        458    gh pr list --state merged --limit 1000 --json number --jq length
 open issues       103    gh issue list --state open  --limit 1000 --json number --jq length
-open PRs          1      gh pr list --state open   --limit 1000 --json number --jq length
-                         ⚠ the 1 is the PR that re-measured this block; it was 0 before and after
+open PRs          0      gh pr list --state open   --limit 1000 --json number --jq length
 main CI rollup    success gh run list --branch main --limit 1 --json conclusion
 quarantine        25     grep -c '^tools/' tools/QUARANTINE.txt
-close conditions  NONE 13 · BURIED 0 · BODY 90    python3 tools/close-condition-scan.py
-runnable          ASSERTED 34 · RUNNABLE 25 · NO-CONDITION 44   python3 tools/runnable-condition.py
-no close path     NO-CONDITION 13 · OPERATOR 8    python3 tools/close-mechanism.py
-                         ⚠ this row read `21 of 103` until 2026-09-07. The tool prints the
-                         two tags and never their sum — so the whole value was ours, under
-                         a command that emits no `N of M` at all. Caught by #637's checker.
+close conditions  NONE 0 · BURIED 0 · BODY 103    python3 tools/close-condition-scan.py
+                         ⇒ exit 0 for the first time: EVERY open issue carries a clause in its body
+runnable          ASSERTED 47 · RUNNABLE 25 · NO-CONDITION 31   python3 tools/runnable-condition.py
+no close path     OPERATOR 9                      python3 tools/close-mechanism.py
+                         ⚠ 21 → 9. `NO-CONDITION` is no longer printed at all, because the
+                         count is 0 — so naming it here would MISMATCH. This row read
+                         `21 of 103` until today, a SUM the tool never printed (#637).
 gating job        76s      gh run view <id> --json jobs   (job "hermetic suites (gating)")
 ```
 
-⇒ **THE `NONE` SET, RECORDED — because a count cannot be re-verified and a set can.**
+⇒ **THE `NONE` SET IS EMPTY — and the set recorded yesterday is what makes that statement exact.**
+*(measured 2026-09-07 17:21Z)*
+
+```
+NONE  (none)
+```
+
+⛔ **THE FIRST USE OF THIS BLOCK'S OWN DESIGN, and it worked.** Yesterday's entry argued that *a dated
+count is attributable but not checkable, and a dated SET is diffable.* Today the set moved, and the
+diff is exact rather than merely large:
+
+```
+LEFT the NONE set (13)   4 · 38 · 48 · 49 · 136 · 405 · 431 · 451 · 502 · 532 · 558 · 582 · 583
+ENTERED (0)              none
+```
+
+★ **A count could only have said `13 → 0`.** The set says WHICH thirteen — and, because nothing
+entered, that they all moved for one reason rather than thirteen issues being repaired while
+thirteen others silently lost their conditions. That second reading is exactly what the 2026-08-21
+snapshot could not rule out, and it is why *at least 3* was unresolvable there.
+
+⚠ **What moved them was an edit, not a repair of the fleet.** TEAMLEAD appended a close condition to
+each of the thirteen bodies, derived from each issue's own content: a REPORT is discharged when its
+findings are ROUTED, and an OPERATOR-owned issue's condition STATES the ruling without taking it.
+`tools/close-condition-scan.py` scores presence, never quality — see its own bound.
+
+⇒ **THE PREVIOUS `NONE` SET, STRUCK RATHER THAN DELETED.**
 *(`python3 tools/close-condition-scan.py --by-state` — it prints one `STATE number` row
 per issue and NO totals; the aggregate row above comes from the plain scan. Two commands,
 one population, taken in the same minute.)*
@@ -42,7 +68,7 @@ NONE  4 · 38 · 48 · 49 · 136 · 405 · 431 · 451 · 502 · 532 · 558 · 58
 ```
 
 ⛔ **Why the set and not just the number.** Measured 2026-09-07: the 2026-08-21 snapshot said
-`NONE 8` of 111. Today it is `NONE 13` of 103, and **11 of those 13 are survivors of that same 111** —
+`NONE 8` of 111. At **2026-09-07 13:16Z** it was `NONE 13` of 103, and **11 of those 13 were survivors of that same 111** —
 so at least **3** issues carried a condition then and do not now, *or* the 8 was wrong. **Neither can
 be checked**, because `gh` exposes no body-edit history: the timeline carries labels, closures and
 references, never what a body said last month.
