@@ -319,6 +319,31 @@ for pair in "tools/fleet-state.py:transcripts" "tools/fleet-output.py:forge arti
 done
 note 'SILENT means "no SIGNED artifact in the window", never "did no work" — one git credential serves every pane (#4), so a body byline is the only author signal there is'
 
+# ⇒ THE VENDORING CHECK, AND THIS IS THE MOMENT IT MATTERS. onboard.md step 3 tells an
+# installer to re-scope each goal's `**Repository:**` line. Doing exactly that makes
+# check-goal-conformance report FOR-THIS-REPO for all five goals while their BODIES still
+# describe the estate they were written in (#502 D) — measured in a real foreign install
+# where certified-in-scope goals asserted "no test infrastructure at all" against 233 test
+# files. Preflight is the acceptance test for that install, so it is where the question
+# "how many of these claims were measured somewhere else?" has to be asked.
+# ⛔ NOT GATING. In the ORIGIN estate 19 of 107 tags legitimately cite a sibling estate;
+# scoring that as failure would be red on every clean run here. ELSEWHERE is a location.
+if [ -r tools/measured-elsewhere.py ]; then
+  out=$(python3 tools/measured-elsewhere.py 2>&1); rc=$?
+  case "$rc" in
+    0) ok 'measured-elsewhere: every tagged claim was measured in the declared repo' ;;
+    2) note 'measured-elsewhere established NOTHING (exit 2) — UNMEASURED, not clean:'
+       printf '%s\n' "$out" | grep -E '⛔' | head -2 | sed 's/^/        /' ;;
+    *) note 'measured-elsewhere: some tagged claims were measured in ANOTHER repository — informational:'
+       # ⚠ the SUMMARY line (2-space indent), never the per-file ones (6). The first
+       # form matched both and `head -3` took the per-file lines, reporting three
+       # partial tallies where one total was wanted.
+       printf '%s\n' "$out" | grep -E '^  [A-Z]+ [0-9]+ · ' | head -1 | sed 's/^/      /' ;;
+  esac
+else
+  note 'tools/measured-elsewhere.py not present — provenance of goal claims is UNMEASURED'
+fi
+
 section 'Exit codes read through a pipe'
 # ★ #89 / #234 §4's shape: tools/pipe-exit-scan.py has a GATED CALLER for its
 # --self-test and NONE for its scan. Measured 2026-09-07: the scan had never been
