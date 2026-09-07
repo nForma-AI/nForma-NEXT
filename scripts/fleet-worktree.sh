@@ -193,16 +193,33 @@ create)
   # auto-remediated" — and removing a worktree can destroy uncommitted work. So
   # `create` REFUSES loudly and prints the two commands that actually do it, per
   # role, rather than silently doing nothing or silently doing something.
-  if [ "$n_missing" -eq 0 ] && [ "$n_nodoctrine" -gt 0 ]; then
-    printf '⛔ nothing is MISSING, but %d role(s) carry a tree WITHOUT the doctrine:%s\n' \
+  # ⇒ HOISTED, because the NODOCTRINE state has TWO entry points and the first
+  # version only guarded one. When n_missing and n_nodoctrine are BOTH non-zero,
+  # `create` provisions the absent roles, exits 0 if the new trees are sound, and
+  # says nothing about the existing broken ones. ⛔ That mixed state is not
+  # hypothetical: it is the fixture my own reproduction hit by accident — one tree
+  # present, seven missing — and it is why the original defect stayed invisible on
+  # the first attempt. Found in review of this PR.
+  report_nodoctrine() {
+    printf '\n⛔ %d role(s) carry a tree WITHOUT the doctrine:%s\n' \
       "$n_nodoctrine" "$nodoctrine_list"
-    printf '  `create` cannot fix this: it only builds trees that are ABSENT, and these exist.\n'
+    printf '  `create` cannot fix these: it only builds trees that are ABSENT, and these exist.\n'
     printf '  Removing a worktree can destroy uncommitted work, so this is not done for you.\n'
     printf '  ⇒ Per role, after checking the tree holds nothing you need:\n'
     for r in $nodoctrine_list; do
-      printf '       git worktree remove %s/%s && %s create <ref-that-has-prompts>\n' \
-        "$WT_DIR" "$r" "$0"
+      # ⚠ %q, not %s. The operator COPIES these lines, and a worktree path
+      # containing a space — `C:\Program Files\...` is a normal location — would
+      # produce a command that silently removes the wrong thing. Same root as
+      # #502 C2, one surface along: there it broke a parser, here it breaks a
+      # command a human is about to run.
+      printf '       git worktree remove -- %q && %q create <ref-that-has-prompts>\n' \
+        "$WT_DIR/$r" "$0"
     done
+  }
+
+  if [ "$n_missing" -eq 0 ] && [ "$n_nodoctrine" -gt 0 ]; then
+    printf '⛔ nothing is MISSING, but the doctrine is absent from some trees.\n'
+    report_nodoctrine
     exit 1
   fi
   if [ "$n_missing" -eq 0 ]; then
@@ -249,6 +266,13 @@ create)
       printf '  FAILED  %-10s (path in use, or %s unreachable)\n' "$r" "$BASE_REF"; rc=1
     fi
   done
+  # ⛔ THE MIXED STATE. Roles that were ABSENT have just been built; roles that
+  # already had a doctrine-less tree were never touched, and without this the run
+  # exits 0 having silently left them broken.
+  if [ "$n_nodoctrine" -gt 0 ]; then
+    report_nodoctrine
+    rc=1
+  fi
   printf '\nnext, INSIDE your tree: cd %s/<role> || exit 1\n' "$WT_DIR"
   printf '                        git checkout -b <role>/<topic>\n'
   exit $rc
