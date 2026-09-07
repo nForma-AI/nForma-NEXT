@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# SUITE-DEPENDS: runs each snapshot row's command, and most of them are `gh` — network
+# plus auth. MEASURED on a runner (run 34139504952): with no token every `gh` row
+# produced empty stdout, and the FIRST version of this file scored that as MISMATCH.
+# ⛔ That is "could not measure" reported as "found a defect" — the one conflation this
+# estate exists to prevent, in the tool written to prevent it. Fixed below; the marker
+# stays because the dependency is real and a network gate is a flake source.
 """The snapshot block says every line names the command that produces it. Nobody checked.
 
 `docs/HANDOFF.md` opens its "What is true right now" block with a standing claim:
@@ -162,17 +168,36 @@ WORST = {"CHECKED": 0, "DRIFTED": 1, "UNRUNNABLE": 2, "MISMATCH": 3}
 def check_row(name, value, cmd, runner):
     if PLACEHOLDER.search(cmd):
         return "UNRUNNABLE", [f"`{PLACEHOLDER.search(cmd).group(0)}` stands where a value must go"]
-    out, rc = runner(cmd)
-    if rc == 127 or (out.strip() == "" and rc != 0):
-        return "UNRUNNABLE", [f"the command did not run (exit {rc})"]
+    out, err, rc = runner(cmd)
+    # ⇒ THREE INDEPENDENT SIGNALS THAT NOTHING WAS ESTABLISHED, deliberately from
+    # different mechanisms so one being wrong does not silence the other two:
+    #   · exit 2 is THIS ESTATE'S convention -- "established nothing", never all-clear
+    #   · exit 127 is the RUNTIME saying the command does not exist
+    #   · empty stdout is the COMMAND saying it produced no value
+    # A row whose command could not reach its data must never read as a finding about
+    # the row. MISMATCH accuses the document; UNRUNNABLE accuses nothing.
+    if rc in (2, 127):
+        return "UNRUNNABLE", [f"exit {rc} — established nothing"
+                              + (f": {err.strip().splitlines()[0][:90]}" if err.strip() else "")]
+    if out.strip() == "":
+        return "UNRUNNABLE", ["no output on stdout"
+                              + (f"; stderr says: {err.strip().splitlines()[0][:90]}"
+                                 if err.strip() else " and nothing on stderr either")]
+    if "NFORMA-RESULT ESTABLISHED-NOTHING" in err:
+        return "UNRUNNABLE", ["the subject declared ESTABLISHED-NOTHING on stderr"]
     verdicts = [judge(c, out) for c in claims(value)]
     worst = max(verdicts, key=lambda v: WORST[v[0]])[0]
     return worst, [f"{v} — {why}" for v, why in verdicts]
 
 
 def shell(cmd):
+    """⛔ STDOUT AND STDERR ARE RETURNED SEPARATELY, and that is the fix for the defect
+    a runner found. The first version concatenated them, so `gh` with no token —
+    empty stdout, an auth error on stderr — became "output that contains no integer",
+    which is MISMATCH. Values are written to stdout; explanations of failure are
+    written to stderr. Judging a value against stderr is judging it against prose."""
     p = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
-    return p.stdout + p.stderr, p.returncode
+    return p.stdout, p.stderr, p.returncode
 
 
 def main():
@@ -237,6 +262,7 @@ def self_test():
         return 2
 
     # (label, value, command, canned output, expected verdict, why this case exists)
+    # (label, value, command, stdout, stderr, rc, expected)
     cases = [
         ("✅ KNOWN-POSITIVE  the row as it stands on main today",
          "NONE 13 · BURIED 0 · BODY 90", "python3 tools/close-condition-scan.py",
@@ -278,9 +304,34 @@ def self_test():
         ("⚠ UNRUNNABLE: a placeholder stands where a value must go",
          "76s", "gh run view <id> --json jobs", "unused", "UNRUNNABLE"),
     ]
+    # ⛔ THE CASES A RUNNER HANDED ME, and I could not have written them from here.
+    # Locally every command runs; there was no way to construct "the command cannot
+    # reach its data" until CI supplied an environment with no token. The first version
+    # scored all three as MISMATCH. See [run 34139504952].
+    cases = [(l, v, c, o, "", 0, w) for l, v, c, o, w in cases] + [
+        ("⚠ CI's case: `gh` with no token — empty stdout, an auth error on stderr",
+         "454", "gh pr list --json number --jq length",
+         "", "gh: To use GitHub CLI in automation, set the GH_TOKEN environment variable", 4,
+         "UNRUNNABLE"),
+
+        ("⚠ exit 2 is THIS ESTATE'S 'established nothing' — never a finding about the row",
+         "NONE 13 · BURIED 0 · BODY 90", "python3 tools/close-condition-scan.py",
+         "⛔ ESTABLISHED NOTHING — the query returned no issues.", "", 2, "UNRUNNABLE"),
+
+        ("⚠ the subject's own stderr marker is a SECOND, independent unrunnable signal",
+         "NONE 13", "python3 tools/close-condition-scan.py",
+         "some prose but no verdict", "NFORMA-RESULT ESTABLISHED-NOTHING", 0, "UNRUNNABLE"),
+
+        ("⛔ CONTROL a non-zero exit that is a FINDING (1) is still judged, not excused",
+         "NONE 13", "python3 tools/close-condition-scan.py", "NONE  (13)", "", 1, "CHECKED"),
+
+        ("⛔ CONTROL stderr is NOT searched for the value — prose is not a measurement",
+         "454", "gh pr list --json number --jq length", "0", "the answer is 454", 0, "DRIFTED"),
+    ]
     ok = True
-    for label, value, cmd, out, want in cases:
-        got, why = check_row("row", value, cmd, lambda _c, o=out: (o, 0))
+    for label, value, cmd, out, err, rc, want in cases:
+        got, why = check_row("row", value, cmd,
+                             lambda _c, o=out, e=err, r=rc: (o, e, r))
         good = got == want
         ok &= good
         print(f"{'✅' if good else '❌'} {label}\n     want {want:10} got {got}")
