@@ -148,9 +148,18 @@ jobs:
       #      is reported TIMED OUT AND NAMED, never folded into "the suite failed".
       #   3. tests excluded, declarations checked, both counted and named.
       # ⚠ THE REPRODUCTION COMMAND IS NOT THE SCRIPT NAME. `./scripts/gate-selftests.sh` bare
-      # runs `scripts/` and reports 4 subjects; THIS step sets SUBJ_DIR and runs 59. Someone
-      # spent three passes comparing the bare form's output to this step's CI result before
-      # noticing. To reproduce this step exactly:
+      # runs `scripts/` and reports a HANDFUL of subjects; THIS step sets SUBJ_DIR and runs the
+      # whole of `tools/`. Someone spent three passes comparing the bare form's output to this
+      # step's CI result before noticing.
+      #
+      # ⛔ THE SUBJECT COUNT IS DELIBERATELY NOT WRITTEN HERE. It said "runs 48", was corrected
+      # to "runs 59" on 2026-09-06, and was stale again by 2026-09-07 (61) — drifted by the same
+      # session that corrected it, two tools later. A count in a comment has no caller, and #272
+      # is explicit that a dated claim needs a RE-MEASURING CALLER, not a fresher number.
+      # ⇒ The gate publishes its own: `ran N subject(s) ON local:`. Read that line; do not
+      #   restate it here, because the restatement is what rots.
+      #
+      # To reproduce this step exactly:
       #
       #     SUBJ_DIR=tools SUBJ_BASELINE=1 ./scripts/gate-selftests.sh      (~3 minutes)
       #
