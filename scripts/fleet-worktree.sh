@@ -176,6 +176,35 @@ check)
 
   ;;
 create)
+  # ⛔ NODOCTRINE IS NOT "NOTHING TO CREATE", and this branch said it was. Measured
+  # 2026-09-07 by reproducing the state in a throwaway repo (#502 C3): with 8 roles
+  # provisioned and every one of them NODOCTRINE,
+  #
+  #   check   -> exit 1, "⛔ 8 role(s) have a tree that does NOT carry the doctrine"
+  #              "⇒ Re-create from a ref that carries them: fleet-worktree.sh create <ref>"
+  #   create  -> exit 0, "nothing to create — no role is without a tree"
+  #
+  # ⇒ THE TOOL TOLD THE OPERATOR TO RUN A COMMAND THAT REFUSES — and refuses with
+  # exit 0, reporting success for the state it had just called blocking. `create
+  # <ref>` behaves identically, so following the message verbatim changes nothing.
+  #
+  # ★ THE FIX IS NOT TO AUTO-REMEDIATE. This file's own stance, six lines into
+  # `where()`, is that a suspect tree is "reported for a human to judge, and never
+  # auto-remediated" — and removing a worktree can destroy uncommitted work. So
+  # `create` REFUSES loudly and prints the two commands that actually do it, per
+  # role, rather than silently doing nothing or silently doing something.
+  if [ "$n_missing" -eq 0 ] && [ "$n_nodoctrine" -gt 0 ]; then
+    printf '⛔ nothing is MISSING, but %d role(s) carry a tree WITHOUT the doctrine:%s\n' \
+      "$n_nodoctrine" "$nodoctrine_list"
+    printf '  `create` cannot fix this: it only builds trees that are ABSENT, and these exist.\n'
+    printf '  Removing a worktree can destroy uncommitted work, so this is not done for you.\n'
+    printf '  ⇒ Per role, after checking the tree holds nothing you need:\n'
+    for r in $nodoctrine_list; do
+      printf '       git worktree remove %s/%s && %s create <ref-that-has-prompts>\n' \
+        "$WT_DIR" "$r" "$0"
+    done
+    exit 1
+  fi
   if [ "$n_missing" -eq 0 ]; then
     printf 'nothing to create — no role is without a tree\n'
     [ "$n_outside" -gt 0 ] && printf '⚠ but%s sit outside %s; MOVE those, creating would duplicate them\n' \
