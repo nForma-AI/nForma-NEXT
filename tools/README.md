@@ -10,7 +10,7 @@ below is taken over it.**
 ```
 INSTRUMENT  ≡  a non-test executable directly under tools/, EXCLUDING quarantined subdirectories
 
-   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 64.  Run it; do not trust the number below.
+   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 65.  Run it; do not trust the number below.
 ```
 
 ⚠ **The first draft of this section declared 54 and published a command that returns 55** — off by the
@@ -18,18 +18,26 @@ single `.sh`. ⛔ **In the section whose entire purpose is removing that ambigui
 RUNNING the command rather than trusting it.** ★ **`merge-watch.sh` is an instrument; a definition
 that excludes it because of its extension is drawing the population around a file suffix.**
 
-**Re-measured 2026-09-04 on `cf263fe` + the `close-mechanism.py` pair, one second, all seven
-readings, so a reader meeting an older figure can place it:**
+**Re-measured 2026-09-07 16:14Z on `513c408`, one second, all seven readings, so a reader meeting
+an older figure can place it:**
 
 ```
-top-level non-test executables (.py + .sh)  64   ⇐ THE DECLARED POPULATION
-  of which .py                              60   ⚠ every count published on 2026-08-21 used a SMALLER subset
-top-level tools/*.py, including test_      120
-ALL .py under tools/ recursively           143
-ALL .py under tools/ excluding test_        80
-rows in the index table below               63
+top-level non-test executables (.py + .sh)  65   ⇐ THE DECLARED POPULATION
+  of which .py                              64   ⚠ every count published on 2026-08-21 used a SMALLER subset
+top-level tools/*.py, including test_      125
+ALL .py under tools/ recursively           148
+ALL .py under tools/ excluding test_        84
+rows in the index table below               67
 files under tools/teamlead/                 23   ⛔ QUARANTINED — belonging is an OPEN QUESTION
 ```
+
+⛔ **FIVE OF THESE SEVEN ARE UNGUARDED, and the 2026-09-04 → 2026-09-07 re-measurement is the
+evidence.** `scripts/check-tools-index.py` compares exactly two rows — the declared population and
+the fence command above it — and it held both at **65/65** on the run that produced this block. The
+other five had drifted by **+4 or +5 each** over three days (`120→125 · 143→148 · 80→84 · 63→67`)
+and **nothing said so**; only one of those movements is the file this edit added. ⇒ A guarded row and
+an unguarded row in the same fenced block are indistinguishable to a reader, and four of them were
+wrong for three days in the section whose whole purpose is that a count can be placed.
 
 ⚠ **AND ONE ROW HAD ALREADY DRIFTED BEFORE THIS RE-MEASUREMENT, recorded as a PAIR rather than
 swapped out.** At `cf263fe`, *before* the `close-mechanism.py` pair was added, `rows in the index
@@ -338,6 +346,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `branch-census.py` | which remote branches are finished, live, or work that died quietly? | 0 discriminated · **2 no refs, or every branch in one bucket** |
 | `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
+| `fleet-output.py` | which roles have SHIPPED a signed artifact in a window, when the STATE line cannot tell you? | 0 every role produced something · 1 at least one role is SILENT · **2 established nothing (no token, or zero comments read)** · **3 a control failed** · `--self-test` `--repo` `--since` `--first` |
 | `issue-coverage.py` | which open issues has NOBODY opened? | 0 all covered · 1 untouched found · **2 established nothing (empty board, failed query, or no transcripts)** |
 | `prompt-delivery.py` | did a role prompt REACH a pane — and by which channel? | 0 measured · **2 no transcript held a launch prompt** |
 | `text-provenance.py` | which session first PRODUCED this text — or is every hit my own reading? | 0 attributed · 1 present, unauthored here · **2 established nothing** · **3 own-reading only, verdict refused** |
@@ -1066,6 +1075,8 @@ cannot produce.**
 `--selftest` proves both directions against real data: the known-negative is this file, and the
 known-positive is a fixture of three idioms taken from three real incidents rather than invented
 to match the regex.
+
+**`fleet-output.py`** — ⛔ built because **`fleet-state.py` exits 2 and says, in its own words, that it cannot answer the question a standup actually asks.** Its refusal reads *"They may be silent, unlaunched, or never given the prompt — this cannot tell"*, and dispatch policy differs completely between those. ★ **THE DESIGN IS THAT THE TWO INSTRUMENTS FAIL FOR UNRELATED REASONS, which is what makes one a control on the other rather than a second opinion from the same witness:** `fleet-state.py` reads **transcripts** — local, session-side, blind to a running pane that writes no `STATE` line; this reads **artifacts on the forge** — remote, output-side, blind to work that was done and never signed. ⚠ **Commit authorship cannot carry this**: one git credential serves all nine panes (#4), so `git` names the operator for every role. The only author signal in this estate is the body self-naming convention. ⛔⛔ **USE VS MENTION DECIDES THE ANSWER HERE, it does not season it.** Measured 2026-09-07 over the 24h window: **ARCHITECT is MENTIONED in 13 comments and has SIGNED 0** — a tool counting the role name would have reported ARCHITECT the second-most-active role on a day it produced nothing. So authorship is decided by **position** — all three signature forms are anchored to the start of a LINE, in the tail only — never by occurrence; swapping the tail search for a whole-body search takes the suite to **exit 3** on exactly that control. ⛔⛔ **AND THE FIRST ATTEMPT AT THAT ANCHOR WAS WRONG IN THE OTHER DIRECTION, caught by RUNNING it against the corpus rather than re-reading it.** Narrowing the byline verbs to `Filed|Written|Posted|Appended` dropped **three real signatures in one 75-comment window** — `Replicated by TEAMLEAD, session …` (#580), `Withdrawn by …` (#338), `Verified by …` (#287) — each as performative as `Filed by`. ★ **The discriminator is POSITION, not VOCABULARY:** `Replicated by TEAMLEAD` starts a tail line, `This was measured by DEVOPS last week` does not, so anchoring the line lets the verb list stay broad. ⚠ The bound that remains: a report that DOES start a tail line — `Measured by DEVOPS on 2026-09-01.` — is indistinguishable from a byline here and is read as one. ⚠ Over this corpus the anchored form and the un-anchored one it replaced return **identical verdicts on all 75 comments** — that removes the false-positive *capability*, it does not show the loose form had ever fired. ⛔ **THE BOUND, PRINTED ON EVERY RUN:** measured the same day, **34 of 75 comments in the window carry no signature at all**, so `SILENT` means ONLY *"produced no SIGNED artifact in this window"* and never *"did no work"*. ⇒ An unmeasured role must not read as an accused one, and the unsigned count is printed beside every verdict so the reading cannot be taken further than it goes. ⚠ **The window is anchored to the DATA, not the reader's clock** — 24h before the newest comment READ — because a window measured from `now` drifts against a snapshot taken minutes earlier and makes two runs incomparable for reasons that have nothing to do with the fleet. **First run 2026-09-07: 604 comments read, 75 in window — TEAMLEAD 41 signed, and all eight other roles SILENT** against an all-time table in which ARCHITECT has authored **72**, more than TEAMLEAD's 64. ⇒ That is a change of state, and until now nothing here could notice it.
 
 **`fleet-state.py`** — reads the `STATE:` line every role prompt requires on every turn. ⛔ It
 exists as a self-correction: the signal was demanded and **nothing consumed it**, and an agent
