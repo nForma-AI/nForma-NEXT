@@ -29,6 +29,37 @@ no close path     21 of 103                       python3 tools/close-mechanism.
 gating job        76s      gh run view <id> --json jobs   (job "hermetic suites (gating)")
 ```
 
+⇒ **THE `NONE` SET, RECORDED — because a count cannot be re-verified and a set can.**
+*(`python3 tools/close-condition-scan.py --by-state` — it prints one `STATE number` row
+per issue and NO totals; the aggregate row above comes from the plain scan. Two commands,
+one population, taken in the same minute.)*
+
+```
+NONE  4 · 38 · 48 · 49 · 136 · 405 · 431 · 451 · 502 · 532 · 558 · 582 · 583
+```
+
+⛔ **Why the set and not just the number.** Measured 2026-09-07: the 2026-08-21 snapshot said
+`NONE 8` of 111. Today it is `NONE 13` of 103, and **11 of those 13 are survivors of that same 111** —
+so at least **3** issues carried a condition then and do not now, *or* the 8 was wrong. **Neither can
+be checked**, because `gh` exposes no body-edit history: the timeline carries labels, closures and
+references, never what a body said last month.
+
+⇒ **A dated count over issue bodies is attributable but not checkable.** A dated SET is diffable — run
+`--by-state` and compare against the list above, and you learn exactly *which* issues moved rather
+than only *how many*. That is the difference this line exists to buy, and it is the one repair
+available without body history.
+
+⚠ **Neither candidate cause accounts for it — and one of them is a partial contributor, named
+rather than dismissed.**
+*Composition* — among the **26 issues CLOSED since 2026-08-21**, 23 carried a condition (88%); among
+the **103 open TODAY**, 90 do (87%). Two different populations, one point apart. No statistical test
+was run and none is claimed: a one-point gap on a 26-issue population is simply not evidence that
+closing was selecting for issues that had conditions.
+*New filings* — **2 of the 13**, #582 (2026-08-25) and #583 (2026-09-04), were filed after the
+snapshot, so new filings DO contribute two of today's `NONE`. They cannot contribute the rest: strike
+both and **11** survivors remain, against a total of **8** `NONE` in the entire population then. The
+residual above is what is left AFTER granting new filings in full.
+
 ⛔ **THE PREVIOUS SNAPSHOT, STRUCK RATHER THAN DELETED — it stood for 17 days and the drift is the
 point.** *(measured 2026-08-21 08:59Z)*
 
