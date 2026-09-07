@@ -283,6 +283,35 @@ for chk in scripts/check-tools-index.py scripts/check-goal-conformance.py \
        printf '%s\n' "$out" | grep -E '^\s*(FAIL|·|⛔)' | head -4 | sed 's/^/        /' ;;
   esac
 done
+# ⇒ TWO MECHANISMS FOR ONE QUESTION — "is the fleet working?" — and NEITHER IS
+# SUFFICIENT ALONE, which is the only reason both are here. fleet-state.py reads
+# TRANSCRIPTS and is blind to a running pane that writes no STATE line; fleet-output.py
+# reads ARTIFACTS ON THE FORGE and is blind to work that was done and never signed.
+# They fail for unrelated reasons, so agreement between them is worth something and
+# disagreement is worth more.
+# ⛔ NEITHER GATES. fleet-output exits 1 whenever any role is SILENT, which is the
+# ordinary state of a fleet at launch — nothing has been produced yet by definition —
+# so scoring that as a failure would make this section red on every clean run. What it
+# reports is the window BEFORE this launch, which is exactly the thing an operator
+# starting a fleet has no other way to see.
+section 'Fleet output (reported, NEVER gating)'
+for pair in "tools/fleet-state.py:transcripts" "tools/fleet-output.py:forge artifacts"; do
+  f=${pair%%:*}; via=${pair##*:}
+  if [ ! -r "$f" ]; then
+    note "$f not present — that mechanism is UNMEASURED, not agreeing"
+    continue
+  fi
+  out=$(python3 "$f" 2>&1); rc=$?
+  case "$rc" in
+    0) ok "$(basename "$f") ($via) — every role accounted for" ;;
+    2) note "$(basename "$f") ($via) established NOTHING (exit 2) — UNMEASURED, not 'no fleet':"
+       printf '%s\n' "$out" | grep -E '(⛔|VOID)' | head -2 | sed 's/^/        /' ;;
+    *) note "$(basename "$f") ($via) reports a finding (exit $rc) — informational here:"
+       printf '%s\n' "$out" | grep -E '(PRODUCED|SILENT|unsigned in window)' | head -4 | sed 's/^/        /' ;;
+  esac
+done
+note 'SILENT means "no SIGNED artifact in the window", never "did no work" — one git credential serves every pane (#4), so a body byline is the only author signal there is'
+
 section 'Exit codes read through a pipe'
 # ★ #89 / #234 §4's shape: tools/pipe-exit-scan.py has a GATED CALLER for its
 # --self-test and NONE for its scan. Measured 2026-09-07: the scan had never been
