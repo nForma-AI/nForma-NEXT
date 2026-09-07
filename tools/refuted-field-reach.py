@@ -184,11 +184,30 @@ def main():
         result("ESTABLISHED-NOTHING")
         return 2
 
-    if not nums or len(nums) < total:
+    # ⛔ A COMPLETE POPULATION OF ZERO IS CLEAN, NOT VOID. This read
+    # `if not nums or len(nums) < total`, which returned 2 for an empty board --
+    # and 2 means "established nothing", so it would have refused a reading that
+    # was in fact complete. Review on #629, 2026-09-07.
+    #
+    # ⚠ THE JUSTIFICATION FOR THE OLD GUARD WAS MEASURED AND IS FALSE HERE. The
+    # claim was "an empty board and a failed query are byte-identical". Measured
+    # against this endpoint:
+    #     q=… is:issue is:open            -> 102     the real board
+    #     q=… label:zzz-no-such           -> 0       ⚠ silent, and the board is NOT empty
+    #     q=repo:nForma-AI/zzz-no-such    -> HTTP 422, which gh() RAISES
+    # ⇒ A malformed query CAN return 0 silently -- but this query is FIXED, and
+    #   the only user-supplied part (--repo) fails 422 and raises. So reaching
+    #   total == 0 here means the search succeeded and the board is empty.
+    if len(nums) < total:
         print(f"⛔ VOID — read {len(nums)} of {total} stated. A truncated reading "
               f"cannot support 'nothing reaches the field'.", file=sys.stderr)
         result("ESTABLISHED-NOTHING")
         return 2
+    if total == 0:
+        # ⚠ Loudly, because 102 is the standing size: a zero here is far more
+        # likely to be a --repo pointing somewhere unexpected than a cleared board.
+        print("⚠ the board is EMPTY (0 open issues, and the search agrees). Nothing "
+              "reaches the field because there is nothing to reach it.", file=sys.stderr)
 
     print(f"POPULATION  {len(nums)} open issues of {total} stated · repo={args.repo}")
     print(f"PREDICATE   the CLOSE-CONDITION section mentions /{args.field}/")

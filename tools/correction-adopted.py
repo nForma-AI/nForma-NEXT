@@ -292,11 +292,21 @@ def main():
         result("ESTABLISHED-NOTHING")
         return 2
 
-    if not nums:
-        print("⛔ VOID — zero open issues read. An empty board and a failed query are "
-              "byte-identical here.", file=sys.stderr)
-        result("ESTABLISHED-NOTHING")
-        return 2
+    # ⛔ THIS SAID "an empty board and a failed query are byte-identical here" AND
+    # RETURNED 2. Measured 2026-09-07, that justification is FALSE for this call:
+    #     q=… is:issue is:open          -> 102     the real board
+    #     q=… label:zzz-no-such         -> 0       ⚠ silent — a malformed query CAN
+    #     q=repo:owner/zzz-no-such-repo -> HTTP 422, which gh() RAISES
+    # ⇒ The query here is FIXED and its only user-supplied part (--repo) fails 422
+    #   and raises. So total == 0 means the search SUCCEEDED and the board is empty,
+    #   which is a COMPLETE population and therefore CLEAN, not "established
+    #   nothing". Returning 2 refused a reading that was in fact complete.
+    # ⇒ Found by review on #629 against the sibling tool; the same guard and the
+    #   same false comment were here, so it is corrected in the same change.
+    if total == 0:
+        print("⚠ the board is EMPTY (0 open issues, and the search agrees). No "
+              "correction can be unpropagated because there is nothing to carry one.",
+              file=sys.stderr)
     if len(nums) < total:
         print(f"⛔ VOID — read {len(nums)} of {total} stated. A truncated reading cannot "
               f"support 'no candidates'.", file=sys.stderr)
