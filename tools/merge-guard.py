@@ -120,6 +120,39 @@ def pr_json(n, fields):
         raise Unestablished(f"gh --json {fields} was not parseable: {exc}")
 
 
+def reviews_leg(revs, changes):
+    """(ok, detail) for leg 3, where ok is True / False / None — None meaning
+    ESTABLISHED NOTHING, reported and NOT blocking.
+
+    ⛔ THIS LEG PASSED VACUOUSLY, and it was measured on a real merge. Its predicate was
+    `not changes` — "nothing requested changes" — which an EMPTY review set satisfies
+    for free. So PR #641 merged with:
+
+        gh pr checks 641   ->  CodeRabbit  pass  "Review rate limited"   (green)
+        gh pr view --json reviews  ->  (empty)                           (nothing reviewed)
+        merge-guard leg 3  ->  ✅ 0 review(s), 0 CHANGES_REQUESTED       (a false pass)
+
+    ⇒ That is #49's finding — "the merge gate has no state meaning REVIEWED" — reproduced
+    one layer down, inside the guard written to enforce that gate.
+
+    ★ WHY None AND NOT False, which is the whole judgement here. Legs 2, 4 and 5 already
+    treat "unestablished" as BLOCKING, so consistency argues for False. But measured
+    2026-09-07 over the 60 most-recently-updated merged PRs, 32 — 53% — carried ZERO
+    reviews at merge. Making this leg block is therefore a POLICY CHANGE that halves
+    merge throughput on a board whose only reviewer is frequently rate limited, and that
+    is the operator's call, not a repair (#49's close condition says so in as many words).
+    ⇒ So this removes the FALSE ✅ and changes nothing about what blocks. The distinction
+    the guard could not previously express — "reviewed, no objections" versus "never
+    reviewed" — is now on the line where a reader sees it.
+    """
+    if changes:
+        return False, f"{len(revs)} review(s), {len(changes)} CHANGES_REQUESTED"
+    if not revs:
+        return None, ("0 review(s) — NOTHING REVIEWED. Established nothing about review; "
+                      "NOT blocking, by measurement (#49)")
+    return True, f"{len(revs)} review(s), 0 CHANGES_REQUESTED"
+
+
 def evaluate(n, session, authority_text, shape_only=False):
     legs = []
 
@@ -172,7 +205,7 @@ def evaluate(n, session, authority_text, shape_only=False):
 
     revs = d.get("reviews") or []
     changes = [r for r in revs if r.get("state") == "CHANGES_REQUESTED"]
-    leg("3 reviews read", not changes, f"{len(revs)} review(s), {len(changes)} CHANGES_REQUESTED")
+    leg("3 reviews read", *reviews_leg(revs, changes))
 
     sha = d["headRefOid"]
     sh(["git", "fetch", "origin", "--quiet"], allow_fail=True)
@@ -263,6 +296,32 @@ def self_test():
           holder_check(one, "")[0], False)
     check("holders() finds both, in order", holders(two), [A, B])
 
+    # ⛔ LEG 3 HAS THREE OUTCOMES AND ONLY TWO WERE EVER EXERCISED. The vacuous pass
+    # that let PR #641 through was reachable by the shipped code and by no control.
+    print("── leg 3: reviews, THREE states ──")
+    check("known-POSITIVE  reviews exist, none object -> PASS",
+          reviews_leg([1, 2], [])[0], True)
+    check("known-NEGATIVE  a CHANGES_REQUESTED -> BLOCK",
+          reviews_leg([1, 2], [2])[0], False)
+    check("⛔ THE #641 CASE: zero reviews is NEITHER pass nor block",
+          reviews_leg([], [])[0], None)
+    check("⛔ and it must not be False either — that would BLOCK 53% of merges",
+          reviews_leg([], [])[0] is False, False)
+    check("the zero-review detail SAYS so, so a reader is not left to infer it",
+          "NOTHING REVIEWED" in reviews_leg([], [])[1], True)
+
+    # ⛔ THE VERDICT ARITHMETIC, driven with synthetic legs. `not ok` and `ok is False`
+    # differ ONLY on None, which is exactly the value this change introduces — so the
+    # distinction is unobservable in any run that has no advisory leg.
+    print("── verdict arithmetic: None must not be counted as a failure ──")
+    synth = [("a", True, ""), ("b", None, ""), ("c", True, "")]
+    check("ok is False  -> 0 failed (correct)",
+          len([n for n, o, _ in synth if o is False]), 0)
+    check("⛔ `not ok`  -> 1 failed (the bug this avoids)",
+          len([n for n, o, _ in synth if not o]), 1)
+    check("the advisory leg IS counted, separately",
+          [n for n, o, _ in synth if o is None], ["b"])
+
     print(f"\n{'✅ controls pass' if ok else '⛔ CONTROLS FAILED'} — 7 legs, both directions named")
     print("⚠ Legs 1-5 are exercised by tools/test_merge_guard.py against a stubbed forge;")
     print("   they are not self-tested here because they require a PR to exist.")
@@ -338,12 +397,24 @@ def main():
             print("  ⇒ BLOCK. A leg that cannot be measured is not a leg that passed.\n")
             worst = max(worst, 2)
             continue
-        failed = [n for n, ok, _ in legs if not ok]
+        # ⛔ `ok is False`, NOT `not ok`. None means ESTABLISHED NOTHING and must not be
+        # counted as a failure — and under `not ok` it silently would have been.
+        failed = [n for n, ok, _ in legs if ok is False]
+        unestablished = [n for n, ok, _ in legs if ok is None]
         for name, ok, detail in legs:
-            print(f"  {'✅' if ok else '⛔'} {name:22s} {detail}")
+            mark = "✅" if ok is True else ("⚠" if ok is None else "⛔")
+            print(f"  {mark} {name:22s} {detail}")
         if failed:
             print(f"  ⇒ BLOCK: {', '.join(failed)}\n")
             worst = max(worst, 1)
+        elif unestablished:
+            # ⛔ THE EXIT CODE IS DELIBERATELY UNCHANGED HERE. Raising it would BLOCK, and
+            # blocking on an unreviewed PR is the operator's decision, not this repair's
+            # (#49). What changes is what a reader is told, not what a caller may do.
+            print("  ⇒ CLEAR (squash, and NO --delete-branch — rule 5 / #294)")
+            print(f"  ⚠ but {len(unestablished)} leg(s) ESTABLISHED NOTHING: "
+                  f"{', '.join(unestablished)}. CLEAR here means 'no leg REFUSED it', "
+                  f"NOT 'every leg passed'.\n")
         else:
             print("  ⇒ CLEAR (squash, and NO --delete-branch — rule 5 / #294)\n")
     return worst
