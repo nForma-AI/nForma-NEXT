@@ -39,37 +39,33 @@ sweep") -- was measured on 2026-09-06 and FAILED ON BOTH ANCHORS:
 call. A reader settles it by opening the comments this prints. Reporting a
 number as if the call had been made is the error the tool exists to catch.
 
-⛔⛔ MEASURED PRECISION, 2026-09-07: 7 candidates read by hand, 2 TRUE, 5 FALSE.
+⛔⛔ MEASURED PRECISION, updated 2026-09-07: 11 candidates read by hand, 2 TRUE,
+9 FALSE. (It was 7 read / 2 true; four more were opened and none was real.)
 
-    #300  TRUE   the refuted figure was in the TITLE ("measured on 4 of my own
-                 captures"); the author's comment says the verified floor is 1
+    #300  TRUE   the refuted figure was in the TITLE; the author's comment says
+                 the verified floor is 1
     #431  TRUE   "⛔ RETRACTING FINDING 1 OF THIS ISSUE" — and the body still
-                 carried FINDING 1 under a heading, 0 markers, for 17 days
+                 carried FINDING 1 under a heading, 0 markers, 17 days
+
+    #58 #173 #347 #19 #489 #65   FALSE — the comment corrects AN EARLIER COMMENT,
+                 and several say so in their first line ("CORRECTION to my own
+                 comment above", "to the rung-2 audit above"). #58's author is
+                 explicit: "This issue's body has it right."
     #338  FALSE  silent adoption — the body was REWRITTEN, not struck
-    #58   FALSE  corrects a COMMENT; its author says so in the artifact:
-                 "This issue's body has it right. My routing comment drifted."
-    #173  FALSE  "Correction to this comment, made one minute after posting it"
-    #347  FALSE  "The claim in the body STANDS" — the correction was about the
-                 author's own retraction-HANDLING, not the issue's claim
-    #93   FALSE  a QUOTED claim at ten spaces of indent — a regex defect, fixed
+    #203  FALSE  silent adoption IN THE TITLE. Its title already reads the
+                 corrected "12 of 13"; the comment corrects "9 of 10". Adopted,
+                 by a rewrite that leaves no marker anywhere.
+    #93   FALSE  a QUOTED claim at ten spaces of indent (regex fault, fixed #627)
 
-⇒ THE STATED BOUND IS THE LARGEST SINGLE CAUSE. THREE of the five false positives
-(#58, #173, #347) are "the comment corrects something other than the issue's
-claim", which is exactly what this tool says it cannot separate. The other two are
-different defects: #338 is silent adoption, #93 was a regex fault since fixed.
+⇒ THE STATED BOUND IS THE LARGEST SINGLE CAUSE, and more so at 11 than at 7: SIX
+of the nine falses are "the comment corrects something other than the issue's
+claim", which is exactly what this tool says it cannot separate. Two more are
+silent adoption, which it also cannot see. Only one was a defect in the tool.
 
-⚠ THIS PARAGRAPH SAID "FOUR" AND "a measured hit rate near 2/7" UNTIL REVIEW
-CAUGHT BOTH, 2026-09-07. The four was arithmetic its own case list above refutes.
-The "hit rate" contradicted the "not a rate" warning three lines below it — in the
-change whose entire purpose was publishing an honest figure. ⇒ Recorded rather
-than quietly corrected, because a document refuted by its own later text is the
-defect this tool detects.
-
-⇒ So the candidate count is an UPPER BOUND. Of the 7 opened by hand, 2 were real.
-A reader must open the named comments before believing any of the rest.
-
-⚠ NOT A RATE. Seven is a small sample and I chose them — two were the headline
-cases and five were picked as ones I had not already touched. Do not divide.
+⚠ NOT A RATE. Eleven is still small and I CHOSE them -- the first two were the
+headline cases and the rest were picked as ones I had not already touched. What
+the trend does say is that the number did not improve as the sample grew: 2 of 7
+became 2 of 11. Do not divide, and do not extrapolate the remaining 14 either.
 
 ⚠ It also cannot tell an ADOPTED correction from a body that merely contains the
 word "FALSE". Presence of a marker is not correctness of one.
@@ -137,6 +133,29 @@ ADOPTED = re.compile(
     r"~~|⛔[ ]*CORRECTION|\bFALSE\b|\bWRONG\b|\bWITHDRAWN\b|"
     r"STALE AS OF|\bINVERTED\b|\bREFUTED\b|\bSUPERSEDED\b"
 )
+
+
+# ⛔ THE PUBLISHED PRECISION, AS DATA. The docstring describes it in prose; this is
+# what the control checks, because prose cannot be checked without parsing it and
+# three attempts at parsing it failed on cross-references (`fixed #627`) and on a
+# different section of the same docstring that also says "TRUE".
+#
+# ⇒ Prose that restates a number drifts from it (#345, and #628 where a summary said
+#   "four of the five" over a list of three). So the numbers live here, once.
+# ⚠ Update this when a candidate is read. The docstring's wording may lag; these
+#   counts may not, and the self-test enforces that they add up.
+PRECISION = {
+    "read_by_hand": 11,
+    "true": ["#300", "#431"],
+    "false": {
+        "corrects an earlier COMMENT, not the issue's claim":
+            ["#58", "#173", "#347", "#19", "#489", "#65"],
+        "silent adoption — the body or title was REWRITTEN, leaving no marker":
+            ["#338", "#203"],
+        "a defect in this tool, since fixed (#627)":
+            ["#93"],
+    },
+}
 
 
 class Void(Exception):
@@ -250,6 +269,41 @@ def self_test():
     # ⛔ The fetch helper must RAISE, never return a falsy value. This is the #338
     # defect as a control: a helper that returned "" made a failed fetch read as
     # "no corrections", and the issue left the population silently.
+    # ⛔ THE PUBLISHED PRECISION MUST CHECK ITS OWN ARITHMETIC. On #628 a summary
+    # said "four of the five" over a list of three; review caught it, and a shell
+    # one-liner is not a caller. This checks PRECISION, which is data — three
+    # attempts to parse the equivalent prose failed, on a cross-reference and on a
+    # different section of the docstring that also contains the word TRUE.
+    t = PRECISION["true"]
+    f = [n for group in PRECISION["false"].values() for n in group]
+    if len(t) + len(f) != PRECISION["read_by_hand"]:
+        failures.append(("read_by_hand must equal true + false",
+                         PRECISION["read_by_hand"], f"{len(t)}+{len(f)}"))
+    elif len(set(t + f)) != len(t + f):
+        dupes = sorted({n for n in t + f if (t + f).count(n) > 1})
+        failures.append(("no issue may appear twice", "unique", dupes))
+    else:
+        # ⛔ Review asked for `len(t) == 2` and `len(f) == 9` as LITERALS. DECLINED:
+        # a literal 2 in the control is a second copy of the datum the dict exists to
+        # hold once, and it would red on every legitimate reclassification.
+        # ⇒ The real exposure is the PROSE, which restates "11 … 2 TRUE, 9 FALSE" and
+        #   was checked by nobody. ONE anchored line compared to the dict — not the
+        #   enumeration, which three earlier attempts proved unparseable.
+        m = re.search(r"(\d+)\s+candidates read by hand,\s*(\d+)\s+TRUE,\s*(\d+)\s+FALSE",
+                      __doc__ or "")
+        if not m:
+            failures.append(("the docstring must state the precision in the checked form",
+                             "a match", "none"))
+        elif [int(g) for g in m.groups()] != [PRECISION["read_by_hand"], len(t), len(f)]:
+            failures.append(("the docstring numbers must match PRECISION",
+                             f"{PRECISION['read_by_hand']}/{len(t)}/{len(f)}",
+                             "/".join(m.groups())))
+        else:
+            print(f"  ok   published precision is self-consistent: "
+                  f"{PRECISION['read_by_hand']} read = {len(t)} true + {len(f)} false, "
+                  f"across {len(PRECISION['false'])} named causes, no duplicates, "
+                  f"and the docstring agrees")
+
     try:
         gh(["--zzz-not-a-real-subcommand"])
     except Void:
@@ -265,8 +319,12 @@ def self_test():
             print(f"     {why}: expected {exp}, got {got}")
         result("CONTROL-FAILED")
         return 3
-    print(f"\n  {len(cases) + 1}/{len(cases) + 1} controls passed — including the "
-          "use-vs-mention negative and the fail-closed fetch.")
+    # ⚠ +2, not +1: the fail-closed-fetch control AND the precision control both run
+    # outside `cases`. It read +1 and reported 12/12 while 13 executed — review caught
+    # it, and a control that miscounts itself is the shape this file is about.
+    _n = len(cases) + 2
+    print(f"\n  {_n}/{_n} controls passed — including the use-vs-mention negative, "
+          "the fail-closed fetch, and the precision self-consistency check.")
     result("SELF-TEST-PASS")
     return 0
 
