@@ -6,7 +6,9 @@
 # panes will each *claim* in their ROLE-READY line — so those claims have
 # something to be checked against.
 #
-# Exit code is always 0: this pane reports, it does not gate.
+# ⛔ EXIT CODE CARRIES THE VERDICT: 0 clean · 1 blocking failures · 2 the script could
+# not establish its own verdict. It said "always 0" here for as long as that was true and
+# for a while after it stopped being (#502 C4) — see the reasoning at the Summary section.
 
 ROLES=(TEAMLEAD ARCHITECT DEVOPS DX DEV1 DEV2 DEV3 DEV4 DEV5)
 
@@ -233,7 +235,9 @@ section 'Repository self-checks'
 # them — and that one was a fixture whose header says "Not run; scanned." A set of
 # instruments none of which is ever called is a citation network, not a toolchain.
 # These two are cheap, deterministic, and answer questions no reviewer reliably
-# answers by eye. ⚠ This pane still does not gate: exit code is always 0.
+# answers by eye. ⚠ This pane does not gate the FLEET, but it DOES carry a verdict in its
+# exit code (0/1/2) — a caller may branch on it. #502 C4 found this line and two others
+# still claiming "always 0" after the behaviour was deliberately changed.
 # ⇒ check-handoff-rows.py joins this loop because THE DEFECT IT CATCHES SHIPPED
 # (#637): a snapshot row named `--by-state`, a flag that prints no totals, so three
 # correct numbers sat under a command that cannot produce any of them. A review bot

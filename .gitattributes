@@ -1,0 +1,20 @@
+# ⛔ THE EXECUTABLE ARTIFACTS ARE LF, IN THE WORKING TREE, ON EVERY PLATFORM.
+#
+# Measured on a Windows 11 / Git Bash install (#502 B3): `scripts/fleet-preflight.sh:
+# line 10: $'\r': command not found`. The committed blobs were already LF — but with
+# `core.autocrlf=true`, which is the Git-for-Windows DEFAULT, the WORKING TREE is CRLF,
+# and bash executes the working tree, not the blob.
+#
+# ⇒ Two consequences, and the second is why a one-time `dos2unix` is not the fix:
+#   · the estate's own clone is CRLF for the same reason, so a plain `cp` during
+#     onboard.md step 2 carries CR into the target repository
+#   · without this file the NEXT checkout re-breaks it, silently
+#
+# ⚠ This pins the working tree, not just the blob. `text eol=lf` is what does that;
+# `-text` (binary) would also stop conversion but would break diffs.
+*.sh    text eol=lf
+*.py    text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf

@@ -435,7 +435,7 @@ prints the expected roster as a checklist.
 
 It exists because **nine agents asserting they are ready is not the same as nine agents being
 ready**. The preflight establishes by execution what the agent panes each claim in prose, so the
-claims have something to be checked against. It reports and never gates: exit code is always 0.
+claims have something to be checked against. It does not gate the fleet — no pane waits on it — but **its exit code carries a verdict**: `0` clean · `1` blocking failures · `2` it could not establish its own. ⚠ This sentence read *"exit code is always 0"* for as long after the change as it took an outside installer to notice (#502 C4); `onboard.md` makes this the acceptance test for an install, and an acceptance test that cannot fail is worse than none.
 
 ### What this recipe cannot do
 

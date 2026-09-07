@@ -25,7 +25,12 @@ set -u
 
 ROLES="architect devops dx dev1 dev2 dev3 dev4 dev5"
 
-main_tree=$(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2; exit}')
+# ⛔ `awk '{print $2}'` TRUNCATES AT THE FIRST SPACE. `--porcelain` emits `worktree <path>`
+# with the path as the REST of the line, not as field 2 — so `C:\Program Files\repo`
+# becomes `C:\Program`, silently, and every path derived from it is wrong. Not
+# hypothetical on Windows, where that directory is a normal location (#502 C2).
+# ⇒ `sed` strips the known prefix and keeps everything after it.
+main_tree=$(git worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p')
 [ -n "$main_tree" ] || { echo "not inside a git repository" >&2; exit 2; }
 WT_DIR="$main_tree/.claude/worktrees"
 
