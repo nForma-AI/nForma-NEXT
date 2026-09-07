@@ -85,7 +85,14 @@ ANNOUNCES = re.compile(
     r"(?:#{1,6}[ ]*)?"
     r"(?:[⇒★⚠⛔→][ ]*)*"
     r"(?:#{1,6}[ ]*)?"
-    r"(?:\*\*|__)?[ ]*"
+    # ⛔ THE TRAILING `[ ]*` DEFEATED THE `^[ ]{0,3}` ANCHOR. Measured 2026-09-07:
+    # this fired on a line indented TEN spaces -- a QUOTED claim inside another
+    # comment's block -- because after `[ ]{0,3}` consumed three, the `[ ]*` after
+    # the bold marker consumed the rest. The anchor is the whole design ("a
+    # STRUCTURAL element of the document, not a phrase inside a sentence"), and an
+    # unbounded run of spaces makes any indent structural.
+    # ⇒ Found by READING a flagged issue (#93), not by re-reading the pattern.
+    r"(?:\*\*|__)?[ ]{0,2}"
     r"(?:correcting|correction\b|corrected\b|withdraw|retract|"
     r"i was wrong|i got .{0,20}wrong)",
     re.IGNORECASE | re.MULTILINE,
@@ -187,6 +194,19 @@ def self_test():
         ("plain body", ["⛔ Correcting A", "noise", "⛔ Retracting B"], "t",
          ("CANDIDATE", [1, 3], ["body", "title"]), "every announcement located, not just the last"),
         ("", [], "", ("NO-CORRECTION", [], []), "an empty issue establishes nothing"),
+        # ⛔ THE INDENT ANCHOR. Measured on #93, 2026-09-07: a QUOTED claim inside
+        # another comment's block, indented ten spaces, fired the predicate because
+        # a trailing `[ ]*` after the bold marker ate the indent the `^[ ]{0,3}`
+        # anchor was there to bound. A deep indent is a quotation, not a heading.
+        ("plain body", ['          WITHDRAWN and replaced"'], "t",
+         ("NO-CORRECTION", [], []),
+         "KNOWN-NEGATIVE: a 10-space-indented QUOTED claim is not an announcement"),
+        ("plain body", ["      withdraw the finding"], "t",
+         ("NO-CORRECTION", [], []),
+         "KNOWN-NEGATIVE: a 6-space indent is not a structural element"),
+        ("plain body", ["  ⇒ **Correcting** the record"], "t",
+         ("CANDIDATE", [1], ["body", "title"]),
+         "KNOWN-POSITIVE: normal markdown indent still fires"),
     ]
     for body, comments, title, expected, why in cases:
         got = classify(body, comments, title)
