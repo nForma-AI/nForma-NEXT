@@ -45,6 +45,16 @@ def validate(path):
     except (OSError, json.JSONDecodeError) as exc:
         return [f"{path}: unreadable or invalid JSON: {exc}"], [], None
 
+    # ⛔ VALID JSON IS NOT AN OBJECT. `json.load` accepts any JSON *value* — a top-level
+    # list, string, number or null all parse cleanly and then reach `recipe.get`, which
+    # raises AttributeError. Measured 2026-09-07 on `[]`: traceback, exit 1, no report.
+    # ⇒ For a validator whose entire purpose is REFUSING malformed input, crashing
+    # instead of reporting is the wrong failure mode — the caller cannot tell a rejected
+    # recipe from a broken validator. (#502 C1, raised by an external reviewer.)
+    if not isinstance(recipe, dict):
+        return [f"{path}: top-level JSON is {type(recipe).__name__}, not an object — "
+                f"a recipe must be a JSON object"], [], None
+
     for field in ("id", "name"):
         if not isinstance(recipe.get(field), str) or not recipe[field]:
             errs.append(f"{field} must be a non-empty string")

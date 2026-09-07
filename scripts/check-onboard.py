@@ -29,6 +29,20 @@ import re
 import sys
 from pathlib import Path
 
+# ⛔ THESE SCRIPTS CRASH EXACTLY WHEN THEY FIND SOMETHING. Windows Python defaults stdout
+# to cp1252, and the ⛔/⚠/★ glyphs appear almost only on FAIL branches — so a checker runs
+# clean when all is well and dies with UnicodeEncodeError when it detects a defect, and a
+# crashed checker reports nothing at all (#502 B4, measured on a Windows 11 install).
+# ⇒ errors="replace" rather than a hard switch: a mangled glyph is a legible finding, an
+# exception is not.
+# ⚠ EACH STREAM GUARDED SEPARATELY. `hasattr(sys.stdout, ...)` says nothing about
+# sys.stderr — a harness may replace one and not the other (this repo's own stubbed
+# suites capture streams), and the guarded form would then raise AttributeError from
+# inside the guard meant to prevent one.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = Path(__file__).resolve().parent.parent
 DOC = ROOT / "onboard.md"
 RECIPE = ROOT / ".daintree" / "recipes" / "nforma-fleet.json"

@@ -25,7 +25,12 @@ set -u
 
 ROLES="architect devops dx dev1 dev2 dev3 dev4 dev5"
 
-main_tree=$(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2; exit}')
+# ⛔ `awk '{print $2}'` TRUNCATES AT THE FIRST SPACE. `--porcelain` emits `worktree <path>`
+# with the path as the REST of the line, not as field 2 — so `C:\Program Files\repo`
+# becomes `C:\Program`, silently, and every path derived from it is wrong. Not
+# hypothetical on Windows, where that directory is a normal location (#502 C2).
+# ⇒ `sed` strips the known prefix and keeps everything after it.
+main_tree=$(git worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p')
 [ -n "$main_tree" ] || { echo "not inside a git repository" >&2; exit 2; }
 WT_DIR="$main_tree/.claude/worktrees"
 
@@ -52,7 +57,8 @@ WT_DIR="$main_tree/.claude/worktrees"
 #   MISSING  no tree at all                                  -> create it
 where() {
   git worktree list --porcelain | awk -v want="$WT_DIR/$1" -v role="$1" '
-    /^worktree /{ p = $2
+    # ⛔ substr, NOT $2 — same truncation as the main_tree parse above, third site.
+    /^worktree /{ p = substr($0, 10)
       if (p == want) { found = 1; next }
       # HEURISTIC, and it is one: a path whose last element contains the role
       # token is PROBABLY that tree. Nothing binds a worktree to a role, so this
