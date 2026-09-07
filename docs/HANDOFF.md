@@ -23,14 +23,16 @@ open PRs          1      gh pr list --state open   --limit 1000 --json number --
                          ⚠ the 1 is the PR that re-measured this block; it was 0 before and after
 main CI rollup    success gh run list --branch main --limit 1 --json conclusion
 quarantine        25     grep -c '^tools/' tools/QUARANTINE.txt
-close conditions  NONE 13 · BURIED 0 · BODY 90    python3 tools/close-condition-scan.py --by-state
+close conditions  NONE 13 · BURIED 0 · BODY 90    python3 tools/close-condition-scan.py
 runnable          ASSERTED 34 · RUNNABLE 25 · NO-CONDITION 44   python3 tools/runnable-condition.py
 no close path     21 of 103                       python3 tools/close-mechanism.py
 gating job        76s      gh run view <id> --json jobs   (job "hermetic suites (gating)")
 ```
 
 ⇒ **THE `NONE` SET, RECORDED — because a count cannot be re-verified and a set can.**
-*(`close-condition-scan.py --by-state`, same run as the block above)*
+*(`python3 tools/close-condition-scan.py --by-state` — it prints one `STATE number` row
+per issue and NO totals; the aggregate row above comes from the plain scan. Two commands,
+one population, taken in the same minute.)*
 
 ```
 NONE  4 · 38 · 48 · 49 · 136 · 405 · 431 · 451 · 502 · 532 · 558 · 582 · 583
@@ -47,9 +49,16 @@ references, never what a body said last month.
 than only *how many*. That is the difference this line exists to buy, and it is the one repair
 available without body history.
 
-⚠ Composition and new filings are both ruled out as causes, measured rather than assumed:
-condition rate among issues closed since 2026-08-21 was **23 of 26 (88%)** against **90 of 103 (87%)**
-open today — indistinguishable; and only **2** of the 13 (#582, #583) were filed after the snapshot.
+⚠ **Neither candidate cause accounts for it — and one of them is a partial contributor, named
+rather than dismissed.**
+*Composition* — among the **26 issues CLOSED since 2026-08-21**, 23 carried a condition (88%); among
+the **103 open TODAY**, 90 do (87%). Two different populations, one point apart. No statistical test
+was run and none is claimed: a one-point gap on a 26-issue population is simply not evidence that
+closing was selecting for issues that had conditions.
+*New filings* — **2 of the 13**, #582 (2026-08-25) and #583 (2026-09-04), were filed after the
+snapshot, so new filings DO contribute two of today's `NONE`. They cannot contribute the rest: strike
+both and **11** survivors remain, against a total of **8** `NONE` in the entire population then. The
+residual above is what is left AFTER granting new filings in full.
 
 ⛔ **THE PREVIOUS SNAPSHOT, STRUCK RATHER THAN DELETED — it stood for 17 days and the drift is the
 point.** *(measured 2026-08-21 08:59Z)*
