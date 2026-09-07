@@ -39,37 +39,33 @@ sweep") -- was measured on 2026-09-06 and FAILED ON BOTH ANCHORS:
 call. A reader settles it by opening the comments this prints. Reporting a
 number as if the call had been made is the error the tool exists to catch.
 
-⛔⛔ MEASURED PRECISION, 2026-09-07: 7 candidates read by hand, 2 TRUE, 5 FALSE.
+⛔⛔ MEASURED PRECISION, updated 2026-09-07: 11 candidates read by hand, 2 TRUE,
+9 FALSE. (It was 7 read / 2 true; four more were opened and none was real.)
 
-    #300  TRUE   the refuted figure was in the TITLE ("measured on 4 of my own
-                 captures"); the author's comment says the verified floor is 1
+    #300  TRUE   the refuted figure was in the TITLE; the author's comment says
+                 the verified floor is 1
     #431  TRUE   "⛔ RETRACTING FINDING 1 OF THIS ISSUE" — and the body still
-                 carried FINDING 1 under a heading, 0 markers, for 17 days
+                 carried FINDING 1 under a heading, 0 markers, 17 days
+
+    #58 #173 #347 #19 #489 #65   FALSE — the comment corrects AN EARLIER COMMENT,
+                 and several say so in their first line ("CORRECTION to my own
+                 comment above", "to the rung-2 audit above"). #58's author is
+                 explicit: "This issue's body has it right."
     #338  FALSE  silent adoption — the body was REWRITTEN, not struck
-    #58   FALSE  corrects a COMMENT; its author says so in the artifact:
-                 "This issue's body has it right. My routing comment drifted."
-    #173  FALSE  "Correction to this comment, made one minute after posting it"
-    #347  FALSE  "The claim in the body STANDS" — the correction was about the
-                 author's own retraction-HANDLING, not the issue's claim
-    #93   FALSE  a QUOTED claim at ten spaces of indent — a regex defect, fixed
+    #203  FALSE  silent adoption IN THE TITLE. Its title already reads the
+                 corrected "12 of 13"; the comment corrects "9 of 10". Adopted,
+                 by a rewrite that leaves no marker anywhere.
+    #93   FALSE  a QUOTED claim at ten spaces of indent (regex fault, fixed #627)
 
-⇒ THE STATED BOUND IS THE LARGEST SINGLE CAUSE. THREE of the five false positives
-(#58, #173, #347) are "the comment corrects something other than the issue's
-claim", which is exactly what this tool says it cannot separate. The other two are
-different defects: #338 is silent adoption, #93 was a regex fault since fixed.
+⇒ THE STATED BOUND IS THE LARGEST SINGLE CAUSE, and more so at 11 than at 7: SIX
+of the nine falses are "the comment corrects something other than the issue's
+claim", which is exactly what this tool says it cannot separate. Two more are
+silent adoption, which it also cannot see. Only one was a defect in the tool.
 
-⚠ THIS PARAGRAPH SAID "FOUR" AND "a measured hit rate near 2/7" UNTIL REVIEW
-CAUGHT BOTH, 2026-09-07. The four was arithmetic its own case list above refutes.
-The "hit rate" contradicted the "not a rate" warning three lines below it — in the
-change whose entire purpose was publishing an honest figure. ⇒ Recorded rather
-than quietly corrected, because a document refuted by its own later text is the
-defect this tool detects.
-
-⇒ So the candidate count is an UPPER BOUND. Of the 7 opened by hand, 2 were real.
-A reader must open the named comments before believing any of the rest.
-
-⚠ NOT A RATE. Seven is a small sample and I chose them — two were the headline
-cases and five were picked as ones I had not already touched. Do not divide.
+⚠ NOT A RATE. Eleven is still small and I CHOSE them -- the first two were the
+headline cases and the rest were picked as ones I had not already touched. What
+the trend does say is that the number did not improve as the sample grew: 2 of 7
+became 2 of 11. Do not divide, and do not extrapolate the remaining 14 either.
 
 ⚠ It also cannot tell an ADOPTED correction from a body that merely contains the
 word "FALSE". Presence of a marker is not correctness of one.
