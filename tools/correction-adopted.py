@@ -39,6 +39,38 @@ sweep") -- was measured on 2026-09-06 and FAILED ON BOTH ANCHORS:
 call. A reader settles it by opening the comments this prints. Reporting a
 number as if the call had been made is the error the tool exists to catch.
 
+⛔⛔ MEASURED PRECISION, 2026-09-07: 7 candidates read by hand, 2 TRUE, 5 FALSE.
+
+    #300  TRUE   the refuted figure was in the TITLE ("measured on 4 of my own
+                 captures"); the author's comment says the verified floor is 1
+    #431  TRUE   "⛔ RETRACTING FINDING 1 OF THIS ISSUE" — and the body still
+                 carried FINDING 1 under a heading, 0 markers, for 17 days
+    #338  FALSE  silent adoption — the body was REWRITTEN, not struck
+    #58   FALSE  corrects a COMMENT; its author says so in the artifact:
+                 "This issue's body has it right. My routing comment drifted."
+    #173  FALSE  "Correction to this comment, made one minute after posting it"
+    #347  FALSE  "The claim in the body STANDS" — the correction was about the
+                 author's own retraction-HANDLING, not the issue's claim
+    #93   FALSE  a QUOTED claim at ten spaces of indent — a regex defect, fixed
+
+⇒ THE STATED BOUND IS THE LARGEST SINGLE CAUSE. THREE of the five false positives
+(#58, #173, #347) are "the comment corrects something other than the issue's
+claim", which is exactly what this tool says it cannot separate. The other two are
+different defects: #338 is silent adoption, #93 was a regex fault since fixed.
+
+⚠ THIS PARAGRAPH SAID "FOUR" AND "a measured hit rate near 2/7" UNTIL REVIEW
+CAUGHT BOTH, 2026-09-07. The four was arithmetic its own case list above refutes.
+The "hit rate" contradicted the "not a rate" warning three lines below it — in the
+change whose entire purpose was publishing an honest figure. ⇒ Recorded rather
+than quietly corrected, because a document refuted by its own later text is the
+defect this tool detects.
+
+⇒ So the candidate count is an UPPER BOUND. Of the 7 opened by hand, 2 were real.
+A reader must open the named comments before believing any of the rest.
+
+⚠ NOT A RATE. Seven is a small sample and I chose them — two were the headline
+cases and five were picked as ones I had not already touched. Do not divide.
+
 ⚠ It also cannot tell an ADOPTED correction from a body that merely contains the
 word "FALSE". Presence of a marker is not correctness of one.
 
