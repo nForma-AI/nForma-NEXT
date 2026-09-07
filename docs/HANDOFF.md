@@ -23,11 +23,33 @@ open PRs          1      gh pr list --state open   --limit 1000 --json number --
                          ⚠ the 1 is the PR that re-measured this block; it was 0 before and after
 main CI rollup    success gh run list --branch main --limit 1 --json conclusion
 quarantine        25     grep -c '^tools/' tools/QUARANTINE.txt
-close conditions  NONE 13 · BURIED 0 · BODY 90    python3 tools/close-condition-scan.py
+close conditions  NONE 13 · BURIED 0 · BODY 90    python3 tools/close-condition-scan.py --by-state
 runnable          ASSERTED 34 · RUNNABLE 25 · NO-CONDITION 44   python3 tools/runnable-condition.py
 no close path     21 of 103                       python3 tools/close-mechanism.py
 gating job        76s      gh run view <id> --json jobs   (job "hermetic suites (gating)")
 ```
+
+⇒ **THE `NONE` SET, RECORDED — because a count cannot be re-verified and a set can.**
+*(`close-condition-scan.py --by-state`, same run as the block above)*
+
+```
+NONE  4 · 38 · 48 · 49 · 136 · 405 · 431 · 451 · 502 · 532 · 558 · 582 · 583
+```
+
+⛔ **Why the set and not just the number.** Measured 2026-09-07: the 2026-08-21 snapshot said
+`NONE 8` of 111. Today it is `NONE 13` of 103, and **11 of those 13 are survivors of that same 111** —
+so at least **3** issues carried a condition then and do not now, *or* the 8 was wrong. **Neither can
+be checked**, because `gh` exposes no body-edit history: the timeline carries labels, closures and
+references, never what a body said last month.
+
+⇒ **A dated count over issue bodies is attributable but not checkable.** A dated SET is diffable — run
+`--by-state` and compare against the list above, and you learn exactly *which* issues moved rather
+than only *how many*. That is the difference this line exists to buy, and it is the one repair
+available without body history.
+
+⚠ Composition and new filings are both ruled out as causes, measured rather than assumed:
+condition rate among issues closed since 2026-08-21 was **23 of 26 (88%)** against **90 of 103 (87%)**
+open today — indistinguishable; and only **2** of the 13 (#582, #583) were filed after the snapshot.
 
 ⛔ **THE PREVIOUS SNAPSHOT, STRUCK RATHER THAN DELETED — it stood for 17 days and the drift is the
 point.** *(measured 2026-08-21 08:59Z)*
