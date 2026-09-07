@@ -132,7 +132,10 @@ construction; **neither is "the" number** and both name their predicate.
 | `pretooluse-guard.py` is **UNVERIFIABLE** | `python3 tools/pretooluse-guard.py --zzz-not-a-flag` → exits **0** | ⛔ live — the gate names it, and it is the only one |
 | estate vocabulary is a **closed list** | `scripts/check-tools-index.py:158` | ⛔ live — a novel estate reads as LOCAL (#348) |
 
-⛔ **FOUR OF THE FIVE ROWS ABOVE WERE STALE, in the file a successor is pointed at FIRST.** Struck
+⛔ **FOUR OF THE FIVE ROWS THIS TABLE HELD BEFORE 2026-09-07 WERE STALE, in the file a successor
+is pointed at FIRST.** The table now shows SIX rows — the four struck ones, the `pretooluse-guard.py`
+row that replaced `use-not-mention.py`, and `estate vocabulary`, which was the one of the original
+five that still holds. Struck
 rather than deleted, because the drift is the point: each said `⛔ live on main` about a defect that
 had been fixed, and #451 §5 says *"point a successor at `docs/HANDOFF.md` before anything else"* —
 so a successor inherited four defects that no longer existed. Re-measured 2026-09-07, every row by
