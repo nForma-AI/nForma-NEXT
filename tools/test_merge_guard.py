@@ -140,6 +140,41 @@ class ExitContract(unittest.TestCase):
         rc, _, _ = drive(self.mod, prd(reviews=[{"state": "CHANGES_REQUESTED"}]), ["1"])
         self.assertEqual(rc, 1)
 
+    def test_zero_reviews_is_reported_as_establishing_nothing(self):
+        """⛔ THE #641 CASE, and every test in this file was already driving it.
+
+        `prd()` defaults `reviews` to `[]`, so all 26 tests here ran a PR with NOTHING
+        REVIEWED — and the leg's predicate was `not changes`, which an empty set
+        satisfies for free. The vacuous pass was reachable by the shipped code,
+        exercised twenty-six times, and asserted by none of them. It let PR #641 merge
+        under `✅ 3 reviews read  0 review(s), 0 CHANGES_REQUESTED`.
+        """
+        rc, out, _ = drive(self.mod, prd(reviews=[]), ["1"])
+        self.assertIn("NOTHING REVIEWED", out)
+        self.assertIn("ESTABLISHED NOTHING", out)
+        self.assertNotIn("✅ 3 reviews read", out)
+        # ⇒ AND THE EXIT CODE IS UNCHANGED. Blocking here is the operator's decision
+        # (#49): 32 of the 60 most-recently-updated merged PRs carried zero reviews.
+        self.assertEqual(rc, 0)
+
+    def test_a_REVIEWED_pr_does_NOT_get_the_advisory_line(self):
+        """★ THE KNOWN-NEGATIVE. Without it, a guard that printed the advisory on every
+        run would satisfy the test above and distinguish nothing."""
+        rc, out, _ = drive(self.mod, prd(reviews=[{"state": "APPROVED"}]), ["1"])
+        self.assertEqual(rc, 0)
+        self.assertIn("✅ 3 reviews read", out)
+        self.assertNotIn("NOTHING REVIEWED", out)
+        self.assertNotIn("ESTABLISHED NOTHING", out)
+
+    def test_a_BLOCKED_pr_still_exits_nonzero(self):
+        """⛔ REGRESSION GUARD for the edit that added the advisory branch. Inserting an
+        `elif` above the existing `else` moved `worst = max(worst, 1)` out of the BLOCK
+        branch, so a refused PR printed BLOCK and returned 0. Caught by reading the
+        diff; this is what would have caught it otherwise."""
+        rc, out, _ = drive(self.mod, prd(base="dev"), ["1"])
+        self.assertIn("BLOCK", out)
+        self.assertEqual(rc, 1)
+
     def test_net_negative_three_dot_blocks(self):
         """#510: a stale branch merges as a revert with every check green."""
         rc, out, _ = drive(self.mod, prd(), ["1"], numstat="1\t900\tf.py")
