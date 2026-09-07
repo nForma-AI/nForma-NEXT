@@ -11,17 +11,51 @@ elsewhere. Panes finish a turn and nothing re-invokes them. **Read this instead 
 
 ## What is true right now
 
-*Measured 2026-08-21 **08:59Z** on `origin/main`. ⚠ Every count uses `--limit 1000`: the default page size equals the returned count, so truncation is silent — that is how `30` was once read for a population of `85`.*
+*Measured **2026-09-07 13:16Z** on `origin/main`. **Every line names the command that produces it** — run those, do not cite this block.*
+
+⚠ *Every count uses `--limit 1000`: the default page size equals the returned count, so truncation is
+silent — that is how `30` was once read for a population of `85`.*
 
 ```
-merged PRs        329          open issues   111          open PRs      0
-main CI rollup    SUCCESS      quarantine    23 of 23 files recorded
-role: unrouted    0            role:/dev: disagreements  15   <- #461, and I created all 15
-no close condition 16 of 111 <- nobody can close these; 4 are role:OPERATOR (#4 #48 #49 #136)
-gating job        ~185s +-2s   (was ~38s before #444 landed 04:29Z; +147s, 4.9x)
-close conditions  NONE 8 · BURIED 0 · BODY 98        (was 70 · 12 · 19 at 21:00Z)
-runnable          ASSERTED 38 · RUNNABLE 34 · NO-CONDITION 34
+merged PRs        454    gh pr list --state merged --limit 1000 --json number --jq length
+open issues       103    gh issue list --state open  --limit 1000 --json number --jq length
+open PRs          1      gh pr list --state open   --limit 1000 --json number --jq length
+                         ⚠ the 1 is the PR that re-measured this block; it was 0 before and after
+main CI rollup    success gh run list --branch main --limit 1 --json conclusion
+quarantine        25     grep -c '^tools/' tools/QUARANTINE.txt
+close conditions  NONE 13 · BURIED 0 · BODY 90    python3 tools/close-condition-scan.py
+runnable          ASSERTED 34 · RUNNABLE 25 · NO-CONDITION 44   python3 tools/runnable-condition.py
+no close path     21 of 103                       python3 tools/close-mechanism.py
+gating job        76s      gh run view <id> --json jobs   (job "hermetic suites (gating)")
 ```
+
+⛔ **THE PREVIOUS SNAPSHOT, STRUCK RATHER THAN DELETED — it stood for 17 days and the drift is the
+point.** *(measured 2026-08-21 08:59Z)*
+
+> ~~merged PRs 329 · open issues 111 · open PRs 0~~
+> ~~quarantine 23 of 23 files recorded~~
+> ~~close conditions  NONE 8 · BURIED 0 · BODY 98~~
+> ~~runnable  ASSERTED 38 · RUNNABLE 34 · NO-CONDITION 34~~
+> ~~no close condition 16 of 111~~
+> ~~gating job ~185s +-2s~~
+
+⇒ **What moved, and two of the three directions are not the flattering one:**
+
+- ⛔ **Closeability got WORSE.** `BODY 98 → 90` and `NONE 8 → 13` over 17 days: **five more open issues
+  now carry no close condition at all**, and eight fewer carry one in the body. The board grew less
+  closeable while merged PRs went 329 → 454.
+- ⛔ **`RUNNABLE 34 → 25` and `NO-CONDITION 34 → 44`.** The second dimension agrees with the first about
+  the direction, which is the only reason to quote both.
+- ★ **The gating job went `~185s → 76s`** — 2.4× faster. That is the one line that improved, and it
+  improved without anyone reporting it here.
+- ⚠ `quarantine 23 → 25` is **not** two new estate violations: it is two rows added when the record was
+  scoped to the ruled directory. Read `tools/QUARANTINE.txt`, not this line.
+
+⚠ **AND THIS BLOCK HAS NO CALLER.** It carried a 17-day-old picture under the heading *"What is true
+right now"*, in the file that says **"Read this instead of asking it."** #272's rule is that a dated
+claim needs a **re-measuring caller**, not a fresher date — and re-dating it is exactly what I have
+just done. ⇒ **Every command that produced a line above is named beside it. Run them; do not cite this
+block.** The next reader will be reading a photograph too.
 
 ⚠ **`BODY 98` is PRESENCE ONLY** — `close-condition-scan.py` says so in its own output. It is not 98
 good conditions. `runnable-condition.py` is the second dimension and it disagrees with the first by
