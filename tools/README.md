@@ -10,7 +10,7 @@ below is taken over it.**
 ```
 INSTRUMENT  ≡  a non-test executable directly under tools/, EXCLUDING quarantined subdirectories
 
-   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 65.  Run it; do not trust the number below.
+   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 66.  Run it; do not trust the number below.
 ```
 
 ⚠ **The first draft of this section declared 54 and published a command that returns 55** — off by the
@@ -18,16 +18,18 @@ single `.sh`. ⛔ **In the section whose entire purpose is removing that ambigui
 RUNNING the command rather than trusting it.** ★ **`merge-watch.sh` is an instrument; a definition
 that excludes it because of its extension is drawing the population around a file suffix.**
 
-**Re-measured 2026-09-07 16:14Z on `513c408`, one second, all seven readings, so a reader meeting
-an older figure can place it:**
+**Re-measured 2026-09-07 18:5xZ, one second, all seven readings, so a reader meeting an older
+figure can place it:**
 
 ```
-top-level non-test executables (.py + .sh)  65   ⇐ THE DECLARED POPULATION
-  of which .py                              64   ⚠ every count published on 2026-08-21 used a SMALLER subset
-top-level tools/*.py, including test_      125
-ALL .py under tools/ recursively           148
-ALL .py under tools/ excluding test_        84
-rows in the index table below               67
+top-level non-test executables (.py + .sh)  66   ⇐ THE DECLARED POPULATION
+  of which .py                              65   ⚠ every count published on 2026-08-21 used a SMALLER subset
+top-level tools/*.py, including test_      126
+ALL .py under tools/ recursively           149
+ALL .py under tools/ excluding test_        85
+rows in the index table below               67   ⚠ 67 rows against 66 instruments — the table carries
+                                                    rows for the two QUARANTINED files, which are declared
+                                                    and not indexed; see the reconciliation below
 files under tools/teamlead/                 23   ⛔ QUARANTINED — belonging is an OPEN QUESTION
 ```
 
@@ -347,6 +349,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `pipe-exit-scan.py` | is any exit code read through a pipe — in files, or in what agents actually ran? | 0 clean · 1 findings · **2 established nothing** · **3 control failed** |
 | `fleet-state.py` | what did each agent DECLARE its state to be? | 0 read cleanly · **2 the parser established nothing** |
 | `fleet-output.py` | which roles have SHIPPED a signed artifact in a window, when the STATE line cannot tell you? | 0 every role produced something · 1 at least one role is SILENT · **2 established nothing (no token, or zero comments read)** · **3 a control failed** · `--self-test` `--repo` `--since` `--first` |
+| `measured-elsewhere.py` | does each goal's `[measured: …]` tag name the repo the FILE declares? | 0 every tagged claim was measured in the declared repo · 1 at least one was measured ELSEWHERE · **2 established nothing (no goals, no tags, or the repo identity is unknown)** · **3 a control failed** · `--self-test` `--dir` |
 | `issue-coverage.py` | which open issues has NOBODY opened? | 0 all covered · 1 untouched found · **2 established nothing (empty board, failed query, or no transcripts)** |
 | `prompt-delivery.py` | did a role prompt REACH a pane — and by which channel? | 0 measured · **2 no transcript held a launch prompt** |
 | `text-provenance.py` | which session first PRODUCED this text — or is every hit my own reading? | 0 attributed · 1 present, unauthored here · **2 established nothing** · **3 own-reading only, verdict refused** |
@@ -1075,6 +1078,8 @@ cannot produce.**
 `--selftest` proves both directions against real data: the known-negative is this file, and the
 known-positive is a fixture of three idioms taken from three real incidents rather than invented
 to match the regex.
+
+**`measured-elsewhere.py`** — ⛔ built for **#502 D, the one finding its reporter explicitly asked for a read on**, after vendoring this fleet into a foreign repository. `onboard.md` step 3 says to re-scope each goal's `**Repository:**` line; doing exactly that makes `scripts/check-goal-conformance.py` report **FOR-THIS-REPO for all five role goals while their BODIES still describe nForma-NEXT.** In the reporter's target repo the certified-in-scope goals asserted *"no test infrastructure at all … no test files of any kind"* against a repo with **233 test files**, and *"no Kubernetes … no runtime to observe"* against **19 k8s manifests and three production clusters**. ★ **And the files were already honest about it** — those paragraphs carry `[measured: nForma-NEXT 2026-08-19]`. **The provenance is written down and nothing read it.** ⇒ **THE GAP IN ONE LINE: `check-goal-conformance.py` separates DECLARED scope from MENTIONED scope, and cannot separate DECLARED scope from MEASURED scope.** This reads the second, and imports `declared_scope`/`this_repo` from that file rather than copying them (#345) — a hyphenated filename cannot be `import`ed, and that friction is exactly what produces a second drifting reading of one noun. ⛔⛔ **USE VS MENTION DECIDES WHETHER THIS TOOL WAS EVEN NEEDED, and a grep says the opposite of the truth:** `grep -rl 'measured:'` finds **12** files under `tools/` and `scripts/`, which reads as "plenty of things consume this tag". `grep -rl '\[measured'` finds **0**. Twelve mentions of an English word, zero parsers. ⛔ **AND A LINE-BASED READER UNDERCOUNTS THE CORPUS BY SIX.** My first pass used `grep -ohE '\[measured:[^]]*\]'` and got **101**; this tool reads **107**. The gap is exactly the six tags that **span a line break** — `[measured: Blazing-Back ⏎ 2026-08-19]` and five like it — which grep cannot see because it matches within a line. `107 − 6 = 101`, exactly: **the corpus did not change, the reader did.** ★ And the six are not a random sample — a tag long enough to wrap is one carrying provenance *detail*, the kind most worth reading — so a reimplementation with `grep` would silently reproduce the undercount. **First run 2026-09-07: 107 tags — OWN 80 · ELSEWHERE 19 (all one sibling estate) · UNDATED 8.** ⚠ **ELSEWHERE IS A LOCATION, NOT A VERDICT**, and the output says so on every run: a goal may legitimately cite a sibling estate's measurement, and what this makes knowable is *how many, and where*. ⚠ **Every count is a LOWER BOUND** — it reads the TAG, never the claim, and nothing enforces tagging, so an untagged paragraph measured elsewhere is invisible by construction. ⚠ `UNDATED` is checked **before** the repo comparison and reported separately: `[measured: nForma-NEXT <date>]` names the right repo and establishes nothing about when, and one verdict would merge two different failures.
 
 **`fleet-output.py`** — ⛔ built because **`fleet-state.py` exits 2 and says, in its own words, that it cannot answer the question a standup actually asks.** Its refusal reads *"They may be silent, unlaunched, or never given the prompt — this cannot tell"*, and dispatch policy differs completely between those. ★ **THE DESIGN IS THAT THE TWO INSTRUMENTS FAIL FOR UNRELATED REASONS, which is what makes one a control on the other rather than a second opinion from the same witness:** `fleet-state.py` reads **transcripts** — local, session-side, blind to a running pane that writes no `STATE` line; this reads **artifacts on the forge** — remote, output-side, blind to work that was done and never signed. ⚠ **Commit authorship cannot carry this**: one git credential serves all nine panes (#4), so `git` names the operator for every role. The only author signal in this estate is the body self-naming convention. ⛔⛔ **USE VS MENTION DECIDES THE ANSWER HERE, it does not season it.** Measured 2026-09-07 over the 24h window: **ARCHITECT is MENTIONED in 13 comments and has SIGNED 0** — a tool counting the role name would have reported ARCHITECT the second-most-active role on a day it produced nothing. So authorship is decided by **position** — all three signature forms are anchored to the start of a LINE, in the tail only — never by occurrence; swapping the tail search for a whole-body search takes the suite to **exit 3** on exactly that control. ⛔⛔ **AND THE FIRST ATTEMPT AT THAT ANCHOR WAS WRONG IN THE OTHER DIRECTION, caught by RUNNING it against the corpus rather than re-reading it.** Narrowing the byline verbs to `Filed|Written|Posted|Appended` dropped **three real signatures in one 75-comment window** — `Replicated by TEAMLEAD, session …` (#580), `Withdrawn by …` (#338), `Verified by …` (#287) — each as performative as `Filed by`. ★ **The discriminator is POSITION, not VOCABULARY:** `Replicated by TEAMLEAD` starts a tail line, `This was measured by DEVOPS last week` does not, so anchoring the line lets the verb list stay broad. ⚠ The bound that remains: a report that DOES start a tail line — `Measured by DEVOPS on 2026-09-01.` — is indistinguishable from a byline here and is read as one. ⚠ Over this corpus the anchored form and the un-anchored one it replaced return **identical verdicts on all 75 comments** — that removes the false-positive *capability*, it does not show the loose form had ever fired. ⛔ **THE BOUND, PRINTED ON EVERY RUN:** measured the same day, **34 of 75 comments in the window carry no signature at all**, so `SILENT` means ONLY *"produced no SIGNED artifact in this window"* and never *"did no work"*. ⇒ An unmeasured role must not read as an accused one, and the unsigned count is printed beside every verdict so the reading cannot be taken further than it goes. ⚠ **The window is anchored to the DATA, not the reader's clock** — 24h before the newest comment READ — because a window measured from `now` drifts against a snapshot taken minutes earlier and makes two runs incomparable for reasons that have nothing to do with the fleet. **First run 2026-09-07: 604 comments read, 75 in window — TEAMLEAD 41 signed, and all eight other roles SILENT** against an all-time table in which ARCHITECT has authored **72**, more than TEAMLEAD's 64. ⇒ That is a change of state, and until now nothing here could notice it.
 
