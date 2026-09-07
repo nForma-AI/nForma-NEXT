@@ -256,6 +256,51 @@ for chk in scripts/check-tools-index.py scripts/check-goal-conformance.py \
        printf '%s\n' "$out" | grep -E '^\s*(FAIL|·|⛔)' | head -4 | sed 's/^/        /' ;;
   esac
 done
+section 'Exit codes read through a pipe'
+# ★ #89 / #234 §4's shape: tools/pipe-exit-scan.py has a GATED CALLER for its
+# --self-test and NONE for its scan. Measured 2026-09-07: the scan had never been
+# run by anything, and a manual run found 113 occurrences across 19 sessions in
+# this project alone.
+#
+# ⛔ AND IT CANNOT BE GATED IN CI, BY CONSTRUCTION. Its subject is
+# ~/.claude/projects — the operator's own transcripts — which does not exist on a
+# runner. An instrument whose subject is the operator's machine has no CI caller
+# available to it, so this pane is the only host there is.
+#
+# ⚠ SCOPED TO THIS PROJECT ON PURPOSE. Unscoped it reads every repository on the
+# machine: measured 809 findings vs 113, and #175 §3 declined that corpus in as
+# many words — "a wider corpus than ~/.claude/projects is a different instrument
+# with consent questions that are not an agent's to settle." The fleet's record of
+# its own work is a different object from a user's machine.
+#
+# ⚠ REPORTED AS A WARN, NEVER A FAIL, even on findings. These are historical
+# agent-behaviour defects in transcripts, not defects in THIS install, and this is
+# the install's acceptance test. A fresh install would inherit a red board for
+# something it did not do. Cost measured: 1s scoped.
+if [ -r tools/pipe-exit-scan.py ]; then
+  # ⛔ THE MAIN WORKTREE, NOT `--show-toplevel`. Transcript directories are keyed by
+  # the cwd the agent was LAUNCHED in, which for this fleet is the main repo. From a
+  # linked worktree `--show-toplevel` returns the WORKTREE path, so the derived slug
+  # matched no directory and this check reported ESTABLISHED NOTHING — measured
+  # 2026-09-07, and it failed CLOSED, which is the only reason it was visible.
+  # ⚠ `sed`, not `awk '{print $2}'`: #234 §2 — a worktree path containing a space
+  # is truncated by field-splitting, silently.
+  _slug=$(git worktree list --porcelain 2>/dev/null | head -1 | sed 's/^worktree //' | tr '/' '-')
+  if [ -z "$_slug" ]; then
+    note "not inside a git repository — pipe-exit-scan is UNMEASURED, not clean"
+  else
+    out=$(python3 tools/pipe-exit-scan.py --transcripts --project "$_slug" 2>&1); rc=$?
+    case "$rc" in
+      0) ok "no exit code read through a pipe in this project's transcripts" ;;
+      1) n=$(printf '%s
+' "$out" | grep -c '⇒ ')
+         note "pipe-exit-scan: $n occurrence(s) in this project's transcripts — historical, not an install defect" ;;
+      *) note "pipe-exit-scan ESTABLISHED NOTHING (exit $rc) — not clean" ;;
+    esac
+  fi
+else
+  note "tools/pipe-exit-scan.py not present — that check is UNMEASURED, not passing"
+fi
 section 'Work left on merged branches'
 # ★ #89: an instrument with no caller is an argument. This one answers a
 # LAUNCH-TIME question — did anything get left behind since the last launch — and
