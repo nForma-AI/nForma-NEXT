@@ -292,9 +292,19 @@ if [ -r tools/pipe-exit-scan.py ]; then
     out=$(python3 tools/pipe-exit-scan.py --transcripts --project "$_slug" 2>&1); rc=$?
     case "$rc" in
       0) ok "no exit code read through a pipe in this project's transcripts" ;;
-      1) n=$(printf '%s
-' "$out" | grep -c '⇒ ')
-         note "pipe-exit-scan: $n occurrence(s) in this project's transcripts — historical, not an install defect" ;;
+      # ⛔ TAKE THE TOOL'S OWN TALLY, NEVER RE-COUNT ITS OUTPUT. This read
+      # `grep -c '⇒ '` and reported 113 where the tool's own line said 108. Two
+      # causes, both real: the ⇒ glyph also appears in header lines, AND before the
+      # fix on tools/pipe-exit-scan.py `--transcripts` fell through into the
+      # tracked-file scan, so 2 FILE findings were counted as transcript occurrences.
+      # ⇒ A caller that re-derives a number the instrument already publishes is a
+      # second reading of one noun (#345), and it drifted on its very first run.
+      1) n=$(printf '%s\n' "$out" | sed -n 's/^\([0-9][0-9]*\) occurrence(s) in EXECUTED.*/\1/p' | head -1)
+         if [ -z "$n" ]; then
+           note "pipe-exit-scan found occurrences but published no tally — the COUNT is UNMEASURED, not clean"
+         else
+           note "pipe-exit-scan: $n occurrence(s) in this project's transcripts — historical, not an install defect"
+         fi ;;
       *) note "pipe-exit-scan ESTABLISHED NOTHING (exit $rc) — not clean" ;;
     esac
   fi

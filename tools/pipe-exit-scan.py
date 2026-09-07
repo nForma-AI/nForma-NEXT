@@ -527,7 +527,16 @@ def main():
         top = max(per.items(), key=lambda kv: kv[1]) if per else ("-", 0)
         print(f"\nscope                  {project or 'ALL PROJECTS on this machine'}",
               file=sys.stderr)
+        # ⛔ `--project` IS A SUBSTRING, so `-repo` also matches `-repo2`. Naming the
+        # directories is the fix that keeps the documented SUBSTR contract (this
+        # fleet's own slug must match its per-worktree dirs) while making an
+        # unintended match VISIBLE rather than silent. Review on #626, 2026-09-07.
         print(f"project dirs with hits {len(per)}", file=sys.stderr)
+        for _d in sorted(per):
+            print(f"   dir  {os.path.basename(_d)}  {per[_d]}", file=sys.stderr)
+        if project and len(per) > 1:
+            print(f"⚠ SUBSTRING '{project}' matched {len(per)} project dirs, named above. "
+                  f"If any is not this fleet, the count is over-scoped.", file=sys.stderr)
         print(f"largest contributor    {top[1]}  {top[0][-44:]}", file=sys.stderr)
         print(f"{len(hits)} occurrence(s) in EXECUTED commands across agent transcripts.",
               file=sys.stderr)
@@ -542,7 +551,19 @@ def main():
               "corpus holds prose mentions of this exact idiom, including this repo's own "
               "convention documenting it, and a text scan over it over-reports by ~56%.",
               file=sys.stderr)
-        _rc = 1 if hits else 0
+        # ⛔ `_rc` WAS ASSIGNED HERE AND NEVER USED. Control flow fell straight
+        # through into the tracked-file scan below, so `--transcripts` ran BOTH
+        # scans and returned the FILE scan's verdict. Found by review on PR #626,
+        # 2026-09-07, and it had already produced a wrong published number:
+        #
+        #   caller counted "⇒ " lines over the combined output   -> 113
+        #   transcripts alone, the tool's own tally              -> 108
+        #   the other 2 were TRACKED-FILE findings
+        #     (scripts/gate-selftests.sh:908, scripts/test-fleet-preflight-counts.sh:37)
+        #
+        # ⇒ A caller branching on the exit code was reading the wrong scan's
+        # verdict, so a transcript-dirty / file-clean run could report clean.
+        return 1 if hits else 0
     files = tracked()
     if not files:
         print("⛔ no tracked files — ESTABLISHED NOTHING, not clean. "
