@@ -39,13 +39,19 @@ sweep") -- was measured on 2026-09-06 and FAILED ON BOTH ANCHORS:
 call. A reader settles it by opening the comments this prints. Reporting a
 number as if the call had been made is the error the tool exists to catch.
 
-⛔⛔ MEASURED PRECISION, updated 2026-09-07: 11 candidates read by hand, 2 TRUE,
-9 FALSE. (It was 7 read / 2 true; four more were opened and none was real.)
+⛔⛔ MEASURED PRECISION, updated 2026-09-07: 13 candidates read by hand, 3 TRUE,
+10 FALSE. (7/2, then 11/2, now 13/3 — it has moved once in three samples.)
 
     #300  TRUE   the refuted figure was in the TITLE; the author's comment says
                  the verified floor is 1
     #431  TRUE   "⛔ RETRACTING FINDING 1 OF THIS ISSUE" — and the body still
                  carried FINDING 1 under a heading, 0 markers, 17 days
+    #258  TRUE   a DIFFERENT shape: the body is not WRONG, it is SUPERSEDED. Its
+                 title and body assert "0 landings in 114 minutes"; the author's
+                 comment says "the premise is falsified; the finding is not". A
+                 reader arriving later takes a historical measurement for a live
+                 condition. Repaired by marking the premise historical and leaving
+                 the finding untouched.
 
     #58 #173 #347 #19 #489 #65   FALSE — the comment corrects AN EARLIER COMMENT,
                  and several say so in their first line ("CORRECTION to my own
@@ -100,6 +106,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from runmarker import guard, result  # noqa: E402
 
 import argparse
+import io
 import json
 import re
 import subprocess
@@ -145,8 +152,8 @@ ADOPTED = re.compile(
 # ⚠ Update this when a candidate is read. The docstring's wording may lag; these
 #   counts may not, and the self-test enforces that they add up.
 PRECISION = {
-    "read_by_hand": 11,
-    "true": ["#300", "#431"],
+    "read_by_hand": 13,
+    "true": ["#300", "#431", "#258"],
     "false": {
         "corrects an earlier COMMENT, not the issue's claim":
             ["#58", "#173", "#347", "#19", "#489", "#65"],
@@ -154,6 +161,8 @@ PRECISION = {
             ["#338", "#203"],
         "a defect in this tool, since fixed (#627)":
             ["#93"],
+        "an UPDATE or an adoption, not a correction of the issue's claim":
+            ["#397"],
     },
 }
 
@@ -221,6 +230,8 @@ def classify(body, comments, title=""):
 
 def self_test():
     failures = []
+    # ⇒ counts the controls that run OUTSIDE `cases`; see the summary below.
+    _extra = 0
     cases = [
         ("body with no marker", ["⛔ Correcting my earlier number: it is 43."], "plain title",
          ("CANDIDATE", [1], ["body", "title"]), "the defect: announced, body unmarked"),
@@ -299,14 +310,45 @@ def self_test():
                              f"{PRECISION['read_by_hand']}/{len(t)}/{len(f)}",
                              "/".join(m.groups())))
         else:
+            _extra += 1
             print(f"  ok   published precision is self-consistent: "
                   f"{PRECISION['read_by_hand']} read = {len(t)} true + {len(f)} false, "
                   f"across {len(PRECISION['false'])} named causes, no duplicates, "
                   f"and the docstring agrees")
 
+    # ⛔ AND tools/README.md RESTATES THESE NUMBERS TOO. The docstring is checked
+    # above; the README was not, and it drifted THREE times in one day — "seven is a
+    # small sample" beside an 11, "six of the nine" beside a 10, and a claim about
+    # #338 that I had WITHDRAWN a day earlier and left standing here.
+    # ⇒ One anchored sentence, same shape as the docstring check. ⚠ If the README is
+    #   unreadable this is UNCHECKED, not passing — it says so rather than skipping.
+    _readme = os.path.join(os.path.dirname(os.path.abspath(__file__)), "README.md")
+    try:
+        _txt = io.open(_readme, encoding="utf-8").read()
+    except OSError as exc:
+        failures.append(("tools/README.md must be readable to check it", "readable", exc))
+    else:
+        # ⚠ `.*?` not `[^,]*`: the README names the TRUE issues in a parenthetical
+        # ("3 TRUE (#300, #431, #258), 10 FALSE") and a comma-excluding class cannot
+        # cross it. The first version failed loudly here rather than passing, which
+        # is the only reason it was a two-minute fix.
+        _m = re.search(r"(\d+)\s+candidates read by hand\s*—\s*(\d+)\s+TRUE.*?,\s*(\d+)\s+FALSE",
+                       _txt, re.S)
+        if not _m:
+            failures.append(("tools/README.md must state the precision in the checked form",
+                             "a match", "none"))
+        elif [int(g) for g in _m.groups()] != [PRECISION["read_by_hand"], len(t), len(f)]:
+            failures.append(("tools/README.md's numbers must match PRECISION",
+                             f"{PRECISION['read_by_hand']}/{len(t)}/{len(f)}",
+                             "/".join(_m.groups())))
+        else:
+            _extra += 1
+            print("  ok   tools/README.md's published precision matches PRECISION too")
+
     try:
         gh(["--zzz-not-a-real-subcommand"])
     except Void:
+        _extra += 1
         print("  ok   a failed gh raises Void — a fetch failure cannot read as 'no corrections'")
     except Exception as exc:                      # noqa: BLE001
         failures.append(("gh must raise Void, not %s" % type(exc).__name__, "Void", exc))
@@ -319,10 +361,14 @@ def self_test():
             print(f"     {why}: expected {exp}, got {got}")
         result("CONTROL-FAILED")
         return 3
-    # ⚠ +2, not +1: the fail-closed-fetch control AND the precision control both run
-    # outside `cases`. It read +1 and reported 12/12 while 13 executed — review caught
-    # it, and a control that miscounts itself is the shape this file is about.
-    _n = len(cases) + 2
+    # ⛔ THIS COUNT HAS NOW BEEN WRONG TWICE. It read +1 and reported 12/12 while 13
+    # ran (review caught it); then +2 reported 13/13 while 14 ran, after the README
+    # control was added — and I caught that only by counting the `ok` lines before
+    # committing. A hand-maintained count of controls is the same defect as a
+    # hand-maintained count of anything else.
+    # ⇒ DERIVED: `_extra` is incremented at each control that runs outside `cases`,
+    #   at the point it runs, so the summary cannot drift from what executed.
+    _n = len(cases) + _extra
     print(f"\n  {_n}/{_n} controls passed — including the use-vs-mention negative, "
           "the fail-closed fetch, and the precision self-consistency check.")
     result("SELF-TEST-PASS")
