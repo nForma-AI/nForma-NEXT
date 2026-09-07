@@ -135,6 +135,29 @@ ADOPTED = re.compile(
 )
 
 
+# ⛔ THE PUBLISHED PRECISION, AS DATA. The docstring describes it in prose; this is
+# what the control checks, because prose cannot be checked without parsing it and
+# three attempts at parsing it failed on cross-references (`fixed #627`) and on a
+# different section of the same docstring that also says "TRUE".
+#
+# ⇒ Prose that restates a number drifts from it (#345, and #628 where a summary said
+#   "four of the five" over a list of three). So the numbers live here, once.
+# ⚠ Update this when a candidate is read. The docstring's wording may lag; these
+#   counts may not, and the self-test enforces that they add up.
+PRECISION = {
+    "read_by_hand": 11,
+    "true": ["#300", "#431"],
+    "false": {
+        "corrects an earlier COMMENT, not the issue's claim":
+            ["#58", "#173", "#347", "#19", "#489", "#65"],
+        "silent adoption — the body or title was REWRITTEN, leaving no marker":
+            ["#338", "#203"],
+        "a defect in this tool, since fixed (#627)":
+            ["#93"],
+    },
+}
+
+
 class Void(Exception):
     """Established nothing. ⛔ Never collapse into a verdict."""
 
@@ -246,6 +269,24 @@ def self_test():
     # ⛔ The fetch helper must RAISE, never return a falsy value. This is the #338
     # defect as a control: a helper that returned "" made a failed fetch read as
     # "no corrections", and the issue left the population silently.
+    # ⛔ THE PUBLISHED PRECISION MUST CHECK ITS OWN ARITHMETIC. On #628 a summary
+    # said "four of the five" over a list of three; review caught it, and a shell
+    # one-liner is not a caller. This checks PRECISION, which is data — three
+    # attempts to parse the equivalent prose failed, on a cross-reference and on a
+    # different section of the docstring that also contains the word TRUE.
+    t = PRECISION["true"]
+    f = [n for group in PRECISION["false"].values() for n in group]
+    if len(t) + len(f) != PRECISION["read_by_hand"]:
+        failures.append(("read_by_hand must equal true + false",
+                         PRECISION["read_by_hand"], f"{len(t)}+{len(f)}"))
+    elif len(set(t + f)) != len(t + f):
+        dupes = sorted({n for n in t + f if (t + f).count(n) > 1})
+        failures.append(("no issue may appear twice", "unique", dupes))
+    else:
+        print(f"  ok   published precision is self-consistent: "
+              f"{PRECISION['read_by_hand']} read = {len(t)} true + {len(f)} false, "
+              f"across {len(PRECISION['false'])} named causes, no duplicates")
+
     try:
         gh(["--zzz-not-a-real-subcommand"])
     except Void:
