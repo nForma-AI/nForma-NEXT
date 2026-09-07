@@ -283,9 +283,26 @@ def self_test():
         dupes = sorted({n for n in t + f if (t + f).count(n) > 1})
         failures.append(("no issue may appear twice", "unique", dupes))
     else:
-        print(f"  ok   published precision is self-consistent: "
-              f"{PRECISION['read_by_hand']} read = {len(t)} true + {len(f)} false, "
-              f"across {len(PRECISION['false'])} named causes, no duplicates")
+        # ⛔ Review asked for `len(t) == 2` and `len(f) == 9` as LITERALS. DECLINED:
+        # a literal 2 in the control is a second copy of the datum the dict exists to
+        # hold once, and it would red on every legitimate reclassification.
+        # ⇒ The real exposure is the PROSE, which restates "11 … 2 TRUE, 9 FALSE" and
+        #   was checked by nobody. ONE anchored line compared to the dict — not the
+        #   enumeration, which three earlier attempts proved unparseable.
+        m = re.search(r"(\d+)\s+candidates read by hand,\s*(\d+)\s+TRUE,\s*(\d+)\s+FALSE",
+                      __doc__ or "")
+        if not m:
+            failures.append(("the docstring must state the precision in the checked form",
+                             "a match", "none"))
+        elif [int(g) for g in m.groups()] != [PRECISION["read_by_hand"], len(t), len(f)]:
+            failures.append(("the docstring numbers must match PRECISION",
+                             f"{PRECISION['read_by_hand']}/{len(t)}/{len(f)}",
+                             "/".join(m.groups())))
+        else:
+            print(f"  ok   published precision is self-consistent: "
+                  f"{PRECISION['read_by_hand']} read = {len(t)} true + {len(f)} false, "
+                  f"across {len(PRECISION['false'])} named causes, no duplicates, "
+                  f"and the docstring agrees")
 
     try:
         gh(["--zzz-not-a-real-subcommand"])
@@ -302,8 +319,12 @@ def self_test():
             print(f"     {why}: expected {exp}, got {got}")
         result("CONTROL-FAILED")
         return 3
-    print(f"\n  {len(cases) + 1}/{len(cases) + 1} controls passed — including the "
-          "use-vs-mention negative and the fail-closed fetch.")
+    # ⚠ +2, not +1: the fail-closed-fetch control AND the precision control both run
+    # outside `cases`. It read +1 and reported 12/12 while 13 executed — review caught
+    # it, and a control that miscounts itself is the shape this file is about.
+    _n = len(cases) + 2
+    print(f"\n  {_n}/{_n} controls passed — including the use-vs-mention negative, "
+          "the fail-closed fetch, and the precision self-consistency check.")
     result("SELF-TEST-PASS")
     return 0
 
