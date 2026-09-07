@@ -10,7 +10,7 @@ below is taken over it.**
 ```
 INSTRUMENT  ≡  a non-test executable directly under tools/, EXCLUDING quarantined subdirectories
 
-   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 63.  Run it; do not trust the number below.
+   ls tools/*.py tools/*.sh | grep -v '/test_'    ⇒ 64.  Run it; do not trust the number below.
 ```
 
 ⚠ **The first draft of this section declared 54 and published a command that returns 55** — off by the
@@ -22,7 +22,7 @@ that excludes it because of its extension is drawing the population around a fil
 readings, so a reader meeting an older figure can place it:**
 
 ```
-top-level non-test executables (.py + .sh)  63   ⇐ THE DECLARED POPULATION
+top-level non-test executables (.py + .sh)  64   ⇐ THE DECLARED POPULATION
   of which .py                              60   ⚠ every count published on 2026-08-21 used a SMALLER subset
 top-level tools/*.py, including test_      120
 ALL .py under tools/ recursively           143
@@ -357,6 +357,7 @@ of them, which is why it is stated here rather than in a docstring.
 | `stranded-branches.py` | has any merged PR's branch got commits with no equivalent change upstream — and if so, are its bytes upstream anyway? | 0 none · 1 unmatched commits · **2 established nothing** |
 | `grant-check.py` | is this role authorized to do this, right now? | 0 live grant · 1 **no live grant (established)** · **2 established nothing** · 3 self-test failed |
 | `readd-scan.py` | is this diff RESTORING a line a commit deliberately removed? | 0 none · 1 re-additions · **2 established nothing** |
+| `refuted-field-reach.py` | given a field a closed issue REFUTED, which open close conditions still turn on it? | 0 nothing reaches it · 1 at least one condition mentions it · **2 established nothing (failed query, truncated reading, or one unreadable issue)** · **3 known-positive failed** · `--field` `--refuted-by` `--repo` `--limit` `--self-test` |
 | `runmarker.py` | ⚠ **a module, not an instrument** — the two stderr markers every tool emits | n/a, it is imported |
 | `estatenames.py` | ⚠ **a module, not an instrument** — does this string name an estate that is NOT this one? | n/a, it is imported |
 | `codestrings.py` | ⚠ **a module, not an instrument** — string literals in EXECUTABLE position, not docstrings or comments | n/a, it is imported |
@@ -673,6 +674,8 @@ An estate present only as vendored source, with no path, no issue number and no 
 clean — `w1226.py` was nearly exactly that, identifiable only because line 1 kept a foreign file
 header. ⇒ Its silence is never "no foreign estate present", and `UNCLAIMED` must never collapse into
 `LOCAL` on it.
+
+**`refuted-field-reach.py`** — ⛔ built because **#327's refutation was never propagated.** #327 measured that `gh --author '@me'` returns all nine panes' PRs — the shared credential makes an author filter *succeed with the wrong answer* — and was closed COMPLETED. #601 then found **five open issues whose close conditions still turn on authorship** (#173, #268, #214, #80, #172). ★ **The obvious instrument does not work, and checking that cost one query instead of a build:** the first design was *"list open issues whose condition CITES the closed one"*, and all five cite #327 **zero** times. The dependency is **semantic** — they name the FIELD, never the issue. ⚠ **And a body-wide grep is too coarse**: #363 scores 2 hits on `author` and is about vendoring. Scoped to the **close-condition section** the separation is exact — measured 2026-09-07, **7 of 7**: the five hit, #363 and #205 do not. ⛔⛔ **THE DIVISION OF LABOUR IS THE DESIGN.** *Which* field a closed issue refuted is a **reading**, supplied with `--field`; the **reach** over open conditions is mechanical, and that is all this does. ⚠ **Mentioning is not depending** — #601 measured 20 of 60 conditions mentioning authorship and judged **5** to depend on it; this reports the mentions, names them, and refuses the second call. First run 2026-09-07: **25 of 89 conditions mention the field, 13 issues carry no condition at all.** ⚠ Not the same denominator as #601's 20-of-60, which counted `runnable-condition.py`'s population and which that issue records as inflated. ⚠ The clause predicate is **imported** from `close-condition-scan.py`, never copied: a second reading of one noun drifts from the first (#345), and this repo has measured that happening.
 
 **`runmarker.py`** — ⚠ **not an instrument; a module.** It is imported, never run, and has no
 exit codes of its own. It is indexed here only because `check-tools-index.py`'s population is
