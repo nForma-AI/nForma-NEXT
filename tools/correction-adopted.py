@@ -39,13 +39,19 @@ sweep") -- was measured on 2026-09-06 and FAILED ON BOTH ANCHORS:
 call. A reader settles it by opening the comments this prints. Reporting a
 number as if the call had been made is the error the tool exists to catch.
 
-⛔⛔ MEASURED PRECISION, updated 2026-09-07: 11 candidates read by hand, 2 TRUE,
-9 FALSE. (It was 7 read / 2 true; four more were opened and none was real.)
+⛔⛔ MEASURED PRECISION, updated 2026-09-07: 13 candidates read by hand, 3 TRUE,
+10 FALSE. (7/2, then 11/2, now 13/3 — it has moved once in three samples.)
 
     #300  TRUE   the refuted figure was in the TITLE; the author's comment says
                  the verified floor is 1
     #431  TRUE   "⛔ RETRACTING FINDING 1 OF THIS ISSUE" — and the body still
                  carried FINDING 1 under a heading, 0 markers, 17 days
+    #258  TRUE   a DIFFERENT shape: the body is not WRONG, it is SUPERSEDED. Its
+                 title and body assert "0 landings in 114 minutes"; the author's
+                 comment says "the premise is falsified; the finding is not". A
+                 reader arriving later takes a historical measurement for a live
+                 condition. Repaired by marking the premise historical and leaving
+                 the finding untouched.
 
     #58 #173 #347 #19 #489 #65   FALSE — the comment corrects AN EARLIER COMMENT,
                  and several say so in their first line ("CORRECTION to my own
@@ -145,8 +151,8 @@ ADOPTED = re.compile(
 # ⚠ Update this when a candidate is read. The docstring's wording may lag; these
 #   counts may not, and the self-test enforces that they add up.
 PRECISION = {
-    "read_by_hand": 11,
-    "true": ["#300", "#431"],
+    "read_by_hand": 13,
+    "true": ["#300", "#431", "#258"],
     "false": {
         "corrects an earlier COMMENT, not the issue's claim":
             ["#58", "#173", "#347", "#19", "#489", "#65"],
@@ -154,6 +160,8 @@ PRECISION = {
             ["#338", "#203"],
         "a defect in this tool, since fixed (#627)":
             ["#93"],
+        "an UPDATE or an adoption, not a correction of the issue's claim":
+            ["#397"],
     },
 }
 
