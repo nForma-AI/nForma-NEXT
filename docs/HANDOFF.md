@@ -125,11 +125,58 @@ construction; **neither is "the" number** and both name their predicate.
 
 | what | reproduce | status |
 |---|---|---|
-| `tools/index-watch.py --self-test` **hangs** | `python3 tools/index-watch.py --self-test` → never returns | ⛔ live on main |
-| **24 of 48 controls establish nothing** | `bash scripts/gate-selftests.sh` → `15 UNESTABLISHED · 9 UNVERIFIABLE` | ⛔ live |
-| `bootstrap-audit.py`'s control **FAILS** | same command → `⛔ CONTROL FAILED` | ⛔ blocks #444 |
-| `use-not-mention.py` is **UNVERIFIABLE** | accepts `--zzz-not-a-flag`, exits 0 | ⛔ the mention/use instrument cannot verify itself |
-| estate vocabulary is a **closed list** | `scripts/check-tools-index.py:158` | ⛔ a novel estate reads as LOCAL (#348) |
+| ~~`tools/index-watch.py --self-test` **hangs**~~ | `python3 tools/index-watch.py --self-test` | ✅ **FIXED** — exits 0 in 13.3s, re-measured 2026-09-07 |
+| ~~**24 of 48 controls establish nothing**~~ | `SUBJ_DIR=tools ./scripts/gate-selftests.sh` | ✅ **FIXED** — `63 subjects · 48 passed · 0 FAILED · 0 UNESTABLISHED · 1 UNVERIFIABLE` |
+| ~~`bootstrap-audit.py`'s control **FAILS**~~ | same command | ✅ **FIXED** — `0 FAILED`; its own `--self-test` exits 0 and the control block passes |
+| ~~`use-not-mention.py` is **UNVERIFIABLE**~~ | `python3 tools/use-not-mention.py --zzz-not-a-flag` | ✅ **FIXED** — exits **2**, not 0 |
+| `pretooluse-guard.py` is **UNVERIFIABLE** | `python3 tools/pretooluse-guard.py --zzz-not-a-flag` → exits **0** | ⛔ live — the gate names it, and it is the only one |
+| estate vocabulary is a **closed list** | `scripts/check-tools-index.py:158` | ⛔ live — a novel estate reads as LOCAL (#348) |
+
+⛔ **FOUR OF THE FIVE ROWS THIS TABLE HELD BEFORE 2026-09-07 WERE STALE, in the file a successor
+is pointed at FIRST.** The table now shows SIX rows — the four struck ones, the `pretooluse-guard.py`
+row that replaced `use-not-mention.py`, and `estate vocabulary`, which was the one of the original
+five that still holds. Struck
+rather than deleted, because the drift is the point: each said `⛔ live on main` about a defect that
+had been fixed, and #451 §5 says *"point a successor at `docs/HANDOFF.md` before anything else"* —
+so a successor inherited four defects that no longer existed. Re-measured 2026-09-07, every row by
+its own command.
+
+★ **AND THE BARE COMMAND WAS THE WRONG COMMAND, which #451 §1 warned about in this file's own
+lineage.** `bash scripts/gate-selftests.sh` reports `ran 6 subject(s)`; `SUBJ_DIR=tools
+./scripts/gate-selftests.sh` — the form CI runs — reports `ran 63`. Measured in the same minute.
+⇒ *The reproduction command is not the script name*, and a row citing the bare form measures a
+tenth of the population it claims to.
+
+## ⚠ Reading a pane's context % — the default `lines` does not reach it
+
+⛔ **The only place this was written down was a QUARANTINED script.** #451 §1 recorded it as a
+workaround *"written nowhere else"* — `terminal.getStatus` needs `lines: 4`, *"1 and 2 omit it"* —
+and an audit on 2026-09-07 found 7 of its 8 §1–§2 items durable and this one not: the sole match in
+the tree was `tools/teamlead/boxwatch.sh`, which sits under `tools/QUARANTINE.txt` and whose
+belonging is an open question. **A fact recorded only in a quarantined file is not recorded.**
+
+⇒ **AND THE RECORDED NUMBER IS WRONG.** Re-measured 2026-09-07 against a live pane, one call per
+value:
+
+```
+lines: 1   ⏵⏵ bypass permissions on · 1 monitor …           ⛔ no context %
+lines: 2   ⊘ codex-1 │ ⊘ codex-2 │ …  + the bar             ⛔ no context %
+lines: 3   Opus 5 │ … ███████░░░ 76% (756K) │ …             ✅ present
+lines: 4   a ─── separator, then the same three             ✅ present
+```
+
+**The boundary is 3, not 4.** The `[re-verified]` tag in #451 travelled with a figure that was one
+too high.
+
+★ **AND A FIXED NUMBER IS THE WRONG THING TO RECORD, which is why this entry is phrased as it is.**
+The percentage lives in the pane's status BLOCK, and how many lines that block occupies depends on
+what the pane is rendering — this one showed a separator at 4 and none at 3. ⇒ **Ask for `lines` ≥ 3
+and CHECK the `%` is in `recentOutput`; do not trust a constant.** A number recorded here would rot
+the same way `4` did, and rot silently: a short read returns a well-formed status object with the
+percentage simply absent.
+
+⚠ Measured on one pane, one moment. It establishes the default is too small and that 3 sufficed
+there — not a floor that holds for every pane.
 
 ## ⛔ Numbers WITHDRAWN tonight, and why — this section is the point of the file
 
