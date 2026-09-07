@@ -53,10 +53,20 @@ number as if the call had been made is the error the tool exists to catch.
                  author's own retraction-HANDLING, not the issue's claim
     #93   FALSE  a QUOTED claim at ten spaces of indent — a regex defect, fixed
 
-⇒ THE STATED BOUND DOMINATES. Four of the five false positives are "the comment
-corrects something other than the issue's claim", which is exactly what this tool
-says it cannot separate. So the candidate count is an UPPER BOUND with a measured
-hit rate near 2/7, and a reader must open the comments before believing any of it.
+⇒ THE STATED BOUND IS THE LARGEST SINGLE CAUSE. THREE of the five false positives
+(#58, #173, #347) are "the comment corrects something other than the issue's
+claim", which is exactly what this tool says it cannot separate. The other two are
+different defects: #338 is silent adoption, #93 was a regex fault since fixed.
+
+⚠ THIS PARAGRAPH SAID "FOUR" AND "a measured hit rate near 2/7" UNTIL REVIEW
+CAUGHT BOTH, 2026-09-07. The four was arithmetic its own case list above refutes.
+The "hit rate" contradicted the "not a rate" warning three lines below it — in the
+change whose entire purpose was publishing an honest figure. ⇒ Recorded rather
+than quietly corrected, because a document refuted by its own later text is the
+defect this tool detects.
+
+⇒ So the candidate count is an UPPER BOUND. Of the 7 opened by hand, 2 were real.
+A reader must open the named comments before believing any of the rest.
 
 ⚠ NOT A RATE. Seven is a small sample and I chose them — two were the headline
 cases and five were picked as ones I had not already touched. Do not divide.
