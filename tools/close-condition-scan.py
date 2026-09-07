@@ -68,7 +68,14 @@ CONDITION = re.compile(
     r"(?:#{1,6}[ ]*)?"
     r"(?:[⇒★⚠⛔→][ ]*)*"
     r"(?:#{1,6}[ ]*)?"
-    r"(?:\*\*|__)?[ ]*"
+    # ⛔ THE TRAILING `[ ]*` DEFEATED THE `^[ ]{0,3}` ANCHOR. Measured 2026-09-07:
+    # this fired on a line indented TEN spaces -- a QUOTED claim inside another
+    # comment's block -- because after `[ ]{0,3}` consumed three, the `[ ]*` after
+    # the bold marker consumed the rest. The anchor is the whole design ("a
+    # STRUCTURAL element of the document, not a phrase inside a sentence"), and an
+    # unbounded run of spaces makes any indent structural.
+    # ⇒ Found by READING a flagged issue (#93), not by re-reading the pattern.
+    r"(?:\*\*|__)?[ ]{0,2}"
     r"(?:done[ ]when"
     r"|closes?[ ]when"
     r"|closes?[ ]only[ ]when"
@@ -231,6 +238,17 @@ def self_test():
         ("⇒ **Closes when** the retracted bullet is struck in the body.", [], "BODY",
          "this repo's arrow+bold lead-in, taken from #271's real disposition"),
         ("", [], "NONE", "an empty body establishes nothing about a comment"),
+        # ⛔ THE INDENT ANCHOR, same defect as tools/correction-adopted.py's and
+        # inherited from here. Measured 2026-09-07: the trailing `[ ]*` after the
+        # bold marker consumed any indent the `^[ ]{0,3}` anchor was bounding, so a
+        # deeply-indented QUOTED line scored as a structural clause. No live
+        # instance on the board that day — a latent hole, fixed with the other.
+        ("          Done when the thing happens", [], "NONE",
+         "a 10-space-indented quotation is not a structural clause"),
+        ("      close condition: x", [], "NONE",
+         "a 6-space indent is not a structural clause"),
+        ("  ⇒ **Closes when** the bullet is struck", [], "BODY",
+         "normal markdown indent still counts"),
     ]
     failures = []
     for body, comments, expected, why in cases:
