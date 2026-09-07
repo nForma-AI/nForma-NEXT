@@ -234,8 +234,14 @@ section 'Repository self-checks'
 # instruments none of which is ever called is a citation network, not a toolchain.
 # These two are cheap, deterministic, and answer questions no reviewer reliably
 # answers by eye. ⚠ This pane still does not gate: exit code is always 0.
+# ⇒ check-handoff-rows.py joins this loop because THE DEFECT IT CATCHES SHIPPED
+# (#637): a snapshot row named `--by-state`, a flag that prints no totals, so three
+# correct numbers sat under a command that cannot produce any of them. A review bot
+# caught it; nothing here could. ⚠ It is the one checker in this loop that touches
+# the forge (~20s, one `gh` list per row) -- without a token its rows report
+# UNRUNNABLE and it exits 0, which is UNMEASURED, not a pass.
 for chk in scripts/check-tools-index.py scripts/check-goal-conformance.py \
-           scripts/check-onboard.py; do
+           scripts/check-onboard.py scripts/check-handoff-rows.py; do
   if [ ! -x "$chk" ] && [ ! -r "$chk" ]; then
     note "$chk not present — that check is UNMEASURED, not passing"
     continue
@@ -248,8 +254,29 @@ for chk in scripts/check-tools-index.py scripts/check-goal-conformance.py \
   # ⇒ A checker that could not open its subject was telling the operator it had
   # found a defect in it.
   out=$(python3 "$chk" 2>&1); rc=$?
+  # ⛔ A FOURTH OUTCOME, and it was hiding inside the first. A checker may exit 0
+  # having established only PART of what it set out to -- check-tools-index.py prints
+  # `PARTIAL  ... 1 leg(s) established NOTHING: header count -- not 'clean'` and exits
+  # 0 TODAY, and this loop has been printing `clean` over it. check-handoff-rows.py
+  # made it visible rather than introducing it: its `gating job` row holds an `<id>`
+  # placeholder, so it is UNRUNNABLE on EVERY run and the tool says so in words the
+  # caller then threw away.
+  # ⇒ The exit code cannot carry this: the run did not establish nothing (that is 2),
+  # and it did not find a defect (that is 1). It established SOME of it. So the caller
+  # reads the tool's own word for it -- which is why runmarker puts it on stderr.
+  # ⚠ `|| true` is load-bearing twice over: grep exits 1 on ZERO matches, which is the
+  # COMMON case here, and an assignment from a failing substitution aborts the script
+  # under `set -e`. This file does not set it today; a later edit that does would
+  # otherwise silently delete the rest of preflight.
+  partial=$(printf '%s\n' "$out" | grep -cE '(NFORMA-RESULT PARTIAL|^ *PARTIAL |UNRUNNABLE|established NOTHING)' || true)
+  partial=${partial:-0}
   case "$rc" in
-    0) ok "$(basename "$chk") clean" ;;
+    0) if [ "$partial" -gt 0 ]; then
+         note "$(basename "$chk") exited 0 but reports PARTIAL — some leg established NOTHING, so this is not 'clean':"
+         printf '%s\n' "$out" | grep -E '(PARTIAL|UNRUNNABLE|established NOTHING)' | head -2 | sed 's/^/        /'
+       else
+         ok "$(basename "$chk") clean"
+       fi ;;
     2) note "$(basename "$chk") established NOTHING (exit 2) — UNMEASURED, not clean and not a finding:"
        printf '%s\n' "$out" | grep -E '(VOID|⛔)' | head -2 | sed 's/^/        /' ;;
     *) bad "$(basename "$chk") FAILED (exit $rc):"
