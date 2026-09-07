@@ -59,11 +59,31 @@ ROLE_RE = r"(TEAMLEAD|ARCHITECT|DEVOPS|DX|DEV[1-5])"
 # ⇒ Three signature FORMS, all positional or explicitly performative. The bare-token form
 # is anchored to the start of a line in the TAIL only; the byline form may appear anywhere
 # because "Filed by X" is a claim of authorship wherever it sits.
+# ⛔ ALL THREE ARE ANCHORED TO A LINE, IN THE TAIL. None of them was, before review.
+# The un-anchored forms converted a MENTION into authorship, the one thing this tool
+# exists to avoid: `ARCHITECT, session \`x\`, measured this` matched mid-sentence, and
+# `measured by DEVOPS last week` — a statement about who took a reading — read as a
+# byline.
+#
+# ⛔⛔ AND THE FIRST FIX WAS WRONG IN THE OTHER DIRECTION, caught by RUNNING it rather
+# than re-reading it. Narrowing the verb list to filed|written|posted|appended dropped
+# three real signatures in one 75-comment window — `Replicated by TEAMLEAD, session …`,
+# `Withdrawn by TEAMLEAD, session …`, `Verified by TEAMLEAD, session …` — every one of
+# them as performative as `Filed by`.
+#
+# ★ SO THE DISCRIMINATOR IS POSITION, NOT VOCABULARY, which is what the docstring said
+# before I reached for a word list anyway. `Replicated by TEAMLEAD` STARTS a line in the
+# tail; `This was measured by DEVOPS last week` does not. Anchor the line and the verb
+# list can stay broad, because the sentence a mention lives in almost never begins with
+# the verb.
+# ⚠ The bound that remains, stated: a report that DOES start a tail line — `Measured by
+# DEVOPS on 2026-09-01.` — is indistinguishable from a byline here, and is read as one.
 SIG_TAIL = re.compile(rf"^\s*[*_>\s]*{ROLE_RE}\b", re.M)
-SIG_SESSION = re.compile(rf"{ROLE_RE}\s*,\s*session")
+SIG_SESSION = re.compile(rf"^\s*[*_>\s]*{ROLE_RE}\s*,\s*session", re.M)
 SIG_BYLINE = re.compile(
-    rf"(?:filed|written|posted|appended|measured|answered|reported|raised)\s+by\s+[*_]{{0,2}}{ROLE_RE}",
-    re.I)
+    rf"^\s*[*_>\s]*(?:filed|written|posted|appended|replicated|withdrawn|verified|"
+    rf"measured|answered|reported|raised|corrected)\s+by\s+[*_]{{0,2}}{ROLE_RE}",
+    re.I | re.M)
 MENTION = re.compile(rf"\b{ROLE_RE}\b")
 TAIL_LINES = 3
 
@@ -84,7 +104,7 @@ def author(body):
     is looking at position before looking at content."""
     lines = [l for l in body.strip().splitlines() if l.strip()]
     tail = "\n".join(lines[-TAIL_LINES:])
-    m = SIG_SESSION.search(tail) or SIG_TAIL.search(tail) or SIG_BYLINE.search(body)
+    m = SIG_SESSION.search(tail) or SIG_BYLINE.search(tail) or SIG_TAIL.search(tail)
     return m.group(1) if m else None
 
 
@@ -161,8 +181,26 @@ def main():
     # minutes earlier and makes two runs incomparable for reasons that have nothing to do
     # with the fleet.
     newest = max(r[0] for r in rows)
-    since = a.since or _minus_24h(newest)
+    if a.since:
+        since = normalise(a.since)
+        if since is None:
+            print(f"⛔ ESTABLISHED NOTHING — --since {a.since!r} is not an ISO instant.")
+            result("ESTABLISHED-NOTHING")
+            return 2
+    else:
+        since = _minus_24h(newest)
     signed, mentioned, unsigned, n = tally(rows, since)
+
+    # ⛔ AN EMPTY WINDOW IS VOID, NOT A SILENT FLEET, and the role loop below cannot say
+    # so — it would print nine SILENT lines and exit 1, which is a finding about the
+    # fleet drawn from a reading that contains no fleet. The self-test asserted this
+    # about tally(); nothing asserted it about the path a caller actually takes.
+    if n == 0:
+        print(f"⛔ ESTABLISHED NOTHING — zero comments fall in the window "
+              f"{since} → {newest}, out of {len(rows)} read.")
+        print("⚠ This is NOT a silent fleet. Widen --since, or check the clock that produced it.")
+        result("ESTABLISHED-NOTHING")
+        return 2
 
     print(f"── FLEET OUTPUT ── {len(rows)} comment(s) read from {a.repo}")
     print(f"   POPULATION  the {a.first} most-recently-updated OPEN issues and PRs, "
@@ -200,6 +238,24 @@ def _minus_24h(iso):
     return t.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def normalise(iso):
+    """Any ISO instant -> the exact `...Z` form the comparison needs, or None.
+
+    ⛔ tally() compares timestamps as STRINGS, which is correct only when every string
+    is in one form. `--since 2026-09-07T11:00:00+01:00` IS 10:00Z, but lexically it sorts
+    after `2026-09-07T10:30:00Z` and would silently drop a comment inside the window.
+    ⇒ An offset is not a formatting variation here; it is a different number."""
+    import datetime
+    txt = iso.strip()
+    try:
+        t = datetime.datetime.fromisoformat(txt.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=datetime.timezone.utc)
+    return t.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def self_test():
     """⛔ Two-sided, and the known-NEGATIVE is the real 2026-09-07 ARCHITECT case:
     13 mentions, 0 signatures. A mention-counter passes a suite of authors; only a
@@ -217,9 +273,17 @@ def self_test():
          "measured this on 2026-09-06 and ARCHITECT is the estate it describes.\n\n"
          "TEAMLEAD, session `15b69750`, nForma-NEXT, 2026-09-07", "TEAMLEAD"),
 
-        ("✅ an explicit byline anywhere in the body",
-         "*Filed by DX. The retraction-legibility half is the second read requested.*\n\nmore text",
+        ("✅ an explicit byline STARTING A TAIL LINE",
+         "more text\n\n---\n*Filed by DX. The retraction-legibility half is the second read.*",
          "DX"),
+
+        ("✅ REAL CASE (#580): `Replicated by` is as performative as `Filed by`",
+         "body\n\n---\nReplicated by TEAMLEAD, session `15b69750`, nForma-NEXT, 2026-09-06",
+         "TEAMLEAD"),
+
+        ("✅ REAL CASE (#287): `Verified by`, and the role is NOT the first token",
+         "body\n\n---\nVerified by TEAMLEAD, session `15b69750` — the successor named at `:180`",
+         "TEAMLEAD"),
 
         ("✅ a bare role token starting the last line",
          "a measurement\n\nDEVOPS", "DEVOPS"),
@@ -232,6 +296,15 @@ def self_test():
 
         ("✅ a blockquoted signature still counts — the tail regex allows `>` and emphasis",
          "text\n\n> *TEAMLEAD, session `abc`*", "TEAMLEAD"),
+        ("⛔ CONTROL an un-anchored `ROLE, session` mid-tail is a MENTION, not a signature",
+         "text\n\nAs ARCHITECT, session `abc`, measured it — but I am not ARCHITECT.\n"
+         "TEAMLEAD, session `15b69750`", "TEAMLEAD"),
+
+        ("⛔ CONTROL `measured by DEVOPS` reports an action; it does not claim authorship",
+         "This was measured by DEVOPS last week.\n\nplain body line", None),
+
+        ("✅ `Appended by DEV2` IS a performative byline and still counts",
+         "Appended by DEV2, session `abc`, 2026-09-07.\n\nbody", "DEV2"),
     ]
     ok = True
     for label, body, want in cases:
@@ -271,6 +344,15 @@ def self_test():
     ok &= good
     print(f"{'✅' if good else '❌'} ✅ CONTROL the window is anchored to the DATA, not the "
           f"clock — got {_minus_24h('2026-09-07T16:00:00Z')}")
+
+    _extra += 1
+    good = (normalise("2026-09-07T11:00:00+01:00") == "2026-09-07T10:00:00Z"
+            and normalise("2026-09-07T10:00:00Z") == "2026-09-07T10:00:00Z"
+            and normalise("not a date") is None)
+    ok &= good
+    print(f"{'✅' if good else '❌'} ⛔ CONTROL an OFFSET instant normalises to Z before the "
+          f"string compare — +01:00 11:00 → {normalise('2026-09-07T11:00:00+01:00')}, "
+          f"junk → {normalise('not a date')}")
 
     n = len(cases) + _extra
     print(f"\n{'all ' + str(n) + ' checks passed' if ok else 'FAILED'}")
