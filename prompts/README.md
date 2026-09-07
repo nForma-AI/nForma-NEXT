@@ -292,9 +292,15 @@ from memory**, and five of the six caught themselves mid-answer.
 ⇒ The three findings that bear directly on these files:
 
 - **The prompts document a protocol nobody runs and are silent on the mechanism
-  everybody runs.** `grep -ci` across `DX.md` / `DEV.md` / `ARCHITECT.md`:
+  everybody runs.** Across `DX.md` / `DEV.md` / `ARCHITECT.md`:
   `auto-wake` **0/0/0**, `retract` **0/0/0**, `cross-session` **1/0/0** — while
-  `BLOCKED` appears **8/10/8** and is dead in practice, in both directions.
+  `BLOCKED` appears ~~**8/10/8**~~ **6/6/6** and is dead in practice, in both directions.
+  ⛔ **The struck figure was `grep -ci`, which counts the English word *"blocked"*
+  beside the `STATE:` token.** Re-measured 2026-09-08 with `grep -c 'BLOCKED'`: **6 in
+  each of the three**, not 8/10/8. ⚠ The zeros are unaffected — a zero cannot be
+  inflated by case-folding — so #532's conclusion stands on its load-bearing half; it
+  is the one column that could be inflated that was. ⇒ A reading outlived its
+  measurement here because the count was quoted forward and the flag was not.
 - **Every pane is 83–95% `Bash`.** `Read` is 0 in four of six. A prompt describing
   file access in terms of Read/Grep describes nobody here.
 - **The wake loop has no terminal state** (ARCHITECT: 273 wakes, 65 messages), and
