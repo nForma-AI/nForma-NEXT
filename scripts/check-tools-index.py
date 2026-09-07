@@ -78,9 +78,13 @@ from pathlib import Path
 # crashed checker reports nothing at all (#502 B4, measured on a Windows 11 install).
 # ⇒ errors="replace" rather than a hard switch: a mangled glyph is a legible finding, an
 # exception is not.
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+# ⚠ EACH STREAM GUARDED SEPARATELY. `hasattr(sys.stdout, ...)` says nothing about
+# sys.stderr — a harness may replace one and not the other (this repo's own stubbed
+# suites capture streams), and the guarded form would then raise AttributeError from
+# inside the guard meant to prevent one.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 
 # ⇒ DEV5 wrote this block for #348; DEVOPS owns the file and this is the import site
 # offered for review. The shared predicate lives in tools/ so the two guards cannot

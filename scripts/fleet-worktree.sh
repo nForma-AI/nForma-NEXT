@@ -57,7 +57,8 @@ WT_DIR="$main_tree/.claude/worktrees"
 #   MISSING  no tree at all                                  -> create it
 where() {
   git worktree list --porcelain | awk -v want="$WT_DIR/$1" -v role="$1" '
-    /^worktree /{ p = $2
+    # ⛔ substr, NOT $2 — same truncation as the main_tree parse above, third site.
+    /^worktree /{ p = substr($0, 10)
       if (p == want) { found = 1; next }
       # HEURISTIC, and it is one: a path whose last element contains the role
       # token is PROBABLY that tree. Nothing binds a worktree to a role, so this

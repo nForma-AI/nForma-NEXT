@@ -33,7 +33,10 @@ else
   # ⛔ NOT basename "$toplevel" — in a worktree that is the worktree's directory
   # name ("devops"), not the repository ("nForma-NEXT"). The main tree is always
   # the first entry of `git worktree list --porcelain`.
-  main_tree=$(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2; exit}')
+  # ⛔ NOT `awk '{print $2}'` — `--porcelain` puts the path in the REST of the line, so
+  # field 2 truncates at the first space (#502 C2). Fixed in fleet-worktree.sh first;
+  # this second site was found by sweeping for the pattern rather than the file.
+  main_tree=$(git worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p')
   repo=$(basename "${main_tree:-$toplevel}")
   branch=$(git branch --show-current 2>/dev/null)
   ok "repo=$repo branch=${branch:-<detached>} — THIS TREE ONLY"
