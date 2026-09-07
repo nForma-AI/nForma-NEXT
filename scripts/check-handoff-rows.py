@@ -172,11 +172,12 @@ def check_row(name, value, cmd, runner):
     # ⇒ THREE INDEPENDENT SIGNALS THAT NOTHING WAS ESTABLISHED, deliberately from
     # different mechanisms so one being wrong does not silence the other two:
     #   · exit 2 is THIS ESTATE'S convention -- "established nothing", never all-clear
+    #   · exit 124 is OUR OWN timeout, raised as an exception and converted here
     #   · exit 127 is the RUNTIME saying the command does not exist
     #   · empty stdout is the COMMAND saying it produced no value
     # A row whose command could not reach its data must never read as a finding about
     # the row. MISMATCH accuses the document; UNRUNNABLE accuses nothing.
-    if rc in (2, 127):
+    if rc in (2, 124, 127):
         return "UNRUNNABLE", [f"exit {rc} — established nothing"
                               + (f": {err.strip().splitlines()[0][:90]}" if err.strip() else "")]
     if out.strip() == "":
@@ -196,8 +197,33 @@ def shell(cmd):
     empty stdout, an auth error on stderr — became "output that contains no integer",
     which is MISMATCH. Values are written to stdout; explanations of failure are
     written to stderr. Judging a value against stderr is judging it against prose."""
-    p = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+    # ⛔ TimeoutExpired is an EXCEPTION, not a returncode. Uncaught, one hung `gh`
+    # takes the whole check down mid-run and every row after it goes unreported --
+    # a crash where the honest answer is "this row established nothing".
+    try:
+        p = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+    except subprocess.TimeoutExpired:
+        return "", "timed out after 300s", 124
     return p.stdout, p.stderr, p.returncode
+
+
+def _timeout_probe():
+    """Run a command that WILL exceed the cap, so the exception path is exercised.
+
+    ⚠ Deliberately not `sleep 300` -- a self-test that takes five minutes is a
+    self-test nobody runs. The cap is monkeypatched down, which tests the same
+    `except` clause the real cap reaches."""
+    real = subprocess.run
+
+    def capped(cmd, **kw):
+        kw["timeout"] = 0.05
+        return real(cmd, **kw)
+
+    subprocess.run = capped
+    try:
+        return shell("sleep 5")
+    finally:
+        subprocess.run = real
 
 
 def main():
@@ -327,6 +353,10 @@ def self_test():
 
         ("⛔ CONTROL stderr is NOT searched for the value — prose is not a measurement",
          "454", "gh pr list --json number --jq length", "0", "the answer is 454", 0, "DRIFTED"),
+
+        ("⚠ a command that HANGS is UNRUNNABLE, not a crash that eats every later row",
+         "454", "gh pr list --json number --jq length", "", "timed out after 300s", 124,
+         "UNRUNNABLE"),
     ]
     ok = True
     for label, value, cmd, out, err, rc, want in cases:
@@ -374,6 +404,16 @@ def self_test():
     ok &= bool(good)
     print(f"{'✅' if good else '❌'} ✅ CONTROL a trailing `(...)` annotation is stripped from "
           f"the command — got {ann[0][2]!r}" if ann else "❌ no row parsed")
+
+    # ⛔ THE REAL subprocess PATH, not the fake runner. The case above proves judge()
+    # handles rc 124; only this proves shell() converts the EXCEPTION into it. Same
+    # defect, two layers -- and the fake runner can never reach the second.
+    _extra += 1
+    _o, _e, _rc = _timeout_probe()
+    good = (_rc == 124 and _o == "")
+    ok &= good
+    print(f"{'✅' if good else '❌'} ⚠ CONTROL shell() converts a real TimeoutExpired into "
+          f"rc 124 with empty stdout — got rc={_rc}, stdout={_o!r}")
 
     n = len(cases) + _extra
     print(f"\n{'all ' + str(n) + ' checks passed' if ok else 'FAILED'}")
