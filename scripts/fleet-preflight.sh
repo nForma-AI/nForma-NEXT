@@ -234,8 +234,14 @@ section 'Repository self-checks'
 # instruments none of which is ever called is a citation network, not a toolchain.
 # These two are cheap, deterministic, and answer questions no reviewer reliably
 # answers by eye. ⚠ This pane still does not gate: exit code is always 0.
+# ⇒ check-handoff-rows.py joins this loop because THE DEFECT IT CATCHES SHIPPED
+# (#637): a snapshot row named `--by-state`, a flag that prints no totals, so three
+# correct numbers sat under a command that cannot produce any of them. A review bot
+# caught it; nothing here could. ⚠ It is the one checker in this loop that touches
+# the forge (~20s, one `gh` list per row) -- without a token its rows report
+# UNRUNNABLE and it exits 0, which is UNMEASURED, not a pass.
 for chk in scripts/check-tools-index.py scripts/check-goal-conformance.py \
-           scripts/check-onboard.py; do
+           scripts/check-onboard.py scripts/check-handoff-rows.py; do
   if [ ! -x "$chk" ] && [ ! -r "$chk" ]; then
     note "$chk not present — that check is UNMEASURED, not passing"
     continue

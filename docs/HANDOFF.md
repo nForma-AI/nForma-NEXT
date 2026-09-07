@@ -25,7 +25,10 @@ main CI rollup    success gh run list --branch main --limit 1 --json conclusion
 quarantine        25     grep -c '^tools/' tools/QUARANTINE.txt
 close conditions  NONE 13 · BURIED 0 · BODY 90    python3 tools/close-condition-scan.py
 runnable          ASSERTED 34 · RUNNABLE 25 · NO-CONDITION 44   python3 tools/runnable-condition.py
-no close path     21 of 103                       python3 tools/close-mechanism.py
+no close path     NO-CONDITION 13 · OPERATOR 8    python3 tools/close-mechanism.py
+                         ⚠ this row read `21 of 103` until 2026-09-07. The tool prints the
+                         two tags and never their sum — so the whole value was ours, under
+                         a command that emits no `N of M` at all. Caught by #637's checker.
 gating job        76s      gh run view <id> --json jobs   (job "hermetic suites (gating)")
 ```
 
