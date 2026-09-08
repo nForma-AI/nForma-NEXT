@@ -147,6 +147,34 @@ lineage.** `bash scripts/gate-selftests.sh` reports `ran 6 subject(s)`; `SUBJ_DI
 ⇒ *The reproduction command is not the script name*, and a row citing the bare form measures a
 tenth of the population it claims to.
 
+## ⚠ `gh` and harness traps relayed from #582 — which ones I could reproduce HERE
+
+#582 relayed 24 defects from a 20-hour session on another estate. **14 of them (§B shell, §C `gh`)
+are estate-independent** and cost a pane here the same. Six were already recorded in this tree; the
+rest are below, split by whether I could reproduce them from this pane rather than by whether they
+sounded true.
+
+**All rows measured 2026-09-08 01:54Z**, on this machine, by the command in the row. ⚠ A number without a date
+is a rumour and a verdict without its validator establishes nothing — so each carries both.
+
+| | claim | reproduced here? — with the command |
+|---|---|---|
+| **C7** | `gh api … \| head -c N` truncates via SIGPIPE and yields "corrupt JSON" that is nothing of the sort | ✅ **YES.** `gh api repos/nForma-AI/nForma-NEXT/issues/1 \| head -c 120 > f` → `json.load(f)` raises `JSONDecodeError: Unterminated string starting at: line 1 column 87`. ⛔ CONTROL: the same call redirected to a file first parses, **9,318 bytes**, `issue #1`. ⇒ **Write to a file, then read.** |
+| **B4a** | no clean wait primitive; a long call hits the harness ceiling | ✅ **YES.** `ls .../tasks/*.output \| wc -l` → **29** backgrounded-command outputs in this session, each one a call that crossed the 120s cap |
+| **B4b** | *"foreground `sleep` is blocked"* | ⛔ **NO.** `sleep 2; echo $?` → **0**. ⛔ CONTROL: `true; echo $?` → 0, so the probe can report a success. **Relayed and not reproduced** — recorded as refuted rather than repeated |
+| **C1** | run logs are unavailable while the run is `in_progress`, **even for a job that has already failed** — cost ~40 min of blocked diagnosis | ⚠ relayed; needs a live in-progress run with a failed sibling, which I cannot force |
+| **C2** | `gh run rerun --job <id>` is rejected while the run is `in_progress` | ⚠ relayed, same reason |
+| **C4** | `gh run rerun --failed` re-runs CONSUMERS but not PROVISIONERS | ⚠ relayed; no ephemeral-runner pool here to test against |
+
+⛔ **B6/B7 (two `ruff` versions; `check` and `format --check` are separate gates) are FOREIGN.** This
+repository has no `ruff.toml` and no `pyproject.toml` — there is nothing here for them to be true of.
+⇒ They belong to the estate that filed them.
+
+★ **THE SPLIT IS THE POINT.** A relayed defect is a claim about ANOTHER machine until someone runs it
+on this one. Two of the six changed status under that test: C7 became a reproduction with a command
+attached, and B4b became **refuted** — and B4b is the one my own harness notes assert. ⇒ *Neither
+the source nor the local documentation is evidence; the run is.*
+
 ## ⚠ Reading a pane's context % — the default `lines` does not reach it
 
 ⛔ **The only place this was written down was a QUARANTINED script.** #451 §1 recorded it as a
