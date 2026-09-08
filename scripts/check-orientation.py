@@ -140,6 +140,21 @@ def main():
             "KNOWN-POSITIVE FAILED: HEAD must resolve as a ref in any git repo"
         assert not is_git_ref("tools/README.md"), \
             "KNOWN-NEGATIVE FAILED: a real path must NOT be classified as a ref"
+        # ⛔ #316 ATTACK B — the pin leg passed on REVERSED doctrine. Measured
+        # 2026-09-08: rewriting BOTH endorsed lines to "⛔ DEPRECATED — NEVER do
+        # this: …" left this checker reporting `ok  an ✅-marked pin form` and exit 0,
+        # with the required gate green. It was reading the presence of a string, not
+        # the polarity of a claim.
+        _ok_line = ("git archive <ref> tools/ | tar -x -C /tmp/pin  &&  python3 "
+                    "/tmp/pin/tools/x.py     ✅ markers emit")
+        assert _endorsed_pin_line(_ok_line), \
+            "KNOWN-POSITIVE FAILED: an endorsed pin form must count"
+        assert not _endorsed_pin_line("⛔ DEPRECATED — NEVER do this: " + _ok_line), \
+            "KNOWN-NEGATIVE FAILED (#316 ATTACK B): a NEGATED form must not count"
+        # ⚠ and the negation must be POSITIONAL — a ⛔ AFTER the form is commentary on
+        # something else and must not disqualify a genuine endorsement.
+        assert _endorsed_pin_line(_ok_line + "   ⛔ but never with --depth 1"), \
+            "a ⛔ AFTER the endorsed form must not disqualify it"
         if is_git_ref("origin/main"):
             print("self-test ok — origin/main present, the real CLAUDE.md token was exercised")
         else:
@@ -419,6 +434,39 @@ def check_no_ci_claim():
         print("  ⚠ no workflows and no claim — nothing asserted, nothing to check")
     return "clean"
 
+_ENDORSED = (
+    re.compile(r"git\s+archive\s+\S+\s+tools/[^\n]*\|\s*tar"),
+    re.compile(r"git\s+show\s+\S*:tools/[^\n]*runmarker"),
+)
+
+# ⛔ A NEGATION BEFORE THE FORM REVERSES IT. Requiring ✅ *somewhere on the line*
+# is not enough, because a counter-example carries both glyphs:
+#     "⛔ DEPRECATED — NEVER do this: git archive <ref> tools/ | tar …  ✅ markers emit"
+# Measured 2026-09-08 (#316 ATTACK B): rewriting BOTH endorsed lines that way left
+# `check-orientation.py` reporting `ok  an ✅-marked pin form` and exit 0 — the
+# doctrine fully reversed and the required gate green. ⇒ It was measuring the
+# presence of a string, not the polarity of a claim.
+_NEGATION = re.compile(r"⛔|\bNEVER\b|\bDEPRECATED\b|\bDo not\b|\bDon't\b", re.I)
+
+def _endorsed_pin_line(t):
+    """A pin form counts only where ✅ marks it and nothing NEGATES it first.
+
+    ★ POSITION, NOT PRESENCE. The negation is checked in the text BEFORE the
+    matched form, because that is what reverses it — a ⛔ appearing after the
+    command is commentary on something else and must not disqualify a genuine
+    endorsement. This file's own docstring already calls the ⛔/✅ glyphs
+    "load-bearing content rather than formatting"; this reads that polarity
+    instead of assuming it.
+    """
+    for line in t.splitlines():
+        if "✅" not in line:
+            continue
+        for pat in _ENDORSED:
+            m = pat.search(line)
+            if m and not _NEGATION.search(line[: m.start()]):
+                return True
+    return False
+
 def check_pin_doctrine():
     """True if tools/README.md has LOST the correct directory-pin form (#291).
 
@@ -464,24 +512,6 @@ def check_pin_doctrine():
     # of them fires on the REPAIRED state — measured: deleting only the archive line
     # while keeping the runmarker line left the doctrine intact and exited 1. That is
     # the failure mode this check's own docstring says to prefer AGAINST.
-    _ENDORSED = (
-        re.compile(r"git\s+archive\s+\S+\s+tools/[^\n]*\|\s*tar"),
-        re.compile(r"git\s+show\s+\S*:tools/[^\n]*runmarker"),
-    )
-
-    def _endorsed_pin_line(t):
-        """A pin form counts only on a line that also carries ✅.
-
-        ⛔ Presence alone is satisfiable by a MENTION: a line reading
-        "⛔ Never use: git archive <ref> tools/ | tar -x" passed the previous
-        version while the doctrine said the opposite. The docstring above already
-        calls the ⛔/✅ glyphs "load-bearing content rather than formatting" —
-        this reads the polarity it was already relying on. Position, not care.
-        """
-        for line in t.splitlines():
-            if "✅" in line and any(p.search(line) for p in _ENDORSED):
-                return True
-        return False
 
     required = [
         ("an ✅-marked pin form (either endorsed one)", _endorsed_pin_line),
