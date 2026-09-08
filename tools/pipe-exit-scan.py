@@ -129,9 +129,9 @@ def pipeline_status_read(line):
 SUBST_OPEN = re.compile(r"\$\((?!\()|`")
 
 
-def _closed_substitution_ends(seg):
-    """End offsets of every substitution that CLOSES within this segment."""
-    ends, i, n = [], 0, len(seg)
+def _substitution_spans(seg):
+    """(start, end) for every substitution that CLOSES within this segment."""
+    spans, i, n = [], 0, len(seg)
     while i < n:
         if seg.startswith("$(", i) and not seg.startswith("$((", i):
             depth, j = 1, i + 2
@@ -142,31 +142,45 @@ def _closed_substitution_ends(seg):
                     depth -= 1
                 j += 1
             if depth == 0:
-                ends.append(j)
+                spans.append((i, j))
             i = j
         elif seg[i] == "`":
             j = seg.find("`", i + 1)
             if j == -1:
                 break
-            ends.append(j + 1)
+            spans.append((i, j + 1))
             i = j + 1
         else:
             i += 1
-    return ends
+    return spans
 
 
 def substitution_status_read(line):
     """Does `$?` here read the status of a COMMAND SUBSTITUTION that ran first?
 
-    Same segment split as `pipeline_status_read`, and the same shape of answer: the
-    verdict comes from ORDER, not from the presence of the two tokens."""
+    ⛔ EVERY `$?` IS JUDGED AGAINST THE SPAN THAT CONTAINS IT, not against "was there
+    an earlier one". Review of #375's first version found both halves of that shortcut:
+
+        printf '%s\n' "$(true)" "$(printf '%s' "$?")"
+              the `$?` is INSIDE the second span — it reads the first substitution's
+              status, which is what that code MEANS. The old test saw a span closed
+              before it and reported a defect. FALSE POSITIVE.
+
+        "$(a)$?" where an earlier `$?` sits inside a span
+              the old test returned on the first match and never reached the real one.
+              MISSED.
+
+    ⇒ Spans are ranges; each read is classified independently."""
     segs = re.split(r"(?<![|&])[;&](?![&|])|&&", line)
     for seg in segs:
-        m = DOLLAR_Q.search(seg)
-        if not m:
+        spans = _substitution_spans(seg)
+        if not spans:
             continue
-        if any(e <= m.start() for e in _closed_substitution_ends(seg)):
-            return True
+        for m in DOLLAR_Q.finditer(seg):
+            if any(a <= m.start() < b for a, b in spans):
+                continue                      # inside a span: it is the PREVIOUS status
+            if any(b <= m.start() for _, b in spans):
+                return True                   # a span closed first and reset it
     return False
 
 
@@ -515,15 +529,22 @@ def selftest():
     # this leg and report a count carrying no information.
     subst = scan_shell(SELFTEST_SUBST)
     subst_real = [h for h in subst if "SUBSTITUTION" in h[2]]
-    if len(subst_real) == 2:
-        print(f"  ok    substitution known-positive: 2 findings in {SELFTEST_SUBST}")
+    # ⛔ THE LINES, NOT THE COUNT. `len(...) == 2` passes when a regression misses one
+    # required positive and fires on one known-negative — the two errors cancel and the
+    # leg reports ok. A count cannot be re-verified; a set can (#636).
+    SUBST_EXPECTED = {9, 13, 29}
+    if {n_ for n_, _, _ in subst_real} == SUBST_EXPECTED:
+        print(f"  ok    substitution known-positive: {len(subst_real)} findings at lines "
+              f"{sorted(SUBST_EXPECTED)} in {SELFTEST_SUBST}")
         for n_, s_, _ in subst_real:
             print(f"          L{n_}: {s_[:72]}")
-        print("  ok    substitution known-negative: 0 of 4 fired — `x=$(foo $?)` (the read is "
-              "INSIDE the span), `RC=$?`, a `$RC` printf, and `$((1+2)) $?`")
+        print("  ok    substitution known-negative: 0 of 5 fired — `x=$(foo $?)`, `RC=$?`, a "
+              "`$RC` printf, `$((1+2)) $?`, and the reviewer's `\"$(true)\" \"$(printf %s \"$?\")\"` "
+              "where the read is inside the SECOND span")
     else:
-        print(f"  FAIL  substitution: {len(subst_real)} findings, expected exactly 2 — "
-              f"either the specimen does not fire or a known-negative does")
+        print(f"  FAIL  substitution: fired on lines {sorted(n_ for n_, _, _ in subst_real)}, "
+              f"expected exactly {sorted(SUBST_EXPECTED)} — either the specimen does not fire "
+              f"or a known-negative does")
         ok = False
 
     # ── the subshell matcher, both directions in one fixture ─────────────────

@@ -21,3 +21,12 @@ RC=$?
 printf "  %-34s rc=%s\n" "$(basename x)" "$RC"
 # arithmetic expansion is not a command substitution.
 echo $((1+2)) $?
+
+# ── Added after review of #375's first version. Both cases came from the reviewer
+#    and both were WRONG in the first implementation.
+# ⛔ POSITIVE, and it was MISSED: the first `$?` sits inside a span, so a predicate
+#    that returned on the first match never reached the real read outside it.
+echo "$(a $?)" "$?"
+# ✅ NEGATIVE, and it was a FALSE POSITIVE: this `$?` is inside the SECOND span — it
+#    reads the first substitution's status, which is what the code means.
+printf '%s\n' "$(true)" "$(printf '%s' "$?")"
