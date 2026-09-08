@@ -28,7 +28,29 @@ broader (`starts with a slash`).
 
 Run: python3 tools/test_bootstrap_audit.py
 """
-# SUITE-DEPENDS: needs a live Daintree pane registry; a fake would make its control pass without the thing it controls for
+# ⛔ THE `# SUITE-DEPENDS:` MARKER WAS REMOVED HERE, 2026-09-08, and the reason it
+# carried is no longer true of this suite. It read:
+#
+#     needs a live Daintree pane registry; a fake would make its control pass
+#     without the thing it controls for
+#
+# Measured, both directions, because "it passes" is not enough — a suite can pass by
+# SKIPPING the legs that need the thing, which is precisely what that reason warns of:
+#
+#     with a live registry            rc 0 · 12 check lines
+#     env -i, HOME=/nonexistent       rc 0 · 12 check lines · output BYTE-IDENTICAL
+#     ⛔ CONTROL, same bare env:      test_stranded_branches.py -> rc 1,
+#                                     FileNotFoundError: 'gh'   (a real dependency)
+#
+# ⇒ No leg of this suite reads the registry. The declaration excluded it from the
+# gating population for a dependency it does not have.
+#
+# ★ WHY THAT MATTERED: #20's close condition names this file by name — "CALLER THAT
+# STILL RUNS IT (#381): tools/bootstrap-audit.py classifying a deliberately broken
+# bootstrap and reporting the failure, IN A GATED SUITE. Note test_bootstrap_audit
+# currently declares # SUITE-DEPENDS: and is therefore gated nowhere (#286) — so the
+# caller exists and does not run." That was written 2026-08-20 and was still true
+# 19 days later.
 
 import importlib.util
 import os
