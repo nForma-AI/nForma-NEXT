@@ -147,6 +147,31 @@ lineage.** `bash scripts/gate-selftests.sh` reports `ran 6 subject(s)`; `SUBJ_DI
 ⇒ *The reproduction command is not the script name*, and a row citing the bare form measures a
 tenth of the population it claims to.
 
+## ⚠ `gh` and harness traps relayed from #582 — which ones I could reproduce HERE
+
+#582 relayed 24 defects from a 20-hour session on another estate. **14 of them (§B shell, §C `gh`)
+are estate-independent** and cost a pane here the same. Six were already recorded in this tree; the
+rest are below, split by whether I could reproduce them from this pane rather than by whether they
+sounded true.
+
+| | claim | reproduced here? |
+|---|---|---|
+| **C7** | `gh api … \| head -c N` truncates via SIGPIPE and yields "corrupt JSON" that is nothing of the sort | ✅ **YES.** `head -c 120` → `JSONDecodeError: Unterminated string`; the same call written to a FILE parses (9,318 bytes). ⇒ **Write to a file, then read.** |
+| **B4a** | no clean wait primitive; a long `sleep` hits the harness ceiling | ✅ **YES** — this session produced **29** backgrounded-command outputs, every one a call that crossed the 120s cap |
+| **B4b** | *"foreground `sleep` is blocked"* | ⛔ **NO.** Bare `sleep 2` returns **rc 0** here, with `true` as the control. **Relayed and not reproduced** — recorded as such rather than repeated |
+| **C1** | run logs are unavailable while the run is `in_progress`, **even for a job that has already failed** — cost ~40 min of blocked diagnosis | ⚠ relayed; needs a live in-progress run with a failed sibling, which I cannot force |
+| **C2** | `gh run rerun --job <id>` is rejected while the run is `in_progress` | ⚠ relayed, same reason |
+| **C4** | `gh run rerun --failed` re-runs CONSUMERS but not PROVISIONERS | ⚠ relayed; no ephemeral-runner pool here to test against |
+
+⛔ **B6/B7 (two `ruff` versions; `check` and `format --check` are separate gates) are FOREIGN.** This
+repository has no `ruff.toml` and no `pyproject.toml` — there is nothing here for them to be true of.
+⇒ They belong to the estate that filed them.
+
+★ **THE SPLIT IS THE POINT.** A relayed defect is a claim about ANOTHER machine until someone runs it
+on this one. Two of the six changed status under that test: C7 became a reproduction with a command
+attached, and B4b became **refuted** — and B4b is the one my own harness notes assert. ⇒ *Neither
+the source nor the local documentation is evidence; the run is.*
+
 ## ⚠ Reading a pane's context % — the default `lines` does not reach it
 
 ⛔ **The only place this was written down was a QUARANTINED script.** #451 §1 recorded it as a
