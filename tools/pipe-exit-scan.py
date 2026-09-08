@@ -104,6 +104,86 @@ def pipeline_status_read(line):
     return False
 # `${PIPESTATUS[n]}` — bash-only. Empty in zsh, and empty is not zero.
 
+# ── The SUBSTITUTION clobber — same consequence, different mechanism (#375) ──
+#
+# ⛔ THE SPECIMEN, measured by DEVOPS while citing this very instrument an hour earlier:
+#
+#     python3 "$s" --self-test --zzz-not-a-flag >/dev/null 2>&1
+#     printf "  %-34s rc=%s\n" "$(basename $s)" "$?"
+#
+# `$(basename $s)` is evaluated FIRST and resets `$?`. Every code printed was
+# `basename`'s 0, not the subject's — the true values were 2, 2, 2, 2, 0, 0, and two
+# of those zeros were real defects.
+#
+# ★ NOTHING IS PIPED HERE, so `pipeline_status_read` above cannot see it. Same class,
+# same consequence — a confident reading of the WRONG process's exit code — and this
+# file's population was defined by the SYNTAX it was first seen in rather than by the
+# QUESTION it answers. That is #307's glob-that-did-not-recurse, in a regex.
+#
+# ⚠ THE SPAN MUST BE CLOSED BEFORE THE READ, and that is not a nicety:
+#     x=$(foo $?)      the `$?` is INSIDE the substitution — it is the PREVIOUS
+#                      command's status and is correct. Flagging it would fire on an
+#                      agent doing the right thing, which this file calls the worst
+#                      kind of guard.
+#     f "$(g)" "$?"    the span CLOSES first — the `$?` is g's. The defect.
+SUBST_OPEN = re.compile(r"\$\((?!\()|`")
+
+
+def _substitution_spans(seg):
+    """(start, end) for every substitution that CLOSES within this segment."""
+    spans, i, n = [], 0, len(seg)
+    while i < n:
+        if seg.startswith("$(", i) and not seg.startswith("$((", i):
+            depth, j = 1, i + 2
+            while j < n and depth:
+                if seg[j] == "(":
+                    depth += 1
+                elif seg[j] == ")":
+                    depth -= 1
+                j += 1
+            if depth == 0:
+                spans.append((i, j))
+            i = j
+        elif seg[i] == "`":
+            j = seg.find("`", i + 1)
+            if j == -1:
+                break
+            spans.append((i, j + 1))
+            i = j + 1
+        else:
+            i += 1
+    return spans
+
+
+def substitution_status_read(line):
+    """Does `$?` here read the status of a COMMAND SUBSTITUTION that ran first?
+
+    ⛔ EVERY `$?` IS JUDGED AGAINST THE SPAN THAT CONTAINS IT, not against "was there
+    an earlier one". Review of #375's first version found both halves of that shortcut:
+
+        printf '%s\n' "$(true)" "$(printf '%s' "$?")"
+              the `$?` is INSIDE the second span — it reads the first substitution's
+              status, which is what that code MEANS. The old test saw a span closed
+              before it and reported a defect. FALSE POSITIVE.
+
+        "$(a)$?" where an earlier `$?` sits inside a span
+              the old test returned on the first match and never reached the real one.
+              MISSED.
+
+    ⇒ Spans are ranges; each read is classified independently."""
+    segs = re.split(r"(?<![|&])[;&](?![&|])|&&", line)
+    for seg in segs:
+        spans = _substitution_spans(seg)
+        if not spans:
+            continue
+        for m in DOLLAR_Q.finditer(seg):
+            if any(a <= m.start() < b for a, b in spans):
+                continue                      # inside a span: it is the PREVIOUS status
+            if any(b <= m.start() for _, b in spans):
+                return True                   # a span closed first and reset it
+    return False
+
+
 # ── Lost VARIABLE STATE, the sibling defect ──────────────────────────────────
 #
 # ⛔ `cmd | while read ...; done` runs the loop body in a SUBSHELL. Every
@@ -316,6 +396,10 @@ def scan_transcripts(limit_hours=None, project=None):
                         elif PIPESTATUS.search(code):
                             hits.append((os.path.basename(path)[:8], ln, src.strip(),
                                          "PIPESTATUS in an EXECUTED command"))
+                        elif substitution_status_read(code):
+                            hits.append((os.path.basename(path)[:8], ln, src.strip(),
+                                         "$? read after a COMMAND SUBSTITUTION, in an "
+                                         "EXECUTED command — the substitution ran first"))
         if len(hits) > before:
             per[base] = len(hits) - before
     return hits, per
@@ -361,6 +445,9 @@ def scan_shell(path):
             hits.append((n, raw.strip(), "$? read after a pipeline — that is the LAST element's status"))
         elif PIPESTATUS.search(code):
             hits.append((n, raw.strip(), "PIPESTATUS — bash-only; expands EMPTY in zsh, and empty is not zero"))
+        elif substitution_status_read(code):
+            hits.append((n, raw.strip(), "$? read after a COMMAND SUBSTITUTION — the substitution "
+                                         "ran first and reset it (#375)"))
     # ⛔ Second matcher, second defect. Kept as its own pass because it needs the
     # WHOLE file (function bodies, and what is read after the loop), which the
     # line-at-a-time loop above structurally cannot see.
@@ -397,6 +484,8 @@ SELFTEST_POSITIVE = "tools/testdata/pipe-exit-positive.sh"
 # ⛔ Its own fixture, holding POSITIVES AND NEGATIVES together: a fixture of only
 # positives cannot distinguish "detects the defect" from "fires on every while loop".
 SELFTEST_SUBSHELL = "tools/testdata/subshell-positive.sh"
+# ⛔ #375: the MEASURED specimen, not a reconstruction — the report requires that.
+SELFTEST_SUBST = "tools/testdata/subst-exit-positive.sh"
 SELFTEST_NEGATIVE = "tools/README.md"
 
 
@@ -430,6 +519,34 @@ def selftest():
     else:
         print(f"  FAIL  known-negative: fired on prose about the trap — {neg}")
         ok = False
+    # ── the SUBSTITUTION clobber, both directions in one fixture (#375) ──────
+    #
+    # ⛔ The fixture's first block is DEVOPS's measured specimen verbatim. Its
+    # known-negatives are the two that decide whether this predicate is usable at
+    # all: `x=$(foo $?)` reads the PREVIOUS command's status and is CORRECT, and a
+    # `$?` captured to a variable before any substitution is the shape #375 names.
+    # ⚠ Without them a predicate that fired on every `$?` in the repo would pass
+    # this leg and report a count carrying no information.
+    subst = scan_shell(SELFTEST_SUBST)
+    subst_real = [h for h in subst if "SUBSTITUTION" in h[2]]
+    # ⛔ THE LINES, NOT THE COUNT. `len(...) == 2` passes when a regression misses one
+    # required positive and fires on one known-negative — the two errors cancel and the
+    # leg reports ok. A count cannot be re-verified; a set can (#636).
+    SUBST_EXPECTED = {9, 13, 29}
+    if {n_ for n_, _, _ in subst_real} == SUBST_EXPECTED:
+        print(f"  ok    substitution known-positive: {len(subst_real)} findings at lines "
+              f"{sorted(SUBST_EXPECTED)} in {SELFTEST_SUBST}")
+        for n_, s_, _ in subst_real:
+            print(f"          L{n_}: {s_[:72]}")
+        print("  ok    substitution known-negative: 0 of 5 fired — `x=$(foo $?)`, `RC=$?`, a "
+              "`$RC` printf, `$((1+2)) $?`, and the reviewer's `\"$(true)\" \"$(printf %s \"$?\")\"` "
+              "where the read is inside the SECOND span")
+    else:
+        print(f"  FAIL  substitution: fired on lines {sorted(n_ for n_, _, _ in subst_real)}, "
+              f"expected exactly {sorted(SUBST_EXPECTED)} — either the specimen does not fire "
+              f"or a known-negative does")
+        ok = False
+
     # ── the subshell matcher, both directions in one fixture ─────────────────
     sub = scan_shell_subshell(SELFTEST_SUBSHELL)
     if len(sub) == 3:
