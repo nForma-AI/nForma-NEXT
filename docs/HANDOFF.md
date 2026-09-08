@@ -154,11 +154,14 @@ are estate-independent** and cost a pane here the same. Six were already recorde
 rest are below, split by whether I could reproduce them from this pane rather than by whether they
 sounded true.
 
-| | claim | reproduced here? |
+**All rows measured 2026-09-08 01:54Z**, on this machine, by the command in the row. ⚠ A number without a date
+is a rumour and a verdict without its validator establishes nothing — so each carries both.
+
+| | claim | reproduced here? — with the command |
 |---|---|---|
-| **C7** | `gh api … \| head -c N` truncates via SIGPIPE and yields "corrupt JSON" that is nothing of the sort | ✅ **YES.** `head -c 120` → `JSONDecodeError: Unterminated string`; the same call written to a FILE parses (9,318 bytes). ⇒ **Write to a file, then read.** |
-| **B4a** | no clean wait primitive; a long `sleep` hits the harness ceiling | ✅ **YES** — this session produced **29** backgrounded-command outputs, every one a call that crossed the 120s cap |
-| **B4b** | *"foreground `sleep` is blocked"* | ⛔ **NO.** Bare `sleep 2` returns **rc 0** here, with `true` as the control. **Relayed and not reproduced** — recorded as such rather than repeated |
+| **C7** | `gh api … \| head -c N` truncates via SIGPIPE and yields "corrupt JSON" that is nothing of the sort | ✅ **YES.** `gh api repos/nForma-AI/nForma-NEXT/issues/1 \| head -c 120 > f` → `json.load(f)` raises `JSONDecodeError: Unterminated string starting at: line 1 column 87`. ⛔ CONTROL: the same call redirected to a file first parses, **9,318 bytes**, `issue #1`. ⇒ **Write to a file, then read.** |
+| **B4a** | no clean wait primitive; a long call hits the harness ceiling | ✅ **YES.** `ls .../tasks/*.output \| wc -l` → **29** backgrounded-command outputs in this session, each one a call that crossed the 120s cap |
+| **B4b** | *"foreground `sleep` is blocked"* | ⛔ **NO.** `sleep 2; echo $?` → **0**. ⛔ CONTROL: `true; echo $?` → 0, so the probe can report a success. **Relayed and not reproduced** — recorded as refuted rather than repeated |
 | **C1** | run logs are unavailable while the run is `in_progress`, **even for a job that has already failed** — cost ~40 min of blocked diagnosis | ⚠ relayed; needs a live in-progress run with a failed sibling, which I cannot force |
 | **C2** | `gh run rerun --job <id>` is rejected while the run is `in_progress` | ⚠ relayed, same reason |
 | **C4** | `gh run rerun --failed` re-runs CONSUMERS but not PROVISIONERS | ⚠ relayed; no ephemeral-runner pool here to test against |
