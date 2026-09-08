@@ -244,6 +244,41 @@ belongs in `goals/README.md`, and is deliberately **not** written by the pane th
 returns 0* — can be satisfied by stripping labels with no rule in place, which reproduces the
 original gap with a clean-looking board. **A zero on leg 3 without leg 1 is the failure, not the fix.**
 
+## ⛔ AND IT HAS NOT PRODUCED SINCE — 19 days, on TWO independent mechanisms
+
+*Measured 2026-09-08 06:17Z. The section below is about a stall of MINUTES on 2026-08-20. This is about
+the period since.*
+
+```
+MECHANISM 1 — forge artifacts (remote, output-side)
+  tools/fleet-output.py     TEAMLEAD 41 signed · ARCHITECT DEVOPS DX DEV1-5 all SILENT
+  friction reports          16 on the board · newest 2026-08-25 · 15 of 16 are 19-20 days
+                            old · ZERO filed in the last 14 days
+
+MECHANISM 2 — the local pane registry (session-side)
+  tools/bootstrap-audit.py  Summary: 9 roles · 8 negative · 1 unknown
+                            NEGATIVE = "no-session — no registry row for this role"
+```
+
+⚠ **TWO mechanisms, not three, and the distinction matters.** `fleet-output` and the friction-age
+reading both read the FORGE — they are one witness looking at two of its fields, not two witnesses.
+`bootstrap-audit` reads the local registry, which fails for unrelated reasons. ⇒ The agreement is
+worth something because those two can fail independently; counting the forge twice would have
+inflated the evidence.
+
+★ **Each instrument reports its own blind spot rather than concluding.** `fleet-output` prints
+*"SILENT means only 'no SIGNED artifact in this window'"* beside every verdict — 34 of 75 comments
+in its window carry no signature at all. `bootstrap-audit` prints *"UNKNOWN is not a pass"*. Neither
+says the fleet is dead; together they say **nothing role-named has produced a signed artifact or
+held a registry row for 19 days.**
+
+⛔ **What this does NOT establish:** why. A fleet that was never relaunched and one that runs and
+signs nothing are indistinguishable from here — and `tools/fleet-state.py` says so in its own words,
+exiting 2: *"They may be silent, unlaunched, or never given the prompt — this cannot tell."*
+
+⇒ **The operator is the only party who can tell those apart.** Not filed as an issue: there is no
+defect established, only an absence, and an absence with two readings is not a finding.
+
 ## ⛔ THE FLEET STOPPED PRODUCING AT ~07:16Z, AND THE MONITOR DID NOT SEE IT
 
 **Measured 08:54Z.** Two legs per pane — file mtime versus the newest **timestamped record**:
